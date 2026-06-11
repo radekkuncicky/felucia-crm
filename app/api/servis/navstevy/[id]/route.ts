@@ -1,27 +1,28 @@
 import { getPlanLimits } from '@/lib/planLimits'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { orgId, plan } = session.user
+  const db = orgPrisma(orgId)
   if (!getPlanLimits(plan).hasServiceModule) return NextResponse.json({ error: 'Vyžadován plán Professional nebo Enterprise' }, { status: 403 })
 
-  const navsteva = await prisma.servisniNavsteva.findFirst({ where: { id: params.id, orgId } })
+  const navsteva = await db.servisniNavsteva.findFirst({ where: { id: params.id, orgId } })
   if (!navsteva) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const body = await req.json()
 
   // Validate technikId belongs to this org when changing it
   if (body.technikId) {
-    const technik = await prisma.user.findFirst({ where: { id: body.technikId, orgId } })
+    const technik = await db.user.findFirst({ where: { id: body.technikId, orgId } })
     if (!technik) return NextResponse.json({ error: 'Technik nenalezen' }, { status: 400 })
   }
 
-  const updated = await prisma.servisniNavsteva.update({
+  const updated = await db.servisniNavsteva.update({
     where: { id: params.id },
     data: {
       stav: body.stav ?? navsteva.stav,
@@ -49,18 +50,19 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { orgId, plan } = session.user
+  const db = orgPrisma(orgId)
   if (!getPlanLimits(plan).hasServiceModule) return NextResponse.json({ error: 'Vyžadován plán Professional nebo Enterprise' }, { status: 403 })
 
-  const kontrakt = await prisma.servisniKontrakt.findFirst({ where: { id: params.id, orgId } })
+  const kontrakt = await db.servisniKontrakt.findFirst({ where: { id: params.id, orgId } })
   if (!kontrakt) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const body = await req.json()
 
   const year = new Date().getFullYear().toString().slice(2)
-  const count = await prisma.servisniNavsteva.count({ where: { orgId } })
+  const count = await db.servisniNavsteva.count({ where: { orgId } })
   const cisloNavstevy = `SN-${year}-${String(count + 1).padStart(3, '0')}`
 
-  const navsteva = await prisma.servisniNavsteva.create({
+  const navsteva = await db.servisniNavsteva.create({
     data: {
       orgId,
       kontraktId: params.id,

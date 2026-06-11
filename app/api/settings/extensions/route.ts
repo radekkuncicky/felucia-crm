@@ -1,16 +1,17 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session || session.user.role !== 'ADMIN') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
 
   const { nazev, aktivni, apiKlic } = await req.json()
 
-  const ext = await prisma.extension.upsert({
+  const ext = await db.extension.upsert({
     where: { orgId_nazev: { orgId, nazev } },
     update: { aktivni, apiKlic: apiKlic || null },
     create: { orgId, nazev, aktivni, apiKlic: apiKlic || null },

@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { generateSodDocx } from '@/lib/sodDocx'
 
@@ -10,8 +10,9 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   if (session.user.role === 'TECHNIK') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
 
-  const sod = await prisma.sod.findFirst({
+  const sod = await db.sod.findFirst({
     where: { id: params.id, orgId },
     include: {
       organization: {

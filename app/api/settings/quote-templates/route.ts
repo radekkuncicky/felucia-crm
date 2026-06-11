@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { getPlanLimits } from '@/lib/planLimits'
 
@@ -8,8 +8,9 @@ export async function GET() {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
 
-  const templates = await prisma.quoteTemplate.findMany({
+  const templates = await db.quoteTemplate.findMany({
     where: { orgId },
     include: { config: true, htmlTemplate: { select: { id: true, templateId: true, cssContent: true } } },
     orderBy: [{ isDefault: 'desc' }, { vytvoreno: 'asc' }],
@@ -22,8 +23,9 @@ export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
 
-  const org = await prisma.organization.findUnique({ where: { id: orgId }, select: { plan: true } })
+  const org = await db.organization.findUnique({ where: { id: orgId }, select: { plan: true } })
   const limits = getPlanLimits(org?.plan ?? 'STARTER')
 
   // STANDARD+ může vytvářet šablony (dle limitu)
@@ -37,14 +39,14 @@ export async function POST(req: Request) {
   if (!nazev) return NextResponse.json({ error: 'Název je povinný' }, { status: 400 })
 
   // Počet šablon
-  const count = await prisma.quoteTemplate.count({
+  const count = await db.quoteTemplate.count({
     where: { orgId, isSystem: false, typ: { in: ['BASE', 'STANDARD', 'CUSTOM_HTML'] } },
   })
   if (limits.maxQuoteTemplates !== Infinity && count >= limits.maxQuoteTemplates) {
     return NextResponse.json({ error: 'Dosažen limit šablon pro váš plán.', code: 'PLAN_LIMIT_REACHED' }, { status: 403 })
   }
 
-  const template = await prisma.quoteTemplate.create({
+  const template = await db.quoteTemplate.create({
     data: {
       orgId,
       nazev,

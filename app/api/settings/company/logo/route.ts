@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { writeFile, mkdir } from 'fs/promises'
 import path from 'path'
 
@@ -9,6 +9,7 @@ export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session || session.user.role !== 'ADMIN') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
 
   const formData = await req.formData()
   const file = formData.get('logo') as File | null
@@ -26,7 +27,7 @@ export async function POST(req: NextRequest) {
   await writeFile(filePath, buffer)
 
   const cesta = `/uploads/org/${orgId}/${filename}`
-  await prisma.organization.update({ where: { id: orgId }, data: { logo: cesta } })
+  await db.organization.update({ where: { id: orgId }, data: { logo: cesta } })
 
   return NextResponse.json({ logo: cesta })
 }

@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
@@ -8,8 +8,9 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
 
-  const predavak = await prisma.predavak.findFirst({
+  const predavak = await db.predavak.findFirst({
     where: { id: params.id, orgId },
     include: { polozky: true, zakazka: { include: { vedouci: true } } },
   })
@@ -36,7 +37,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   }
 
   let zakazkaNovyStav: string | null = null
-  await prisma.$transaction(async tx => {
+  await db.$transaction(async tx => {
     // Update predavak
     await tx.predavak.update({
       where: { id: params.id },

@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
@@ -9,7 +9,8 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   if (session.user.role === 'TECHNIK') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const orgId = session.user.orgId
-  const v = await prisma.vyuctovani.findFirst({
+  const db = orgPrisma(orgId)
+  const v = await db.vyuctovani.findFirst({
     where: { id: params.id, orgId },
     include: {
       polozky: { orderBy: { poradi: 'asc' } },
@@ -32,15 +33,16 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (session.user.role === 'TECHNIK') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
   const isAdmin = session.user.role === 'ADMIN'
-  const v = await prisma.vyuctovani.findFirst({ where: { id: params.id, orgId } })
+  const v = await db.vyuctovani.findFirst({ where: { id: params.id, orgId } })
   if (!v) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const body = await req.json()
 
   // Admin can reopen an approved billing
   if (body.stav === 'NAVRH' && isAdmin) {
-    const updated = await prisma.vyuctovani.update({
+    const updated = await db.vyuctovani.update({
       where: { id: params.id },
       data: { stav: 'NAVRH', schvaleno: null, schvalenoId: null },
       include: { polozky: { orderBy: { poradi: 'asc' } } },
@@ -52,7 +54,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
   const { poznamka } = body
 
-  const updated = await prisma.vyuctovani.update({
+  const updated = await db.vyuctovani.update({
     where: { id: params.id },
     data: { poznamka: poznamka ?? undefined },
     include: { polozky: { orderBy: { poradi: 'asc' } } },
@@ -66,10 +68,11 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
   if (session.user.role !== 'ADMIN') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const orgId = session.user.orgId
-  const v = await prisma.vyuctovani.findFirst({ where: { id: params.id, orgId } })
+  const db = orgPrisma(orgId)
+  const v = await db.vyuctovani.findFirst({ where: { id: params.id, orgId } })
   if (!v) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  await prisma.vyuctovani.delete({ where: { id: params.id } })
+  await db.vyuctovani.delete({ where: { id: params.id } })
 
   return NextResponse.json({ ok: true })
 }

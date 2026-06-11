@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { writeFile } from 'fs/promises'
 import path from 'path'
@@ -28,7 +28,7 @@ export async function POST(req: Request) {
   await writeFile(dest, buffer)
 
   const avatarPath = `/uploads/avatars/${filename}`
-  await prisma.user.update({ where: { id: session.user.id }, data: { avatar: avatarPath } })
+  await orgPrisma(session.user.orgId).user.update({ where: { id: session.user.id }, data: { avatar: avatarPath } })
 
   return NextResponse.json({ avatar: avatarPath })
 }

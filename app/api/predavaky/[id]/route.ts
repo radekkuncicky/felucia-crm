@@ -1,11 +1,11 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 
 async function canAccess(userId: string, role: string, predavakId: string, orgId: string) {
   if (role === 'ADMIN') return true
-  const p = await prisma.predavak.findFirst({ where: { id: predavakId, orgId } })
+  const p = await orgPrisma(orgId).predavak.findFirst({ where: { id: predavakId } })
   if (!p) return false
   if (role === 'TECHNIK') return p.technikId === userId
   return true // OBCHODNIK, MANAZER (ADMIN handled above)
@@ -16,11 +16,12 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
   if (!(await canAccess(session.user.id, session.user.role, params.id, orgId))) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const predavak = await prisma.predavak.findFirst({
+  const predavak = await db.predavak.findFirst({
     where: { id: params.id, orgId },
     include: {
       technik: { select: { id: true, jmeno: true, email: true, telefon: true } },
@@ -46,9 +47,10 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
   const isManager = session.user.role === 'ADMIN' || session.user.role === 'OBCHODNIK'
 
-  const predavak = await prisma.predavak.findFirst({ where: { id: params.id, orgId } })
+  const predavak = await db.predavak.findFirst({ where: { id: params.id, orgId } })
   if (!predavak) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   if (session.user.role === 'TECHNIK' && predavak.technikId !== session.user.id) {
@@ -59,7 +61,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
   // Admin/manager can reopen an approved protocol
   if (body.reopen && isManager) {
-    const updated = await prisma.predavak.update({
+    const updated = await db.predavak.update({
       where: { id: params.id },
       data: { stav: 'ROZPRACOVAN', schvaleno: null, schvalenoId: null, podpisano: null },
     })
@@ -74,7 +76,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
   const editingSubmitted = predavak.stav === 'PODPISAN'
 
-  await prisma.$transaction(async tx => {
+  await db.$transaction(async tx => {
     await tx.predavak.update({
       where: { id: params.id },
       data: {
@@ -99,7 +101,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     }
   })
 
-  const updated = await prisma.predavak.findFirst({
+  const updated = await db.predavak.findFirst({
     where: { id: params.id },
     include: { polozky: { orderBy: { id: 'asc' } }, fotky: true },
   })
@@ -115,10 +117,11 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
   if (!isManager) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const orgId = session.user.orgId
-  const predavak = await prisma.predavak.findFirst({ where: { id: params.id, orgId } })
+  const db = orgPrisma(orgId)
+  const predavak = await db.predavak.findFirst({ where: { id: params.id, orgId } })
   if (!predavak) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  await prisma.predavak.delete({ where: { id: params.id } })
+  await db.predavak.delete({ where: { id: params.id } })
 
   return NextResponse.json({ ok: true })
 }

@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { getOrgSettings } from '@/lib/orgSettings'
 import { NextResponse } from 'next/server'
 import { logAction } from '@/lib/auditLog'
@@ -9,6 +9,7 @@ export async function GET() {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { orgId } = session.user
+  const db = orgPrisma(orgId)
 
   const settings = await getOrgSettings(orgId)
   return NextResponse.json(settings)
@@ -19,6 +20,7 @@ export async function PATCH(req: Request) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (session.user.role !== 'ADMIN') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   const { orgId } = session.user
+  const db = orgPrisma(orgId)
 
   const body = await req.json()
 
@@ -35,7 +37,7 @@ export async function PATCH(req: Request) {
     if (key in body) data[key] = body[key]
   }
 
-  const settings = await prisma.orgSettings.upsert({
+  const settings = await db.orgSettings.upsert({
     where: { orgId },
     update: data,
     create: { orgId, ...data },

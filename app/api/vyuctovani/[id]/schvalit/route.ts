@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
@@ -9,7 +9,8 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   if (session.user.role === 'TECHNIK') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const orgId = session.user.orgId
-  const v = await prisma.vyuctovani.findFirst({
+  const db = orgPrisma(orgId)
+  const v = await db.vyuctovani.findFirst({
     where: { id: params.id, orgId },
     include: { zakazka: { select: { id: true, stav: true, vedouciId: true, cislo: true } } },
   })
@@ -20,19 +21,19 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const currentIdx = stavOrder.indexOf(v.zakazka.stav)
   const vyuctoIdx = stavOrder.indexOf('VYUCTOVANA')
 
-  await prisma.$transaction([
-    prisma.vyuctovani.update({
+  await db.$transaction([
+    db.vyuctovani.update({
       where: { id: params.id },
       data: { stav: 'SCHVALENO', schvaleno: new Date(), schvalenoId: session.user.id },
     }),
     ...(currentIdx < vyuctoIdx ? [
-      prisma.zakazka.update({
+      db.zakazka.update({
         where: { id: v.zakazkaId },
         data: { stav: 'VYUCTOVANA' },
       }),
     ] : []),
     ...(v.zakazka.vedouciId ? [
-      prisma.notification.create({
+      db.notification.create({
         data: {
           orgId,
           userId: v.zakazka.vedouciId,
@@ -42,7 +43,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         },
       }),
     ] : []),
-    prisma.auditLog.create({
+    db.auditLog.create({
       data: {
         orgId,
         userId: session.user.id,

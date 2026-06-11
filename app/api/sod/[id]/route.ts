@@ -1,14 +1,15 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
 
-  const sod = await prisma.sod.findFirst({
+  const sod = await db.sod.findFirst({
     where: { id: params.id, orgId },
     include: {
       deal: { include: { client: true } },
@@ -23,13 +24,14 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
 
-  const sod = await prisma.sod.findFirst({ where: { id: params.id, orgId } })
+  const sod = await db.sod.findFirst({ where: { id: params.id, orgId } })
   if (!sod) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const body = await req.json()
 
-  const updated = await prisma.sod.update({
+  const updated = await db.sod.update({
     where: { id: params.id },
     data: {
       typ: body.typ ?? sod.typ,
@@ -69,10 +71,11 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
   }
 
   const orgId = session.user.orgId
-  const sod = await prisma.sod.findFirst({ where: { id: params.id, orgId } })
+  const db = orgPrisma(orgId)
+  const sod = await db.sod.findFirst({ where: { id: params.id, orgId } })
   if (!sod) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  await prisma.sod.delete({ where: { id: params.id } })
+  await db.sod.delete({ where: { id: params.id } })
 
   return NextResponse.json({ ok: true })
 }

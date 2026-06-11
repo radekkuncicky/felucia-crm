@@ -1,10 +1,10 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 
 async function getVyuctovani(id: string, orgId: string) {
-  return prisma.vyuctovani.findFirst({ where: { id, orgId } })
+  return orgPrisma(orgId).vyuctovani.findFirst({ where: { id } })
 }
 
 export async function PATCH(req: Request, { params }: { params: { id: string; polozkaId: string } }) {
@@ -17,7 +17,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string; po
   if (v.stav === 'SCHVALENO') return NextResponse.json({ error: 'Schválené vyúčtování nelze měnit' }, { status: 422 })
 
   const body = await req.json()
-  const updated = await prisma.vyuctovaniPolozka.update({
+  const updated = await orgPrisma(session.user.orgId).vyuctovaniPolozka.update({
     where: { id: params.polozkaId, vyuctovaniId: params.id },
     data: {
       nazev: body.nazev ?? undefined,
@@ -41,7 +41,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string; p
   if (!v) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   if (v.stav === 'SCHVALENO') return NextResponse.json({ error: 'Schválené vyúčtování nelze měnit' }, { status: 422 })
 
-  await prisma.vyuctovaniPolozka.deleteMany({
+  await orgPrisma(session.user.orgId).vyuctovaniPolozka.deleteMany({
     where: { id: params.polozkaId, vyuctovaniId: params.id },
   })
   return NextResponse.json({ ok: true })

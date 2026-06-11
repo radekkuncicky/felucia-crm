@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { generateSodCislo } from '@/lib/sodHelpers'
 import { buildSodRenderData, renderSodTemplate } from '@/lib/sodRender'
@@ -9,8 +9,9 @@ export async function GET() {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
 
-  const sods = await prisma.sod.findMany({
+  const sods = await db.sod.findMany({
     where: { orgId },
     include: { deal: { include: { client: true } } },
     orderBy: { vytvoreno: 'desc' },
@@ -23,6 +24,7 @@ export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
 
   const body = await req.json()
   const { dealId, templateId, typ, ...rest } = body
@@ -30,7 +32,7 @@ export async function POST(req: Request) {
   if (!dealId) return NextResponse.json({ error: 'dealId je povinný' }, { status: 400 })
   if (!templateId && !typ) return NextResponse.json({ error: 'templateId nebo typ je povinný' }, { status: 400 })
 
-  const deal = await prisma.deal.findFirst({ where: { id: dealId, orgId } })
+  const deal = await db.deal.findFirst({ where: { id: dealId, orgId } })
   if (!deal) return NextResponse.json({ error: 'Deal nenalezen' }, { status: 404 })
 
   const cislo = await generateSodCislo(orgId)
@@ -40,7 +42,7 @@ export async function POST(req: Request) {
   let resolvedTyp = typ ?? 'DPH_21_SE_ZALOHOU'
 
   if (templateId) {
-    const template = await prisma.contractTemplate.findFirst({ where: { id: templateId, orgId } })
+    const template = await db.contractTemplate.findFirst({ where: { id: templateId, orgId } })
     if (!template) return NextResponse.json({ error: 'Šablona nenalezena' }, { status: 404 })
     const renderData = await buildSodRenderData(dealId, orgId, cislo)
     textSmlouvy = renderSodTemplate(template.obsah, renderData)
@@ -52,7 +54,7 @@ export async function POST(req: Request) {
   // Prefill metadata from deal/client for reference
   const prefillData = templateId ? await buildSodRenderData(dealId, orgId, cislo).catch(() => null) : null
 
-  const sod = await prisma.sod.create({
+  const sod = await db.sod.create({
     data: {
       orgId,
       dealId,

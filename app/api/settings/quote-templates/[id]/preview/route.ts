@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { renderPreviewFromHtml, renderPreviewFromHtmlMock, renderQuoteHtml, renderTemplateMockPreview } from '@/lib/quoteRenderer'
 import type { QuoteTemplate, QuoteTemplateConfig, QuoteTemplateHtml } from '@prisma/client'
@@ -13,8 +13,9 @@ export async function POST(
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
 
-  const template = await prisma.quoteTemplate.findFirst({
+  const template = await db.quoteTemplate.findFirst({
     where: { id: params.id, orgId },
     include: { config: true, htmlTemplate: true },
   })
@@ -25,8 +26,8 @@ export async function POST(
 
   // Najdi existující nabídku jako zdroj dat — fallback na mock data
   const sampleQuote = quoteId
-    ? await prisma.quote.findFirst({ where: { id: quoteId, deal: { orgId } } })
-    : await prisma.quote.findFirst({
+    ? await db.quote.findFirst({ where: { id: quoteId, deal: { orgId } } })
+    : await db.quote.findFirst({
         where: { deal: { orgId } },
         include: { deal: true },
         orderBy: { vytvoreno: 'desc' },
@@ -40,7 +41,7 @@ export async function POST(
         ? await renderPreviewFromHtml(htmlContent, cssContent ?? null, sampleQuote.id, orgId)
         : await renderPreviewFromHtmlMock(htmlContent, cssContent ?? null)
     } else if (sampleQuote) {
-      const org = await prisma.organization.findUnique({ where: { id: orgId }, select: { plan: true } })
+      const org = await db.organization.findUnique({ where: { id: orgId }, select: { plan: true } })
       const html = await renderQuoteHtml(sampleQuote.id, orgId, org?.plan ?? 'STARTER')
 
       const browser = await puppeteer.launch({

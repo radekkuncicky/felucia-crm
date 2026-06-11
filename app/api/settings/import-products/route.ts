@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 
 interface CenikCol { kod: string; nazev: string }
@@ -26,6 +26,7 @@ export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session || session.user.role !== 'ADMIN') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
 
   const body = await req.json() as { products: ProductImport[]; ceniky: CenikCol[] }
   if (!Array.isArray(body.products)) return NextResponse.json({ error: 'Invalid data' }, { status: 400 })
@@ -43,10 +44,10 @@ export async function POST(req: Request) {
   async function getOrCreateCategory(nazev: string): Promise<string | null> {
     if (!nazev) return null
     if (categoryCache.has(nazev)) return categoryCache.get(nazev)!
-    let cat = await prisma.category.findFirst({ where: { orgId, nazev } })
+    let cat = await db.category.findFirst({ where: { orgId, nazev } })
     if (!cat) {
-      const count = await prisma.category.count({ where: { orgId } })
-      cat = await prisma.category.create({ data: { orgId, nazev, barva: '#6B7280', poradi: count } })
+      const count = await db.category.count({ where: { orgId } })
+      cat = await db.category.create({ data: { orgId, nazev, barva: '#6B7280', poradi: count } })
     }
     categoryCache.set(nazev, cat.id)
     return cat.id
@@ -76,9 +77,9 @@ export async function POST(req: Request) {
         dodaciLhuta: p.dodaciLhuta || null,
       }
 
-      let product = await prisma.product.findFirst({ where: { orgId, kod: effectiveKod } })
+      let product = await db.product.findFirst({ where: { orgId, kod: effectiveKod } })
       if (product) {
-        product = await prisma.product.update({
+        product = await db.product.update({
           where: { id: product.id },
           data: {
             ...baseData,
@@ -86,7 +87,7 @@ export async function POST(req: Request) {
           },
         })
       } else {
-        product = await prisma.product.create({
+        product = await db.product.create({
           data: {
             orgId,
             kod: effectiveKod,
@@ -106,9 +107,9 @@ export async function POST(req: Request) {
   if (ceniky.length > 0) {
     for (const c of ceniky) {
       try {
-        let cenik = await prisma.cenik.findFirst({ where: { orgId, kod: c.kod } })
+        let cenik = await db.cenik.findFirst({ where: { orgId, kod: c.kod } })
         if (!cenik) {
-          cenik = await prisma.cenik.create({ data: { orgId, kod: c.kod, nazev: c.nazev } })
+          cenik = await db.cenik.create({ data: { orgId, kod: c.kod, nazev: c.nazev } })
           importedCeniky++
         }
 
@@ -122,7 +123,7 @@ export async function POST(req: Request) {
           const productId = productCache.get(productKod)
           if (!productId) continue
 
-          await prisma.cenikPolozka.upsert({
+          await db.cenikPolozka.upsert({
             where: { cenikId_productId: { cenikId: cenik.id, productId } },
             update: { cena },
             create: { cenikId: cenik.id, productId, cena },

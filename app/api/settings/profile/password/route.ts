@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 
@@ -17,7 +17,7 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: 'Heslo musí mít alespoň 8 znaků' }, { status: 400 })
   }
 
-  const user = await prisma.user.findUnique({ where: { id: session.user.id } })
+  const user = await orgPrisma(session.user.orgId).user.findUnique({ where: { id: session.user.id } })
   if (!user) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const ok = await bcrypt.compare(current, user.hesloHash)
@@ -27,7 +27,7 @@ export async function PATCH(req: Request) {
   if (sameAsOld) return NextResponse.json({ error: 'Nové heslo musí být jiné než aktuální' }, { status: 400 })
 
   const hesloHash = await bcrypt.hash(newPassword, 12)
-  await prisma.user.update({ where: { id: session.user.id }, data: { hesloHash } })
+  await orgPrisma(session.user.orgId).user.update({ where: { id: session.user.id }, data: { hesloHash } })
 
   return NextResponse.json({ ok: true })
 }

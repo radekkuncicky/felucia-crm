@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { sendEmail, emailResetPassword } from '@/lib/email'
@@ -14,7 +14,7 @@ export async function POST(req: Request) {
   const { userId } = await req.json()
   if (!userId) return NextResponse.json({ error: 'userId je povinný' }, { status: 400 })
 
-  const user = await prisma.user.findFirst({
+  const user = await orgPrisma(session.user.orgId).user.findFirst({
     where: { id: userId, orgId: session.user.orgId, aktivni: true },
   })
   if (!user) return NextResponse.json({ error: 'Uživatel nenalezen' }, { status: 404 })
@@ -22,7 +22,7 @@ export async function POST(req: Request) {
   const token = crypto.randomBytes(32).toString('hex')
   const expiresAt = new Date(Date.now() + 60 * 60 * 1000)
 
-  await prisma.passwordResetToken.create({ data: { userId: user.id, token, expiresAt } })
+  await orgPrisma(session.user.orgId).passwordResetToken.create({ data: { userId: user.id, token, expiresAt } })
 
   const baseUrl = process.env.NEXTAUTH_URL ?? 'https://crm.workspace-felucia.io'
   const url = `${baseUrl}/auth/reset-password?token=${token}`

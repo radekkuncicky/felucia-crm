@@ -1,7 +1,7 @@
 import { getPlanLimits } from '@/lib/planLimits'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 
 function generateNavstevy(kontraktId: string, orgId: string, zacatek: Date, konec: Date | null, intervalMesicu: number) {
@@ -26,6 +26,7 @@ export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { orgId, plan } = session.user
+  const db = orgPrisma(orgId)
   if (!getPlanLimits(plan).hasServiceModule) return NextResponse.json({ error: 'Vyžadován plán Professional nebo Enterprise' }, { status: 403 })
 
   const body = await req.json()
@@ -37,10 +38,10 @@ export async function POST(req: Request) {
 
   // Auto-number: SK-YY-NNN
   const year = new Date().getFullYear().toString().slice(2)
-  const count = await prisma.servisniKontrakt.count({ where: { orgId } })
+  const count = await db.servisniKontrakt.count({ where: { orgId } })
   const cisloKontraktu = `SK-${year}-${String(count + 1).padStart(3, '0')}`
 
-  const kontrakt = await prisma.servisniKontrakt.create({
+  const kontrakt = await db.servisniKontrakt.create({
     data: {
       orgId,
       dealId: dealId || null,
@@ -68,7 +69,7 @@ export async function POST(req: Request) {
   )
 
   if (navstevyData.length > 0) {
-    await prisma.servisniNavsteva.createMany({ data: navstevyData })
+    await db.servisniNavsteva.createMany({ data: navstevyData })
   }
 
   return NextResponse.json(kontrakt, { status: 201 })
@@ -78,9 +79,10 @@ export async function GET() {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { orgId, plan } = session.user
+  const db = orgPrisma(orgId)
   if (!getPlanLimits(plan).hasServiceModule) return NextResponse.json({ error: 'Vyžadován plán Professional nebo Enterprise' }, { status: 403 })
 
-  const kontrakty = await prisma.servisniKontrakt.findMany({
+  const kontrakty = await db.servisniKontrakt.findMany({
     where: { orgId },
     include: {
       klient: { select: { id: true, jmeno: true, prijmeni: true } },

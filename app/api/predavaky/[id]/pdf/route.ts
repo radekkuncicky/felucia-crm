@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { generatePredavakHtml } from '@/lib/predavakPdf'
 import { generatePdf } from '@/lib/pdf'
@@ -10,9 +10,10 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
   const role = session.user.role
 
-  const predavak = await prisma.predavak.findFirst({
+  const predavak = await db.predavak.findFirst({
     where: { id: params.id, orgId },
     include: {
       technik: { select: { id: true, jmeno: true, email: true, telefon: true } },

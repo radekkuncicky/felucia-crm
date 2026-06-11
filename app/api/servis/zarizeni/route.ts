@@ -1,7 +1,7 @@
 import { getPlanLimits } from '@/lib/planLimits'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { SignJWT } from 'jose'
 
@@ -9,9 +9,10 @@ export async function GET() {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { orgId, plan } = session.user
+  const db = orgPrisma(orgId)
   if (!getPlanLimits(plan).hasServiceModule) return NextResponse.json({ error: 'Vyžadován plán Professional nebo Enterprise' }, { status: 403 })
 
-  const zarizeni = await prisma.zarizeni.findMany({
+  const zarizeni = await db.zarizeni.findMany({
     where: { orgId },
     include: {
       klient: { select: { id: true, jmeno: true, prijmeni: true } },
@@ -31,6 +32,7 @@ export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { orgId, plan } = session.user
+  const db = orgPrisma(orgId)
   if (!getPlanLimits(plan).hasServiceModule) return NextResponse.json({ error: 'Vyžadován plán Professional nebo Enterprise' }, { status: 403 })
 
   const body = await req.json()
@@ -48,7 +50,7 @@ export async function POST(req: Request) {
     .setExpirationTime('10y')
     .sign(secret)
 
-  const zarizeni = await prisma.zarizeni.create({
+  const zarizeni = await db.zarizeni.create({
     data: {
       orgId,
       klientId,
@@ -71,7 +73,7 @@ export async function POST(req: Request) {
     .setProtectedHeader({ alg: 'HS256' })
     .setExpirationTime('10y')
     .sign(secret)
-  const finalZarizeni = await prisma.zarizeni.update({
+  const finalZarizeni = await db.zarizeni.update({
     where: { id: zarizeni.id },
     data: { qrToken: finalToken },
     include: {

@@ -1,13 +1,14 @@
 import { getPlanLimits } from '@/lib/planLimits'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { orgId, plan } = session.user
+  const db = orgPrisma(orgId)
   if (!getPlanLimits(plan).hasServiceModule) return NextResponse.json({ error: 'Vyžadován plán Professional nebo Enterprise' }, { status: 403 })
 
   const { searchParams } = new URL(req.url)
@@ -15,7 +16,7 @@ export async function GET(req: Request) {
   const to = searchParams.get('to')
   const stav = searchParams.get('stav')
 
-  const navstevy = await prisma.servisniNavsteva.findMany({
+  const navstevy = await db.servisniNavsteva.findMany({
     where: {
       orgId,
       ...(from || to ? {
@@ -47,6 +48,7 @@ export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { orgId, plan } = session.user
+  const db = orgPrisma(orgId)
   if (!getPlanLimits(plan).hasServiceModule) return NextResponse.json({ error: 'Vyžadován plán Professional nebo Enterprise' }, { status: 403 })
 
   const body = await req.json()
@@ -62,27 +64,27 @@ export async function POST(req: Request) {
 
   // SECURITY FIX: Verify all referenced IDs belong to this org to prevent cross-tenant IDOR
   if (zarizeniId) {
-    const zarizeni = await prisma.zarizeni.findFirst({ where: { id: zarizeniId, orgId } })
+    const zarizeni = await db.zarizeni.findFirst({ where: { id: zarizeniId, orgId } })
     if (!zarizeni) return NextResponse.json({ error: 'Zařízení nebylo nalezeno' }, { status: 400 })
   }
   if (klientId) {
-    const klient = await prisma.client.findFirst({ where: { id: klientId, orgId } })
+    const klient = await db.client.findFirst({ where: { id: klientId, orgId } })
     if (!klient) return NextResponse.json({ error: 'Klient nebyl nalezen' }, { status: 400 })
   }
   if (kontraktId) {
-    const kontrakt = await prisma.servisniKontrakt.findFirst({ where: { id: kontraktId, orgId } })
+    const kontrakt = await db.servisniKontrakt.findFirst({ where: { id: kontraktId, orgId } })
     if (!kontrakt) return NextResponse.json({ error: 'Kontrakt nebyl nalezen' }, { status: 400 })
   }
   if (technikId) {
-    const technik = await prisma.user.findFirst({ where: { id: technikId, orgId } })
+    const technik = await db.user.findFirst({ where: { id: technikId, orgId } })
     if (!technik) return NextResponse.json({ error: 'Technik nebyl nalezen v této organizaci' }, { status: 400 })
   }
 
   const year = new Date().getFullYear().toString().slice(2)
-  const count = await prisma.servisniNavsteva.count({ where: { orgId } })
+  const count = await db.servisniNavsteva.count({ where: { orgId } })
   const cisloNavstevy = `SN-${year}-${String(count + 1).padStart(3, '0')}`
 
-  const navsteva = await prisma.servisniNavsteva.create({
+  const navsteva = await db.servisniNavsteva.create({
     data: {
       orgId,
       cisloNavstevy,

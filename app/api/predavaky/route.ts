@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { generatePredavakCislo } from '@/lib/zakazkyHelpers'
 import { canTechnikAccessZakazka } from '@/lib/zakazkyHelpers'
@@ -10,6 +10,7 @@ export async function POST(req: Request) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
   const role = session.user.role
   const body = await req.json()
   const { zakazkaId, etapaId } = body
@@ -24,7 +25,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const zakazka = await prisma.zakazka.findFirst({
+  const zakazka = await db.zakazka.findFirst({
     where: { id: zakazkaId, orgId },
     include: { polozky: { orderBy: { poradi: 'asc' } } },
   })
@@ -32,7 +33,7 @@ export async function POST(req: Request) {
 
   const cislo = await generatePredavakCislo(orgId)
 
-  const predavak = await prisma.predavak.create({
+  const predavak = await db.predavak.create({
     data: {
       orgId,
       zakazkaId,

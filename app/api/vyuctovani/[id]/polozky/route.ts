@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
@@ -9,15 +9,16 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   if (session.user.role === 'TECHNIK') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const orgId = session.user.orgId
-  const v = await prisma.vyuctovani.findFirst({ where: { id: params.id, orgId } })
+  const db = orgPrisma(orgId)
+  const v = await db.vyuctovani.findFirst({ where: { id: params.id, orgId } })
   if (!v) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   if (v.stav === 'SCHVALENO') return NextResponse.json({ error: 'Schválené vyúčtování nelze měnit' }, { status: 422 })
 
   const { nazev, mnozstvi, jednotka, nakupniCena, prodejniCena, dphSazba } = await req.json()
   if (!nazev?.trim()) return NextResponse.json({ error: 'Chybí název' }, { status: 400 })
 
-  const count = await prisma.vyuctovaniPolozka.count({ where: { vyuctovaniId: params.id } })
-  const polozka = await prisma.vyuctovaniPolozka.create({
+  const count = await db.vyuctovaniPolozka.count({ where: { vyuctovaniId: params.id } })
+  const polozka = await db.vyuctovaniPolozka.create({
     data: {
       vyuctovaniId: params.id,
       nazev,

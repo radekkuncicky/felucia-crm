@@ -1,16 +1,17 @@
 import { getPlanLimits } from '@/lib/planLimits'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { orgId, plan } = session.user
+  const db = orgPrisma(orgId)
   if (!getPlanLimits(plan).hasServiceModule) return NextResponse.json({ error: 'Vyžadován plán Professional nebo Enterprise' }, { status: 403 })
 
-  const navsteva = await prisma.servisniNavsteva.findFirst({ where: { id: params.id, orgId } })
+  const navsteva = await db.servisniNavsteva.findFirst({ where: { id: params.id, orgId } })
   if (!navsteva) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const existing = (navsteva.fotky as string[]) ?? []
@@ -29,7 +30,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const base64 = Buffer.from(bytes).toString('base64')
   const dataUrl = `data:${file.type};base64,${base64}`
 
-  const updated = await prisma.servisniNavsteva.update({
+  const updated = await db.servisniNavsteva.update({
     where: { id: params.id },
     data: { fotky: [...existing, dataUrl] },
   })
@@ -41,15 +42,16 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { orgId, plan } = session.user
+  const db = orgPrisma(orgId)
   if (!getPlanLimits(plan).hasServiceModule) return NextResponse.json({ error: 'Vyžadován plán Professional nebo Enterprise' }, { status: 403 })
 
-  const navsteva = await prisma.servisniNavsteva.findFirst({ where: { id: params.id, orgId } })
+  const navsteva = await db.servisniNavsteva.findFirst({ where: { id: params.id, orgId } })
   if (!navsteva) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const { index } = await req.json()
   const existing = (navsteva.fotky as string[]) ?? []
   const updated = existing.filter((_: string, i: number) => i !== index)
 
-  await prisma.servisniNavsteva.update({ where: { id: params.id }, data: { fotky: updated } })
+  await db.servisniNavsteva.update({ where: { id: params.id }, data: { fotky: updated } })
   return NextResponse.json({ fotky: updated })
 }

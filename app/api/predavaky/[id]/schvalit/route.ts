@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { generateVyuctovaniCislo } from '@/lib/zakazkyHelpers'
 
@@ -9,11 +9,12 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
   const role = session.user.role
 
   if (role === 'TECHNIK') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const predavak = await prisma.predavak.findFirst({
+  const predavak = await db.predavak.findFirst({
     where: { id: params.id, orgId },
     include: {
       polozky: { include: { zakazkaPolozka: true } },
@@ -28,7 +29,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const zahrnutePolozky = predavak.polozky.filter(p => p.zahrnuto)
   const vyuctovaniCislo = await generateVyuctovaniCislo(orgId)
 
-  await prisma.$transaction(async tx => {
+  await db.$transaction(async tx => {
     // Approve predavak
     await tx.predavak.update({
       where: { id: params.id },

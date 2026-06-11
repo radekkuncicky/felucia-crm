@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 
 export async function GET(
@@ -10,8 +10,9 @@ export async function GET(
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
 
-  const template = await prisma.quoteTemplate.findFirst({
+  const template = await db.quoteTemplate.findFirst({
     where: { id: params.id, orgId },
     include: { config: true, htmlTemplate: true },
   })
@@ -27,9 +28,10 @@ export async function PATCH(
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
   if (session.user.role !== 'ADMIN') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const template = await prisma.quoteTemplate.findFirst({
+  const template = await db.quoteTemplate.findFirst({
     where: { id: params.id, orgId },
   })
   if (!template) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -38,7 +40,7 @@ export async function PATCH(
   const body = await req.json()
   const { nazev, config, htmlContent, cssContent } = body
 
-  await prisma.quoteTemplate.update({
+  await db.quoteTemplate.update({
     where: { id: params.id },
     data: {
       ...(nazev !== undefined ? { nazev } : {}),
@@ -55,7 +57,7 @@ export async function PATCH(
     for (const field of configFields) {
       if (config[field] !== undefined) allowed[field] = config[field]
     }
-    await prisma.quoteTemplateConfig.upsert({
+    await db.quoteTemplateConfig.upsert({
       where: { templateId: params.id },
       create: { templateId: params.id, ...allowed },
       update: allowed,
@@ -66,7 +68,7 @@ export async function PATCH(
     if (template.typ !== 'CUSTOM_HTML') {
       return NextResponse.json({ error: 'HTML lze editovat jen u CUSTOM_HTML šablon' }, { status: 400 })
     }
-    await prisma.quoteTemplateHtml.upsert({
+    await db.quoteTemplateHtml.upsert({
       where: { templateId: params.id },
       create: {
         templateId: params.id,
@@ -80,7 +82,7 @@ export async function PATCH(
     })
   }
 
-  const updated = await prisma.quoteTemplate.findUnique({
+  const updated = await db.quoteTemplate.findUnique({
     where: { id: params.id },
     include: { config: true, htmlTemplate: true },
   })
@@ -95,17 +97,18 @@ export async function DELETE(
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
   if (session.user.role !== 'ADMIN') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const template = await prisma.quoteTemplate.findFirst({
+  const template = await db.quoteTemplate.findFirst({
     where: { id: params.id, orgId },
   })
   if (!template) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  await prisma.$transaction([
-    prisma.quote.updateMany({ where: { templateId: params.id }, data: { templateId: null } }),
-    prisma.orgTemplateMapping.deleteMany({ where: { templateId: params.id } }),
-    prisma.quoteTemplate.delete({ where: { id: params.id } }),
+  await db.$transaction([
+    db.quote.updateMany({ where: { templateId: params.id }, data: { templateId: null } }),
+    db.orgTemplateMapping.deleteMany({ where: { templateId: params.id } }),
+    db.quoteTemplate.delete({ where: { id: params.id } }),
   ])
 
   return NextResponse.json({ ok: true })

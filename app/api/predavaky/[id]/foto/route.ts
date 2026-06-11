@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
@@ -8,7 +8,8 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const orgId = session.user.orgId
-  const predavak = await prisma.predavak.findFirst({ where: { id: params.id, orgId } })
+  const db = orgPrisma(orgId)
+  const predavak = await db.predavak.findFirst({ where: { id: params.id, orgId } })
   if (!predavak) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   if (session.user.role === 'TECHNIK' && predavak.technikId !== session.user.id) {
@@ -19,7 +20,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   if (!url) return NextResponse.json({ error: 'Chybí URL' }, { status: 400 })
 
   // Check max 20 photos
-  const count = await prisma.predavakFoto.count({ where: { predavakId: params.id } })
+  const count = await db.predavakFoto.count({ where: { predavakId: params.id } })
   if (count >= 20) return NextResponse.json({ error: 'Maximálně 20 fotek na protokol' }, { status: 422 })
 
   // Check base64 size (~5MB = ~6.8MB base64)
@@ -27,7 +28,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     return NextResponse.json({ error: 'Fotka je příliš velká (max 5 MB)' }, { status: 422 })
   }
 
-  const foto = await prisma.predavakFoto.create({
+  const foto = await db.predavakFoto.create({
     data: { predavakId: params.id, url, popis: popis ?? null },
   })
 

@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 
 export async function GET() {
@@ -9,7 +9,8 @@ export async function GET() {
   if (session.user.role === 'TECHNIK') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const orgId = session.user.orgId
-  const settings = await prisma.orgSettings.findUnique({ where: { orgId } })
+  const db = orgPrisma(orgId)
+  const settings = await db.orgSettings.findUnique({ where: { orgId } })
   if (!settings) return NextResponse.json({})
 
   return NextResponse.json({
@@ -29,10 +30,11 @@ export async function PATCH(req: Request) {
   }
 
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
   const body = await req.json()
   const { zakazkyDefaultVedouciId, zakazkyAutoAssignVedouci, zakazkyAutoVyuctovani, zakazkyPrefix, zakazkyDefaultDph } = body
 
-  await prisma.orgSettings.upsert({
+  await db.orgSettings.upsert({
     where: { orgId },
     update: {
       zakazkyDefaultVedouciId: zakazkyDefaultVedouciId ?? null,

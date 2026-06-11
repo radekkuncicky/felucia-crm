@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 
 export async function GET() {
@@ -9,8 +9,9 @@ export async function GET() {
   if (session.user.role !== 'ADMIN') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
 
-  const nodes = await prisma.visibilityNode.findMany({
+  const nodes = await db.visibilityNode.findMany({
     where: { orgId },
     include: {
       users: {
@@ -31,6 +32,7 @@ export async function POST(req: Request) {
   if (session.user.role !== 'ADMIN') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
   const body = await req.json()
   const { nodes } = body as {
     nodes: { id?: string; parentId?: string | null; nazev: string; poradi?: number; users: { userId: string; viditelnost: 'ALL' | 'OWN' | 'SELECTED' }[] }[]
@@ -41,10 +43,10 @@ export async function POST(req: Request) {
   }
 
   // Delete existing nodes (cascades to VisibilityNodeUser via onDelete: Cascade)
-  await prisma.visibilityNodeUser.deleteMany({
+  await db.visibilityNodeUser.deleteMany({
     where: { node: { orgId } },
   })
-  await prisma.visibilityNode.deleteMany({
+  await db.visibilityNode.deleteMany({
     where: { orgId },
   })
 
@@ -59,7 +61,7 @@ export async function POST(req: Request) {
     node: { id?: string; parentId?: string | null; nazev: string; poradi?: number; users: { userId: string; viditelnost: 'ALL' | 'OWN' | 'SELECTED' }[] },
     resolvedParentId: string | null
   ) {
-    const created = await prisma.visibilityNode.create({
+    const created = await db.visibilityNode.create({
       data: {
         orgId,
         nazev: node.nazev,

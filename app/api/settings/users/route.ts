@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { Role } from '@prisma/client'
@@ -12,8 +12,9 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (session.user.role !== 'ADMIN') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
 
-  const users = await prisma.user.findMany({
+  const users = await db.user.findMany({
     where: { orgId },
     select: { id: true, jmeno: true, email: true, role: true, aktivni: true, vytvoreno: true },
     orderBy: { vytvoreno: 'asc' },
@@ -26,6 +27,7 @@ export async function POST(req: Request) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (session.user.role !== 'ADMIN') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
 
   const body = await req.json()
   const { jmeno, email, heslo, role } = body
@@ -43,11 +45,11 @@ export async function POST(req: Request) {
     }, { status: 403 })
   }
 
-  const exists = await prisma.user.findFirst({ where: { orgId, email } })
+  const exists = await db.user.findFirst({ where: { orgId, email } })
   if (exists) return NextResponse.json({ error: 'Email již existuje' }, { status: 400 })
 
   const hesloHash = await bcrypt.hash(heslo, 12)
-  const user = await prisma.user.create({
+  const user = await db.user.create({
     data: { orgId, jmeno, email, hesloHash, role: (role as Role) || Role.OBCHODNIK },
     select: { id: true, jmeno: true, email: true, role: true, aktivni: true, vytvoreno: true },
   })

@@ -1,16 +1,17 @@
 import { getPlanLimits } from '@/lib/planLimits'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { orgId, plan } = session.user
+  const db = orgPrisma(orgId)
   if (!getPlanLimits(plan).hasServiceModule) return NextResponse.json({ error: 'Vyžadován plán Professional nebo Enterprise' }, { status: 403 })
 
-  const kontrakt = await prisma.servisniKontrakt.findFirst({
+  const kontrakt = await db.servisniKontrakt.findFirst({
     where: { id: params.id, orgId },
     include: {
       klient: { select: { id: true, jmeno: true, prijmeni: true } },
@@ -30,14 +31,15 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { orgId, plan } = session.user
+  const db = orgPrisma(orgId)
   if (!getPlanLimits(plan).hasServiceModule) return NextResponse.json({ error: 'Vyžadován plán Professional nebo Enterprise' }, { status: 403 })
 
-  const kontrakt = await prisma.servisniKontrakt.findFirst({ where: { id: params.id, orgId } })
+  const kontrakt = await db.servisniKontrakt.findFirst({ where: { id: params.id, orgId } })
   if (!kontrakt) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const body = await req.json()
 
-  const updated = await prisma.servisniKontrakt.update({
+  const updated = await db.servisniKontrakt.update({
     where: { id: params.id },
     data: {
       nazev: body.nazev ?? kontrakt.nazev,

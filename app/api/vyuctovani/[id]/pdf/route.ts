@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { generateVyuctovaniHtml } from '@/lib/vyuctovaniPdf'
 import { generatePdf } from '@/lib/pdf'
@@ -11,8 +11,9 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   if (session.user.role === 'TECHNIK') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
 
-  const v = await prisma.vyuctovani.findFirst({
+  const v = await db.vyuctovani.findFirst({
     where: { id: params.id, orgId },
     include: {
       schvalil: { select: { jmeno: true } },
