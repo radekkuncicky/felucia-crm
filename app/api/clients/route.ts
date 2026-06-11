@@ -1,7 +1,7 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { getMobileSession } from '@/lib/mobile-auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { logAction } from '@/lib/auditLog'
 
@@ -13,9 +13,8 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
   const search = searchParams.get('search') ?? ''
 
-  const clients = await prisma.client.findMany({
+  const clients = await orgPrisma(orgId).client.findMany({
     where: {
-      orgId,
       ...(search ? {
         OR: [
           { jmeno: { contains: search, mode: 'insensitive' } },
@@ -45,7 +44,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Jméno je povinné' }, { status: 400 })
   }
 
-  const client = await prisma.client.create({
+  const client = await orgPrisma(orgId).client.create({
     data: {
       orgId,
       typKlienta: typKlienta === 'FIRMA' ? 'FIRMA' : 'FYZICKA_OSOBA',
