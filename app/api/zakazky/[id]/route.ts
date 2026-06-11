@@ -3,6 +3,7 @@ import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { canTechnikAccessZakazka } from '@/lib/zakazkyHelpers'
+import { sendPushToUsers } from '@/lib/push'
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
@@ -52,6 +53,12 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const db = orgPrisma(orgId)
   const body = await req.json()
 
+  const puvodni = await db.zakazka.findFirst({
+    where: { id: params.id, orgId },
+    select: { montazOd: true, montazDo: true },
+  })
+  if (!puvodni) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
   const zakazka = await db.zakazka.update({
     where: { id: params.id, orgId },
     data: {
@@ -64,6 +71,24 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       montazDo: body.montazDo !== undefined ? (body.montazDo ? new Date(body.montazDo) : null) : undefined,
     },
   })
+
+  const terminZmenen =
+    zakazka.montazOd?.getTime() !== puvodni.montazOd?.getTime() ||
+    zakazka.montazDo?.getTime() !== puvodni.montazDo?.getTime()
+  if (terminZmenen) {
+    const technici = await db.technikZakazka.findMany({
+      where: { zakazkaId: params.id },
+      select: { technikId: true },
+    })
+    const termin = zakazka.montazOd
+      ? zakazka.montazOd.toLocaleDateString('cs-CZ', { timeZone: 'Europe/Prague', day: 'numeric', month: 'numeric', year: 'numeric' })
+      : 'zrušen'
+    await sendPushToUsers(orgId, technici.map(t => t.technikId), {
+      title: 'Změna termínu montáže',
+      body: `${zakazka.cislo} — ${zakazka.nazev}: ${termin}`,
+      data: { type: 'zakazka', zakazkaId: zakazka.id },
+    })
+  }
 
   return NextResponse.json(zakazka)
 }

@@ -1,6 +1,7 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
+import { sendPushToUsers } from '@/lib/push'
 import { NextResponse } from 'next/server'
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
@@ -43,6 +44,12 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       }),
     ])
   }
+
+  await sendPushToUsers(orgId, [technikId], {
+    title: 'Nová zakázka',
+    body: `${zakazka.cislo} — ${zakazka.nazev}`,
+    data: { type: 'zakazka', zakazkaId: zakazka.id },
+  })
 
   return NextResponse.json({ ...rel, zakazkaNovyStav: zakazka.stav === 'NOVA' ? 'PRIRAZENA' : null }, { status: 201 })
 }
