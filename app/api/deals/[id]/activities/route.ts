@@ -44,6 +44,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       vysledek: body.vysledek || null,
       misto: body.misto || null,
       resitelId: body.resitelId || userId,
+      reminderAt: body.reminderAt ? new Date(body.reminderAt) : null,
     },
     include: { user: true, resitel: true },
   })

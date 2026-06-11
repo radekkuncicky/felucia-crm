@@ -1,0 +1,60 @@
+import 'dotenv/config'
+import PgBoss from 'pg-boss'
+import { prisma } from '../lib/prisma'
+import { findDueReminders, processReminder } from './reminders'
+
+/**
+ * Background worker (PM2 proces nanto-crm-worker, samostatný od Next.js).
+ * pg-boss běží nad stejnou PostgreSQL ve vlastním schématu `pgboss`.
+ *
+ * Fronty:
+ *  - reminders-sweep   cron každou minutu, zařadí zralé připomínky
+ *  - activity-reminder zpracování jedné připomínky (bell + email)
+ */
+
+const QUEUE_SWEEP = 'reminders-sweep'
+const QUEUE_REMINDER = 'activity-reminder'
+
+async function main() {
+  const boss = new PgBoss({
+    connectionString: process.env.DATABASE_URL!,
+    schema: 'pgboss',
+    max: 5,
+  })
+  boss.on('error', (err) => console.error('[pg-boss]', err))
+  await boss.start()
+
+  await boss.createQueue(QUEUE_SWEEP)
+  await boss.createQueue(QUEUE_REMINDER)
+  await boss.schedule(QUEUE_SWEEP, '* * * * *')
+
+  await boss.work(QUEUE_SWEEP, async () => {
+    const due = await findDueReminders(prisma)
+    for (const a of due) {
+      // singletonKey: tatáž aktivita se nezařadí dvakrát, dokud job čeká
+      await boss.send(QUEUE_REMINDER, { activityId: a.id }, { singletonKey: a.id, retryLimit: 3, retryDelay: 60 })
+    }
+    if (due.length > 0) console.log(`[sweep] zařazeno ${due.length} připomínek`)
+  })
+
+  await boss.work<{ activityId: string }>(QUEUE_REMINDER, async ([job]) => {
+    const result = await processReminder(prisma, job.data.activityId)
+    console.log(`[reminder] aktivita ${job.data.activityId}: ${result}`)
+  })
+
+  console.log('[worker] běží — fronty:', QUEUE_SWEEP, QUEUE_REMINDER)
+
+  const shutdown = async (signal: string) => {
+    console.log(`[worker] ${signal}, ukončuji…`)
+    await boss.stop({ wait: true, timeout: 10_000 })
+    await prisma.$disconnect()
+    process.exit(0)
+  }
+  process.on('SIGINT', () => void shutdown('SIGINT'))
+  process.on('SIGTERM', () => void shutdown('SIGTERM'))
+}
+
+main().catch((err) => {
+  console.error('[worker] start selhal:', err)
+  process.exit(1)
+})

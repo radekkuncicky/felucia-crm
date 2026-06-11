@@ -10,5 +10,7 @@ export default defineConfig({
   },
   datasource: {
     url: process.env["DATABASE_URL"],
+    // pro migrate diff/dev (replay historie); DB nanto_crm_shadow je dočasná
+    shadowDatabaseUrl: process.env["SHADOW_DATABASE_URL"],
   },
 });

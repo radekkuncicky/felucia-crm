@@ -13,8 +13,8 @@ npm test
 echo "==> Build"
 npm run build
 
-echo "==> Restart PM2"
-pm2 restart nanto-crm --update-env
+echo "==> Restart PM2 (web + worker)"
+pm2 startOrRestart ecosystem.config.js --update-env
 
 sleep 5
 CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/)
@@ -22,4 +22,8 @@ if [ "$CODE" != "200" ]; then
   echo "!! Aplikace po restartu vrací HTTP $CODE — zkontroluj pm2 logs nanto-crm"
   exit 1
 fi
-echo "==> OK, aplikace běží (HTTP 200)"
+if ! pm2 describe nanto-crm-worker | grep -q "online"; then
+  echo "!! Worker neběží — zkontroluj pm2 logs nanto-crm-worker"
+  exit 1
+fi
+echo "==> OK, aplikace běží (HTTP 200) + worker online"

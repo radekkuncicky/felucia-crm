@@ -4,8 +4,9 @@
 -- Step 1: Create new enum type
 CREATE TYPE "PlanOrg_new" AS ENUM ('STARTER', 'STANDARD', 'PROFESSIONAL', 'ENTERPRISE');
 
--- Step 2: Migrate column, casting old values to new
-ALTER TABLE "Organization"
+-- Step 2: Migrate column, casting old values to new (default se musí shodit před změnou typu)
+ALTER TABLE "organizations" ALTER COLUMN "plan" DROP DEFAULT;
+ALTER TABLE "organizations"
   ALTER COLUMN "plan" TYPE "PlanOrg_new"
   USING (
     CASE "plan"::text
@@ -18,7 +19,7 @@ ALTER TABLE "Organization"
   );
 
 -- Step 3: Update default
-ALTER TABLE "Organization" ALTER COLUMN "plan" SET DEFAULT 'STARTER'::"PlanOrg_new";
+ALTER TABLE "organizations" ALTER COLUMN "plan" SET DEFAULT 'STARTER'::"PlanOrg_new";
 
 -- Step 4: Drop old type and rename new type
 DROP TYPE "PlanOrg";

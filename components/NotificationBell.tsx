@@ -56,6 +56,7 @@ function typIcon(typ: string): string {
   if (typ.includes('NABIDKA') || typ.includes('QUOTE')) return '📄'
   if (typ.includes('SERVIS')) return '🔧'
   if (typ.includes('UKOL') || typ.includes('TASK')) return '✅'
+  if (typ.includes('PRIPOMINKA')) return '⏰'
   return '🔔'
 }
 

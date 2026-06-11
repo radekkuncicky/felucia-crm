@@ -1,5 +1,10 @@
 import nodemailer from 'nodemailer'
 
+/** Bez SMTP_HOST je odesílání emailů vypnuté (stejný princip jako Sentry DSN) */
+export function isEmailConfigured() {
+  return !!process.env.SMTP_HOST
+}
+
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
   port: Number(process.env.SMTP_PORT ?? 587),
@@ -137,6 +142,30 @@ export async function sendVyuctovaniEmail(vyuctovaniId: string, recipientEmail: 
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+
+export function emailActivityReminder(jmeno: string, aktivita: string, dealLabel: string, termin: string, url: string) {
+  return emailLayout(`
+    <h2 style="margin:0 0 8px;color:#1A2744;font-size:22px;">⏰ Připomínka aktivity</h2>
+    <p style="color:#6b7280;margin:0 0 24px;">Dobrý den, <strong>${jmeno}</strong>.</p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8f9fc;border-radius:10px;margin:0 0 24px;">
+      <tr>
+        <td style="padding:16px 20px;">
+          <p style="margin:0 0 6px;color:#9aa3b2;font-size:12px;text-transform:uppercase;letter-spacing:.05em;">Aktivita</p>
+          <p style="margin:0 0 12px;color:#1A2744;font-size:16px;font-weight:700;">${aktivita}</p>
+          <p style="margin:0 0 6px;color:#9aa3b2;font-size:12px;text-transform:uppercase;letter-spacing:.05em;">Obchodní případ</p>
+          <p style="margin:0 0 12px;color:#1A2744;font-size:14px;">${dealLabel}</p>
+          <p style="margin:0 0 6px;color:#9aa3b2;font-size:12px;text-transform:uppercase;letter-spacing:.05em;">Termín</p>
+          <p style="margin:0;color:#1A2744;font-size:14px;">${termin}</p>
+        </td>
+      </tr>
+    </table>
+    <div style="text-align:center;margin:32px 0;">
+      <a href="${url}" style="display:inline-block;background:#FFC93C;color:#1A2744;font-weight:700;font-size:15px;padding:14px 32px;border-radius:10px;text-decoration:none;">
+        Otevřít v CRM
+      </a>
+    </div>
+  `)
+}
 
 export function emailPasswordChanged(jmeno: string) {
   return emailLayout(`

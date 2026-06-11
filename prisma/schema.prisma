@@ -510,12 +510,14 @@ model Activity {
   splneno     Boolean      @default(false)
   stav        ActivityStav @default(PLANOVANA)
   reminderAt  DateTime?
+  reminderSentAt DateTime?
   vytvoreno   DateTime     @default(now())
 
   deal    Deal  @relation(fields: [dealId], references: [id], onDelete: Cascade)
   user    User? @relation("ActivityUser", fields: [userId], references: [id])
   resitel User? @relation("ActivityResitel", fields: [resitelId], references: [id])
 
+  @@index([reminderAt])
   @@map("activities")
 }
 

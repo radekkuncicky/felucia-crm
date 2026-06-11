@@ -19,6 +19,17 @@ const stavConfig = {
 
 type Stav = keyof typeof stavConfig
 
+// datetime-local input pracuje v lokálním čase, server ukládá UTC ISO
+function isoToLocalInput(iso?: string | null) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset())
+  return d.toISOString().slice(0, 16)
+}
+function localInputToIso(val: string) {
+  return val ? new Date(val).toISOString() : null
+}
+
 interface Activity {
   id: string
   typ: string
@@ -111,7 +122,7 @@ function ActivityModal({
   const [vysledek, setVysledek]   = useState(act.vysledek ?? '')
   const [misto, setMisto]         = useState(act.misto ?? '')
   const [resitelId, setResitelId] = useState(act.resitelId ?? '')
-  const [reminderAt, setReminderAt] = useState(act.reminderAt ? act.reminderAt.slice(0, 10) : '')
+  const [reminderAt, setReminderAt] = useState(isoToLocalInput(act.reminderAt))
   const [saving, setSaving]       = useState(false)
   const [deleting, setDeleting]   = useState(false)
   const [error, setError]         = useState('')
@@ -137,7 +148,7 @@ function ActivityModal({
           vysledek: vysledek || null,
           misto: misto || null,
           resitelId: resitelId || null,
-          reminderAt: reminderAt || null,
+          reminderAt: localInputToIso(reminderAt),
         }),
       })
       if (res.ok) {
@@ -156,7 +167,7 @@ function ActivityModal({
           resitelId: resitelId || null,
           resitelJmeno: users.find(u => u.id === resitelId)?.jmeno ?? null,
           splneno: stav === 'DOKONCENA',
-          reminderAt: reminderAt || null,
+          reminderAt: localInputToIso(reminderAt),
         })
         onClose()
       } else {
@@ -293,14 +304,10 @@ function ActivityModal({
               </select>
             </div>
 
-            {/* Připomínka (připraveno, neaktivní) */}
             <div>
-              <label className="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">
-                Připomínka
-                <span className="ml-1.5 text-xs text-amber-500 dark:text-amber-400 font-normal">(připravujeme)</span>
-              </label>
-              <input type="date" value={reminderAt} onChange={e => setReminderAt(e.target.value)} className={inp} />
-              <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">Emailové notifikace budou brzy dostupné.</p>
+              <label className="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">Připomínka</label>
+              <input type="datetime-local" value={reminderAt} onChange={e => setReminderAt(e.target.value)} className={inp} />
+              <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">V daný čas přijde upozornění do CRM a emailem.</p>
             </div>
           </div>
 
@@ -406,11 +413,8 @@ function AddActivityModal({
             </select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">
-              Připomínka
-              <span className="ml-1.5 text-xs text-amber-500 dark:text-amber-400 font-normal">(připravujeme)</span>
-            </label>
-            <input type="date" value={form.reminderAt} onChange={e => setForm(f => ({ ...f, reminderAt: e.target.value }))} className={inp} />
+            <label className="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">Připomínka</label>
+            <input type="datetime-local" value={form.reminderAt} onChange={e => setForm(f => ({ ...f, reminderAt: e.target.value }))} className={inp} />
           </div>
         </div>
         <div className="px-6 py-4 border-t border-gray-100 dark:border-slate-700">
@@ -500,7 +504,7 @@ export default function ActivitiesSection({ dealId, activities: initActivities, 
           vysledek: form.vysledek || null,
           misto: form.misto || null,
           resitelId: form.resitelId || null,
-          reminderAt: form.reminderAt || null,
+          reminderAt: localInputToIso(form.reminderAt),
         }),
       })
       if (res.ok) {
