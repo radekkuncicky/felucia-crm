@@ -37,14 +37,25 @@
 
 ## Deploy
 ```
-npm run build && pm2 restart nanto-crm --update-env
+./scripts/deploy.sh   # typecheck + testy + build + restart + health check
 ```
+
+## Testy
+- `npm test` (vitest, integrační nad DB `nanto_crm_test`)
+- Tenant izolace: `lib/orgPrisma.ts` — v API routes používej `orgPrisma(session.user.orgId)`,
+  nikdy holý `prisma` (ten jen pro auth/superadmin/webhooky před resolvnutím org)
+- Nový model s `orgId` → přidej do `TENANT_MODELS` v lib/orgPrisma.ts (hlídá test)
 
 ## DB
 ```
 postgresql://nanto:***@localhost:5432/nanto_crm
 ```
 Migrace: `npx prisma migrate dev --name název`
+Zálohy: cron 3:00 → `/root/scripts/backup-db.sh` → `/root/backups/*.dump` (14 dní, marker LAST_OK)
+Obnova: `pg_restore --dbname=<URL> --no-owner <soubor.dump>`
+
+## Sentry
+- Aktivace: nastav `SENTRY_DSN` + `NEXT_PUBLIC_SENTRY_DSN` v `.env` (bez nich vypnuto)
 
 ## Doména
 - `felucia.io` → landing page (nepřihlášení)
