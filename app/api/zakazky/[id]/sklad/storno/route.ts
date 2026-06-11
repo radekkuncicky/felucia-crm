@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
@@ -9,25 +9,26 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   if (session.user.role === 'TECHNIK') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
   const { polozkaId, duvod } = await req.json()
 
   if (!polozkaId || !duvod) {
     return NextResponse.json({ error: 'Chybí povinná pole' }, { status: 400 })
   }
 
-  const polozka = await prisma.zakazkaPolozka.findFirst({
+  const polozka = await db.zakazkaPolozka.findFirst({
     where: { id: polozkaId, zakazkaId: params.id, zakazka: { orgId } },
   })
   if (!polozka) return NextResponse.json({ error: 'Položka nenalezena' }, { status: 404 })
 
   // Find admin user to notify
-  const adminUser = await prisma.user.findFirst({
+  const adminUser = await db.user.findFirst({
     where: { orgId, role: 'ADMIN', aktivni: true },
     select: { id: true },
   })
 
-  await prisma.$transaction([
-    prisma.skladPohyb.create({
+  await db.$transaction([
+    db.skladPohyb.create({
       data: {
         orgId,
         zakazkaId: params.id,
@@ -39,11 +40,11 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         vytvorilId: session.user.id,
       },
     }),
-    prisma.zakazkaPolozka.update({
+    db.zakazkaPolozka.update({
       where: { id: polozkaId },
       data: { stav: 'CEKA' },
     }),
-    prisma.auditLog.create({
+    db.auditLog.create({
       data: {
         orgId,
         userId: session.user.id,
@@ -54,7 +55,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         zmeny: { stav: 'CEKA', storno: true, duvod },
       },
     }),
-    ...(adminUser ? [prisma.notification.create({
+    ...(adminUser ? [db.notification.create({
       data: {
         orgId,
         userId: adminUser.id,

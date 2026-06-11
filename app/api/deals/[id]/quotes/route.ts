@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { generateQuoteKod } from '@/lib/quoteKod'
 import { logAction } from '@/lib/auditLog'
@@ -10,11 +10,12 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
 
-  const deal = await prisma.deal.findFirst({ where: { id: params.id, orgId } })
+  const deal = await db.deal.findFirst({ where: { id: params.id, orgId } })
   if (!deal) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const quotes = await prisma.quote.findMany({
+  const quotes = await db.quote.findMany({
     where: { dealId: params.id },
     include: { items: { include: { product: true }, orderBy: { poradi: 'asc' } } },
     orderBy: { vytvoreno: 'asc' },
@@ -27,8 +28,9 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
 
-  const deal = await prisma.deal.findFirst({ where: { id: params.id, orgId }, include: { client: { select: { jmeno: true } } } })
+  const deal = await db.deal.findFirst({ where: { id: params.id, orgId }, include: { client: { select: { jmeno: true } } } })
   if (!deal) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const body = await req.json()
@@ -49,11 +51,11 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     }
   }
 
-  const count = await prisma.quote.count({ where: { dealId: params.id } })
+  const count = await db.quote.count({ where: { dealId: params.id } })
   const quoteName = nazev || `Nabídka ${count + 1}`
   const kod = await generateQuoteKod(orgId)
 
-  const quote = await prisma.quote.create({
+  const quote = await db.quote.create({
     data: {
       orgId,
       dealId: params.id,

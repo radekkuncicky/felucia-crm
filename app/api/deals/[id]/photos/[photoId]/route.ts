@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { unlink } from 'fs/promises'
 import path from 'path'
 
@@ -9,8 +9,9 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
 
-  const photo = await prisma.photo.findFirst({ where: { id: params.photoId, dealId: params.id, orgId } })
+  const photo = await db.photo.findFirst({ where: { id: params.photoId, dealId: params.id, orgId } })
   if (!photo) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   try {
@@ -20,6 +21,6 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     // ignore file not found errors
   }
 
-  await prisma.photo.delete({ where: { id: params.photoId } })
+  await db.photo.delete({ where: { id: params.photoId } })
   return NextResponse.json({ ok: true })
 }

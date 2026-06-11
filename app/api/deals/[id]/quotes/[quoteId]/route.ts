@@ -1,14 +1,15 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 
 export async function PATCH(req: Request, { params }: { params: { id: string; quoteId: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
 
-  const quote = await prisma.quote.findFirst({
+  const quote = await db.quote.findFirst({
     where: { id: params.quoteId, deal: { id: params.id, orgId } },
   })
   if (!quote) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -17,10 +18,10 @@ export async function PATCH(req: Request, { params }: { params: { id: string; qu
 
   // If setting as active, deactivate all others first
   if (body.aktivni === true) {
-    await prisma.quote.updateMany({ where: { dealId: params.id, id: { not: params.quoteId } }, data: { aktivni: false } })
+    await db.quote.updateMany({ where: { dealId: params.id, id: { not: params.quoteId } }, data: { aktivni: false } })
   }
 
-  const updated = await prisma.quote.update({
+  const updated = await db.quote.update({
     where: { id: params.quoteId },
     data: {
       nazev: body.nazev ?? quote.nazev,
@@ -39,12 +40,13 @@ export async function DELETE(req: Request, { params }: { params: { id: string; q
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
 
-  const quote = await prisma.quote.findFirst({
+  const quote = await db.quote.findFirst({
     where: { id: params.quoteId, deal: { id: params.id, orgId } },
   })
   if (!quote) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  await prisma.quote.delete({ where: { id: params.quoteId } })
+  await db.quote.delete({ where: { id: params.quoteId } })
   return NextResponse.json({ ok: true })
 }

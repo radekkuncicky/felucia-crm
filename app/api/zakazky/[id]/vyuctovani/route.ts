@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { generateVyuctovaniCislo } from '@/lib/zakazkyHelpers'
 
@@ -10,6 +10,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   if (session.user.role === 'TECHNIK') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
 
   let predavakId: string | undefined
   let etapaId: string | undefined
@@ -25,7 +26,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   if (predavakId) {
     // Create vyúčtování from approved PP items
-    const predavak = await prisma.predavak.findFirst({
+    const predavak = await db.predavak.findFirst({
       where: { id: predavakId, orgId, zakazkaId: params.id },
       include: {
         polozky: {
@@ -40,7 +41,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       (a, b) => (a.zakazkaPolozka?.poradi ?? 999) - (b.zakazkaPolozka?.poradi ?? 999)
     )
 
-    const vyuctovani = await prisma.vyuctovani.create({
+    const vyuctovani = await db.vyuctovani.create({
       data: {
         orgId,
         zakazkaId: params.id,
@@ -64,13 +65,13 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   }
 
   // Default: create from zakazka polozky
-  const zakazka = await prisma.zakazka.findFirst({
+  const zakazka = await db.zakazka.findFirst({
     where: { id: params.id, orgId },
     include: { polozky: { orderBy: { poradi: 'asc' } } },
   })
   if (!zakazka) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const vyuctovani = await prisma.vyuctovani.create({
+  const vyuctovani = await db.vyuctovani.create({
     data: {
       orgId,
       zakazkaId: params.id,

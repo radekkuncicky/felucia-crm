@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { TypAktivity } from '@prisma/client'
 import { createNotification } from '@/lib/createNotification'
@@ -9,9 +9,10 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
   const userId = session.user.id
 
-  const deal = await prisma.deal.findFirst({ where: { id: params.id, orgId } })
+  const deal = await db.deal.findFirst({ where: { id: params.id, orgId } })
   if (!deal) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const body = await req.json()
@@ -23,13 +24,13 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   // SECURITY FIX: Verify resitelId (resolver) belongs to the same org to prevent IDOR
   if (body.resitelId) {
-    const resitel = await prisma.user.findFirst({ where: { id: body.resitelId, orgId } })
+    const resitel = await db.user.findFirst({ where: { id: body.resitelId, orgId } })
     if (!resitel) {
       return NextResponse.json({ error: 'Řešitel nebyl nalezen v této organizaci' }, { status: 400 })
     }
   }
 
-  const activity = await prisma.activity.create({
+  const activity = await db.activity.create({
     data: {
       dealId: params.id,
       userId,

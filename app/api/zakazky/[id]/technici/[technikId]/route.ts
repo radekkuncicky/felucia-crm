@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 
 export async function DELETE(
@@ -12,10 +12,11 @@ export async function DELETE(
   if (session.user.role === 'TECHNIK') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const orgId = session.user.orgId
-  const zakazka = await prisma.zakazka.findFirst({ where: { id: params.id, orgId } })
+  const db = orgPrisma(orgId)
+  const zakazka = await db.zakazka.findFirst({ where: { id: params.id, orgId } })
   if (!zakazka) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  await prisma.technikZakazka.deleteMany({
+  await db.technikZakazka.deleteMany({
     where: { zakazkaId: params.id, technikId: params.technikId },
   })
 

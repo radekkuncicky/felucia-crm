@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
@@ -8,8 +8,9 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
 
-  const etapy = await prisma.zakazkaEtapa.findMany({
+  const etapy = await db.zakazkaEtapa.findMany({
     where: { zakazkaId: params.id, orgId },
     orderBy: { cislo: 'asc' },
     include: {
@@ -29,18 +30,19 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   if (role === 'TECHNIK') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
   const { nazev, montazOd, montazDo, poznamka } = await req.json()
 
-  const zakazka = await prisma.zakazka.findFirst({ where: { id: params.id, orgId } })
+  const zakazka = await db.zakazka.findFirst({ where: { id: params.id, orgId } })
   if (!zakazka) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const last = await prisma.zakazkaEtapa.findFirst({
+  const last = await db.zakazkaEtapa.findFirst({
     where: { zakazkaId: params.id },
     orderBy: { cislo: 'desc' },
   })
   const cislo = (last?.cislo ?? 0) + 1
 
-  const etapa = await prisma.$transaction(async tx => {
+  const etapa = await db.$transaction(async tx => {
     const e = await tx.zakazkaEtapa.create({
       data: {
         orgId,

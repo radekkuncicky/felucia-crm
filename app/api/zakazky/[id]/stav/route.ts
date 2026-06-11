@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { ZakazkaStav } from '@prisma/client'
 
@@ -19,11 +19,12 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (session.user.role === 'TECHNIK') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
   const { stav } = await req.json()
 
   if (!stav) return NextResponse.json({ error: 'Chybí stav' }, { status: 400 })
 
-  const zakazka = await prisma.zakazka.findFirst({ where: { id: params.id, orgId } })
+  const zakazka = await db.zakazka.findFirst({ where: { id: params.id, orgId } })
   if (!zakazka) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const allowed = validTransitions[zakazka.stav] ?? []
@@ -31,7 +32,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     return NextResponse.json({ error: `Přechod ze stavu ${zakazka.stav} do ${stav} není povolen` }, { status: 422 })
   }
 
-  const updated = await prisma.zakazka.update({
+  const updated = await db.zakazka.update({
     where: { id: params.id },
     data: {
       stav,
@@ -39,7 +40,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     },
   })
 
-  await prisma.auditLog.create({
+  await db.auditLog.create({
     data: {
       orgId,
       userId: session.user.id,

@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { canTechnikAccessZakazka } from '@/lib/zakazkyHelpers'
 
@@ -9,13 +9,14 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
   const isTechnik = session.user.role === 'TECHNIK'
 
   if (isTechnik && !(await canTechnikAccessZakazka(session.user.id, params.id))) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const zakazka = await prisma.zakazka.findFirst({
+  const zakazka = await db.zakazka.findFirst({
     where: { id: params.id, orgId },
     include: {
       klient: true,
@@ -48,9 +49,10 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (session.user.role === 'TECHNIK') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
   const body = await req.json()
 
-  const zakazka = await prisma.zakazka.update({
+  const zakazka = await db.zakazka.update({
     where: { id: params.id, orgId },
     data: {
       stav: body.stav,
@@ -72,17 +74,18 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
   if (session.user.role !== 'ADMIN') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
 
-  const zakazka = await prisma.zakazka.findFirst({ where: { id: params.id, orgId } })
+  const zakazka = await db.zakazka.findFirst({ where: { id: params.id, orgId } })
   if (!zakazka) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  await prisma.$transaction([
+  await db.$transaction([
     // No FK cascade — delete manually
-    prisma.skladPohyb.deleteMany({ where: { zakazkaId: params.id } }),
-    prisma.vyuctovani.deleteMany({ where: { zakazkaId: params.id } }),
-    prisma.predavak.deleteMany({ where: { zakazkaId: params.id } }),
+    db.skladPohyb.deleteMany({ where: { zakazkaId: params.id } }),
+    db.vyuctovani.deleteMany({ where: { zakazkaId: params.id } }),
+    db.predavak.deleteMany({ where: { zakazkaId: params.id } }),
     // FK cascade covers: ZakazkaPolozka, TechnikZakazka, ZakazkaKomentar, ZakazkaFoto
-    prisma.zakazka.delete({ where: { id: params.id } }),
+    db.zakazka.delete({ where: { id: params.id } }),
   ])
 
   return NextResponse.json({ ok: true })

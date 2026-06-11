@@ -1,17 +1,18 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
   const { searchParams } = new URL(req.url)
   const q = searchParams.get('q')
   if (!q) return NextResponse.json({ error: 'Missing q parameter' }, { status: 400 })
 
-  const quote = await prisma.quote.findFirst({
+  const quote = await db.quote.findFirst({
     where: {
       OR: [{ id: q }, { kod: q }],
       deal: { orgId },
@@ -27,6 +28,7 @@ export async function POST(req: Request) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
   const body = await req.json()
   let { dealId } = body
   const { nazev, items = [], dphSazba = 12 } = body
@@ -35,17 +37,17 @@ export async function POST(req: Request) {
 
   // Pokud dealId vypadá jako OP kód (např. "OP-26-071"), vyhledej skutečné ID
   if (typeof dealId === 'string' && dealId.includes('OP-')) {
-    const dealByKod = await prisma.deal.findFirst({ where: { kod: dealId, orgId } })
+    const dealByKod = await db.deal.findFirst({ where: { kod: dealId, orgId } })
     if (!dealByKod) return NextResponse.json({ error: `Deal ${dealId} not found` }, { status: 404 })
     dealId = dealByKod.id
   }
 
   // Ověř že deal patří do org
-  const deal = await prisma.deal.findFirst({ where: { id: dealId, orgId } })
+  const deal = await db.deal.findFirst({ where: { id: dealId, orgId } })
   if (!deal) return NextResponse.json({ error: 'Deal not found' }, { status: 404 })
 
   // Počet existujících nabídek pro kód
-  const count = await prisma.quote.count({ where: { dealId } })
+  const count = await db.quote.count({ where: { dealId } })
   const kod = `NAB-${String(count + 1).padStart(2, '0')}`
 
   // Fetch products for items missing jednotka — use product's jednotka as fallback
@@ -57,14 +59,14 @@ export async function POST(req: Request) {
 
   const productJednotkaMapa: Record<string, string> = {}
   if (missingUnitProductIds.length > 0) {
-    const prods = await prisma.product.findMany({
+    const prods = await db.product.findMany({
       where: { id: { in: missingUnitProductIds } },
       select: { id: true, jednotka: true },
     })
     prods.forEach(p => { productJednotkaMapa[p.id] = p.jednotka })
   }
 
-  const quote = await prisma.quote.create({
+  const quote = await db.quote.create({
     data: {
       dealId,
       orgId,

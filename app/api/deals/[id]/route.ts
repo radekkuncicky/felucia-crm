@@ -1,7 +1,7 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { getMobileSession } from '@/lib/mobile-auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { getOrgSettings } from '@/lib/orgSettings'
 import { getPlanLimits } from '@/lib/planLimits'
 import { NextResponse } from 'next/server'
@@ -13,8 +13,9 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const session = await getServerSession(authOptions) ?? await getMobileSession(req)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
 
-  const deal = await prisma.deal.findFirst({
+  const deal = await db.deal.findFirst({
     where: { id: params.id, orgId },
     include: { activities: { select: { typ: true } } },
   })
@@ -29,7 +30,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
   // Ověř že přiřazovaný uživatel patří stejné org
   if (body.userId) {
-    const assignedUser = await prisma.user.findFirst({ where: { id: body.userId, orgId } })
+    const assignedUser = await db.user.findFirst({ where: { id: body.userId, orgId } })
     if (!assignedUser) return NextResponse.json({ error: 'Uživatel nenalezen' }, { status: 400 })
   }
 
@@ -44,7 +45,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     }
   }
 
-  const updated = await prisma.deal.update({
+  const updated = await db.deal.update({
     where: { id: params.id },
     data: {
       stav: body.stav ?? deal.stav,
@@ -76,7 +77,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (isNewUspech && getPlanLimits(session.user.plan).hasServiceModule) {
     const orgSettings = await getOrgSettings(orgId)
     if (orgSettings.automatickyServis) {
-      const existingZarizeni = await prisma.zarizeni.findFirst({ where: { dealId: params.id, orgId } })
+      const existingZarizeni = await db.zarizeni.findFirst({ where: { dealId: params.id, orgId } })
       if (!existingZarizeni) {
         const technologieNazev: Record<string, string> = {
           TEPELNE_CERPADLO: 'Tepelné čerpadlo',
@@ -96,7 +97,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
         }
         const zarizeniNazev = deal.predmet || technologieNazev[deal.technologie] || 'Zařízení'
         const zarizeniTyp = technologieTyp[deal.technologie] || 'JINE'
-        const zarizeni = await prisma.zarizeni.create({
+        const zarizeni = await db.zarizeni.create({
           data: {
             orgId,
             klientId: deal.clientId,
@@ -112,7 +113,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   }
 
   if (body.stav === 'USPECH' && deal.stav !== 'USPECH') {
-    const admins = await prisma.user.findMany({ where: { orgId, role: 'ADMIN' }, select: { id: true } })
+    const admins = await db.user.findMany({ where: { orgId, role: 'ADMIN' }, select: { id: true } })
     await Promise.all(admins.map(admin =>
       createNotification({
         orgId,
@@ -154,7 +155,8 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
   }
 
   const orgId = session.user.orgId
-  const deal = await prisma.deal.findFirst({ where: { id: params.id, orgId } })
+  const db = orgPrisma(orgId)
+  const deal = await db.deal.findFirst({ where: { id: params.id, orgId } })
   if (!deal) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   await logAction({
@@ -166,7 +168,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
     zaznamNazev: `${deal.kod ?? ''} ${deal.predmet ?? 'Případ'}`.trim(),
   })
 
-  await prisma.$transaction(async (tx) => {
+  await db.$transaction(async (tx) => {
     // Smaz custom field values
     await tx.customFieldValue.deleteMany({ where: { entityId: params.id } })
 

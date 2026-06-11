@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 
 export async function PATCH(req: Request, { params }: { params: { id: string; etapaId: string } }) {
@@ -11,14 +11,15 @@ export async function PATCH(req: Request, { params }: { params: { id: string; et
   if (role === 'TECHNIK') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const orgId = session.user.orgId
-  const etapa = await prisma.zakazkaEtapa.findFirst({
+  const db = orgPrisma(orgId)
+  const etapa = await db.zakazkaEtapa.findFirst({
     where: { id: params.etapaId, zakazkaId: params.id, orgId },
   })
   if (!etapa) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const { nazev, montazOd, montazDo, stav, poznamka } = await req.json()
 
-  const updated = await prisma.zakazkaEtapa.update({
+  const updated = await db.zakazkaEtapa.update({
     where: { id: params.etapaId },
     data: {
       nazev: nazev !== undefined ? (nazev?.trim() || null) : undefined,
@@ -44,7 +45,8 @@ export async function DELETE(req: Request, { params }: { params: { id: string; e
   if (role !== 'ADMIN') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const orgId = session.user.orgId
-  const etapa = await prisma.zakazkaEtapa.findFirst({
+  const db = orgPrisma(orgId)
+  const etapa = await db.zakazkaEtapa.findFirst({
     where: { id: params.etapaId, zakazkaId: params.id, orgId },
     include: {
       predavaky: { select: { id: true } },
@@ -57,6 +59,6 @@ export async function DELETE(req: Request, { params }: { params: { id: string; e
     return NextResponse.json({ error: 'Etapu nelze smazat, má přiřazené protokoly nebo vyúčtování' }, { status: 422 })
   }
 
-  await prisma.zakazkaEtapa.delete({ where: { id: params.etapaId } })
+  await db.zakazkaEtapa.delete({ where: { id: params.etapaId } })
   return NextResponse.json({ ok: true })
 }

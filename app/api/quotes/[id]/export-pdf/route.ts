@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { renderQuotePdf } from '@/lib/quoteRenderer'
 import { buildPdfFilename } from '@/lib/quoteKod'
@@ -9,9 +9,10 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
 
   const [quote, org] = await Promise.all([
-    prisma.quote.findFirst({
+    db.quote.findFirst({
       where: { id: params.id, deal: { orgId } },
       select: {
         id: true,
@@ -25,7 +26,7 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
         },
       },
     }),
-    prisma.organization.findUnique({ where: { id: orgId }, select: { plan: true } }),
+    db.organization.findUnique({ where: { id: orgId }, select: { plan: true } }),
   ])
 
   if (!quote) return NextResponse.json({ error: 'Not found' }, { status: 404 })

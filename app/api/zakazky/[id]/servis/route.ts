@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { getPlanLimits } from '@/lib/planLimits'
 import { SignJWT } from 'jose'
@@ -11,11 +11,12 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   if (session.user.role === 'TECHNIK') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const { orgId, plan } = session.user
+  const db = orgPrisma(orgId)
   if (!getPlanLimits(plan).hasServiceModule) {
     return NextResponse.json({ error: 'Vyžadován plán Professional nebo Enterprise' }, { status: 403 })
   }
 
-  const zakazka = await prisma.zakazka.findFirst({
+  const zakazka = await db.zakazka.findFirst({
     where: { id: params.id, orgId, stav: 'HOTOVO' },
   })
   if (!zakazka) return NextResponse.json({ error: 'Zakázka nenalezena nebo není ve stavu HOTOVO' }, { status: 404 })
@@ -50,7 +51,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       .setExpirationTime('10y')
       .sign(secret)
 
-    const zarizeni = await prisma.zarizeni.create({
+    const zarizeni = await db.zarizeni.create({
       data: {
         orgId,
         klientId: zakazka.klientId,
@@ -67,13 +68,13 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       .setProtectedHeader({ alg: 'HS256' })
       .setExpirationTime('10y')
       .sign(secret)
-    await prisma.zarizeni.update({ where: { id: zarizeni.id }, data: { qrToken: finalToken } })
+    await db.zarizeni.update({ where: { id: zarizeni.id }, data: { qrToken: finalToken } })
 
     finalZarizeniId = zarizeni.id
   }
 
   // Get last kontrakt number
-  const lastKontrakt = await prisma.servisniKontrakt.findFirst({
+  const lastKontrakt = await db.servisniKontrakt.findFirst({
     where: { zarizeni: { orgId } },
     orderBy: { vytvoreno: 'desc' },
     select: { cisloKontraktu: true },
@@ -86,7 +87,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const intervalMesicu = typKontraktu === 'ROCNI' ? 12 : typKontraktu === 'POLOLETNI' ? 6 : typKontraktu === 'DVOULETNI' ? 24 : 0
 
   // Create ServisniKontrakt
-  const kontrakt = await prisma.servisniKontrakt.create({
+  const kontrakt = await db.servisniKontrakt.create({
     data: {
       orgId,
       zarizeniId: finalZarizeniId,
@@ -101,11 +102,11 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   })
 
   // Get next visit number
-  const navstevaCount = await prisma.servisniNavsteva.count({ where: { kontrakt: { zarizeni: { orgId } } } })
+  const navstevaCount = await db.servisniNavsteva.count({ where: { kontrakt: { zarizeni: { orgId } } } })
   const cisloNavstevy = `SN-${String(navstevaCount + 1).padStart(4, '0')}`
 
   // Create first planned visit
-  const navsteva = await prisma.servisniNavsteva.create({
+  const navsteva = await db.servisniNavsteva.create({
     data: {
       orgId,
       kontraktId: kontrakt.id,

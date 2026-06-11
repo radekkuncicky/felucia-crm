@@ -1,14 +1,15 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 
 export async function POST(req: Request, { params }: { params: { id: string; quoteId: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
 
-  const quote = await prisma.quote.findFirst({
+  const quote = await db.quote.findFirst({
     where: { id: params.quoteId, deal: { id: params.id, orgId } },
   })
   if (!quote) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -29,7 +30,7 @@ export async function POST(req: Request, { params }: { params: { id: string; quo
 
     const productMap: Record<string, string> = {}
     if (missingUnitIds.length > 0) {
-      const prods = await prisma.product.findMany({
+      const prods = await db.product.findMany({
         where: { id: { in: missingUnitIds } },
         select: { id: true, jednotka: true },
       })
@@ -40,7 +41,7 @@ export async function POST(req: Request, { params }: { params: { id: string; quo
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       items.map((item: any) => {
         const jednotka = item.jednotka || (item.productId ? productMap[item.productId] : undefined) || 'ks'
-        return prisma.quoteItem.create({
+        return db.quoteItem.create({
           data: {
             dealId: params.id,
             quoteId: params.quoteId,
@@ -72,11 +73,11 @@ export async function POST(req: Request, { params }: { params: { id: string; quo
 
   // Fallback: lookup jednotka from product when not provided
   if (!jednotka && productId) {
-    const prod = await prisma.product.findUnique({ where: { id: productId }, select: { jednotka: true } })
+    const prod = await db.product.findUnique({ where: { id: productId }, select: { jednotka: true } })
     if (prod) jednotka = prod.jednotka
   }
 
-  const item = await prisma.quoteItem.create({
+  const item = await db.quoteItem.create({
     data: {
       dealId: params.id,
       quoteId: params.quoteId,

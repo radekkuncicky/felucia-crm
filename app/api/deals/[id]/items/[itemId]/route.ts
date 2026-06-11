@@ -1,20 +1,21 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 
 export async function PATCH(req: Request, { params }: { params: { id: string; itemId: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
 
-  const item = await prisma.quoteItem.findFirst({
+  const item = await db.quoteItem.findFirst({
     where: { id: params.itemId, dealId: params.id, deal: { orgId } },
   })
   if (!item) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const body = await req.json()
-  const updated = await prisma.quoteItem.update({
+  const updated = await db.quoteItem.update({
     where: { id: params.itemId },
     data: {
       nazev: body.nazev ?? item.nazev,
@@ -31,12 +32,13 @@ export async function DELETE(req: Request, { params }: { params: { id: string; i
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
 
-  const item = await prisma.quoteItem.findFirst({
+  const item = await db.quoteItem.findFirst({
     where: { id: params.itemId, dealId: params.id, deal: { orgId } },
   })
   if (!item) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  await prisma.quoteItem.delete({ where: { id: params.itemId } })
+  await db.quoteItem.delete({ where: { id: params.itemId } })
   return NextResponse.json({ ok: true })
 }

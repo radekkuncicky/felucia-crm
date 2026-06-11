@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
@@ -9,6 +9,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   if (session.user.role === 'TECHNIK') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
   const { polozkaId, mnozstvi, nakupniCena, poznamka } = await req.json()
 
   if (!polozkaId || !mnozstvi || nakupniCena === undefined) {
@@ -16,18 +17,18 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   }
 
   // Verify polozka belongs to this zakazka & org
-  const polozka = await prisma.zakazkaPolozka.findFirst({
+  const polozka = await db.zakazkaPolozka.findFirst({
     where: { id: polozkaId, zakazkaId: params.id, zakazka: { orgId } },
   })
   if (!polozka) return NextResponse.json({ error: 'Položka nenalezena' }, { status: 404 })
 
-  const zakazka = await prisma.zakazka.findFirst({ where: { id: params.id, orgId } })
+  const zakazka = await db.zakazka.findFirst({ where: { id: params.id, orgId } })
   if (!zakazka) return NextResponse.json({ error: 'Zakázka nenalezena' }, { status: 404 })
 
   const shouldAdvanceStav = zakazka.stav === 'PRIRAZENA' || zakazka.stav === 'NOVA'
 
-  await prisma.$transaction([
-    prisma.skladPohyb.create({
+  await db.$transaction([
+    db.skladPohyb.create({
       data: {
         orgId,
         zakazkaId: params.id,
@@ -40,11 +41,11 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         vytvorilId: session.user.id,
       },
     }),
-    prisma.zakazkaPolozka.update({
+    db.zakazkaPolozka.update({
       where: { id: polozkaId },
       data: { stav: 'NASKLADNENO', nakupniCena },
     }),
-    prisma.auditLog.create({
+    db.auditLog.create({
       data: {
         orgId,
         userId: session.user.id,
@@ -56,11 +57,11 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       },
     }),
     ...(shouldAdvanceStav ? [
-      prisma.zakazka.update({
+      db.zakazka.update({
         where: { id: params.id },
         data: { stav: 'V_REALIZACI' },
       }),
-      prisma.auditLog.create({
+      db.auditLog.create({
         data: {
           orgId,
           userId: session.user.id,

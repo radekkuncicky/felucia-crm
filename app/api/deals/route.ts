@@ -1,7 +1,7 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { getMobileSession } from '@/lib/mobile-auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { Technologie, StavDealu } from '@prisma/client'
 import { checkDealLimit } from '@/lib/checkPlanLimit'
@@ -12,6 +12,7 @@ export async function GET(req: Request) {
   const session = await getServerSession(authOptions) ?? await getMobileSession(req)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
 
   const { searchParams } = new URL(req.url)
   const search = searchParams.get('search') ?? ''
@@ -22,7 +23,7 @@ export async function GET(req: Request) {
   // Single-record lookup by UUID or OP code (used by AI assistant)
   if (qFilter) {
     const isUuid = /^[0-9a-f-]{36}$/i.test(qFilter)
-    const deal = await prisma.deal.findFirst({
+    const deal = await db.deal.findFirst({
       where: { orgId, ...(isUuid ? { id: qFilter } : { kod: qFilter }) },
       select: { id: true, kod: true, predmet: true },
     })
@@ -30,7 +31,7 @@ export async function GET(req: Request) {
     return NextResponse.json(deal)
   }
 
-  const deals = await prisma.deal.findMany({
+  const deals = await db.deal.findMany({
     where: {
       orgId,
       ...(kodFilter ? { kod: kodFilter } : {}),
@@ -58,7 +59,7 @@ async function generateKod(orgId: string): Promise<string> {
   const yr = new Date().getFullYear()
   const yrShort = yr % 100
   const prefix = `OP-${yrShort.toString().padStart(2, '0')}-`
-  const last = await prisma.deal.findFirst({
+  const last = await orgPrisma(orgId).deal.findFirst({
     where: { orgId, kod: { startsWith: prefix } },
     orderBy: { kod: 'desc' },
     select: { kod: true },
@@ -71,6 +72,7 @@ export async function POST(req: Request) {
   const session = await getServerSession(authOptions) ?? await getMobileSession(req)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
   const userId = session.user.id
 
   const body = await req.json()
@@ -91,7 +93,7 @@ export async function POST(req: Request) {
 
   const kod = await generateKod(orgId)
 
-  const deal = await prisma.deal.create({
+  const deal = await db.deal.create({
     data: {
       orgId,
       clientId,
@@ -104,7 +106,7 @@ export async function POST(req: Request) {
   })
 
   if (deal.userId && deal.userId !== userId) {
-    const client = await prisma.client.findFirst({ where: { id: clientId }, select: { jmeno: true } })
+    const client = await db.client.findFirst({ where: { id: clientId }, select: { jmeno: true } })
     await createNotification({
       orgId,
       userId: deal.userId,

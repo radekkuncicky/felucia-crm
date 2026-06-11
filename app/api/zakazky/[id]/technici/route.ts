@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
@@ -9,27 +9,28 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   if (session.user.role === 'TECHNIK') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
   const { technikId } = await req.json()
 
-  const zakazka = await prisma.zakazka.findFirst({ where: { id: params.id, orgId } })
+  const zakazka = await db.zakazka.findFirst({ where: { id: params.id, orgId } })
   if (!zakazka) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const technik = await prisma.user.findFirst({ where: { id: technikId, orgId } })
+  const technik = await db.user.findFirst({ where: { id: technikId, orgId } })
   if (!technik) return NextResponse.json({ error: 'Technik nenalezen' }, { status: 400 })
 
-  const rel = await prisma.technikZakazka.create({
+  const rel = await db.technikZakazka.create({
     data: { zakazkaId: params.id, technikId },
     include: { technik: { select: { id: true, jmeno: true, email: true } } },
   })
 
   // Auto state: NOVA → PRIRAZENA when first technician is assigned
   if (zakazka.stav === 'NOVA') {
-    await prisma.$transaction([
-      prisma.zakazka.update({
+    await db.$transaction([
+      db.zakazka.update({
         where: { id: params.id },
         data: { stav: 'PRIRAZENA' },
       }),
-      prisma.auditLog.create({
+      db.auditLog.create({
         data: {
           orgId,
           userId: session.user.id,
@@ -52,12 +53,13 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
   if (session.user.role === 'TECHNIK') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
   const { technikId } = await req.json()
 
-  const zakazka = await prisma.zakazka.findFirst({ where: { id: params.id, orgId } })
+  const zakazka = await db.zakazka.findFirst({ where: { id: params.id, orgId } })
   if (!zakazka) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  await prisma.technikZakazka.deleteMany({
+  await db.technikZakazka.deleteMany({
     where: { zakazkaId: params.id, technikId },
   })
 

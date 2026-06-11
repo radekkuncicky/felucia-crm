@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { generateQuoteKod } from '@/lib/quoteKod'
 
@@ -8,15 +8,16 @@ export async function POST(req: Request, { params }: { params: { id: string; quo
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
 
-  const quote = await prisma.quote.findFirst({
+  const quote = await db.quote.findFirst({
     where: { id: params.quoteId, deal: { id: params.id, orgId } },
     include: { items: { orderBy: { poradi: 'asc' } } },
   })
   if (!quote) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const kod = await generateQuoteKod(orgId)
-  const newQuote = await prisma.quote.create({
+  const newQuote = await db.quote.create({
     data: {
       orgId,
       dealId: params.id,
