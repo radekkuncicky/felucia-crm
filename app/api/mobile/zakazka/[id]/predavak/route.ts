@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { getMobileOrWebSession, requireTechnikOrAdmin, canAccessZakazka } from '@/lib/mobile-helpers'
 import { generatePredavakCislo } from '@/lib/zakazkyHelpers'
 
@@ -13,9 +13,10 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   }
 
   const orgId = session!.user.orgId
+  const db = orgPrisma(orgId)
 
   // Return existing open predávák if any
-  const existing = await prisma.predavak.findFirst({
+  const existing = await db.predavak.findFirst({
     where: { zakazkaId: params.id, orgId, stav: { in: ['ROZPRACOVAN', 'ODMITNUTO'] } },
     orderBy: { vytvoreno: 'desc' },
   })
@@ -23,7 +24,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     return NextResponse.json({ id: existing.id, cislo: existing.cislo, stav: existing.stav })
   }
 
-  const zakazka = await prisma.zakazka.findFirst({
+  const zakazka = await db.zakazka.findFirst({
     where: { id: params.id, orgId },
     include: { polozky: { orderBy: { poradi: 'asc' } } },
   })
@@ -31,7 +32,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   const cislo = await generatePredavakCislo(orgId)
 
-  const predavak = await prisma.predavak.create({
+  const predavak = await db.predavak.create({
     data: {
       orgId,
       zakazkaId: params.id,

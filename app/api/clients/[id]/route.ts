@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { logAction } from '@/lib/auditLog'
 
@@ -8,13 +8,14 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
 
-  const client = await prisma.client.findFirst({ where: { id: params.id, orgId } })
+  const client = await db.client.findFirst({ where: { id: params.id, orgId } })
   if (!client) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const body = await req.json()
   // SECURITY FIX: Include orgId in update where clause for defense-in-depth (prevents IDOR even if findFirst check were bypassed)
-  const updated = await prisma.client.update({
+  const updated = await db.client.update({
     where: { id: params.id, orgId },
     data: {
       typKlienta: body.typKlienta === 'FIRMA' ? 'FIRMA' : body.typKlienta === 'FYZICKA_OSOBA' ? 'FYZICKA_OSOBA' : client.typKlienta,

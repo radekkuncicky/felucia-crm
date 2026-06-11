@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { getMobileOrWebSession, requireTechnikOrAdmin } from '@/lib/mobile-helpers'
 
 export async function PATCH(req: Request, { params }: { params: { id: string; komentarId: string } }) {
@@ -7,7 +7,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string; ko
   const authErr = requireTechnikOrAdmin(session)
   if (authErr) return authErr
 
-  const komentar = await prisma.zakazkaKomentar.findFirst({
+  const komentar = await orgPrisma(session!.user.orgId).zakazkaKomentar.findFirst({
     where: { id: params.komentarId, zakazkaId: params.id },
   })
   if (!komentar) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -16,7 +16,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string; ko
   const { text } = await req.json()
   if (!text?.trim()) return NextResponse.json({ error: 'Text je povinný' }, { status: 400 })
 
-  const updated = await prisma.zakazkaKomentar.update({
+  const updated = await orgPrisma(session!.user.orgId).zakazkaKomentar.update({
     where: { id: params.komentarId },
     data: { text: text.trim() },
     include: { user: { select: { id: true, jmeno: true, role: true } } },
@@ -35,13 +35,13 @@ export async function DELETE(req: Request, { params }: { params: { id: string; k
   const authErr = requireTechnikOrAdmin(session)
   if (authErr) return authErr
 
-  const komentar = await prisma.zakazkaKomentar.findFirst({
+  const komentar = await orgPrisma(session!.user.orgId).zakazkaKomentar.findFirst({
     where: { id: params.komentarId, zakazkaId: params.id },
   })
   if (!komentar) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   if (komentar.userId !== session!.user.id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  await prisma.zakazkaKomentar.delete({ where: { id: params.komentarId } })
+  await orgPrisma(session!.user.orgId).zakazkaKomentar.delete({ where: { id: params.komentarId } })
   return NextResponse.json({ ok: true })
 }
 

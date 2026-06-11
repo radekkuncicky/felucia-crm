@@ -1,14 +1,15 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
 
-  const cenik = await prisma.cenik.findFirst({
+  const cenik = await db.cenik.findFirst({
     where: { id: params.id, orgId },
     include: {
       polozky: {
@@ -26,12 +27,13 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (session.user.role !== 'ADMIN') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
 
-  const cenik = await prisma.cenik.findFirst({ where: { id: params.id, orgId } })
+  const cenik = await db.cenik.findFirst({ where: { id: params.id, orgId } })
   if (!cenik) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const body = await req.json()
-  const updated = await prisma.cenik.update({
+  const updated = await db.cenik.update({
     where: { id: params.id },
     data: {
       nazev: body.nazev ?? cenik.nazev,
@@ -47,10 +49,11 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (session.user.role !== 'ADMIN') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
 
-  const cenik = await prisma.cenik.findFirst({ where: { id: params.id, orgId } })
+  const cenik = await db.cenik.findFirst({ where: { id: params.id, orgId } })
   if (!cenik) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  await prisma.cenik.delete({ where: { id: params.id } })
+  await db.cenik.delete({ where: { id: params.id } })
   return NextResponse.json({ ok: true })
 }

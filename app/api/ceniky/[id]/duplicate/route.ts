@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
@@ -8,8 +8,9 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (session.user.role !== 'ADMIN') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
 
-  const source = await prisma.cenik.findFirst({
+  const source = await db.cenik.findFirst({
     where: { id: params.id, orgId },
     include: { polozky: true },
   })
@@ -18,10 +19,10 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const { nazev, kod } = await req.json()
   if (!nazev || !kod) return NextResponse.json({ error: 'Název a kód jsou povinné' }, { status: 400 })
 
-  const exists = await prisma.cenik.findFirst({ where: { orgId, kod } })
+  const exists = await db.cenik.findFirst({ where: { orgId, kod } })
   if (exists) return NextResponse.json({ error: 'Kód již existuje' }, { status: 400 })
 
-  const newCenik = await prisma.cenik.create({
+  const newCenik = await db.cenik.create({
     data: {
       orgId,
       kod,

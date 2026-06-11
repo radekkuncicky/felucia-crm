@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { getMobileOrWebSession, requireTechnikOrAdmin, klientAdresa } from '@/lib/mobile-helpers'
 import type { ZakazkaStav } from '@prisma/client'
 
@@ -9,6 +9,7 @@ export async function GET(req: Request) {
   if (authErr) return authErr
 
   const { id: userId, orgId, role } = session!.user
+  const db = orgPrisma(orgId)
   const url = new URL(req.url)
 
   const page = Math.max(1, parseInt(url.searchParams.get('page') ?? '1'))
@@ -25,7 +26,7 @@ export async function GET(req: Request) {
   }
 
   const [zakazky, total] = await Promise.all([
-    prisma.zakazka.findMany({
+    db.zakazka.findMany({
       where,
       include: {
         klient: { select: { jmeno: true, prijmeni: true, telefon: true, ulice: true, mesto: true, psc: true } },
@@ -36,7 +37,7 @@ export async function GET(req: Request) {
       skip,
       take: limit,
     }),
-    prisma.zakazka.count({ where }),
+    db.zakazka.count({ where }),
   ])
 
   const data = zakazky.map(z => ({

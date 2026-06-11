@@ -1,14 +1,15 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
 
-  const product = await prisma.product.findFirst({
+  const product = await db.product.findFirst({
     where: { id: params.id, orgId },
     include: {
       categories: { orderBy: { nazev: 'asc' } },
@@ -23,15 +24,16 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
 
-  const product = await prisma.product.findFirst({ where: { id: params.id, orgId } })
+  const product = await db.product.findFirst({ where: { id: params.id, orgId } })
   if (!product) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const body = await req.json()
 
   // Validate unique kod if changed
   if (body.kod && body.kod !== product.kod) {
-    const exists = await prisma.product.findFirst({ where: { orgId, kod: body.kod, NOT: { id: params.id } } })
+    const exists = await db.product.findFirst({ where: { orgId, kod: body.kod, NOT: { id: params.id } } })
     if (exists) return NextResponse.json({ error: 'Kód již existuje' }, { status: 400 })
   }
 
@@ -55,7 +57,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     data.categories = { set: body.categoryIds.map((id: string) => ({ id })) }
   }
 
-  const updated = await prisma.product.update({
+  const updated = await db.product.update({
     where: { id: params.id },
     data,
     include: { categories: { orderBy: { nazev: 'asc' } } },
@@ -68,10 +70,11 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (session.user.role !== 'ADMIN') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
 
-  const product = await prisma.product.findFirst({ where: { id: params.id, orgId } })
+  const product = await db.product.findFirst({ where: { id: params.id, orgId } })
   if (!product) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  await prisma.product.delete({ where: { id: params.id } })
+  await db.product.delete({ where: { id: params.id } })
   return NextResponse.json({ ok: true })
 }

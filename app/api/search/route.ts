@@ -1,20 +1,21 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { getMobileSession } from '@/lib/mobile-auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions) ?? await getMobileSession(req)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
 
   const { searchParams } = new URL(req.url)
   const q = searchParams.get('q')?.trim() ?? ''
   if (q.length < 2) return NextResponse.json([])
 
   const [clients, deals] = await Promise.all([
-    prisma.client.findMany({
+    db.client.findMany({
       where: {
         orgId,
         OR: [
@@ -27,7 +28,7 @@ export async function GET(req: Request) {
       take: 5,
       select: { id: true, jmeno: true, prijmeni: true, email: true },
     }),
-    prisma.deal.findMany({
+    db.deal.findMany({
       where: {
         orgId,
         OR: [

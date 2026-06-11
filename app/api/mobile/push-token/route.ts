@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { getMobileOrWebSession, requireTechnikOrAdmin } from '@/lib/mobile-helpers'
 
 export async function POST(req: Request) {
@@ -16,7 +16,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Chybí token' }, { status: 400 })
   }
 
-  await prisma.user.update({
+  await orgPrisma(session!.user.orgId).user.update({
     where: { id: session!.user.id },
     data: { pushToken: body.token },
   })
@@ -29,7 +29,7 @@ export async function DELETE(req: Request) {
   const authErr = requireTechnikOrAdmin(session)
   if (authErr) return authErr
 
-  await prisma.user.update({
+  await orgPrisma(session!.user.orgId).user.update({
     where: { id: session!.user.id },
     data: { pushToken: null },
   })

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { getMobileOrWebSession, requireTechnikOrAdmin, canAccessZakazka, klientAdresa } from '@/lib/mobile-helpers'
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
@@ -14,7 +14,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const zakazka = await prisma.zakazka.findFirst({
+  const zakazka = await orgPrisma(session!.user.orgId).zakazka.findFirst({
     where: { id: params.id, orgId: session!.user.orgId },
     include: {
       klient: true,

@@ -1,13 +1,14 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { getMobileSession } from '@/lib/mobile-auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions) ?? await getMobileSession(req)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
 
   const { searchParams } = new URL(req.url)
   const typ = searchParams.get('typ')
@@ -29,7 +30,7 @@ export async function GET(req: Request) {
   if (splneno === 'true') where.splneno = true
   if (splneno === 'false') where.splneno = false
 
-  const activities = await prisma.activity.findMany({
+  const activities = await db.activity.findMany({
     where,
     include: {
       user: { select: { id: true, jmeno: true } },
@@ -53,6 +54,7 @@ export async function POST(req: Request) {
   const session = await getServerSession(authOptions) ?? await getMobileSession(req)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
 
   const body = await req.json()
   const { dealId, typ, popis, datum, cil } = body
@@ -61,10 +63,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Chybí povinná pole' }, { status: 400 })
   }
 
-  const deal = await prisma.deal.findFirst({ where: { id: dealId, orgId } })
+  const deal = await db.deal.findFirst({ where: { id: dealId, orgId } })
   if (!deal) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const activity = await prisma.activity.create({
+  const activity = await db.activity.create({
     data: {
       dealId,
       userId: session.user.id,

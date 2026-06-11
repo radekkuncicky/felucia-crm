@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { SkladPohybTyp } from '@prisma/client'
 
@@ -10,6 +10,7 @@ export async function GET(req: Request) {
   if (session.user.role === 'TECHNIK') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
   const { searchParams } = new URL(req.url)
   const search = searchParams.get('search')
   const typ = searchParams.get('typ') as SkladPohybTyp | null
@@ -28,7 +29,7 @@ export async function GET(req: Request) {
     }
   }
 
-  const pohyby = await prisma.skladPohyb.findMany({
+  const pohyby = await db.skladPohyb.findMany({
     where,
     include: {
       zakazka: { select: { id: true, cislo: true, nazev: true } },
@@ -43,15 +44,15 @@ export async function GET(req: Request) {
   const mesicZacatek = new Date(now.getFullYear(), now.getMonth(), 1)
 
   const [rezervaceTotal, vydejMesic, pocetPohybu] = await Promise.all([
-    prisma.skladPohyb.aggregate({
+    db.skladPohyb.aggregate({
       where: { orgId, typ: 'REZERVACE' },
       _sum: { nakupniCena: true, mnozstvi: true },
     }),
-    prisma.skladPohyb.aggregate({
+    db.skladPohyb.aggregate({
       where: { orgId, typ: 'VYDEJ', vytvoreno: { gte: mesicZacatek } },
       _sum: { nakupniCena: true },
     }),
-    prisma.skladPohyb.count({ where: { orgId } }),
+    db.skladPohyb.count({ where: { orgId } }),
   ])
 
   return NextResponse.json({

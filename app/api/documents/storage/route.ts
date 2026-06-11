@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 
 export async function GET() {
@@ -8,10 +8,11 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { orgId } = session.user
+  const db = orgPrisma(orgId)
 
   const [usageAgg, orgSettings] = await Promise.all([
-    prisma.document.aggregate({ where: { orgId }, _sum: { velikost: true } }),
-    prisma.orgSettings.findUnique({ where: { orgId }, select: { storageLimit: true } }),
+    db.document.aggregate({ where: { orgId }, _sum: { velikost: true } }),
+    db.orgSettings.findUnique({ where: { orgId }, select: { storageLimit: true } }),
   ])
 
   const used = usageAgg._sum.velikost ?? BigInt(0)

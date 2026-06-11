@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { TypAktivity } from '@prisma/client'
 
@@ -8,8 +8,9 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
 
-  const activity = await prisma.activity.findFirst({
+  const activity = await db.activity.findFirst({
     where: { id: params.id, deal: { orgId } },
   })
   if (!activity) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -24,11 +25,11 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
   // Validate resitelId belongs to same org
   if (body.resitelId !== undefined && body.resitelId !== null) {
-    const resitel = await prisma.user.findFirst({ where: { id: body.resitelId, orgId } })
+    const resitel = await db.user.findFirst({ where: { id: body.resitelId, orgId } })
     if (!resitel) return NextResponse.json({ error: 'Řešitel nebyl nalezen' }, { status: 400 })
   }
 
-  const updated = await prisma.activity.update({
+  const updated = await db.activity.update({
     where: { id: params.id },
     data: {
       stav,
@@ -53,12 +54,13 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
 
-  const activity = await prisma.activity.findFirst({
+  const activity = await db.activity.findFirst({
     where: { id: params.id, deal: { orgId } },
   })
   if (!activity) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  await prisma.activity.delete({ where: { id: params.id } })
+  await db.activity.delete({ where: { id: params.id } })
   return NextResponse.json({ ok: true })
 }

@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { getPlanLimits } from '@/lib/planLimits'
 import { NextResponse } from 'next/server'
 
@@ -8,6 +8,7 @@ export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
 
   const { searchParams } = new URL(req.url)
   const search = searchParams.get('search') || ''
@@ -31,7 +32,7 @@ export async function GET(req: Request) {
   const include = { categories: { orderBy: { nazev: 'asc' } } } as const
 
   if (!hasPagination && !search && !categoryId && !productLine) {
-    const products = await prisma.product.findMany({
+    const products = await db.product.findMany({
       where: { orgId },
       include,
       orderBy: { nazev: 'asc' },
@@ -40,8 +41,8 @@ export async function GET(req: Request) {
   }
 
   const [total, products] = await Promise.all([
-    prisma.product.count({ where }),
-    prisma.product.findMany({
+    db.product.count({ where }),
+    db.product.findMany({
       where,
       include,
       orderBy: { nazev: 'asc' },
@@ -57,6 +58,7 @@ export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
 
   const body = await req.json()
   const { nazev, kod, produktovaRada, popis, dphSazba, nakladovaCena, standardniCena, jednotka, categoryIds } = body
@@ -79,18 +81,18 @@ export async function POST(req: Request) {
 
   const limits = getPlanLimits(session.user.plan)
   if (limits.maxProducts !== Infinity) {
-    const productCount = await prisma.product.count({ where: { orgId } })
+    const productCount = await db.product.count({ where: { orgId } })
     if (productCount >= limits.maxProducts) {
       return NextResponse.json({ error: `Dosáhli jste limitu ${limits.maxProducts} produktů pro váš plán.`, code: 'PLAN_LIMIT_REACHED' }, { status: 403 })
     }
   }
 
   if (kod) {
-    const exists = await prisma.product.findFirst({ where: { orgId, kod } })
+    const exists = await db.product.findFirst({ where: { orgId, kod } })
     if (exists) return NextResponse.json({ error: 'Produkt s tímto kódem již existuje' }, { status: 400 })
   }
 
-  const product = await prisma.product.create({
+  const product = await db.product.create({
     data: {
       orgId,
       kod: kod || null,

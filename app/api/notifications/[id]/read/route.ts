@@ -1,7 +1,7 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { getMobileSession } from '@/lib/mobile-auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 
 export async function PATCH(
@@ -12,12 +12,12 @@ export async function PATCH(
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { id: userId } = session.user
 
-  const notif = await prisma.notification.findFirst({
+  const notif = await orgPrisma(session.user.orgId).notification.findFirst({
     where: { id: params.id, userId },
   })
   if (!notif) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  await prisma.notification.update({
+  await orgPrisma(session.user.orgId).notification.update({
     where: { id: params.id },
     data: { precteno: true },
   })

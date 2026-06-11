@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 
 export async function GET() {
@@ -8,8 +8,9 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { orgId } = session.user
+  const db = orgPrisma(orgId)
 
-  const docs = await prisma.document.findMany({
+  const docs = await db.document.findMany({
     where: { orgId },
     orderBy: { vytvoreno: 'desc' },
     include: { uploadedBy: { select: { jmeno: true } } },

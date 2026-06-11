@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { getMobileOrWebSession, requireTechnikOrAdmin, klientAdresa } from '@/lib/mobile-helpers'
 
 export async function GET(req: Request) {
@@ -8,12 +8,13 @@ export async function GET(req: Request) {
   if (authErr) return authErr
 
   const { id: userId, orgId, role } = session!.user
+  const db = orgPrisma(orgId)
 
   const now = new Date()
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0)
   const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59)
 
-  const zakazky = await prisma.zakazka.findMany({
+  const zakazky = await db.zakazka.findMany({
     where: {
       orgId,
       montazOd: { gte: todayStart, lte: todayEnd },

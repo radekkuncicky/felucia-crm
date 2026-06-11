@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { getMobileOrWebSession, requireTechnikOrAdmin, canAccessZakazka } from '@/lib/mobile-helpers'
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
@@ -18,7 +18,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   if (!text) return NextResponse.json({ error: 'Text je povinný' }, { status: 400 })
   if (text.length > 5000) return NextResponse.json({ error: 'Text je příliš dlouhý' }, { status: 400 })
 
-  const komentar = await prisma.zakazkaKomentar.create({
+  const komentar = await orgPrisma(session!.user.orgId).zakazkaKomentar.create({
     data: { zakazkaId: params.id, userId: session!.user.id, text },
     include: { user: { select: { id: true, jmeno: true, role: true } } },
   })

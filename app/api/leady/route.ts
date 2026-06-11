@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 
 export async function GET(req: Request) {
@@ -11,6 +11,7 @@ export async function GET(req: Request) {
   if (plan === 'STARTER') return NextResponse.json({ error: 'Nedostupné v tomto plánu.' }, { status: 403 })
 
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
   const { searchParams } = new URL(req.url)
   const status = searchParams.get('status')
   const zdroj = searchParams.get('zdroj')
@@ -30,7 +31,7 @@ export async function GET(req: Request) {
     ]
   }
 
-  const leady = await prisma.lead.findMany({
+  const leady = await db.lead.findMany({
     where,
     include: {
       assignedTo: { select: { id: true, jmeno: true, email: true } },
@@ -51,9 +52,10 @@ export async function POST(req: Request) {
   if (session.user.role === 'TECHNIK') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
   const body = await req.json()
 
-  const lead = await prisma.lead.create({
+  const lead = await db.lead.create({
     data: {
       orgId,
       jmeno: body.jmeno,

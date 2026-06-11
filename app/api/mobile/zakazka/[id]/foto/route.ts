@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { getMobileOrWebSession, requireTechnikOrAdmin, canAccessZakazka } from '@/lib/mobile-helpers'
 import { writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
@@ -46,7 +46,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     const url = `/uploads/zakazky/${params.id}/${filename}`
     const popis = formData.get('popis') as string | null
 
-    const foto = await prisma.zakazkaFoto.create({
+    const foto = await orgPrisma(session!.user.orgId).zakazkaFoto.create({
       data: { zakazkaId: params.id, url, popis: popis ?? null, nahralId: session!.user.id },
     })
 
@@ -59,7 +59,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     try { body = await req.json() } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }) }
     if (!body.url) return NextResponse.json({ error: 'Chybí url' }, { status: 400 })
 
-    const foto = await prisma.zakazkaFoto.create({
+    const foto = await orgPrisma(session!.user.orgId).zakazkaFoto.create({
       data: { zakazkaId: params.id, url: body.url, popis: body.popis ?? null, nahralId: session!.user.id },
     })
     return NextResponse.json({ id: foto.id, url: foto.url, popis: foto.popis, vytvoreno: foto.vytvoreno }, { status: 201 })

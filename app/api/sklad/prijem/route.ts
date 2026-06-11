@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 
 export async function POST(req: Request) {
@@ -9,13 +9,14 @@ export async function POST(req: Request) {
   if (session.user.role === 'TECHNIK') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
   const { nazev, mnozstvi, nakupniCena, poznamka } = await req.json()
 
   if (!nazev?.trim() || !mnozstvi || nakupniCena === undefined) {
     return NextResponse.json({ error: 'Chybí povinná pole' }, { status: 400 })
   }
 
-  const pohyb = await prisma.skladPohyb.create({
+  const pohyb = await db.skladPohyb.create({
     data: {
       orgId,
       typ: 'PRIJEM_SKLAD',

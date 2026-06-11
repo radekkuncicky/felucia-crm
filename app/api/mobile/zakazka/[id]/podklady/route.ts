@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { getMobileOrWebSession, requireTechnikOrAdmin } from '@/lib/mobile-helpers'
 import { canTechnikAccessZakazka } from '@/lib/zakazkyHelpers'
 
@@ -13,13 +13,13 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const zakazka = await prisma.zakazka.findFirst({
+  const zakazka = await orgPrisma(session!.user.orgId).zakazka.findFirst({
     where: { id: params.id, orgId: session!.user.orgId },
     select: { pokyny: true },
   })
   if (!zakazka) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const dokumenty = await prisma.zakázkaDokument.findMany({
+  const dokumenty = await orgPrisma(session!.user.orgId).zakázkaDokument.findMany({
     where: { zakazkaId: params.id },
     select: { id: true, nazev: true, mime: true, url: true, vytvoreno: true, nahral: { select: { jmeno: true } } },
     orderBy: { vytvoreno: 'desc' },

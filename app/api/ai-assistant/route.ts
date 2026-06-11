@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { getPlanLimits } from '@/lib/planLimits'
 import { checkRateLimit } from '@/lib/rateLimit'
@@ -159,6 +159,7 @@ async function executeTool(
   user: SessionUser
 ): Promise<{ result: string; navigateTo?: string }> {
   const { orgId, id: userId, role } = user
+  const db = orgPrisma(orgId)
   const isTechnik = role === 'TECHNIK'
   const isObchodnik = role === 'OBCHODNIK'
   const canCreate = !isTechnik
@@ -171,7 +172,7 @@ async function executeTool(
         const isUuid = /^[0-9a-f-]{36}$/i.test(q)
         const isOpKod = /^OP-\d{2}-\d{3}$/i.test(q)
 
-        const deals = await prisma.deal.findMany({
+        const deals = await db.deal.findMany({
           where: {
             orgId,
             stav: { not: 'ZNEPLATNENO' },
@@ -207,7 +208,7 @@ async function executeTool(
         const rawId = String(input.dealId ?? '').trim()
         const isUuid = /^[0-9a-f-]{36}$/i.test(rawId)
 
-        const deal = await prisma.deal.findFirst({
+        const deal = await db.deal.findFirst({
           where: {
             orgId,
             ...(isUuid ? { id: rawId } : { kod: rawId }),
@@ -250,7 +251,7 @@ async function executeTool(
         if (isTechnik) return { result: JSON.stringify({ chyba: 'Nedostatečná oprávnění' }) }
         const q = String(input.q ?? '').trim()
 
-        const clients = await prisma.client.findMany({
+        const clients = await db.client.findMany({
           where: {
             orgId,
             OR: [
@@ -273,7 +274,7 @@ async function executeTool(
         if (keywords.length === 0) return { result: JSON.stringify({ zprava: 'Zadej hledaný výraz' }) }
 
         const searches = keywords.map(kw =>
-          prisma.product.findMany({
+          db.product.findMany({
             where: {
               orgId, aktivni: true,
               OR: [
@@ -310,19 +311,19 @@ async function executeTool(
         const obchodnikFilter = isObchodnik ? { userId } : {}
 
         const [ukoly, aktivityTyden, allDeals] = await Promise.all([
-          prisma.activity.findMany({
+          db.activity.findMany({
             where: { deal: { orgId }, userId, typ: 'UKOL', splneno: false },
             include: { deal: { select: { kod: true, predmet: true, client: { select: { jmeno: true } } } } },
             orderBy: { datum: 'asc' },
             take: 10,
           }),
-          prisma.activity.findMany({
+          db.activity.findMany({
             where: { deal: { orgId, ...obchodnikFilter }, userId, datum: { gte: weekStart, lte: weekEnd } },
             include: { deal: { select: { kod: true, client: { select: { jmeno: true } } } } },
             orderBy: { datum: 'asc' },
             take: 20,
           }),
-          prisma.deal.findMany({
+          db.deal.findMany({
             where: { orgId, stav: { notIn: ['USPECH', 'PAS', 'ZNEPLATNENO'] }, ...obchodnikFilter },
             include: { client: { select: { jmeno: true } }, activities: { orderBy: { datum: 'desc' }, take: 1 } },
             take: 20,
@@ -360,21 +361,21 @@ async function executeTool(
 
         if (!isUuid) {
           const normalized = dealId.toUpperCase().startsWith('OP-') ? dealId.toUpperCase() : `OP-${dealId}`
-          const found = await prisma.deal.findFirst({ where: { kod: normalized, orgId } })
+          const found = await db.deal.findFirst({ where: { kod: normalized, orgId } })
           if (!found) return { result: JSON.stringify({ chyba: `OP ${normalized} nenalezen` }) }
           dealId = found.id
         } else {
-          const found = await prisma.deal.findFirst({ where: { id: dealId, orgId } })
+          const found = await db.deal.findFirst({ where: { id: dealId, orgId } })
           if (!found) return { result: JSON.stringify({ chyba: 'OP nenalezen' }) }
         }
 
         const items = Array.isArray(input.items) ? input.items as Record<string, unknown>[] : []
         if (items.length === 0) return { result: JSON.stringify({ chyba: 'Nabídka musí mít alespoň jednu položku' }) }
 
-        const count = await prisma.quote.count({ where: { dealId } })
+        const count = await db.quote.count({ where: { dealId } })
         const kod = `NAB-${String(count + 1).padStart(2, '0')}`
 
-        const quote = await prisma.quote.create({
+        const quote = await db.quote.create({
           data: {
             dealId, orgId,
             nazev: String(input.nazev ?? 'Varianta A'),
@@ -412,19 +413,19 @@ async function executeTool(
         const technologie = String(input.technologie ?? 'JINE')
         const predmet = input.predmet ? String(input.predmet) : null
 
-        const client = await prisma.client.findFirst({ where: { id: clientId, orgId } })
+        const client = await db.client.findFirst({ where: { id: clientId, orgId } })
         if (!client) return { result: JSON.stringify({ chyba: 'Klient nenalezen' }) }
 
         const yr = new Date().getFullYear() % 100
         const prefix = `OP-${yr.toString().padStart(2, '0')}-`
-        const last = await prisma.deal.findFirst({
+        const last = await db.deal.findFirst({
           where: { orgId, kod: { startsWith: prefix } },
           orderBy: { kod: 'desc' }, select: { kod: true },
         })
         const lastNum = last?.kod ? parseInt(last.kod.replace(prefix, ''), 10) : 0
         const kod = `${prefix}${(lastNum + 1).toString().padStart(3, '0')}`
 
-        const deal = await prisma.deal.create({
+        const deal = await db.deal.create({
           data: { orgId, userId, clientId, technologie: technologie as Technologie, predmet, kod, stav: 'NOVY' },
         })
 
@@ -439,7 +440,7 @@ async function executeTool(
         const prijmeni = input.prijmeni ? String(input.prijmeni).trim() : ''
         if (!jmeno) return { result: JSON.stringify({ chyba: 'Jméno klienta je povinné' }) }
 
-        const client = await prisma.client.create({
+        const client = await db.client.create({
           data: {
             orgId,
             typKlienta: typKlienta as TypKlienta,
@@ -458,12 +459,12 @@ async function executeTool(
 
       case 'add_activity': {
         const dealId = String(input.dealId ?? '')
-        const deal = await prisma.deal.findFirst({
+        const deal = await db.deal.findFirst({
           where: { id: dealId, orgId, ...(isObchodnik ? { userId } : {}) },
         })
         if (!deal) return { result: JSON.stringify({ chyba: 'OP nenalezen nebo nemáš přístup' }) }
 
-        await prisma.activity.create({
+        await db.activity.create({
           data: {
             dealId, userId,
             typ: String(input.typ ?? 'POZNAMKA') as TypAktivity,
@@ -481,12 +482,12 @@ async function executeTool(
         const dealId = String(input.dealId ?? '')
         const stav = String(input.stav ?? '')
 
-        const deal = await prisma.deal.findFirst({
+        const deal = await db.deal.findFirst({
           where: { id: dealId, orgId, ...(isObchodnik ? { userId } : {}) },
         })
         if (!deal) return { result: JSON.stringify({ chyba: 'OP nenalezen nebo nemáš přístup' }) }
 
-        await prisma.deal.update({
+        await db.deal.update({
           where: { id: dealId },
           data: { stav: stav as StavDealu },
         })
@@ -518,7 +519,8 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const orgId = session.user.orgId
-  const org = await prisma.organization.findUnique({ where: { id: orgId } })
+  const db = orgPrisma(orgId)
+  const org = await db.organization.findUnique({ where: { id: orgId } })
   const planLimits = getPlanLimits(org?.plan ?? 'STARTER')
 
   const creditsUsed = org?.aiCreditsUsed ?? 0
@@ -549,7 +551,8 @@ export async function POST(req: Request) {
   if (!apiKey) return NextResponse.json({ error: 'API key not configured' }, { status: 500 })
 
   const orgId = session.user.orgId
-  const org = await prisma.organization.findUnique({ where: { id: orgId } })
+  const db = orgPrisma(orgId)
+  const org = await db.organization.findUnique({ where: { id: orgId } })
   const planLimits = getPlanLimits(org?.plan ?? 'STARTER')
 
   if (!planLimits.canUseAI) {
@@ -561,7 +564,7 @@ export async function POST(req: Request) {
   const resetAt = org?.aiTokensResetAt ?? now
   const monthsElapsed = (now.getFullYear() - resetAt.getFullYear()) * 12 + (now.getMonth() - resetAt.getMonth())
   if (monthsElapsed >= 1) {
-    await prisma.organization.update({
+    await db.organization.update({
       where: { id: orgId },
       data: { aiTokensUsed: 0, aiCreditsUsed: 0, aiTokensResetAt: now },
     })
@@ -733,7 +736,7 @@ NIKDY nevracej plain text — vždy JSON objekt.`
         // Save usage log + update credits
         const credits = calcCredits(totalInputTokens, totalOutputTokens, totalCacheReadTokens)
         await Promise.all([
-          prisma.aiUsageLog.create({
+          db.aiUsageLog.create({
             data: {
               orgId, userId: session.user.id,
               inputTokens: totalInputTokens, outputTokens: totalOutputTokens,
@@ -741,7 +744,7 @@ NIKDY nevracej plain text — vždy JSON objekt.`
               toolCalls: totalToolCalls, credits, model,
             },
           }),
-          prisma.organization.update({
+          db.organization.update({
             where: { id: orgId },
             data: {
               aiTokensUsed: { increment: 1 },

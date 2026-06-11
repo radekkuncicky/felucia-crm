@@ -1,13 +1,13 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const lead = await prisma.lead.findFirst({
+  const lead = await orgPrisma(session.user.orgId).lead.findFirst({
     where: { id: params.id, orgId: session.user.orgId },
     include: {
       assignedTo: { select: { id: true, jmeno: true, email: true, avatar: true } },
@@ -37,7 +37,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (session.user.role === 'TECHNIK') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const lead = await prisma.lead.findFirst({ where: { id: params.id, orgId: session.user.orgId } })
+  const lead = await orgPrisma(session.user.orgId).lead.findFirst({ where: { id: params.id, orgId: session.user.orgId } })
   if (!lead) return NextResponse.json({ error: 'Nenalezeno' }, { status: 404 })
 
   const body = await req.json()
@@ -50,6 +50,6 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     data.odhadovanaHodnota = parseFloat(data.odhadovanaHodnota as string)
   }
 
-  const updated = await prisma.lead.update({ where: { id: params.id }, data })
+  const updated = await orgPrisma(session.user.orgId).lead.update({ where: { id: params.id }, data })
   return NextResponse.json(updated)
 }

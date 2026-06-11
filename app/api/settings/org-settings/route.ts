@@ -9,7 +9,6 @@ export async function GET() {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { orgId } = session.user
-  const db = orgPrisma(orgId)
 
   const settings = await getOrgSettings(orgId)
   return NextResponse.json(settings)

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { getMobileOrWebSession, requireTechnikOrAdmin, canAccessZakazka } from '@/lib/mobile-helpers'
 import { unlink } from 'fs/promises'
 import { join } from 'path'
@@ -16,7 +16,7 @@ export async function DELETE(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const foto = await prisma.zakazkaFoto.findFirst({
+  const foto = await orgPrisma(session!.user.orgId).zakazkaFoto.findFirst({
     where: { id: params.fotoId, zakazkaId: params.id },
   })
 
@@ -30,7 +30,7 @@ export async function DELETE(
     // File missing on disk is not a fatal error
   }
 
-  await prisma.zakazkaFoto.delete({ where: { id: params.fotoId } })
+  await orgPrisma(session!.user.orgId).zakazkaFoto.delete({ where: { id: params.fotoId } })
 
   return NextResponse.json({ ok: true })
 }

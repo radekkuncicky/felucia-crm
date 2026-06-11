@@ -12,7 +12,7 @@
 const fs = require('fs')
 
 const ORGID_RE =
-  /^(\s*)const (?:orgId|\{[^}]*\borgId\b[^}]*\}) = session\.user(?:\.orgId)?\b.*$/
+  /^(\s*)const (?:orgId|\{[^}]*\borgId\b[^}]*\}) = session!?\.user(?:\.orgId)?\b.*$/
 
 let changed = 0
 const skipped = []

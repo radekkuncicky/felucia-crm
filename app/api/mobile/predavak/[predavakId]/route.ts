@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { getMobileOrWebSession, requireTechnikOrAdmin, type MobileSession } from '@/lib/mobile-helpers'
 
 async function canAccess(session: MobileSession, predavakId: string): Promise<boolean> {
-  const p = await prisma.predavak.findFirst({ where: { id: predavakId, orgId: session.user.orgId } })
+  const p = await orgPrisma(session!.user.orgId).predavak.findFirst({ where: { id: predavakId, orgId: session.user.orgId } })
   if (!p) return false
   if (session.user.role === 'ADMIN') return true
   if (p.technikId === session.user.id) return true
   // Allow any technik assigned to the zakázka
-  const rel = await prisma.technikZakazka.findFirst({
+  const rel = await orgPrisma(session!.user.orgId).technikZakazka.findFirst({
     where: { technikId: session.user.id, zakazkaId: p.zakazkaId },
   })
   return !!rel
@@ -23,7 +23,7 @@ export async function GET(req: Request, { params }: { params: { predavakId: stri
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const predavak = await prisma.predavak.findFirst({
+  const predavak = await orgPrisma(session!.user.orgId).predavak.findFirst({
     where: { id: params.predavakId, orgId: session!.user.orgId },
     include: {
       polozky: { orderBy: { id: 'asc' } },
@@ -73,7 +73,7 @@ export async function PATCH(req: Request, { params }: { params: { predavakId: st
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const predavak = await prisma.predavak.findFirst({
+  const predavak = await orgPrisma(session!.user.orgId).predavak.findFirst({
     where: { id: params.predavakId, orgId: session!.user.orgId },
   })
   if (!predavak) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -85,7 +85,7 @@ export async function PATCH(req: Request, { params }: { params: { predavakId: st
   const { poznamka, klientPritomen, polozky, podpisSvg } = await req.json()
   const wasAlreadySigned = predavak.stav === 'PODPISAN'
 
-  await prisma.$transaction(async tx => {
+  await orgPrisma(session!.user.orgId).$transaction(async tx => {
     await tx.predavak.update({
       where: { id: params.predavakId },
       data: {

@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { verifyCalendarToken } from '@/lib/calendarToken'
 
 function escapeIcal(text: string): string {
@@ -62,6 +63,7 @@ export async function GET(req: Request) {
   try { valid = verifyCalendarToken(uid, sig) } catch { valid = false }
   if (!valid) return new Response('Unauthorized', { status: 401 })
 
+  // lookup uživatele před znalostí org — záměrně bez tenant scope
   const user = await prisma.user.findUnique({
     where: { id: uid },
     select: { id: true, orgId: true, jmeno: true, organization: { select: { nazev: true } } },
@@ -69,12 +71,13 @@ export async function GET(req: Request) {
   if (!user) return new Response('Not found', { status: 404 })
 
   const orgId = user.orgId
+  const db = orgPrisma(orgId)
   const host = req.headers.get('host') ?? 'app.felucia.io'
   const proto = host.includes('localhost') ? 'http' : 'https'
   const base = `${proto}://${host}`
 
   const [activities, deals, servisNavstevy] = await Promise.all([
-    prisma.activity.findMany({
+    db.activity.findMany({
       where: {
         deal: { orgId },
         OR: [{ userId: uid }, { resitelId: uid }],
@@ -91,7 +94,7 @@ export async function GET(req: Request) {
       },
       orderBy: { datum: 'asc' },
     }),
-    prisma.deal.findMany({
+    db.deal.findMany({
       where: {
         orgId,
         OR: [
@@ -102,7 +105,7 @@ export async function GET(req: Request) {
       },
       include: { client: { select: { jmeno: true, prijmeni: true } } },
     }),
-    prisma.servisniNavsteva.findMany({
+    db.servisniNavsteva.findMany({
       where: { orgId, stav: { in: ['PLANOVANA', 'POTVRZENA', 'PROBIHA'] } },
       include: { kontrakt: { include: { klient: { select: { jmeno: true, prijmeni: true } } } } },
     }).catch(() => []),

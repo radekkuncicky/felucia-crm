@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { getMobileOrWebSession, requireTechnikOrAdmin, canAccessZakazka } from '@/lib/mobile-helpers'
 
 export async function PATCH(
@@ -22,12 +22,12 @@ export async function PATCH(
   }
 
   // Verify polozka belongs to this zakázka
-  const polozka = await prisma.zakazkaPolozka.findFirst({
+  const polozka = await orgPrisma(session!.user.orgId).zakazkaPolozka.findFirst({
     where: { id: params.polozkaId, zakazkaId: params.id },
   })
   if (!polozka) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const updated = await prisma.zakazkaPolozka.update({
+  const updated = await orgPrisma(session!.user.orgId).zakazkaPolozka.update({
     where: { id: params.polozkaId },
     data: { hotovo: body.hotovo },
     select: { id: true, nazev: true, hotovo: true, stav: true, mnozstvi: true, jednotka: true },

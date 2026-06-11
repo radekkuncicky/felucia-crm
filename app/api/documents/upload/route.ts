@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { writeFile, mkdir } from 'fs/promises'
 import path from 'path'
@@ -13,14 +13,15 @@ export async function POST(req: Request) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { orgId, id: userId } = session.user
+  const db = orgPrisma(orgId)
 
-  const orgSettings = await prisma.orgSettings.findUnique({
+  const orgSettings = await db.orgSettings.findUnique({
     where: { orgId },
     select: { storageLimit: true },
   })
   const storageLimit = orgSettings?.storageLimit ?? BigInt(3 * 1024 * 1024 * 1024)
 
-  const usageAgg = await prisma.document.aggregate({
+  const usageAgg = await db.document.aggregate({
     where: { orgId },
     _sum: { velikost: true },
   })
@@ -46,7 +47,7 @@ export async function POST(req: Request) {
 
   const cesta = `/uploads/${orgId}/documents/${uniqueName}`
 
-  const doc = await prisma.document.create({
+  const doc = await db.document.create({
     data: {
       orgId,
       nazev: file.name,

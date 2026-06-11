@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { getMobileOrWebSession, requireTechnikOrAdmin, type MobileSession } from '@/lib/mobile-helpers'
 
 async function canAccess(session: MobileSession, predavakId: string): Promise<boolean> {
-  const p = await prisma.predavak.findFirst({ where: { id: predavakId, orgId: session.user.orgId } })
+  const db = orgPrisma(session.user.orgId)
+  const p = await db.predavak.findFirst({ where: { id: predavakId } })
   if (!p) return false
   if (session.user.role === 'ADMIN') return true
   if (p.technikId === session.user.id) return true
-  const rel = await prisma.technikZakazka.findFirst({
+  const rel = await db.technikZakazka.findFirst({
     where: { technikId: session.user.id, zakazkaId: p.zakazkaId },
   })
   return !!rel
@@ -22,8 +23,11 @@ export async function POST(req: Request, { params }: { params: { predavakId: str
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const predavak = await prisma.predavak.findFirst({
-    where: { id: params.predavakId, orgId: session!.user.orgId },
+  const orgId = session!.user.orgId
+  const db = orgPrisma(orgId)
+
+  const predavak = await db.predavak.findFirst({
+    where: { id: params.predavakId },
     include: {
       polozky: true,
       zakazka: { include: { vedouci: true } },
@@ -46,9 +50,7 @@ export async function POST(req: Request, { params }: { params: { predavakId: str
     return NextResponse.json({ error: 'Chybí podpis klienta' }, { status: 422 })
   }
 
-  const orgId = session!.user.orgId
-
-  await prisma.$transaction(async tx => {
+  await db.$transaction(async tx => {
     await tx.predavak.update({
       where: { id: params.predavakId },
       data: {

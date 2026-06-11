@@ -1,7 +1,7 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { getMobileSession } from '@/lib/mobile-auth'
-import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { getOrgSettings } from '@/lib/orgSettings'
 import { getPlanLimits } from '@/lib/planLimits'
 import { NextResponse } from 'next/server'
@@ -10,6 +10,7 @@ export async function GET(req: Request) {
   const session = await getServerSession(authOptions) ?? await getMobileSession(req)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { orgId, id: userId, role } = session.user
+  const db = orgPrisma(orgId)
 
   const orgSettings = await getOrgSettings(orgId)
   const dniBezeAktivity = orgSettings.notifDniBezeAktivity ?? 7
@@ -24,34 +25,34 @@ export async function GET(req: Request) {
   const now = new Date()
 
   const [activeDeals, nesplneneUkoly, noveOP, bliziciSeServisy, kritickeServisy, servisyPoTerminu, unreadNotifications] = await Promise.all([
-    prisma.deal.findMany({
+    db.deal.findMany({
       where: { orgId, userId, stav: { notIn: ['USPECH', 'PAS'] } },
       select: { activities: { orderBy: { datum: 'desc' }, take: 1, select: { datum: true } } },
     }),
-    prisma.activity.count({
+    db.activity.count({
       where: { typ: 'UKOL', splneno: false, deal: { orgId, userId } },
     }),
-    prisma.deal.count({
+    db.deal.count({
       where: role === 'ADMIN'
         ? { orgId, vytvoreno: { gte: oneDayAgo } }
         : { orgId, userId, vytvoreno: { gte: oneDayAgo } },
     }),
     isPlatinum
-      ? prisma.servisniNavsteva.count({
+      ? db.servisniNavsteva.count({
           where: { orgId, stav: 'PLANOVANA', planovanyTermin: { lte: thirtyDaysFromNow } },
         })
       : Promise.resolve(0),
     isPlatinum
-      ? prisma.servisniNavsteva.count({
+      ? db.servisniNavsteva.count({
           where: { orgId, stav: 'PLANOVANA', planovanyTermin: { lte: sevenDaysFromNow } },
         })
       : Promise.resolve(0),
     isPlatinum
-      ? prisma.servisniNavsteva.count({
+      ? db.servisniNavsteva.count({
           where: { orgId, stav: 'PLANOVANA', planovanyTermin: { lt: now } },
         })
       : Promise.resolve(0),
-    prisma.notification.count({ where: { userId, precteno: false } }),
+    db.notification.count({ where: { userId, precteno: false } }),
   ])
 
   const opBezAktivityCount = orgSettings.notifOpBezAktivity
