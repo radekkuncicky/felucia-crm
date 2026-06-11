@@ -3,7 +3,7 @@ import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { generateSodCislo } from '@/lib/sodHelpers'
-import { buildSodRenderData, renderSodTemplate } from '@/lib/sodRender'
+import { applySodFormOverrides, buildSodRenderData, renderSodTemplate } from '@/lib/sodRender'
 
 export async function GET() {
   const session = await getServerSession(authOptions)
@@ -41,18 +41,16 @@ export async function POST(req: Request) {
   let textSmlouvy: string | null = null
   let resolvedTyp = typ ?? 'DPH_21_SE_ZALOHOU'
 
+  let prefillData: Awaited<ReturnType<typeof buildSodRenderData>> | null = null
   if (templateId) {
     const template = await db.contractTemplate.findFirst({ where: { id: templateId, orgId } })
     if (!template) return NextResponse.json({ error: 'Šablona nenalezena' }, { status: 404 })
-    const renderData = await buildSodRenderData(dealId, orgId, cislo)
-    textSmlouvy = renderSodTemplate(template.obsah, renderData)
+    prefillData = await buildSodRenderData(dealId, orgId, cislo)
+    textSmlouvy = renderSodTemplate(template.obsah, applySodFormOverrides(prefillData, rest))
     if (template.typSablony && template.typSablony !== 'text') {
       resolvedTyp = template.typSablony as string
     }
   }
-
-  // Prefill metadata from deal/client for reference
-  const prefillData = templateId ? await buildSodRenderData(dealId, orgId, cislo).catch(() => null) : null
 
   const sod = await db.sod.create({
     data: {

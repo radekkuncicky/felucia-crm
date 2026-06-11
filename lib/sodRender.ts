@@ -1,5 +1,5 @@
 import { prisma } from './prisma'
-import { predmetDilaByTechnologie } from './sodHelpers'
+import { predmetDilaByTechnologie, kategorieByTechnologie } from './sodHelpers'
 
 export interface SodRenderData {
   cisloSmlouvy: string
@@ -28,6 +28,28 @@ export interface SodRenderData {
   orgSidlo: string
   orgIco: string
   orgDic: string
+  zmenaTerm: string
+  technologie: string
+}
+
+const fmtKc = (n: number) => Math.round(n).toLocaleString('cs-CZ') + ' Kč'
+
+/**
+ * Hodnoty z formuláře smlouvy (POST /api/sod) mají přednost před daty z OP —
+ * bez tohoto merge by placeholdery jako {{pocet_dni_realizace}} nebo
+ * {{zmena_term}} zůstaly v textu prázdné.
+ */
+export function applySodFormOverrides(data: SodRenderData, form: Record<string, unknown>): SodRenderData {
+  const out = { ...data }
+  if (form.pocetDniRealizace != null) out.pocetDniRealizace = String(form.pocetDniRealizace)
+  if (form.zmenaTerm != null) out.zmenaTerm = String(form.zmenaTerm)
+  if (form.terminPrevzeti != null) out.terminPrevzeti = String(form.terminPrevzeti)
+  if (form.zalohaSplatnost != null) out.zalohaSplatnost = String(form.zalohaSplatnost)
+  if (form.dphSazba != null) out.dphSazba = String(form.dphSazba)
+  if (form.zalohaKc != null) out.hodnotaZalohy = fmtKc(Number(form.zalohaKc))
+  if (form.cenaBezDph != null) out.konecnaCena = fmtKc(Number(form.cenaBezDph))
+  if (form.cenaSDph != null) out.cenaSDph = fmtKc(Number(form.cenaSDph))
+  return out
 }
 
 export async function buildSodRenderData(dealId: string, orgId: string, cisloSmlouvy: string): Promise<SodRenderData> {
@@ -93,6 +115,8 @@ export async function buildSodRenderData(dealId: string, orgId: string, cisloSml
     orgSidlo: org.sidlo ?? '',
     orgIco: org.ico ?? '',
     orgDic: org.dic ?? '',
+    zmenaTerm: '',
+    technologie: kategorieByTechnologie(deal.technologie ?? ''),
   }
 }
 
@@ -124,6 +148,8 @@ export function renderSodTemplate(obsah: string, data: SodRenderData): string {
     '{{org_sidlo}}': data.orgSidlo,
     '{{org_ico}}': data.orgIco,
     '{{org_dic}}': data.orgDic,
+    '{{zmena_term}}': data.zmenaTerm,
+    '{{technologie}}': data.technologie,
   }
 
   return Object.entries(map).reduce(

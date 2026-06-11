@@ -36,6 +36,8 @@ export const SOD_PLACEHOLDERS: [string, string][] = [
   ['{{org_sidlo}}', 'sídlo organizace'],
   ['{{org_ico}}', 'IČO organizace'],
   ['{{org_dic}}', 'DIČ organizace'],
+  ['{{zmena_term}}', 'změna termínu nejpozději do'],
+  ['{{technologie}}', 'technologie (klimatizace, tepelné čerpadlo…)'],
 ]
 
 // Highlights {{placeholder}} patterns with a chip-style decoration

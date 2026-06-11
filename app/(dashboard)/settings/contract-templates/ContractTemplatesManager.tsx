@@ -42,6 +42,8 @@ const SAMPLE: Record<string, string> = {
   '{{org_sidlo}}': 'Náměstí Míru 1, 602 00 Brno',
   '{{org_ico}}': '98765432',
   '{{org_dic}}': 'CZ98765432',
+  '{{zmena_term}}': '30. 6. 2026',
+  '{{technologie}}': 'klimatizace',
 }
 
 function renderPreview(html: string): string {
