@@ -34,6 +34,11 @@ const defaultSettings: OrgSettingsData = {
   storageLimit: BigInt(3 * 1024 * 1024 * 1024),
   modulLeady: true,
   notifNovyLead: true,
+  dokumentyStyl: 'LINKA',
+  dokumentyPaticka: null,
+  dokumentyCislovani: true,
+  dokumentyHeaderHtml: null,
+  dokumentyFooterHtml: null,
 }
 
 const OrgSettingsContext = createContext<OrgSettingsData>(defaultSettings)

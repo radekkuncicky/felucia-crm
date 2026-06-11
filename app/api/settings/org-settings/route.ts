@@ -4,6 +4,7 @@ import { orgPrisma } from '@/lib/orgPrisma'
 import { getOrgSettings } from '@/lib/orgSettings'
 import { NextResponse } from 'next/server'
 import { logAction } from '@/lib/auditLog'
+import { getPlanLimits } from '@/lib/planLimits'
 
 export async function GET() {
   const session = await getServerSession(authOptions)
@@ -29,11 +30,21 @@ export async function PATCH(req: Request) {
     'povinnaAktivitaUOP', 'automatickyServis', 'schvaleniNabidky',
     'notifOpBezAktivity', 'notifBlizkTermin', 'notifNovyOP', 'notifDniBezeAktivity', 'notifNovyLead',
     'defaultDphSazba', 'defaultPlatnostDni', 'zobrazitNakladoveCeny', 'singleTemplate', 'obchodnikJmeno', 'obchodnikTelefon', 'primaryColor',
+    'dokumentyStyl', 'dokumentyPaticka', 'dokumentyCislovani', 'dokumentyHeaderHtml', 'dokumentyFooterHtml',
   ] as const
 
   const data: Record<string, unknown> = {}
   for (const key of allowed) {
     if (key in body) data[key] = body[key]
+  }
+
+  if (typeof data.dokumentyStyl === 'string' && !['LINKA', 'PRUH', 'VLASTNI', 'ZADNY'].includes(data.dokumentyStyl)) {
+    return NextResponse.json({ error: 'Neplatný styl dokumentů' }, { status: 400 })
+  }
+  // Vlastní HTML záhlaví/patička jen pro plány s white-labelem
+  if ((data.dokumentyStyl === 'VLASTNI' || 'dokumentyHeaderHtml' in data || 'dokumentyFooterHtml' in data)
+      && !getPlanLimits(session.user.plan).hasWhiteLabel) {
+    return NextResponse.json({ error: 'Vlastní HTML šablona vyžaduje plán PROFESSIONAL' }, { status: 403 })
   }
 
   const settings = await db.orgSettings.upsert({

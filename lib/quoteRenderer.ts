@@ -499,7 +499,7 @@ ${footer ? `<div class="footer">${footer}</div>` : ''}
 
 // ── TENANT DEFAULT renderer (pro non-NANTO orgs bez konfigurované šablony) ───
 
-function orgLogoDataUrl(logoPath: string | null | undefined): string | null {
+export function orgLogoDataUrl(logoPath: string | null | undefined): string | null {
   if (!logoPath) return null
   try {
     const abs = path.join(process.cwd(), 'public', logoPath)

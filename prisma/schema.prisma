@@ -770,6 +770,13 @@ model OrgSettings {
   // Vzhled
   primaryColor          String  @default("#FFC93C")
 
+  // Vzhled PDF dokumentů (záhlaví/patička smluv)
+  dokumentyStyl         String  @default("LINKA") // LINKA | PRUH | VLASTNI | ZADNY
+  dokumentyPaticka      String? // vlastní text patičky; null = automaticky z údajů firmy
+  dokumentyCislovani    Boolean @default(true)
+  dokumentyHeaderHtml   String? // vlastní HTML záhlaví (jen hasWhiteLabel plány)
+  dokumentyFooterHtml   String?
+
   organization Organization @relation(fields: [orgId], references: [id])
 
   @@map("org_settings")

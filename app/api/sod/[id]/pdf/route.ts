@@ -4,6 +4,7 @@ import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { generateSodHtml } from '@/lib/sodDocument'
 import { generatePdf } from '@/lib/pdf'
+import { buildDokumentChrome } from '@/lib/dokumentyChrome'
 
 const PDF_STYLES = `
   body { font-family: 'Times New Roman', serif; font-size: 11pt; line-height: 1.7; color: #000; }
@@ -87,7 +88,8 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     })
   }
 
-  const pdf = await generatePdf(html)
+  const chrome = await buildDokumentChrome(orgId, session.user.plan)
+  const pdf = await generatePdf(html, chrome)
 
   return new NextResponse(pdf as unknown as BodyInit, {
     headers: {

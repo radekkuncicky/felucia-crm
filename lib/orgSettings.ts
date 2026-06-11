@@ -31,6 +31,11 @@ export type OrgSettingsData = {
   storageLimit: bigint
   modulLeady: boolean
   notifNovyLead: boolean
+  dokumentyStyl: string
+  dokumentyPaticka: string | null
+  dokumentyCislovani: boolean
+  dokumentyHeaderHtml: string | null
+  dokumentyFooterHtml: string | null
 }
 
 export async function getOrgSettings(orgId: string): Promise<OrgSettingsData> {
