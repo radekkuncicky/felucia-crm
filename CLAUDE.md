@@ -54,6 +54,15 @@ Migrace: `npx prisma migrate dev --name název`
 Zálohy: cron 3:00 → `/root/scripts/backup-db.sh` → `/root/backups/*.dump` (14 dní, marker LAST_OK)
 Obnova: `pg_restore --dbname=<URL> --no-owner <soubor.dump>`
 
+## Worker / fronty (pg-boss)
+- PM2 proces `nanto-crm-worker` (`worker/index.ts`, tsx) — samostatný od Next.js
+- pg-boss nad stejnou DB, schéma `pgboss`; fronty: `reminders-sweep` (cron 1 min), `activity-reminder`
+- Připomínky aktivit: bell notifikace vždy, email jen s nakonfigurovaným SMTP
+- `deploy.sh` restartuje web i worker (`pm2 startOrRestart ecosystem.config.js`)
+
+## Email
+- `lib/email.ts` (nodemailer) — bez `SMTP_HOST` v `.env` je odesílání vypnuté (`isEmailConfigured()`)
+
 ## Sentry
 - Aktivace: nastav `SENTRY_DSN` + `NEXT_PUBLIC_SENTRY_DSN` v `.env` (bez nich vypnuto)
 
