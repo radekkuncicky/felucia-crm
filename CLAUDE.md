@@ -52,6 +52,8 @@ postgresql://nanto:***@localhost:5432/nanto_crm
 ```
 Migrace: `npx prisma migrate dev --name název`
 Zálohy: cron 3:00 → `/root/scripts/backup-db.sh` → `/root/backups/*.dump` (14 dní, marker LAST_OK)
+Offsite: cron 3:30 → `/root/scripts/offsite-sync.sh` → rclone copy na B2 remote `b2` (marker LAST_OK_OFFSITE; bez nakonfigurovaného remote se přeskakuje)
+Alert: cron 8:00 → `/root/scripts/check-backup.sh` — markery starší 26 h ⇒ bell notifikace superadminovi (typ SYSTEM, bez SMTP)
 Obnova: `pg_restore --dbname=<URL> --no-owner <soubor.dump>`
 
 ## Worker / fronty (pg-boss)
