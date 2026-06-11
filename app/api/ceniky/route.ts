@@ -1,0 +1,36 @@
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
+import { NextResponse } from 'next/server'
+
+export async function GET() {
+  const session = await getServerSession(authOptions)
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const orgId = session.user.orgId
+
+  const ceniky = await prisma.cenik.findMany({
+    where: { orgId },
+    include: { _count: { select: { polozky: true } } },
+    orderBy: { nazev: 'asc' },
+  })
+  return NextResponse.json(ceniky)
+}
+
+export async function POST(req: Request) {
+  const session = await getServerSession(authOptions)
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (session.user.role !== 'ADMIN') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const orgId = session.user.orgId
+
+  const { kod, nazev, popis } = await req.json()
+  if (!kod || !nazev) return NextResponse.json({ error: 'Kód a název jsou povinné' }, { status: 400 })
+
+  const exists = await prisma.cenik.findFirst({ where: { orgId, kod } })
+  if (exists) return NextResponse.json({ error: 'Ceník s tímto kódem již existuje' }, { status: 400 })
+
+  const cenik = await prisma.cenik.create({
+    data: { orgId, kod, nazev, popis: popis || null },
+    include: { _count: { select: { polozky: true } } },
+  })
+  return NextResponse.json(cenik, { status: 201 })
+}

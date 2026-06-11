@@ -1,0 +1,352 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@300;400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+:root {
+  --background: #F9FBF9;
+  --foreground: #171717;
+
+  /* Felucia jungle branding */
+  --fel-green: #4CAF50;
+  --fel-green-dark: #2E7D32;
+  --fel-green-light: #81C784;
+  --fel-green-pale: #E8F5E9;
+  --fel-brown: #A0845C;
+  --fel-forest: #1A2E1B;
+  --fel-night: #0D1A0E;
+  --fel-deepnight: #0A120A;
+  --fel-bg: #F9FBF9;
+  --fel-card: #F4FAF4;
+  --fel-border: #C8E6C9;
+  --fel-muted: #6B8C6B;
+}
+
+.font-space-grotesk {
+  font-family: 'Space Grotesk', sans-serif;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  .safe-area-inset-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .font-montserrat {
+    font-family: var(--font-montserrat, Montserrat, sans-serif);
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+@keyframes marquee {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee 28s linear infinite;
+}
+.marquee-track:hover {
+  animation-play-state: paused;
+}
+
+/* Ensure inputs always have visible text */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+textarea,
+select {
+  color: inherit;
+}
+
+/* ===================== DARK MODE GLOBAL OVERRIDES ===================== */
+
+.dark body {
+  background-color: #0A120A;
+  color: #f1f5f9;
+}
+
+/* Card / panel backgrounds */
+.dark .bg-white {
+  background-color: #0D1A0E;
+}
+.dark .bg-gray-50 {
+  background-color: #0A120A;
+}
+.dark .bg-gray-100 {
+  background-color: #1A2E1B;
+}
+.dark .bg-gray-200 {
+  background-color: #1A2E1B;
+}
+.dark .bg-blue-50 {
+  background-color: #0d2210;
+}
+.dark .bg-blue-100 {
+  background-color: #14321a;
+}
+.dark .bg-green-50 {
+  background-color: #0f2812;
+}
+.dark .bg-red-50 {
+  background-color: #7f1d1d;
+}
+.dark .bg-yellow-50 {
+  background-color: #78350f;
+}
+.dark .bg-orange-50 {
+  background-color: #7c2d12;
+}
+.dark .bg-purple-50 {
+  background-color: #4c1d95;
+}
+
+/* Borders */
+.dark .border-gray-200 {
+  border-color: #1A2E1B;
+}
+.dark .border-gray-300 {
+  border-color: #2D4A2E;
+}
+.dark .border-gray-100 {
+  border-color: #0D1A0E;
+}
+.dark .border-blue-200 {
+  border-color: #1A3A1B;
+}
+.dark .border-green-200 {
+  border-color: #2E7D32;
+}
+
+/* Divide lines */
+.dark .divide-gray-100 > * + * {
+  border-color: #0D1A0E;
+}
+.dark .divide-gray-50 > * + * {
+  border-color: #0D1A0E;
+}
+.dark .divide-y > * + * {
+  border-color: #1A2E1B;
+}
+
+/* Text colors */
+.dark .text-gray-900 {
+  color: #f1f5f9;
+}
+.dark .text-gray-800 {
+  color: #e2e8f0;
+}
+.dark .text-gray-700 {
+  color: #cbd5e1;
+}
+.dark .text-gray-600 {
+  color: #94a3b8;
+}
+.dark .text-gray-500 {
+  color: #64748b;
+}
+.dark .text-gray-400 {
+  color: #475569;
+}
+
+/* Blue text stays readable (map to green) */
+.dark .text-blue-700 {
+  color: #81C784;
+}
+.dark .text-blue-600 {
+  color: #4CAF50;
+}
+.dark .text-blue-900 {
+  color: #A5D6A7;
+}
+
+/* Green / red status badges in dark */
+.dark .bg-green-100 {
+  background-color: #14532d;
+}
+.dark .text-green-700 {
+  color: #86efac;
+}
+.dark .text-green-600 {
+  color: #4ade80;
+}
+.dark .bg-red-100 {
+  background-color: #7f1d1d;
+}
+.dark .text-red-700 {
+  color: #fca5a5;
+}
+.dark .text-red-600 {
+  color: #fca5a5;
+}
+.dark .text-red-500 {
+  color: #f87171;
+}
+.dark .bg-amber-50 {
+  background-color: #451a03;
+}
+.dark .bg-amber-100 {
+  background-color: #78350f;
+}
+.dark .text-amber-700 {
+  color: #fcd34d;
+}
+
+/* Hover states */
+.dark .hover\:bg-gray-50:hover {
+  background-color: #162E17;
+}
+.dark .hover\:bg-gray-100:hover {
+  background-color: #1A2E1B;
+}
+.dark .hover\:bg-blue-50:hover {
+  background-color: #0f2812;
+}
+
+/* Form elements - inputs, textareas, selects */
+.dark input:not([type=checkbox]):not([type=radio]):not([type=range]),
+.dark textarea,
+.dark select {
+  background-color: #1A2E1B !important;
+  color: #f1f5f9 !important;
+  border-color: #2D4A2E !important;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #64748b !important;
+}
+
+.dark input:focus:not([type=checkbox]):not([type=radio]),
+.dark textarea:focus,
+.dark select:focus {
+  border-color: #4CAF50 !important;
+  outline-color: #4CAF50 !important;
+}
+
+/* Table headers */
+.dark thead th {
+  background-color: #0D1A0E;
+  color: #94a3b8;
+  border-color: #1A2E1B;
+}
+.dark tbody tr:hover {
+  background-color: #162E17 !important;
+}
+
+/* Monospace badge (KOD) */
+.dark .bg-gray-100.rounded {
+  background-color: #1A2E1B;
+  color: #e2e8f0;
+}
+
+/* Scrollbar in dark mode */
+.dark ::-webkit-scrollbar {
+  background: #0A120A;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #1A2E1B;
+  border-radius: 4px;
+}
+
+/* ===================== FELUCIA GLOBAL BUTTON OVERRIDES ===================== */
+/* Remap primary blue → Felucia green (higher specificity than Tailwind) */
+
+body .bg-blue-600 { background-color: #4CAF50; }
+body .bg-blue-700 { background-color: #2E7D32; }
+body .bg-blue-500 { background-color: #4CAF50; }
+body .hover\:bg-blue-700:hover { background-color: #2E7D32; }
+body .hover\:bg-blue-600:hover { background-color: #4CAF50; }
+body .focus\:ring-blue-500:focus { --tw-ring-color: rgba(76, 175, 80, 0.5); }
+body .focus\:ring-blue-600:focus { --tw-ring-color: rgba(76, 175, 80, 0.5); }
+body .ring-blue-500 { --tw-ring-color: rgba(76, 175, 80, 0.5); }
+body .border-blue-500 { border-color: #4CAF50; }
+body .border-blue-600 { border-color: #4CAF50; }
+body .focus\:border-blue-500:focus { border-color: #4CAF50; }
+body .text-blue-500 { color: #4CAF50; }
+
+/* ===================== FELUCIA LANDING MARQUEE ===================== */
+@keyframes fl-marquee {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.fl-marquee-track {
+  display: flex;
+  width: max-content;
+  animation: fl-marquee 18s linear infinite;
+}
+.fl-marquee-track:hover {
+  animation-play-state: paused;
+}
+
+/* FAQ accordion arrow */
+.fl-faq-arrow {
+  transition: transform 0.2s ease;
+}
+.fl-faq-open .fl-faq-arrow {
+  transform: rotate(45deg);
+}
+
+/* ===================== MOBILE UX GLOBALS ===================== */
+
+/* Prevent iOS zoom on focus */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+select,
+textarea {
+  font-size: 16px !important;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Prevent horizontal scroll */
+body {
+  overflow-x: hidden;
+}
+
+/* Touch targets min 44×44 on mobile */
+@media (max-width: 768px) {
+  button, a, [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  /* Exception: inline text links and badges */
+  a.inline-link, a.badge-link, span[role="button"] {
+    min-height: unset;
+    min-width: unset;
+  }
+}
+
+/* Safe area padding helpers */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.pb-safe-nav {
+  padding-bottom: calc(5rem + env(safe-area-inset-bottom));
+}
+
+/* FAB safe area positioning */
+.fab-bottom {
+  bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
+}
+
+/* Scrollbar none utility */
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}

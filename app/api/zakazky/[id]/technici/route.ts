@@ -1,0 +1,65 @@
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
+import { NextResponse } from 'next/server'
+
+export async function POST(req: Request, { params }: { params: { id: string } }) {
+  const session = await getServerSession(authOptions)
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (session.user.role === 'TECHNIK') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  const orgId = session.user.orgId
+  const { technikId } = await req.json()
+
+  const zakazka = await prisma.zakazka.findFirst({ where: { id: params.id, orgId } })
+  if (!zakazka) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  const technik = await prisma.user.findFirst({ where: { id: technikId, orgId } })
+  if (!technik) return NextResponse.json({ error: 'Technik nenalezen' }, { status: 400 })
+
+  const rel = await prisma.technikZakazka.create({
+    data: { zakazkaId: params.id, technikId },
+    include: { technik: { select: { id: true, jmeno: true, email: true } } },
+  })
+
+  // Auto state: NOVA → PRIRAZENA when first technician is assigned
+  if (zakazka.stav === 'NOVA') {
+    await prisma.$transaction([
+      prisma.zakazka.update({
+        where: { id: params.id },
+        data: { stav: 'PRIRAZENA' },
+      }),
+      prisma.auditLog.create({
+        data: {
+          orgId,
+          userId: session.user.id,
+          typAkce: 'UPDATE',
+          typZaznamu: 'Zakazka',
+          zaznamId: params.id,
+          zaznamNazev: zakazka.nazev,
+          zmeny: { from: 'NOVA', to: 'PRIRAZENA', duvod: 'Přiřazení technika' },
+        },
+      }),
+    ])
+  }
+
+  return NextResponse.json({ ...rel, zakazkaNovyStav: zakazka.stav === 'NOVA' ? 'PRIRAZENA' : null }, { status: 201 })
+}
+
+export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+  const session = await getServerSession(authOptions)
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (session.user.role === 'TECHNIK') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  const orgId = session.user.orgId
+  const { technikId } = await req.json()
+
+  const zakazka = await prisma.zakazka.findFirst({ where: { id: params.id, orgId } })
+  if (!zakazka) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  await prisma.technikZakazka.deleteMany({
+    where: { zakazkaId: params.id, technikId },
+  })
+
+  return NextResponse.json({ ok: true })
+}

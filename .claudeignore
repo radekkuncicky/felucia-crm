@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+
+# Build output
+.next/
+dist/
+build/
+
+# Git
+.git/
+
+# Logs
+*.log
+logs/
+
+# Prisma migrations (hotové, nepotřebuješ je v kontextu)
+prisma/migrations/
+
+# Public uploads (binární soubory, obrázky)
+public/uploads/
+public/templates/
+
+# Claude interní data
+.claude/
+
+# ENV soubory (bezpečnost)
+.env
+.env.local
+.env.production
+
+# PM2
+ecosystem.config.js
+
+# TypeScript build info
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+
+# Package locks (velké, málo užitečné)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml

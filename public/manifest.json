@@ -1,0 +1,26 @@
+{
+  "name": "Felucia CRM",
+  "short_name": "Felucia",
+  "description": "CRM pro HVAC profesionály",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#0A0F1E",
+  "theme_color": "#00D4C8",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "productivity"],
+  "lang": "cs"
+}

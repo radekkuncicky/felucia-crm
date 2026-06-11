@@ -1,0 +1,139 @@
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
+import { NextResponse } from 'next/server'
+
+interface CenikCol { kod: string; nazev: string }
+
+interface ProductImport {
+  kod: string
+  nazev: string
+  produktovaRada: string
+  kategorie: string
+  jednotka: string
+  popis: string
+  dphSazba: number
+  nakladovaCena: number | null
+  standardniCena: number
+  objednaciKod?: string
+  dodavatel?: string
+  dodaciLhuta?: string
+  // ceník prices: cenikKod → cena
+  cenikyCeny: Record<string, number>
+}
+
+export async function POST(req: Request) {
+  const session = await getServerSession(authOptions)
+  if (!session || session.user.role !== 'ADMIN') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const orgId = session.user.orgId
+
+  const body = await req.json() as { products: ProductImport[]; ceniky: CenikCol[] }
+  if (!Array.isArray(body.products)) return NextResponse.json({ error: 'Invalid data' }, { status: 400 })
+
+  const { products, ceniky = [] } = body
+
+  let importedProducts = 0
+  let importedCeniky = 0
+  let importedPolozky = 0
+  const errors: string[] = []
+
+  // 1. Ensure categories exist
+  const categoryCache = new Map<string, string>()
+
+  async function getOrCreateCategory(nazev: string): Promise<string | null> {
+    if (!nazev) return null
+    if (categoryCache.has(nazev)) return categoryCache.get(nazev)!
+    let cat = await prisma.category.findFirst({ where: { orgId, nazev } })
+    if (!cat) {
+      const count = await prisma.category.count({ where: { orgId } })
+      cat = await prisma.category.create({ data: { orgId, nazev, barva: '#6B7280', poradi: count } })
+    }
+    categoryCache.set(nazev, cat.id)
+    return cat.id
+  }
+
+  // 2. Import products (find by orgId + kod, then create or update)
+  const productCache = new Map<string, string>() // effectiveKod → product.id
+
+  for (const p of products) {
+    try {
+      if (!p.nazev) { errors.push(`Řádek bez názvu přeskočen`); continue }
+
+      const categoryId = await getOrCreateCategory(p.kategorie)
+      // For Raynet imports: kod is empty, use objednaciKod as key; fallback to name
+      const effectiveKod = p.kod || p.objednaciKod || `_${p.nazev.slice(0, 40)}`
+
+      const baseData = {
+        nazev: p.nazev,
+        produktovaRada: p.produktovaRada || null,
+        jednotka: p.jednotka || 'ks',
+        popis: p.popis || null,
+        dphSazba: p.dphSazba || 12,
+        nakladovaCena: p.nakladovaCena ?? null,
+        standardniCena: p.standardniCena || 0,
+        objednaciKod: p.objednaciKod || null,
+        dodavatel: p.dodavatel || null,
+        dodaciLhuta: p.dodaciLhuta || null,
+      }
+
+      let product = await prisma.product.findFirst({ where: { orgId, kod: effectiveKod } })
+      if (product) {
+        product = await prisma.product.update({
+          where: { id: product.id },
+          data: {
+            ...baseData,
+            ...(categoryId ? { categories: { connect: { id: categoryId } } } : {}),
+          },
+        })
+      } else {
+        product = await prisma.product.create({
+          data: {
+            orgId,
+            kod: effectiveKod,
+            ...baseData,
+            ...(categoryId ? { categories: { connect: { id: categoryId } } } : {}),
+          },
+        })
+      }
+      productCache.set(effectiveKod, product.id)
+      importedProducts++
+    } catch (e) {
+      errors.push(`${p.nazev}: ${String(e)}`)
+    }
+  }
+
+  // 3. Import ceníky
+  if (ceniky.length > 0) {
+    for (const c of ceniky) {
+      try {
+        let cenik = await prisma.cenik.findFirst({ where: { orgId, kod: c.kod } })
+        if (!cenik) {
+          cenik = await prisma.cenik.create({ data: { orgId, kod: c.kod, nazev: c.nazev } })
+          importedCeniky++
+        }
+
+        // Add products to ceník
+        for (const p of products) {
+          if (!(c.kod in p.cenikyCeny)) continue
+          const cena = p.cenikyCeny[c.kod]
+          if (cena === undefined || cena === null) continue
+
+          const productKod = p.kod || `_${p.nazev.slice(0, 40)}`
+          const productId = productCache.get(productKod)
+          if (!productId) continue
+
+          await prisma.cenikPolozka.upsert({
+            where: { cenikId_productId: { cenikId: cenik.id, productId } },
+            update: { cena },
+            create: { cenikId: cenik.id, productId, cena },
+          })
+          importedPolozky++
+        }
+      } catch (e) {
+        errors.push(`Ceník ${c.kod}: ${String(e)}`)
+      }
+    }
+  }
+
+  return NextResponse.json({ importedProducts, importedCeniky, importedPolozky, errors })
+}

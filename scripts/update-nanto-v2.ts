@@ -1,0 +1,2557 @@
+import { PrismaClient } from '@prisma/client'
+import { PrismaPg } from '@prisma/adapter-pg'
+import * as dotenv from 'dotenv'
+dotenv.config({ path: '.env' })
+
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! })
+const prisma = new PrismaClient({ adapter })
+const NANTO_ORG_ID = 'cmmujqbk70000tsibbgg5i32s'
+
+const HTML_KLIMA = `<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<title>Cenová nabídka – Klimatizace</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --yellow: #FFC93C;
+    --yellow-light: #FFF8E7;
+    --gray: #4A4A4A;
+    --black: #111111;
+    --muted: #6B7280;
+    --border: #DDDDDD;
+    --bg: #F5F5F5;
+    --white: #FFFFFF;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: white;
+    color: var(--black);
+    font-size: 11px;
+    line-height: 1.6;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .page {
+    width: 210mm;
+    min-height: 297mm;
+    max-height: 297mm;
+    page-break-after: always;
+    position: relative;
+    overflow: hidden;
+    background: white;
+    display: flex;
+    flex-direction: column;
+  }
+  .page:last-child { page-break-after: avoid; }
+  .cover-top-bar { height: 6px; background: var(--yellow); flex-shrink: 0; }
+  .cover-body { flex: 1; padding: 44px 52px 36px; display: flex; flex-direction: column; }
+  .cover-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 56px; }
+  .logo-row { display: flex; align-items: center; gap: 10px; }
+  .logo-mark { width: 38px; height: 38px; background: var(--yellow); border-radius: 7px; display: flex; align-items: center; justify-content: center; }
+  .logo-mark svg { width: 20px; height: 20px; }
+  .logo-text { font-family: 'Montserrat', sans-serif; font-size: 18px; font-weight: 700; color: var(--black); letter-spacing: 0.5px; }
+  .logo-sub { font-size: 9px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-top: 1px; }
+  .cover-doc-info { text-align: right; }
+  .cdi-label { font-size: 9px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 4px; }
+  .cdi-val { font-size: 13px; font-weight: 600; color: var(--gray); }
+  .cover-hero { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+  .cover-tag { display: inline-flex; align-items: center; gap: 8px; background: var(--yellow-light); border: 1px solid var(--yellow); border-radius: 20px; padding: 5px 14px; margin-bottom: 24px; width: fit-content; }
+  .cover-tag-dot { width: 7px; height: 7px; background: var(--yellow); border-radius: 50%; }
+  .cover-tag span { font-size: 10px; font-weight: 600; color: var(--gray); letter-spacing: 1px; text-transform: uppercase; }
+  .cover-title { font-family: 'Montserrat', sans-serif; font-size: 44px; font-weight: 700; color: var(--black); line-height: 1.05; margin-bottom: 10px; }
+  .cover-title .accent { color: var(--yellow); }
+  .cover-subtitle { font-size: 13px; color: var(--muted); line-height: 1.7; max-width: 360px; margin-bottom: 44px; }
+  .cover-client { background: var(--bg); border-radius: 10px; padding: 20px 24px; display: inline-flex; gap: 28px; align-items: center; width: 440px; }
+  .cc-label { font-size: 9px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 5px; }
+  .cc-name { font-family: 'Montserrat', sans-serif; font-size: 16px; font-weight: 600; color: var(--black); margin-bottom: 3px; }
+  .cc-detail { font-size: 10.5px; color: var(--muted); }
+  .cc-divider { width: 1px; height: 44px; background: var(--border); }
+  .cover-bottom { border-top: 1px solid var(--border); padding: 16px 0 0; display: flex; justify-content: space-between; align-items: center; }
+  .cbd-item { text-align: center; }
+  .cbd-label { font-size: 9px; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 3px; }
+  .cbd-val { font-size: 12px; font-weight: 500; color: var(--gray); }
+  .cbd-val-small { font-size: 10.5px; color: var(--muted); margin-top: 1px; }
+  .cover-bottom-sep { width: 1px; height: 28px; background: var(--border); }
+  .inner { flex: 1; padding: 30px 52px 44px; display: flex; flex-direction: column; }
+  .page-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 14px; border-bottom: 2px solid var(--black); margin-bottom: 28px; flex-shrink: 0; }
+  .ph-left { display: flex; align-items: center; gap: 8px; }
+  .ph-logo-sm { width: 26px; height: 26px; background: var(--yellow); border-radius: 5px; display: flex; align-items: center; justify-content: center; }
+  .ph-logo-sm svg { width: 14px; height: 14px; }
+  .ph-company { font-family: 'Montserrat', sans-serif; font-size: 13px; font-weight: 700; color: var(--black); }
+  .ph-right { text-align: right; }
+  .ph-title { font-size: 11px; font-weight: 600; color: var(--gray); }
+  .ph-meta { font-size: 10px; color: var(--muted); }
+  .section-label { font-size: 9px; font-weight: 600; letter-spacing: 2.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 14px; display: flex; align-items: center; gap: 10px; }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .quote-table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 11px; }
+  .quote-table thead tr { background: var(--black); }
+  .quote-table thead th { padding: 9px 11px; font-family: 'Montserrat', sans-serif; font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 600; color: white; text-align: left; }
+  .quote-table thead th.r { text-align: right; }
+  .quote-table tbody tr { border-bottom: 1px solid var(--border); }
+  .quote-table tbody tr:nth-child(even) { background: #FAFAF8; }
+  .quote-table td { padding: 9px 11px; vertical-align: middle; }
+  .quote-table td.num { color: var(--muted); font-size: 10px; width: 28px; }
+  .quote-table td.name { font-weight: 500; color: var(--black); }
+  .quote-table td.r { text-align: right; }
+  .quote-table td.total { text-align: right; font-weight: 600; color: var(--black); }
+  .totals-wrap { display: flex; justify-content: flex-end; margin-bottom: 20px; }
+  .totals-box { width: 250px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .tot-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 14px; border-bottom: 1px solid var(--border); font-size: 11px; }
+  .tot-row:last-child { border-bottom: none; background: var(--yellow); padding: 11px 14px; }
+  .tot-label { color: var(--muted); }
+  .tot-row:last-child .tot-label { color: var(--black); font-weight: 600; font-size: 12px; }
+  .tot-val { font-weight: 600; color: var(--black); }
+  .tot-row:last-child .tot-val { font-size: 14px; font-weight: 700; color: var(--black); }
+  .validity-row { display: flex; align-items: center; gap: 16px; background: var(--bg); border-radius: 7px; padding: 12px 16px; margin-bottom: 0; font-size: 11px; }
+  .vr-item { display: flex; align-items: center; gap: 6px; }
+  .vr-dot { width: 6px; height: 6px; background: var(--yellow); border-radius: 50%; flex-shrink: 0; }
+  .vr-label { color: var(--muted); }
+  .vr-val { font-weight: 500; color: var(--black); }
+  .vr-sep { width: 1px; height: 14px; background: var(--border); }
+  .zaloha-note { display: flex; gap: 10px; align-items: flex-start; background: #F0F7FF; border: 1px solid #C7DFF7; border-radius: 7px; padding: 12px 14px; margin-top: 10px; font-size: 11px; color: #374151; line-height: 1.65; }
+  .zn-icon { color: #3B82F6; flex-shrink: 0; margin-top: 1px; }
+  .zn-text strong { font-weight: 600; color: var(--black); }
+  .process-banner { background: var(--black); border-radius: 10px; padding: 16px 22px; margin-bottom: 16px; flex-shrink: 0; }
+  .pb-eyebrow { font-size: 9px; letter-spacing: 2.5px; text-transform: uppercase; color: rgba(255,255,255,0.45); margin-bottom: 4px; }
+  .pb-title { font-family: 'Montserrat', sans-serif; font-size: 17px; font-weight: 700; color: white; margin-bottom: 4px; }
+  .pb-sub { font-size: 10.5px; color: rgba(255,255,255,0.6); line-height: 1.55; max-width: 420px; }
+  .steps-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; flex: 1; }
+  .step-card { border: 1px solid var(--border); border-radius: 7px; padding: 10px 12px; position: relative; background: white; }
+  .step-card.highlight { border-color: var(--yellow); background: var(--yellow-light); }
+  .step-num { width: 22px; height: 22px; background: var(--black); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Montserrat', sans-serif; font-size: 10px; font-weight: 700; color: white; margin-bottom: 6px; }
+  .step-card.highlight .step-num { background: var(--yellow); color: var(--black); }
+  .step-title { font-family: 'Montserrat', sans-serif; font-size: 10.5px; font-weight: 600; color: var(--black); margin-bottom: 3px; }
+  .step-desc { font-size: 9.5px; color: var(--muted); line-height: 1.55; }
+  .step-tags { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 6px; }
+  .step-tag { background: var(--bg); border: 1px solid var(--border); border-radius: 3px; padding: 1px 5px; font-size: 8.5px; color: var(--muted); }
+  .step-card.highlight .step-tag { background: white; border-color: var(--yellow); }
+  .closing-section { display: flex; gap: 20px; align-items: center; background: var(--yellow-light); border: 1px solid var(--yellow); border-radius: 9px; padding: 14px 18px; margin-top: 10px; }
+  .closing-left { flex: 1; }
+  .closing-title { font-family: 'Montserrat', sans-serif; font-size: 12.5px; font-weight: 700; color: var(--black); margin-bottom: 4px; }
+  .closing-text { font-size: 9.5px; color: var(--muted); line-height: 1.6; margin-bottom: 8px; max-width: 340px; }
+  .closing-link { display: inline-flex; align-items: center; gap: 5px; color: var(--gray); font-size: 10px; font-weight: 500; text-decoration: none; border-bottom: 1px solid var(--border); padding-bottom: 1px; }
+  .closing-stats { display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; padding-left: 20px; border-left: 1px solid var(--yellow); }
+  .closing-stat { text-align: center; }
+  .cs-num { font-family: 'Montserrat', sans-serif; font-size: 18px; font-weight: 700; color: var(--black); line-height: 1; }
+  .cs-label { font-size: 8.5px; color: var(--muted); margin-top: 2px; white-space: nowrap; }
+  .vpc-section { margin-top: 10px; border-top: 1px solid var(--border); padding-top: 10px; display: flex; gap: 14px; align-items: flex-start; }
+  .vpc-icon { width: 30px; height: 30px; background: var(--yellow); border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+  .vpc-icon svg { width: 13px; height: 13px; }
+  .vpc-body { flex: 1; }
+  .vpc-title { font-family: 'Montserrat', sans-serif; font-size: 10.5px; font-weight: 700; color: var(--black); margin-bottom: 3px; }
+  .vpc-text { font-size: 9.5px; color: var(--muted); line-height: 1.6; }
+  .vpc-pills { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+  .vpc-pill { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 2px 8px; font-size: 9px; color: var(--gray); font-weight: 500; }
+  .page-footer { flex-shrink: 0; border-top: 1px solid var(--border); padding: 8px 52px; display: flex; justify-content: space-between; align-items: center; font-size: 9px; color: var(--muted); background: white; }
+  .pf-accent { color: var(--yellow); font-weight: 700; margin-right: 4px; }
+  @media print {
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    body { background: white; }
+    .page { width: 210mm; height: 297mm; overflow: hidden; }
+    @page { size: A4; margin: 0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- PAGE 1: COVER -->
+<div class="page">
+  <div class="cover-top-bar"></div>
+  <div class="cover-body">
+    <div class="cover-header">
+      <div class="logo-row">
+        <div class="logo-mark">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+        </div>
+        <div>
+          <div class="logo-text">NANTO</div>
+          <div class="logo-sub">s.r.o.</div>
+        </div>
+      </div>
+      <div class="cover-doc-info">
+        <div class="cdi-label">Číslo nabídky</div>
+        <div class="cdi-val">{{nabidka_kod}}</div>
+      </div>
+    </div>
+
+    <div class="cover-hero">
+      <div class="cover-tag">
+        <span class="cover-tag-dot"></span>
+        <span>Klimatizace</span>
+      </div>
+      <div class="cover-title">Cenová nabídka<br>&amp; návrh<br><span class="accent">spolupráce</span></div>
+      <div class="cover-subtitle">Přinášíme vám nejen cenovou nabídku, ale komplexní návrh efektivního řešení klimatizace šitého na míru vašemu prostoru. Naším cílem je váš komfort v létě i v zimě.</div>
+
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div class="cover-client">
+          <div>
+            <div class="cc-label">Připraveno pro</div>
+            <div class="cc-name">{{klient_jmeno}}</div>
+            <div class="cc-detail">{{klient_adresa}}</div>
+          </div>
+          <div class="cc-divider"></div>
+          <div>
+            <div class="cc-label">Datum nabídky</div>
+            <div class="cc-name" style="font-size:13px;">{{datum_vystaveni}}</div>
+            <div class="cc-detail">Platnost 30 dní</div>
+          </div>
+        </div>
+        <div class="cover-client">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="width:34px;height:34px;background:var(--yellow);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;color:var(--black);flex-shrink:0;">{{obchodnik_inicialy}}</div>
+            <div>
+              <div class="cc-label">Váš obchodní partner</div>
+              <div class="cc-name">{{obchodnik_jmeno}}</div>
+            </div>
+          </div>
+          <div class="cc-divider"></div>
+          <div>
+            <div class="cc-label">Kontakt</div>
+            <div class="cc-name" style="font-size:12px;">{{obchodnik_telefon}}</div>
+            <div class="cc-detail">{{obchodnik_email}}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cover-bottom">
+      <div class="cbd-item">
+        <div class="cbd-label">Datum nabídky</div>
+        <div class="cbd-val">{{datum_vystaveni}}</div>
+      </div>
+      <div class="cover-bottom-sep"></div>
+      <div class="cbd-item">
+        <div class="cbd-label">Platnost</div>
+        <div class="cbd-val">{{datum_platnosti}}</div>
+      </div>
+      <div class="cover-bottom-sep"></div>
+      <div class="cbd-item">
+        <div class="cbd-label">Zpracoval</div>
+        <div class="cbd-val">{{obchodnik_jmeno}}</div>
+      </div>
+      <div class="cover-bottom-sep"></div>
+      <div class="cbd-item">
+        <div class="cbd-label">Kontakt</div>
+        <div class="cbd-val">{{obchodnik_telefon}}</div>
+        <div class="cbd-val-small">{{obchodnik_email}}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE 2: NABÍDKA -->
+<div class="page">
+  <div class="inner">
+    <div class="page-header">
+      <div class="ph-left">
+        <div class="ph-logo-sm">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+          </svg>
+        </div>
+        <div class="ph-company">NANTO s.r.o.</div>
+      </div>
+      <div class="ph-right">
+        <div class="ph-title">Cenová nabídka — Klimatizace</div>
+        <div class="ph-meta">{{nabidka_kod}} · {{datum_vystaveni}}</div>
+      </div>
+    </div>
+
+    <div class="section-label">Položky nabídky</div>
+    <table class="quote-table">
+      <thead>
+        <tr>
+          <th style="width:28px;">#</th>
+          <th>Popis produktu / služby</th>
+          <th class="r" style="width:38px;">Ks</th>
+          <th class="r" style="width:90px;">Cena / MJ</th>
+          <th class="r" style="width:90px;">Celkem</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#polozky}}
+        <tr>
+          <td class="num">{{polozka_poradi}}</td>
+          <td class="name">{{polozka_nazev}}</td>
+          <td class="r">{{polozka_mnozstvi}}</td>
+          <td class="r">{{polozka_cena_kus}}</td>
+          <td class="total">{{polozka_celkem}}</td>
+        </tr>
+        {{/polozky}}
+      </tbody>
+    </table>
+
+    <div class="totals-wrap">
+      <div class="totals-box">
+        <div class="tot-row"><span class="tot-label">Celkem bez DPH</span><span class="tot-val">{{cena_bez_dph}}</span></div>
+        <div class="tot-row"><span class="tot-label">DPH {{dph_sazba}} %</span><span class="tot-val">{{dph_castka}}</span></div>
+        <div class="tot-row"><span class="tot-label">Celkem s DPH</span><span class="tot-val">{{cena_s_dph}}</span></div>
+      </div>
+    </div>
+
+    <div class="validity-row">
+      <div class="vr-item"><span class="vr-dot"></span><span class="vr-label">Platnost nabídky:</span><span class="vr-val">30 dní od {{datum_vystaveni}}</span></div>
+      <div class="vr-sep"></div>
+      <div class="vr-item"><span class="vr-dot"></span><span class="vr-label">Platnost do:</span><span class="vr-val">{{datum_platnosti}}</span></div>
+      <div class="vr-sep"></div>
+      <div class="vr-item"><span class="vr-dot"></span><span class="vr-label">Obchodník:</span><span class="vr-val">{{obchodnik_jmeno}}</span></div>
+    </div>
+
+    <div class="zaloha-note">
+      <div class="zn-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      </div>
+      <div class="zn-text">
+        <strong>Zálohu a platební podmínky nastavíme dle aktuálního harmonogramu.</strong> Chápeme, že ne vždy má smysl hradit vše najednou — pokud se termín realizace posouvá, společně nastavíme platební plán, který vám dává smysl. Materiál nakupujeme strategicky, abychom vás chránili před zdražením.
+      </div>
+    </div>
+
+  </div>
+  <div class="page-footer">
+    <span><span class="pf-accent">NANTO</span>s.r.o. · {{firma_adresa}} · {{firma_email}} · IČO: {{firma_ico}}</span>
+    <span>Strana 2 / 3</span>
+  </div>
+</div>
+
+<!-- PAGE 3: JAK POSTUPUJEME -->
+<div class="page">
+  <div class="inner">
+    <div class="page-header">
+      <div class="ph-left">
+        <div class="ph-logo-sm">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+          </svg>
+        </div>
+        <div class="ph-company">NANTO s.r.o.</div>
+      </div>
+      <div class="ph-right">
+        <div class="ph-title">Jak postupujeme</div>
+        <div class="ph-meta">{{nabidka_kod}} · {{datum_vystaveni}}</div>
+      </div>
+    </div>
+
+    <div class="process-banner">
+      <div class="pb-eyebrow">Náš proces</div>
+      <div class="pb-title">Od nabídky k funkční klimatizaci</div>
+      <div class="pb-sub">Každou instalaci klimatizace bereme jako partnerský projekt. Provázíme vás od první konzultace až po předání — přehledně, bez překvapení.</div>
+    </div>
+
+    <div class="steps-grid">
+      <div class="step-card highlight">
+        <div class="step-num">1</div>
+        <div class="step-title">Konzultace a návrh řešení</div>
+        <div class="step-desc">Bezplatná konzultace, posouzení prostor a návrh optimálního řešení klimatizace. Detailní cenová nabídka s technickým popisem a výběrem jednotek.</div>
+        <div class="step-tags"><span class="step-tag">Zdarma</span><span class="step-tag">Do 48 hodin</span></div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">2</div>
+        <div class="step-title">Smlouva a záloha</div>
+        <div class="step-desc">Po odsouhlasení nabídky podepíšeme smlouvu o dílo. Záloha zajistí objednání materiálu a rezervaci termínu montáže.</div>
+        <div class="step-tags"><span class="step-tag">Smlouva o dílo</span></div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">3</div>
+        <div class="step-title">Příprava a materiál</div>
+        <div class="step-desc">Objednání vnitřních a venkovních jednotek a veškerého materiálu. Koordinujeme dodávky a informujeme vás o potřebné stavební připravenosti.</div>
+        <div class="step-tags"><span class="step-tag">1–3 týdny</span><span class="step-tag">Stavební příprava</span></div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">4</div>
+        <div class="step-title">Montáž — rozvody a prostupy</div>
+        <div class="step-desc">Instalace chladivového potrubí, kabeláže a prostupů stěnami. Práce probíhají dle dohodnutého harmonogramu, čistě a bez zbytečného rušení.</div>
+        <div class="step-tags"><span class="step-tag">1–2 dny</span></div>
+      </div>
+      <div class="step-card highlight">
+        <div class="step-num">5</div>
+        <div class="step-title">Osazení jednotek a zprovoznění</div>
+        <div class="step-desc">Osazení venkovních i vnitřních jednotek, plnění chladiva, elektrické zapojení a kompletní zprovoznění na optimálních parametrech.</div>
+        <div class="step-tags"><span class="step-tag">Testování</span><span class="step-tag">Nastavení</span></div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">6</div>
+        <div class="step-title">Předání a zaškolení</div>
+        <div class="step-desc">Podpis předávacího protokolu, předání veškeré dokumentace. Podrobné zaškolení na ovládání klimatizace a doporučení provozu.</div>
+        <div class="step-tags"><span class="step-tag">Protokol</span><span class="step-tag">Dokumentace</span><span class="step-tag">Záruka</span></div>
+      </div>
+    </div>
+
+    <div class="closing-section">
+      <div class="closing-left">
+        <div class="closing-title">Těšíme se na spolupráci.</div>
+        <div class="closing-text">Nejsme jen dodavatel — jsme partner, který vás provede celým procesem. Navrhujeme tak, aby to dávalo smysl pro váš dům i peněženku. Pracujeme čistě, komunikujeme otevřeně a za svou prací si stojíme.</div>
+        <a href="https://nanto.cz/reference" class="closing-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          Podívejte se na naše reference — nanto.cz/reference
+        </a>
+      </div>
+      <div class="closing-stats">
+        <div class="closing-stat"><div class="cs-num">100+</div><div class="cs-label">realizací ročně</div></div>
+        <div class="closing-stat"><div class="cs-num">10+</div><div class="cs-label">let v oboru</div></div>
+        <div class="closing-stat"><div class="cs-num">100 %</div><div class="cs-label">spokojených klientů</div></div>
+      </div>
+    </div>
+
+    <div class="vpc-section">
+      <div class="vpc-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+        </svg>
+      </div>
+      <div class="vpc-body">
+        <div class="vpc-title">Máte otázky? Váš obchodní zástupce je tu pro vás.</div>
+        <div class="vpc-text">Každá instalace je jiná — a my to víme. Rádi s vámi probereme možná rizika, alternativní řešení, způsoby financování nebo jednoduše to, co vás zajímá. Bez tlaku, bez zbytečných řečí.</div>
+        <div class="vpc-pills">
+          <span class="vpc-pill">Možná rizika a jak jim předejít</span>
+          <span class="vpc-pill">Alternativy a srovnání</span>
+          <span class="vpc-pill">Způsoby financování</span>
+          <span class="vpc-pill">Dotace NZÚ</span>
+          <span class="vpc-pill">Harmonogram a termíny</span>
+          <span class="vpc-pill">Cokoli dalšího</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <div class="page-footer">
+    <span><span class="pf-accent">NANTO</span>s.r.o. · {{firma_adresa}} · {{firma_email}} · IČO: {{firma_ico}}</span>
+    <span>Strana 3 / 3</span>
+  </div>
+</div>
+
+</body>
+</html>`
+
+const HTML_TEPELNE_CERPADLO = `<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<title>Cenová nabídka – Tepelné čerpadlo</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --yellow: #FFC93C;
+    --yellow-light: #FFF8E7;
+    --gray: #4A4A4A;
+    --black: #111111;
+    --muted: #6B7280;
+    --border: #DDDDDD;
+    --bg: #F5F5F5;
+    --white: #FFFFFF;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: white;
+    color: var(--black);
+    font-size: 11px;
+    line-height: 1.6;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .page {
+    width: 210mm;
+    min-height: 297mm;
+    max-height: 297mm;
+    page-break-after: always;
+    position: relative;
+    overflow: hidden;
+    background: white;
+    display: flex;
+    flex-direction: column;
+  }
+  .page:last-child { page-break-after: avoid; }
+  .cover-top-bar { height: 6px; background: var(--yellow); flex-shrink: 0; }
+  .cover-body { flex: 1; padding: 44px 52px 36px; display: flex; flex-direction: column; }
+  .cover-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 56px; }
+  .logo-row { display: flex; align-items: center; gap: 10px; }
+  .logo-mark { width: 38px; height: 38px; background: var(--yellow); border-radius: 7px; display: flex; align-items: center; justify-content: center; }
+  .logo-mark svg { width: 20px; height: 20px; }
+  .logo-text { font-family: 'Montserrat', sans-serif; font-size: 18px; font-weight: 700; color: var(--black); letter-spacing: 0.5px; }
+  .logo-sub { font-size: 9px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-top: 1px; }
+  .cover-doc-info { text-align: right; }
+  .cdi-label { font-size: 9px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 4px; }
+  .cdi-val { font-size: 13px; font-weight: 600; color: var(--gray); }
+  .cover-hero { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+  .cover-tag { display: inline-flex; align-items: center; gap: 8px; background: var(--yellow-light); border: 1px solid var(--yellow); border-radius: 20px; padding: 5px 14px; margin-bottom: 24px; width: fit-content; }
+  .cover-tag-dot { width: 7px; height: 7px; background: var(--yellow); border-radius: 50%; }
+  .cover-tag span { font-size: 10px; font-weight: 600; color: var(--gray); letter-spacing: 1px; text-transform: uppercase; }
+  .cover-title { font-family: 'Montserrat', sans-serif; font-size: 44px; font-weight: 700; color: var(--black); line-height: 1.05; margin-bottom: 10px; }
+  .cover-title .accent { color: var(--yellow); }
+  .cover-subtitle { font-size: 13px; color: var(--muted); line-height: 1.7; max-width: 360px; margin-bottom: 44px; }
+  .cover-client { background: var(--bg); border-radius: 10px; padding: 20px 24px; display: inline-flex; gap: 28px; align-items: center; width: 440px; }
+  .cc-label { font-size: 9px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 5px; }
+  .cc-name { font-family: 'Montserrat', sans-serif; font-size: 16px; font-weight: 600; color: var(--black); margin-bottom: 3px; }
+  .cc-detail { font-size: 10.5px; color: var(--muted); }
+  .cc-divider { width: 1px; height: 44px; background: var(--border); }
+  .cover-bottom { border-top: 1px solid var(--border); padding: 16px 0 0; display: flex; justify-content: space-between; align-items: center; }
+  .cbd-item { text-align: center; }
+  .cbd-label { font-size: 9px; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 3px; }
+  .cbd-val { font-size: 12px; font-weight: 500; color: var(--gray); }
+  .cbd-val-small { font-size: 10.5px; color: var(--muted); margin-top: 1px; }
+  .cover-bottom-sep { width: 1px; height: 28px; background: var(--border); }
+  .inner { flex: 1; padding: 30px 52px 44px; display: flex; flex-direction: column; }
+  .page-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 14px; border-bottom: 2px solid var(--black); margin-bottom: 28px; flex-shrink: 0; }
+  .ph-left { display: flex; align-items: center; gap: 8px; }
+  .ph-logo-sm { width: 26px; height: 26px; background: var(--yellow); border-radius: 5px; display: flex; align-items: center; justify-content: center; }
+  .ph-logo-sm svg { width: 14px; height: 14px; }
+  .ph-company { font-family: 'Montserrat', sans-serif; font-size: 13px; font-weight: 700; color: var(--black); }
+  .ph-right { text-align: right; }
+  .ph-title { font-size: 11px; font-weight: 600; color: var(--gray); }
+  .ph-meta { font-size: 10px; color: var(--muted); }
+  .section-label { font-size: 9px; font-weight: 600; letter-spacing: 2.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 14px; display: flex; align-items: center; gap: 10px; }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .quote-table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 11px; }
+  .quote-table thead tr { background: var(--black); }
+  .quote-table thead th { padding: 9px 11px; font-family: 'Montserrat', sans-serif; font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 600; color: white; text-align: left; }
+  .quote-table thead th.r { text-align: right; }
+  .quote-table tbody tr { border-bottom: 1px solid var(--border); }
+  .quote-table tbody tr:nth-child(even) { background: #FAFAF8; }
+  .quote-table td { padding: 9px 11px; vertical-align: middle; }
+  .quote-table td.num { color: var(--muted); font-size: 10px; width: 28px; }
+  .quote-table td.name { font-weight: 500; color: var(--black); }
+  .quote-table td.r { text-align: right; }
+  .quote-table td.total { text-align: right; font-weight: 600; color: var(--black); }
+  .totals-wrap { display: flex; justify-content: flex-end; margin-bottom: 20px; }
+  .totals-box { width: 250px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .tot-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 14px; border-bottom: 1px solid var(--border); font-size: 11px; }
+  .tot-row:last-child { border-bottom: none; background: var(--yellow); padding: 11px 14px; }
+  .tot-label { color: var(--muted); }
+  .tot-row:last-child .tot-label { color: var(--black); font-weight: 600; font-size: 12px; }
+  .tot-val { font-weight: 600; color: var(--black); }
+  .tot-row:last-child .tot-val { font-size: 14px; font-weight: 700; color: var(--black); }
+  .validity-row { display: flex; align-items: center; gap: 16px; background: var(--bg); border-radius: 7px; padding: 12px 16px; margin-bottom: 0; font-size: 11px; }
+  .vr-item { display: flex; align-items: center; gap: 6px; }
+  .vr-dot { width: 6px; height: 6px; background: var(--yellow); border-radius: 50%; flex-shrink: 0; }
+  .vr-label { color: var(--muted); }
+  .vr-val { font-weight: 500; color: var(--black); }
+  .vr-sep { width: 1px; height: 14px; background: var(--border); }
+  .zaloha-note { display: flex; gap: 10px; align-items: flex-start; background: #F0F7FF; border: 1px solid #C7DFF7; border-radius: 7px; padding: 12px 14px; margin-top: 10px; font-size: 11px; color: #374151; line-height: 1.65; }
+  .zn-icon { color: #3B82F6; flex-shrink: 0; margin-top: 1px; }
+  .zn-text strong { font-weight: 600; color: var(--black); }
+  .process-banner { background: var(--black); border-radius: 10px; padding: 16px 22px; margin-bottom: 16px; flex-shrink: 0; }
+  .pb-eyebrow { font-size: 9px; letter-spacing: 2.5px; text-transform: uppercase; color: rgba(255,255,255,0.45); margin-bottom: 4px; }
+  .pb-title { font-family: 'Montserrat', sans-serif; font-size: 17px; font-weight: 700; color: white; margin-bottom: 4px; }
+  .pb-sub { font-size: 10.5px; color: rgba(255,255,255,0.6); line-height: 1.55; max-width: 420px; }
+  .steps-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; flex: 1; }
+  .step-card { border: 1px solid var(--border); border-radius: 7px; padding: 10px 12px; position: relative; background: white; }
+  .step-card.highlight { border-color: var(--yellow); background: var(--yellow-light); }
+  .step-num { width: 22px; height: 22px; background: var(--black); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Montserrat', sans-serif; font-size: 10px; font-weight: 700; color: white; margin-bottom: 6px; }
+  .step-card.highlight .step-num { background: var(--yellow); color: var(--black); }
+  .step-title { font-family: 'Montserrat', sans-serif; font-size: 10.5px; font-weight: 600; color: var(--black); margin-bottom: 3px; }
+  .step-desc { font-size: 9.5px; color: var(--muted); line-height: 1.55; }
+  .step-tags { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 6px; }
+  .step-tag { background: var(--bg); border: 1px solid var(--border); border-radius: 3px; padding: 1px 5px; font-size: 8.5px; color: var(--muted); }
+  .step-card.highlight .step-tag { background: white; border-color: var(--yellow); }
+  .closing-section { display: flex; gap: 20px; align-items: center; background: var(--yellow-light); border: 1px solid var(--yellow); border-radius: 9px; padding: 14px 18px; margin-top: 10px; }
+  .closing-left { flex: 1; }
+  .closing-title { font-family: 'Montserrat', sans-serif; font-size: 12.5px; font-weight: 700; color: var(--black); margin-bottom: 4px; }
+  .closing-text { font-size: 9.5px; color: var(--muted); line-height: 1.6; margin-bottom: 8px; max-width: 340px; }
+  .closing-link { display: inline-flex; align-items: center; gap: 5px; color: var(--gray); font-size: 10px; font-weight: 500; text-decoration: none; border-bottom: 1px solid var(--border); padding-bottom: 1px; }
+  .closing-stats { display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; padding-left: 20px; border-left: 1px solid var(--yellow); }
+  .closing-stat { text-align: center; }
+  .cs-num { font-family: 'Montserrat', sans-serif; font-size: 18px; font-weight: 700; color: var(--black); line-height: 1; }
+  .cs-label { font-size: 8.5px; color: var(--muted); margin-top: 2px; white-space: nowrap; }
+  .vpc-section { margin-top: 10px; border-top: 1px solid var(--border); padding-top: 10px; display: flex; gap: 14px; align-items: flex-start; }
+  .vpc-icon { width: 30px; height: 30px; background: var(--yellow); border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+  .vpc-icon svg { width: 13px; height: 13px; }
+  .vpc-body { flex: 1; }
+  .vpc-title { font-family: 'Montserrat', sans-serif; font-size: 10.5px; font-weight: 700; color: var(--black); margin-bottom: 3px; }
+  .vpc-text { font-size: 9.5px; color: var(--muted); line-height: 1.6; }
+  .vpc-pills { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+  .vpc-pill { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 2px 8px; font-size: 9px; color: var(--gray); font-weight: 500; }
+  .page-footer { flex-shrink: 0; border-top: 1px solid var(--border); padding: 8px 52px; display: flex; justify-content: space-between; align-items: center; font-size: 9px; color: var(--muted); background: white; }
+  .pf-accent { color: var(--yellow); font-weight: 700; margin-right: 4px; }
+  @media print {
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    body { background: white; }
+    .page { width: 210mm; height: 297mm; overflow: hidden; }
+    @page { size: A4; margin: 0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- PAGE 1: COVER -->
+<div class="page">
+  <div class="cover-top-bar"></div>
+  <div class="cover-body">
+    <div class="cover-header">
+      <div class="logo-row">
+        <div class="logo-mark">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+        </div>
+        <div>
+          <div class="logo-text">NANTO</div>
+          <div class="logo-sub">s.r.o.</div>
+        </div>
+      </div>
+      <div class="cover-doc-info">
+        <div class="cdi-label">Číslo nabídky</div>
+        <div class="cdi-val">{{nabidka_kod}}</div>
+      </div>
+    </div>
+
+    <div class="cover-hero">
+      <div class="cover-tag">
+        <span class="cover-tag-dot"></span>
+        <span>Tepelné čerpadlo</span>
+      </div>
+      <div class="cover-title">Cenová nabídka<br>&amp; návrh<br><span class="accent">spolupráce</span></div>
+      <div class="cover-subtitle">Přinášíme vám nejen cenovou nabídku, ale komplexní návrh efektivního vytápění šitého na míru vašemu domu. Naším cílem je váš komfort a dlouhodobá úspora.</div>
+
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div class="cover-client">
+          <div>
+            <div class="cc-label">Připraveno pro</div>
+            <div class="cc-name">{{klient_jmeno}}</div>
+            <div class="cc-detail">{{klient_adresa}}</div>
+          </div>
+          <div class="cc-divider"></div>
+          <div>
+            <div class="cc-label">Datum nabídky</div>
+            <div class="cc-name" style="font-size:13px;">{{datum_vystaveni}}</div>
+            <div class="cc-detail">Platnost 30 dní</div>
+          </div>
+        </div>
+        <div class="cover-client">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="width:34px;height:34px;background:var(--yellow);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;color:var(--black);flex-shrink:0;">{{obchodnik_inicialy}}</div>
+            <div>
+              <div class="cc-label">Váš obchodní partner</div>
+              <div class="cc-name">{{obchodnik_jmeno}}</div>
+            </div>
+          </div>
+          <div class="cc-divider"></div>
+          <div>
+            <div class="cc-label">Kontakt</div>
+            <div class="cc-name" style="font-size:12px;">{{obchodnik_telefon}}</div>
+            <div class="cc-detail">{{obchodnik_email}}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cover-bottom">
+      <div class="cbd-item">
+        <div class="cbd-label">Datum nabídky</div>
+        <div class="cbd-val">{{datum_vystaveni}}</div>
+      </div>
+      <div class="cover-bottom-sep"></div>
+      <div class="cbd-item">
+        <div class="cbd-label">Platnost</div>
+        <div class="cbd-val">{{datum_platnosti}}</div>
+      </div>
+      <div class="cover-bottom-sep"></div>
+      <div class="cbd-item">
+        <div class="cbd-label">Zpracoval</div>
+        <div class="cbd-val">{{obchodnik_jmeno}}</div>
+      </div>
+      <div class="cover-bottom-sep"></div>
+      <div class="cbd-item">
+        <div class="cbd-label">Kontakt</div>
+        <div class="cbd-val">{{obchodnik_telefon}}</div>
+        <div class="cbd-val-small">{{obchodnik_email}}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE 2: NABÍDKA -->
+<div class="page">
+  <div class="inner">
+    <div class="page-header">
+      <div class="ph-left">
+        <div class="ph-logo-sm">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+          </svg>
+        </div>
+        <div class="ph-company">NANTO s.r.o.</div>
+      </div>
+      <div class="ph-right">
+        <div class="ph-title">Cenová nabídka — Tepelné čerpadlo</div>
+        <div class="ph-meta">{{nabidka_kod}} · {{datum_vystaveni}}</div>
+      </div>
+    </div>
+
+    <div class="section-label">Položky nabídky</div>
+    <table class="quote-table">
+      <thead>
+        <tr>
+          <th style="width:28px;">#</th>
+          <th>Popis produktu / služby</th>
+          <th class="r" style="width:38px;">Ks</th>
+          <th class="r" style="width:90px;">Cena / MJ</th>
+          <th class="r" style="width:90px;">Celkem</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#polozky}}
+        <tr>
+          <td class="num">{{polozka_poradi}}</td>
+          <td class="name">{{polozka_nazev}}</td>
+          <td class="r">{{polozka_mnozstvi}}</td>
+          <td class="r">{{polozka_cena_kus}}</td>
+          <td class="total">{{polozka_celkem}}</td>
+        </tr>
+        {{/polozky}}
+      </tbody>
+    </table>
+
+    <div class="totals-wrap">
+      <div class="totals-box">
+        <div class="tot-row"><span class="tot-label">Celkem bez DPH</span><span class="tot-val">{{cena_bez_dph}}</span></div>
+        <div class="tot-row"><span class="tot-label">DPH {{dph_sazba}} %</span><span class="tot-val">{{dph_castka}}</span></div>
+        <div class="tot-row"><span class="tot-label">Celkem s DPH</span><span class="tot-val">{{cena_s_dph}}</span></div>
+      </div>
+    </div>
+
+    <div class="validity-row">
+      <div class="vr-item"><span class="vr-dot"></span><span class="vr-label">Platnost nabídky:</span><span class="vr-val">30 dní od {{datum_vystaveni}}</span></div>
+      <div class="vr-sep"></div>
+      <div class="vr-item"><span class="vr-dot"></span><span class="vr-label">Platnost do:</span><span class="vr-val">{{datum_platnosti}}</span></div>
+      <div class="vr-sep"></div>
+      <div class="vr-item"><span class="vr-dot"></span><span class="vr-label">Obchodník:</span><span class="vr-val">{{obchodnik_jmeno}}</span></div>
+    </div>
+
+    <div class="zaloha-note">
+      <div class="zn-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      </div>
+      <div class="zn-text">
+        <strong>Zálohu a platební podmínky nastavíme dle aktuálního harmonogramu.</strong> Chápeme, že ne vždy má smysl hradit vše najednou — pokud se termín realizace posouvá, společně nastavíme platební plán, který vám dává smysl. Materiál nakupujeme strategicky, abychom vás chránili před zdražením.
+      </div>
+    </div>
+
+  </div>
+  <div class="page-footer">
+    <span><span class="pf-accent">NANTO</span>s.r.o. · {{firma_adresa}} · {{firma_email}} · IČO: {{firma_ico}}</span>
+    <span>Strana 2 / 3</span>
+  </div>
+</div>
+
+<!-- PAGE 3: JAK POSTUPUJEME -->
+<div class="page">
+  <div class="inner">
+    <div class="page-header">
+      <div class="ph-left">
+        <div class="ph-logo-sm">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+          </svg>
+        </div>
+        <div class="ph-company">NANTO s.r.o.</div>
+      </div>
+      <div class="ph-right">
+        <div class="ph-title">Jak postupujeme</div>
+        <div class="ph-meta">{{nabidka_kod}} · {{datum_vystaveni}}</div>
+      </div>
+    </div>
+
+    <div class="process-banner">
+      <div class="pb-eyebrow">Náš proces</div>
+      <div class="pb-title">Od nabídky k funkčnímu tepelnému čerpadlu</div>
+      <div class="pb-sub">Každou instalaci tepelného čerpadla bereme jako partnerský projekt. Provázíme vás od první konzultace až po předání — přehledně, bez překvapení.</div>
+    </div>
+
+    <div class="steps-grid">
+      <div class="step-card highlight">
+        <div class="step-num">1</div>
+        <div class="step-title">Konzultace a návrh řešení</div>
+        <div class="step-desc">Bezplatná konzultace, posouzení tepelných ztrát a návrh optimálního tepelného čerpadla. Detailní cenová nabídka s technickým popisem.</div>
+        <div class="step-tags"><span class="step-tag">Zdarma</span><span class="step-tag">Do 48 hodin</span></div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">2</div>
+        <div class="step-title">Smlouva a záloha</div>
+        <div class="step-desc">Po odsouhlasení nabídky podepíšeme smlouvu o dílo. Záloha zajistí objednání materiálu a rezervaci termínu montáže.</div>
+        <div class="step-tags"><span class="step-tag">Smlouva o dílo</span></div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">3</div>
+        <div class="step-title">Příprava a materiál</div>
+        <div class="step-desc">Objednání tepelného čerpadla, zásobníku a veškerého materiálu. Koordinujeme dodávky a informujeme vás o potřebné stavební připravenosti.</div>
+        <div class="step-tags"><span class="step-tag">1–3 týdny</span><span class="step-tag">Stavební příprava</span></div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">4</div>
+        <div class="step-title">Montáž — 1. etapa</div>
+        <div class="step-desc">Instalace chladivového potrubí, kabeláže a prostupů stěnami. Práce probíhají dle dohodnutého harmonogramu, čistě a bez zbytečného rušení.</div>
+        <div class="step-tags"><span class="step-tag">1–2 dny</span></div>
+      </div>
+      <div class="step-card highlight">
+        <div class="step-num">5</div>
+        <div class="step-title">Instalace a zprovoznění</div>
+        <div class="step-desc">Osazení venkovní i vnitřní jednotky, elektrické zapojení, napuštění okruhu a kompletní zprovoznění na optimálních parametrech.</div>
+        <div class="step-tags"><span class="step-tag">Testování</span><span class="step-tag">Nastavení</span></div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">6</div>
+        <div class="step-title">Předání a zaškolení</div>
+        <div class="step-desc">Podpis předávacího protokolu, předání veškeré dokumentace. Podrobné zaškolení na ovládání systému. Dostupni i po předání.</div>
+        <div class="step-tags"><span class="step-tag">Protokol</span><span class="step-tag">Dokumentace</span><span class="step-tag">Záruka</span></div>
+      </div>
+    </div>
+
+    <div class="closing-section">
+      <div class="closing-left">
+        <div class="closing-title">Těšíme se na spolupráci.</div>
+        <div class="closing-text">Nejsme jen dodavatel — jsme partner, který vás provede celým procesem. Navrhujeme tak, aby to dávalo smysl pro váš dům i peněženku. Pracujeme čistě, komunikujeme otevřeně a za svou prací si stojíme.</div>
+        <a href="https://nanto.cz/reference" class="closing-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          Podívejte se na naše reference — nanto.cz/reference
+        </a>
+      </div>
+      <div class="closing-stats">
+        <div class="closing-stat"><div class="cs-num">100+</div><div class="cs-label">realizací ročně</div></div>
+        <div class="closing-stat"><div class="cs-num">10+</div><div class="cs-label">let v oboru</div></div>
+        <div class="closing-stat"><div class="cs-num">100 %</div><div class="cs-label">spokojených klientů</div></div>
+      </div>
+    </div>
+
+    <div class="vpc-section">
+      <div class="vpc-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+        </svg>
+      </div>
+      <div class="vpc-body">
+        <div class="vpc-title">Máte otázky? Váš obchodní zástupce je tu pro vás.</div>
+        <div class="vpc-text">Každá instalace je jiná — a my to víme. Rádi s vámi probereme možná rizika, alternativní řešení, způsoby financování nebo jednoduše to, co vás zajímá. Bez tlaku, bez zbytečných řečí.</div>
+        <div class="vpc-pills">
+          <span class="vpc-pill">Možná rizika a jak jim předejít</span>
+          <span class="vpc-pill">Alternativy a srovnání</span>
+          <span class="vpc-pill">Způsoby financování</span>
+          <span class="vpc-pill">Dotace NZÚ</span>
+          <span class="vpc-pill">Harmonogram a termíny</span>
+          <span class="vpc-pill">Cokoli dalšího</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <div class="page-footer">
+    <span><span class="pf-accent">NANTO</span>s.r.o. · {{firma_adresa}} · {{firma_email}} · IČO: {{firma_ico}}</span>
+    <span>Strana 3 / 3</span>
+  </div>
+</div>
+
+</body>
+</html>`
+
+const HTML_PODLAHOVE_TOPENI = `<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<title>Cenová nabídka – Podlahové vytápění</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --yellow: #FFC93C;
+    --yellow-light: #FFF8E7;
+    --gray: #4A4A4A;
+    --black: #111111;
+    --muted: #6B7280;
+    --border: #DDDDDD;
+    --bg: #F5F5F5;
+    --white: #FFFFFF;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: white;
+    color: var(--black);
+    font-size: 11px;
+    line-height: 1.6;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .page {
+    width: 210mm;
+    min-height: 297mm;
+    max-height: 297mm;
+    page-break-after: always;
+    position: relative;
+    overflow: hidden;
+    background: white;
+    display: flex;
+    flex-direction: column;
+  }
+  .page:last-child { page-break-after: avoid; }
+  .cover-top-bar { height: 6px; background: var(--yellow); flex-shrink: 0; }
+  .cover-body { flex: 1; padding: 44px 52px 36px; display: flex; flex-direction: column; }
+  .cover-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 56px; }
+  .logo-row { display: flex; align-items: center; gap: 10px; }
+  .logo-mark { width: 38px; height: 38px; background: var(--yellow); border-radius: 7px; display: flex; align-items: center; justify-content: center; }
+  .logo-mark svg { width: 20px; height: 20px; }
+  .logo-text { font-family: 'Montserrat', sans-serif; font-size: 18px; font-weight: 700; color: var(--black); letter-spacing: 0.5px; }
+  .logo-sub { font-size: 9px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-top: 1px; }
+  .cover-doc-info { text-align: right; }
+  .cdi-label { font-size: 9px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 4px; }
+  .cdi-val { font-size: 13px; font-weight: 600; color: var(--gray); }
+  .cover-hero { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+  .cover-tag { display: inline-flex; align-items: center; gap: 8px; background: var(--yellow-light); border: 1px solid var(--yellow); border-radius: 20px; padding: 5px 14px; margin-bottom: 24px; width: fit-content; }
+  .cover-tag-dot { width: 7px; height: 7px; background: var(--yellow); border-radius: 50%; }
+  .cover-tag span { font-size: 10px; font-weight: 600; color: var(--gray); letter-spacing: 1px; text-transform: uppercase; }
+  .cover-title { font-family: 'Montserrat', sans-serif; font-size: 44px; font-weight: 700; color: var(--black); line-height: 1.05; margin-bottom: 10px; }
+  .cover-title .accent { color: var(--yellow); }
+  .cover-subtitle { font-size: 13px; color: var(--muted); line-height: 1.7; max-width: 360px; margin-bottom: 44px; }
+  .cover-client { background: var(--bg); border-radius: 10px; padding: 20px 24px; display: inline-flex; gap: 28px; align-items: center; width: 440px; }
+  .cc-label { font-size: 9px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 5px; }
+  .cc-name { font-family: 'Montserrat', sans-serif; font-size: 16px; font-weight: 600; color: var(--black); margin-bottom: 3px; }
+  .cc-detail { font-size: 10.5px; color: var(--muted); }
+  .cc-divider { width: 1px; height: 44px; background: var(--border); }
+  .cover-bottom { border-top: 1px solid var(--border); padding: 16px 0 0; display: flex; justify-content: space-between; align-items: center; }
+  .cbd-item { text-align: center; }
+  .cbd-label { font-size: 9px; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 3px; }
+  .cbd-val { font-size: 12px; font-weight: 500; color: var(--gray); }
+  .cbd-val-small { font-size: 10.5px; color: var(--muted); margin-top: 1px; }
+  .cover-bottom-sep { width: 1px; height: 28px; background: var(--border); }
+  .inner { flex: 1; padding: 30px 52px 44px; display: flex; flex-direction: column; }
+  .page-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 14px; border-bottom: 2px solid var(--black); margin-bottom: 28px; flex-shrink: 0; }
+  .ph-left { display: flex; align-items: center; gap: 8px; }
+  .ph-logo-sm { width: 26px; height: 26px; background: var(--yellow); border-radius: 5px; display: flex; align-items: center; justify-content: center; }
+  .ph-logo-sm svg { width: 14px; height: 14px; }
+  .ph-company { font-family: 'Montserrat', sans-serif; font-size: 13px; font-weight: 700; color: var(--black); }
+  .ph-right { text-align: right; }
+  .ph-title { font-size: 11px; font-weight: 600; color: var(--gray); }
+  .ph-meta { font-size: 10px; color: var(--muted); }
+  .section-label { font-size: 9px; font-weight: 600; letter-spacing: 2.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 14px; display: flex; align-items: center; gap: 10px; }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .quote-table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 11px; }
+  .quote-table thead tr { background: var(--black); }
+  .quote-table thead th { padding: 9px 11px; font-family: 'Montserrat', sans-serif; font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 600; color: white; text-align: left; }
+  .quote-table thead th.r { text-align: right; }
+  .quote-table tbody tr { border-bottom: 1px solid var(--border); }
+  .quote-table tbody tr:nth-child(even) { background: #FAFAF8; }
+  .quote-table td { padding: 9px 11px; vertical-align: middle; }
+  .quote-table td.num { color: var(--muted); font-size: 10px; width: 28px; }
+  .quote-table td.name { font-weight: 500; color: var(--black); }
+  .quote-table td.r { text-align: right; }
+  .quote-table td.total { text-align: right; font-weight: 600; color: var(--black); }
+  .totals-wrap { display: flex; justify-content: flex-end; margin-bottom: 20px; }
+  .totals-box { width: 250px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .tot-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 14px; border-bottom: 1px solid var(--border); font-size: 11px; }
+  .tot-row:last-child { border-bottom: none; background: var(--yellow); padding: 11px 14px; }
+  .tot-label { color: var(--muted); }
+  .tot-row:last-child .tot-label { color: var(--black); font-weight: 600; font-size: 12px; }
+  .tot-val { font-weight: 600; color: var(--black); }
+  .tot-row:last-child .tot-val { font-size: 14px; font-weight: 700; color: var(--black); }
+  .validity-row { display: flex; align-items: center; gap: 16px; background: var(--bg); border-radius: 7px; padding: 12px 16px; margin-bottom: 0; font-size: 11px; }
+  .vr-item { display: flex; align-items: center; gap: 6px; }
+  .vr-dot { width: 6px; height: 6px; background: var(--yellow); border-radius: 50%; flex-shrink: 0; }
+  .vr-label { color: var(--muted); }
+  .vr-val { font-weight: 500; color: var(--black); }
+  .vr-sep { width: 1px; height: 14px; background: var(--border); }
+  .zaloha-note { display: flex; gap: 10px; align-items: flex-start; background: #F0F7FF; border: 1px solid #C7DFF7; border-radius: 7px; padding: 12px 14px; margin-top: 10px; font-size: 11px; color: #374151; line-height: 1.65; }
+  .zn-icon { color: #3B82F6; flex-shrink: 0; margin-top: 1px; }
+  .zn-text strong { font-weight: 600; color: var(--black); }
+  .process-banner { background: var(--black); border-radius: 10px; padding: 16px 22px; margin-bottom: 16px; flex-shrink: 0; }
+  .pb-eyebrow { font-size: 9px; letter-spacing: 2.5px; text-transform: uppercase; color: rgba(255,255,255,0.45); margin-bottom: 4px; }
+  .pb-title { font-family: 'Montserrat', sans-serif; font-size: 17px; font-weight: 700; color: white; margin-bottom: 4px; }
+  .pb-sub { font-size: 10.5px; color: rgba(255,255,255,0.6); line-height: 1.55; max-width: 420px; }
+  .steps-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; flex: 1; }
+  .step-card { border: 1px solid var(--border); border-radius: 7px; padding: 10px 12px; position: relative; background: white; }
+  .step-card.highlight { border-color: var(--yellow); background: var(--yellow-light); }
+  .step-num { width: 22px; height: 22px; background: var(--black); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Montserrat', sans-serif; font-size: 10px; font-weight: 700; color: white; margin-bottom: 6px; }
+  .step-card.highlight .step-num { background: var(--yellow); color: var(--black); }
+  .step-title { font-family: 'Montserrat', sans-serif; font-size: 10.5px; font-weight: 600; color: var(--black); margin-bottom: 3px; }
+  .step-desc { font-size: 9.5px; color: var(--muted); line-height: 1.55; }
+  .step-tags { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 6px; }
+  .step-tag { background: var(--bg); border: 1px solid var(--border); border-radius: 3px; padding: 1px 5px; font-size: 8.5px; color: var(--muted); }
+  .step-card.highlight .step-tag { background: white; border-color: var(--yellow); }
+  .closing-section { display: flex; gap: 20px; align-items: center; background: var(--yellow-light); border: 1px solid var(--yellow); border-radius: 9px; padding: 14px 18px; margin-top: 10px; }
+  .closing-left { flex: 1; }
+  .closing-title { font-family: 'Montserrat', sans-serif; font-size: 12.5px; font-weight: 700; color: var(--black); margin-bottom: 4px; }
+  .closing-text { font-size: 9.5px; color: var(--muted); line-height: 1.6; margin-bottom: 8px; max-width: 340px; }
+  .closing-link { display: inline-flex; align-items: center; gap: 5px; color: var(--gray); font-size: 10px; font-weight: 500; text-decoration: none; border-bottom: 1px solid var(--border); padding-bottom: 1px; }
+  .closing-stats { display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; padding-left: 20px; border-left: 1px solid var(--yellow); }
+  .closing-stat { text-align: center; }
+  .cs-num { font-family: 'Montserrat', sans-serif; font-size: 18px; font-weight: 700; color: var(--black); line-height: 1; }
+  .cs-label { font-size: 8.5px; color: var(--muted); margin-top: 2px; white-space: nowrap; }
+  .vpc-section { margin-top: 10px; border-top: 1px solid var(--border); padding-top: 10px; display: flex; gap: 14px; align-items: flex-start; }
+  .vpc-icon { width: 30px; height: 30px; background: var(--yellow); border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+  .vpc-icon svg { width: 13px; height: 13px; }
+  .vpc-body { flex: 1; }
+  .vpc-title { font-family: 'Montserrat', sans-serif; font-size: 10.5px; font-weight: 700; color: var(--black); margin-bottom: 3px; }
+  .vpc-text { font-size: 9.5px; color: var(--muted); line-height: 1.6; }
+  .vpc-pills { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+  .vpc-pill { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 2px 8px; font-size: 9px; color: var(--gray); font-weight: 500; }
+  .page-footer { flex-shrink: 0; border-top: 1px solid var(--border); padding: 8px 52px; display: flex; justify-content: space-between; align-items: center; font-size: 9px; color: var(--muted); background: white; }
+  .pf-accent { color: var(--yellow); font-weight: 700; margin-right: 4px; }
+  @media print {
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    body { background: white; }
+    .page { width: 210mm; height: 297mm; overflow: hidden; }
+    @page { size: A4; margin: 0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- PAGE 1: COVER -->
+<div class="page">
+  <div class="cover-top-bar"></div>
+  <div class="cover-body">
+    <div class="cover-header">
+      <div class="logo-row">
+        <div class="logo-mark">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+        </div>
+        <div>
+          <div class="logo-text">NANTO</div>
+          <div class="logo-sub">s.r.o.</div>
+        </div>
+      </div>
+      <div class="cover-doc-info">
+        <div class="cdi-label">Číslo nabídky</div>
+        <div class="cdi-val">{{nabidka_kod}}</div>
+      </div>
+    </div>
+
+    <div class="cover-hero">
+      <div class="cover-tag">
+        <span class="cover-tag-dot"></span>
+        <span>Podlahové vytápění</span>
+      </div>
+      <div class="cover-title">Cenová nabídka<br>&amp; návrh<br><span class="accent">spolupráce</span></div>
+      <div class="cover-subtitle">Přinášíme vám nejen cenovou nabídku, ale komplexní návrh podlahového vytápění šitého na míru vašemu prostoru. Naším cílem je rovnoměrné teplo a maximální komfort.</div>
+
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div class="cover-client">
+          <div>
+            <div class="cc-label">Připraveno pro</div>
+            <div class="cc-name">{{klient_jmeno}}</div>
+            <div class="cc-detail">{{klient_adresa}}</div>
+          </div>
+          <div class="cc-divider"></div>
+          <div>
+            <div class="cc-label">Datum nabídky</div>
+            <div class="cc-name" style="font-size:13px;">{{datum_vystaveni}}</div>
+            <div class="cc-detail">Platnost 30 dní</div>
+          </div>
+        </div>
+        <div class="cover-client">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="width:34px;height:34px;background:var(--yellow);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;color:var(--black);flex-shrink:0;">{{obchodnik_inicialy}}</div>
+            <div>
+              <div class="cc-label">Váš obchodní partner</div>
+              <div class="cc-name">{{obchodnik_jmeno}}</div>
+            </div>
+          </div>
+          <div class="cc-divider"></div>
+          <div>
+            <div class="cc-label">Kontakt</div>
+            <div class="cc-name" style="font-size:12px;">{{obchodnik_telefon}}</div>
+            <div class="cc-detail">{{obchodnik_email}}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cover-bottom">
+      <div class="cbd-item">
+        <div class="cbd-label">Datum nabídky</div>
+        <div class="cbd-val">{{datum_vystaveni}}</div>
+      </div>
+      <div class="cover-bottom-sep"></div>
+      <div class="cbd-item">
+        <div class="cbd-label">Platnost</div>
+        <div class="cbd-val">{{datum_platnosti}}</div>
+      </div>
+      <div class="cover-bottom-sep"></div>
+      <div class="cbd-item">
+        <div class="cbd-label">Zpracoval</div>
+        <div class="cbd-val">{{obchodnik_jmeno}}</div>
+      </div>
+      <div class="cover-bottom-sep"></div>
+      <div class="cbd-item">
+        <div class="cbd-label">Kontakt</div>
+        <div class="cbd-val">{{obchodnik_telefon}}</div>
+        <div class="cbd-val-small">{{obchodnik_email}}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE 2: NABÍDKA -->
+<div class="page">
+  <div class="inner">
+    <div class="page-header">
+      <div class="ph-left">
+        <div class="ph-logo-sm">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+          </svg>
+        </div>
+        <div class="ph-company">NANTO s.r.o.</div>
+      </div>
+      <div class="ph-right">
+        <div class="ph-title">Cenová nabídka — Podlahové vytápění</div>
+        <div class="ph-meta">{{nabidka_kod}} · {{datum_vystaveni}}</div>
+      </div>
+    </div>
+
+    <div class="section-label">Položky nabídky</div>
+    <table class="quote-table">
+      <thead>
+        <tr>
+          <th style="width:28px;">#</th>
+          <th>Popis produktu / služby</th>
+          <th class="r" style="width:38px;">Ks</th>
+          <th class="r" style="width:90px;">Cena / MJ</th>
+          <th class="r" style="width:90px;">Celkem</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#polozky}}
+        <tr>
+          <td class="num">{{polozka_poradi}}</td>
+          <td class="name">{{polozka_nazev}}</td>
+          <td class="r">{{polozka_mnozstvi}}</td>
+          <td class="r">{{polozka_cena_kus}}</td>
+          <td class="total">{{polozka_celkem}}</td>
+        </tr>
+        {{/polozky}}
+      </tbody>
+    </table>
+
+    <div class="totals-wrap">
+      <div class="totals-box">
+        <div class="tot-row"><span class="tot-label">Celkem bez DPH</span><span class="tot-val">{{cena_bez_dph}}</span></div>
+        <div class="tot-row"><span class="tot-label">DPH {{dph_sazba}} %</span><span class="tot-val">{{dph_castka}}</span></div>
+        <div class="tot-row"><span class="tot-label">Celkem s DPH</span><span class="tot-val">{{cena_s_dph}}</span></div>
+      </div>
+    </div>
+
+    <div class="validity-row">
+      <div class="vr-item"><span class="vr-dot"></span><span class="vr-label">Platnost nabídky:</span><span class="vr-val">30 dní od {{datum_vystaveni}}</span></div>
+      <div class="vr-sep"></div>
+      <div class="vr-item"><span class="vr-dot"></span><span class="vr-label">Platnost do:</span><span class="vr-val">{{datum_platnosti}}</span></div>
+      <div class="vr-sep"></div>
+      <div class="vr-item"><span class="vr-dot"></span><span class="vr-label">Obchodník:</span><span class="vr-val">{{obchodnik_jmeno}}</span></div>
+    </div>
+
+    <div class="zaloha-note">
+      <div class="zn-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      </div>
+      <div class="zn-text">
+        <strong>Zálohu a platební podmínky nastavíme dle aktuálního harmonogramu.</strong> Chápeme, že ne vždy má smysl hradit vše najednou — pokud se termín realizace posouvá, společně nastavíme platební plán, který vám dává smysl. Materiál nakupujeme strategicky, abychom vás chránili před zdražením.
+      </div>
+    </div>
+
+  </div>
+  <div class="page-footer">
+    <span><span class="pf-accent">NANTO</span>s.r.o. · {{firma_adresa}} · {{firma_email}} · IČO: {{firma_ico}}</span>
+    <span>Strana 2 / 3</span>
+  </div>
+</div>
+
+<!-- PAGE 3: JAK POSTUPUJEME -->
+<div class="page">
+  <div class="inner">
+    <div class="page-header">
+      <div class="ph-left">
+        <div class="ph-logo-sm">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+          </svg>
+        </div>
+        <div class="ph-company">NANTO s.r.o.</div>
+      </div>
+      <div class="ph-right">
+        <div class="ph-title">Jak postupujeme</div>
+        <div class="ph-meta">{{nabidka_kod}} · {{datum_vystaveni}}</div>
+      </div>
+    </div>
+
+    <div class="process-banner">
+      <div class="pb-eyebrow">Náš proces</div>
+      <div class="pb-title">Od nabídky k funkčnímu podlahovému vytápění</div>
+      <div class="pb-sub">Každou instalaci podlahového vytápění bereme jako partnerský projekt. Provázíme vás od první konzultace až po předání — přehledně, bez překvapení.</div>
+    </div>
+
+    <div class="steps-grid">
+      <div class="step-card highlight">
+        <div class="step-num">1</div>
+        <div class="step-title">Konzultace a návrh řešení</div>
+        <div class="step-desc">Bezplatná konzultace, zaměření prostor a návrh optimálního rozvodu podlahového vytápění. Detailní cenová nabídka s technickým popisem.</div>
+        <div class="step-tags"><span class="step-tag">Zdarma</span><span class="step-tag">Do 48 hodin</span></div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">2</div>
+        <div class="step-title">Smlouva a záloha</div>
+        <div class="step-desc">Po odsouhlasení nabídky podepíšeme smlouvu o dílo. Záloha zajistí objednání materiálu a rezervaci termínu montáže.</div>
+        <div class="step-tags"><span class="step-tag">Smlouva o dílo</span></div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">3</div>
+        <div class="step-title">Příprava a materiál</div>
+        <div class="step-desc">Objednání potrubí, rozvaděčů a veškerého materiálu. Koordinujeme dodávky a informujeme vás o potřebné stavební připravenosti.</div>
+        <div class="step-tags"><span class="step-tag">1–2 týdny</span><span class="step-tag">Stavební příprava</span></div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">4</div>
+        <div class="step-title">Pokládka potrubí</div>
+        <div class="step-desc">Instalace topného potrubí dle projektové dokumentace, osazení rozvaděčů a napojení na zdroj tepla.</div>
+        <div class="step-tags"><span class="step-tag">1–3 dny</span></div>
+      </div>
+      <div class="step-card highlight">
+        <div class="step-num">5</div>
+        <div class="step-title">Tlakové zkoušky a zprovoznění</div>
+        <div class="step-desc">Provedení tlakové zkoušky potrubí, napuštění systému, odvzdušnění a nastavení průtoků na každém okruhu.</div>
+        <div class="step-tags"><span class="step-tag">Testování</span><span class="step-tag">Nastavení</span></div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">6</div>
+        <div class="step-title">Předání a zaškolení</div>
+        <div class="step-desc">Podpis předávacího protokolu, předání veškeré dokumentace. Zaškolení na ovládání systému a doporučení pro provoz.</div>
+        <div class="step-tags"><span class="step-tag">Protokol</span><span class="step-tag">Dokumentace</span><span class="step-tag">Záruka</span></div>
+      </div>
+    </div>
+
+    <div class="closing-section">
+      <div class="closing-left">
+        <div class="closing-title">Těšíme se na spolupráci.</div>
+        <div class="closing-text">Nejsme jen dodavatel — jsme partner, který vás provede celým procesem. Navrhujeme tak, aby to dávalo smysl pro váš dům i peněženku. Pracujeme čistě, komunikujeme otevřeně a za svou prací si stojíme.</div>
+        <a href="https://nanto.cz/reference" class="closing-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          Podívejte se na naše reference — nanto.cz/reference
+        </a>
+      </div>
+      <div class="closing-stats">
+        <div class="closing-stat"><div class="cs-num">100+</div><div class="cs-label">realizací ročně</div></div>
+        <div class="closing-stat"><div class="cs-num">10+</div><div class="cs-label">let v oboru</div></div>
+        <div class="closing-stat"><div class="cs-num">100 %</div><div class="cs-label">spokojených klientů</div></div>
+      </div>
+    </div>
+
+    <div class="vpc-section">
+      <div class="vpc-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+        </svg>
+      </div>
+      <div class="vpc-body">
+        <div class="vpc-title">Máte otázky? Váš obchodní zástupce je tu pro vás.</div>
+        <div class="vpc-text">Každá instalace je jiná — a my to víme. Rádi s vámi probereme možná rizika, alternativní řešení, způsoby financování nebo jednoduše to, co vás zajímá. Bez tlaku, bez zbytečných řečí.</div>
+        <div class="vpc-pills">
+          <span class="vpc-pill">Možná rizika a jak jim předejít</span>
+          <span class="vpc-pill">Alternativy a srovnání</span>
+          <span class="vpc-pill">Způsoby financování</span>
+          <span class="vpc-pill">Dotace NZÚ</span>
+          <span class="vpc-pill">Harmonogram a termíny</span>
+          <span class="vpc-pill">Cokoli dalšího</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <div class="page-footer">
+    <span><span class="pf-accent">NANTO</span>s.r.o. · {{firma_adresa}} · {{firma_email}} · IČO: {{firma_ico}}</span>
+    <span>Strana 3 / 3</span>
+  </div>
+</div>
+
+</body>
+</html>`
+
+const HTML_REKUPERACE = `<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<title>Cenová nabídka – Rekuperace</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --yellow: #FFC93C;
+    --yellow-light: #FFF8E7;
+    --gray: #4A4A4A;
+    --black: #111111;
+    --muted: #6B7280;
+    --border: #DDDDDD;
+    --bg: #F5F5F5;
+    --white: #FFFFFF;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: white;
+    color: var(--black);
+    font-size: 11px;
+    line-height: 1.6;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .page {
+    width: 210mm;
+    min-height: 297mm;
+    max-height: 297mm;
+    page-break-after: always;
+    position: relative;
+    overflow: hidden;
+    background: white;
+    display: flex;
+    flex-direction: column;
+  }
+  .page:last-child { page-break-after: avoid; }
+  .cover-top-bar { height: 6px; background: var(--yellow); flex-shrink: 0; }
+  .cover-body { flex: 1; padding: 44px 52px 36px; display: flex; flex-direction: column; }
+  .cover-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 56px; }
+  .logo-row { display: flex; align-items: center; gap: 10px; }
+  .logo-mark { width: 38px; height: 38px; background: var(--yellow); border-radius: 7px; display: flex; align-items: center; justify-content: center; }
+  .logo-mark svg { width: 20px; height: 20px; }
+  .logo-text { font-family: 'Montserrat', sans-serif; font-size: 18px; font-weight: 700; color: var(--black); letter-spacing: 0.5px; }
+  .logo-sub { font-size: 9px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-top: 1px; }
+  .cover-doc-info { text-align: right; }
+  .cdi-label { font-size: 9px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 4px; }
+  .cdi-val { font-size: 13px; font-weight: 600; color: var(--gray); }
+  .cover-hero { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+  .cover-tag { display: inline-flex; align-items: center; gap: 8px; background: var(--yellow-light); border: 1px solid var(--yellow); border-radius: 20px; padding: 5px 14px; margin-bottom: 24px; width: fit-content; }
+  .cover-tag-dot { width: 7px; height: 7px; background: var(--yellow); border-radius: 50%; }
+  .cover-tag span { font-size: 10px; font-weight: 600; color: var(--gray); letter-spacing: 1px; text-transform: uppercase; }
+  .cover-title { font-family: 'Montserrat', sans-serif; font-size: 44px; font-weight: 700; color: var(--black); line-height: 1.05; margin-bottom: 10px; }
+  .cover-title .accent { color: var(--yellow); }
+  .cover-subtitle { font-size: 13px; color: var(--muted); line-height: 1.7; max-width: 360px; margin-bottom: 44px; }
+  .cover-client { background: var(--bg); border-radius: 10px; padding: 20px 24px; display: inline-flex; gap: 28px; align-items: center; width: 440px; }
+  .cc-label { font-size: 9px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 5px; }
+  .cc-name { font-family: 'Montserrat', sans-serif; font-size: 16px; font-weight: 600; color: var(--black); margin-bottom: 3px; }
+  .cc-detail { font-size: 10.5px; color: var(--muted); }
+  .cc-divider { width: 1px; height: 44px; background: var(--border); }
+  .cover-bottom { border-top: 1px solid var(--border); padding: 16px 0 0; display: flex; justify-content: space-between; align-items: center; }
+  .cbd-item { text-align: center; }
+  .cbd-label { font-size: 9px; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 3px; }
+  .cbd-val { font-size: 12px; font-weight: 500; color: var(--gray); }
+  .cbd-val-small { font-size: 10.5px; color: var(--muted); margin-top: 1px; }
+  .cover-bottom-sep { width: 1px; height: 28px; background: var(--border); }
+  .inner { flex: 1; padding: 30px 52px 44px; display: flex; flex-direction: column; }
+  .page-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 14px; border-bottom: 2px solid var(--black); margin-bottom: 28px; flex-shrink: 0; }
+  .ph-left { display: flex; align-items: center; gap: 8px; }
+  .ph-logo-sm { width: 26px; height: 26px; background: var(--yellow); border-radius: 5px; display: flex; align-items: center; justify-content: center; }
+  .ph-logo-sm svg { width: 14px; height: 14px; }
+  .ph-company { font-family: 'Montserrat', sans-serif; font-size: 13px; font-weight: 700; color: var(--black); }
+  .ph-right { text-align: right; }
+  .ph-title { font-size: 11px; font-weight: 600; color: var(--gray); }
+  .ph-meta { font-size: 10px; color: var(--muted); }
+  .section-label { font-size: 9px; font-weight: 600; letter-spacing: 2.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 14px; display: flex; align-items: center; gap: 10px; }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .quote-table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 11px; }
+  .quote-table thead tr { background: var(--black); }
+  .quote-table thead th { padding: 9px 11px; font-family: 'Montserrat', sans-serif; font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 600; color: white; text-align: left; }
+  .quote-table thead th.r { text-align: right; }
+  .quote-table tbody tr { border-bottom: 1px solid var(--border); }
+  .quote-table tbody tr:nth-child(even) { background: #FAFAF8; }
+  .quote-table td { padding: 9px 11px; vertical-align: middle; }
+  .quote-table td.num { color: var(--muted); font-size: 10px; width: 28px; }
+  .quote-table td.name { font-weight: 500; color: var(--black); }
+  .quote-table td.r { text-align: right; }
+  .quote-table td.total { text-align: right; font-weight: 600; color: var(--black); }
+  .totals-wrap { display: flex; justify-content: flex-end; margin-bottom: 20px; }
+  .totals-box { width: 250px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .tot-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 14px; border-bottom: 1px solid var(--border); font-size: 11px; }
+  .tot-row:last-child { border-bottom: none; background: var(--yellow); padding: 11px 14px; }
+  .tot-label { color: var(--muted); }
+  .tot-row:last-child .tot-label { color: var(--black); font-weight: 600; font-size: 12px; }
+  .tot-val { font-weight: 600; color: var(--black); }
+  .tot-row:last-child .tot-val { font-size: 14px; font-weight: 700; color: var(--black); }
+  .validity-row { display: flex; align-items: center; gap: 16px; background: var(--bg); border-radius: 7px; padding: 12px 16px; margin-bottom: 0; font-size: 11px; }
+  .vr-item { display: flex; align-items: center; gap: 6px; }
+  .vr-dot { width: 6px; height: 6px; background: var(--yellow); border-radius: 50%; flex-shrink: 0; }
+  .vr-label { color: var(--muted); }
+  .vr-val { font-weight: 500; color: var(--black); }
+  .vr-sep { width: 1px; height: 14px; background: var(--border); }
+  .zaloha-note { display: flex; gap: 10px; align-items: flex-start; background: #F0F7FF; border: 1px solid #C7DFF7; border-radius: 7px; padding: 12px 14px; margin-top: 10px; font-size: 11px; color: #374151; line-height: 1.65; }
+  .zn-icon { color: #3B82F6; flex-shrink: 0; margin-top: 1px; }
+  .zn-text strong { font-weight: 600; color: var(--black); }
+  .process-banner { background: var(--black); border-radius: 10px; padding: 16px 22px; margin-bottom: 16px; flex-shrink: 0; }
+  .pb-eyebrow { font-size: 9px; letter-spacing: 2.5px; text-transform: uppercase; color: rgba(255,255,255,0.45); margin-bottom: 4px; }
+  .pb-title { font-family: 'Montserrat', sans-serif; font-size: 17px; font-weight: 700; color: white; margin-bottom: 4px; }
+  .pb-sub { font-size: 10.5px; color: rgba(255,255,255,0.6); line-height: 1.55; max-width: 420px; }
+  .steps-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; flex: 1; }
+  .step-card { border: 1px solid var(--border); border-radius: 7px; padding: 10px 12px; position: relative; background: white; }
+  .step-card.highlight { border-color: var(--yellow); background: var(--yellow-light); }
+  .step-num { width: 22px; height: 22px; background: var(--black); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Montserrat', sans-serif; font-size: 10px; font-weight: 700; color: white; margin-bottom: 6px; }
+  .step-card.highlight .step-num { background: var(--yellow); color: var(--black); }
+  .step-title { font-family: 'Montserrat', sans-serif; font-size: 10.5px; font-weight: 600; color: var(--black); margin-bottom: 3px; }
+  .step-desc { font-size: 9.5px; color: var(--muted); line-height: 1.55; }
+  .step-tags { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 6px; }
+  .step-tag { background: var(--bg); border: 1px solid var(--border); border-radius: 3px; padding: 1px 5px; font-size: 8.5px; color: var(--muted); }
+  .step-card.highlight .step-tag { background: white; border-color: var(--yellow); }
+  .closing-section { display: flex; gap: 20px; align-items: center; background: var(--yellow-light); border: 1px solid var(--yellow); border-radius: 9px; padding: 14px 18px; margin-top: 10px; }
+  .closing-left { flex: 1; }
+  .closing-title { font-family: 'Montserrat', sans-serif; font-size: 12.5px; font-weight: 700; color: var(--black); margin-bottom: 4px; }
+  .closing-text { font-size: 9.5px; color: var(--muted); line-height: 1.6; margin-bottom: 8px; max-width: 340px; }
+  .closing-link { display: inline-flex; align-items: center; gap: 5px; color: var(--gray); font-size: 10px; font-weight: 500; text-decoration: none; border-bottom: 1px solid var(--border); padding-bottom: 1px; }
+  .closing-stats { display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; padding-left: 20px; border-left: 1px solid var(--yellow); }
+  .closing-stat { text-align: center; }
+  .cs-num { font-family: 'Montserrat', sans-serif; font-size: 18px; font-weight: 700; color: var(--black); line-height: 1; }
+  .cs-label { font-size: 8.5px; color: var(--muted); margin-top: 2px; white-space: nowrap; }
+  .vpc-section { margin-top: 10px; border-top: 1px solid var(--border); padding-top: 10px; display: flex; gap: 14px; align-items: flex-start; }
+  .vpc-icon { width: 30px; height: 30px; background: var(--yellow); border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+  .vpc-icon svg { width: 13px; height: 13px; }
+  .vpc-body { flex: 1; }
+  .vpc-title { font-family: 'Montserrat', sans-serif; font-size: 10.5px; font-weight: 700; color: var(--black); margin-bottom: 3px; }
+  .vpc-text { font-size: 9.5px; color: var(--muted); line-height: 1.6; }
+  .vpc-pills { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+  .vpc-pill { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 2px 8px; font-size: 9px; color: var(--gray); font-weight: 500; }
+  .page-footer { flex-shrink: 0; border-top: 1px solid var(--border); padding: 8px 52px; display: flex; justify-content: space-between; align-items: center; font-size: 9px; color: var(--muted); background: white; }
+  .pf-accent { color: var(--yellow); font-weight: 700; margin-right: 4px; }
+  @media print {
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    body { background: white; }
+    .page { width: 210mm; height: 297mm; overflow: hidden; }
+    @page { size: A4; margin: 0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- PAGE 1: COVER -->
+<div class="page">
+  <div class="cover-top-bar"></div>
+  <div class="cover-body">
+    <div class="cover-header">
+      <div class="logo-row">
+        <div class="logo-mark">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+        </div>
+        <div>
+          <div class="logo-text">NANTO</div>
+          <div class="logo-sub">s.r.o.</div>
+        </div>
+      </div>
+      <div class="cover-doc-info">
+        <div class="cdi-label">Číslo nabídky</div>
+        <div class="cdi-val">{{nabidka_kod}}</div>
+      </div>
+    </div>
+
+    <div class="cover-hero">
+      <div class="cover-tag">
+        <span class="cover-tag-dot"></span>
+        <span>Rekuperace</span>
+      </div>
+      <div class="cover-title">Cenová nabídka<br>&amp; návrh<br><span class="accent">spolupráce</span></div>
+      <div class="cover-subtitle">Přinášíme vám nejen cenovou nabídku, ale komplexní návrh efektivního systému řízeného větrání s rekuperací. Naším cílem je čistý vzduch a úspora energie.</div>
+
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div class="cover-client">
+          <div>
+            <div class="cc-label">Připraveno pro</div>
+            <div class="cc-name">{{klient_jmeno}}</div>
+            <div class="cc-detail">{{klient_adresa}}</div>
+          </div>
+          <div class="cc-divider"></div>
+          <div>
+            <div class="cc-label">Datum nabídky</div>
+            <div class="cc-name" style="font-size:13px;">{{datum_vystaveni}}</div>
+            <div class="cc-detail">Platnost 30 dní</div>
+          </div>
+        </div>
+        <div class="cover-client">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="width:34px;height:34px;background:var(--yellow);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;color:var(--black);flex-shrink:0;">{{obchodnik_inicialy}}</div>
+            <div>
+              <div class="cc-label">Váš obchodní partner</div>
+              <div class="cc-name">{{obchodnik_jmeno}}</div>
+            </div>
+          </div>
+          <div class="cc-divider"></div>
+          <div>
+            <div class="cc-label">Kontakt</div>
+            <div class="cc-name" style="font-size:12px;">{{obchodnik_telefon}}</div>
+            <div class="cc-detail">{{obchodnik_email}}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cover-bottom">
+      <div class="cbd-item">
+        <div class="cbd-label">Datum nabídky</div>
+        <div class="cbd-val">{{datum_vystaveni}}</div>
+      </div>
+      <div class="cover-bottom-sep"></div>
+      <div class="cbd-item">
+        <div class="cbd-label">Platnost</div>
+        <div class="cbd-val">{{datum_platnosti}}</div>
+      </div>
+      <div class="cover-bottom-sep"></div>
+      <div class="cbd-item">
+        <div class="cbd-label">Zpracoval</div>
+        <div class="cbd-val">{{obchodnik_jmeno}}</div>
+      </div>
+      <div class="cover-bottom-sep"></div>
+      <div class="cbd-item">
+        <div class="cbd-label">Kontakt</div>
+        <div class="cbd-val">{{obchodnik_telefon}}</div>
+        <div class="cbd-val-small">{{obchodnik_email}}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE 2: NABÍDKA -->
+<div class="page">
+  <div class="inner">
+    <div class="page-header">
+      <div class="ph-left">
+        <div class="ph-logo-sm">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+          </svg>
+        </div>
+        <div class="ph-company">NANTO s.r.o.</div>
+      </div>
+      <div class="ph-right">
+        <div class="ph-title">Cenová nabídka — Rekuperace</div>
+        <div class="ph-meta">{{nabidka_kod}} · {{datum_vystaveni}}</div>
+      </div>
+    </div>
+
+    <div class="section-label">Položky nabídky</div>
+    <table class="quote-table">
+      <thead>
+        <tr>
+          <th style="width:28px;">#</th>
+          <th>Popis produktu / služby</th>
+          <th class="r" style="width:38px;">Ks</th>
+          <th class="r" style="width:90px;">Cena / MJ</th>
+          <th class="r" style="width:90px;">Celkem</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#polozky}}
+        <tr>
+          <td class="num">{{polozka_poradi}}</td>
+          <td class="name">{{polozka_nazev}}</td>
+          <td class="r">{{polozka_mnozstvi}}</td>
+          <td class="r">{{polozka_cena_kus}}</td>
+          <td class="total">{{polozka_celkem}}</td>
+        </tr>
+        {{/polozky}}
+      </tbody>
+    </table>
+
+    <div class="totals-wrap">
+      <div class="totals-box">
+        <div class="tot-row"><span class="tot-label">Celkem bez DPH</span><span class="tot-val">{{cena_bez_dph}}</span></div>
+        <div class="tot-row"><span class="tot-label">DPH {{dph_sazba}} %</span><span class="tot-val">{{dph_castka}}</span></div>
+        <div class="tot-row"><span class="tot-label">Celkem s DPH</span><span class="tot-val">{{cena_s_dph}}</span></div>
+      </div>
+    </div>
+
+    <div class="validity-row">
+      <div class="vr-item"><span class="vr-dot"></span><span class="vr-label">Platnost nabídky:</span><span class="vr-val">30 dní od {{datum_vystaveni}}</span></div>
+      <div class="vr-sep"></div>
+      <div class="vr-item"><span class="vr-dot"></span><span class="vr-label">Platnost do:</span><span class="vr-val">{{datum_platnosti}}</span></div>
+      <div class="vr-sep"></div>
+      <div class="vr-item"><span class="vr-dot"></span><span class="vr-label">Obchodník:</span><span class="vr-val">{{obchodnik_jmeno}}</span></div>
+    </div>
+
+    <div class="zaloha-note">
+      <div class="zn-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      </div>
+      <div class="zn-text">
+        <strong>Zálohu a platební podmínky nastavíme dle aktuálního harmonogramu.</strong> Chápeme, že ne vždy má smysl hradit vše najednou — pokud se termín realizace posouvá, společně nastavíme platební plán, který vám dává smysl. Materiál nakupujeme strategicky, abychom vás chránili před zdražením.
+      </div>
+    </div>
+
+  </div>
+  <div class="page-footer">
+    <span><span class="pf-accent">NANTO</span>s.r.o. · {{firma_adresa}} · {{firma_email}} · IČO: {{firma_ico}}</span>
+    <span>Strana 2 / 3</span>
+  </div>
+</div>
+
+<!-- PAGE 3: JAK POSTUPUJEME -->
+<div class="page">
+  <div class="inner">
+    <div class="page-header">
+      <div class="ph-left">
+        <div class="ph-logo-sm">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+          </svg>
+        </div>
+        <div class="ph-company">NANTO s.r.o.</div>
+      </div>
+      <div class="ph-right">
+        <div class="ph-title">Jak postupujeme</div>
+        <div class="ph-meta">{{nabidka_kod}} · {{datum_vystaveni}}</div>
+      </div>
+    </div>
+
+    <div class="process-banner">
+      <div class="pb-eyebrow">Náš proces</div>
+      <div class="pb-title">Od nabídky k funkčnímu systému rekuperace</div>
+      <div class="pb-sub">Každou instalaci rekuperace bereme jako partnerský projekt. Provázíme vás od první konzultace až po předání — přehledně, bez překvapení.</div>
+    </div>
+
+    <div class="steps-grid">
+      <div class="step-card highlight">
+        <div class="step-num">1</div>
+        <div class="step-title">Konzultace a návrh řešení</div>
+        <div class="step-desc">Bezplatná konzultace, posouzení dispozic a návrh optimálního vzduchotechnického schématu. Detailní cenová nabídka s technickým popisem.</div>
+        <div class="step-tags"><span class="step-tag">Zdarma</span><span class="step-tag">Do 48 hodin</span></div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">2</div>
+        <div class="step-title">Smlouva a záloha</div>
+        <div class="step-desc">Po odsouhlasení nabídky podepíšeme smlouvu o dílo. Záloha zajistí objednání materiálu a rezervaci termínu montáže.</div>
+        <div class="step-tags"><span class="step-tag">Smlouva o dílo</span></div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">3</div>
+        <div class="step-title">Příprava a materiál</div>
+        <div class="step-desc">Objednání rekuperační jednotky, potrubí a veškerého materiálu. Koordinujeme dodávky a informujeme vás o potřebné stavební připravenosti.</div>
+        <div class="step-tags"><span class="step-tag">1–3 týdny</span><span class="step-tag">Stavební příprava</span></div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">4</div>
+        <div class="step-title">Instalace potrubních rozvodů</div>
+        <div class="step-desc">Vedení vzduchovodů, osazení přívodních a odvodních vyústek a prostupů stěnami dle projektu.</div>
+        <div class="step-tags"><span class="step-tag">1–3 dny</span></div>
+      </div>
+      <div class="step-card highlight">
+        <div class="step-num">5</div>
+        <div class="step-title">Osazení jednotky a zprovoznění</div>
+        <div class="step-desc">Instalace rekuperační jednotky, elektrické zapojení, regulace a nastavení optimálních průtoků vzduchu.</div>
+        <div class="step-tags"><span class="step-tag">Testování</span><span class="step-tag">Nastavení</span></div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">6</div>
+        <div class="step-title">Předání a zaškolení</div>
+        <div class="step-desc">Podpis předávacího protokolu, předání veškeré dokumentace. Zaškolení na obsluhu a filtrační intervaly.</div>
+        <div class="step-tags"><span class="step-tag">Protokol</span><span class="step-tag">Dokumentace</span><span class="step-tag">Záruka</span></div>
+      </div>
+    </div>
+
+    <div class="closing-section">
+      <div class="closing-left">
+        <div class="closing-title">Těšíme se na spolupráci.</div>
+        <div class="closing-text">Nejsme jen dodavatel — jsme partner, který vás provede celým procesem. Navrhujeme tak, aby to dávalo smysl pro váš dům i peněženku. Pracujeme čistě, komunikujeme otevřeně a za svou prací si stojíme.</div>
+        <a href="https://nanto.cz/reference" class="closing-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          Podívejte se na naše reference — nanto.cz/reference
+        </a>
+      </div>
+      <div class="closing-stats">
+        <div class="closing-stat"><div class="cs-num">100+</div><div class="cs-label">realizací ročně</div></div>
+        <div class="closing-stat"><div class="cs-num">10+</div><div class="cs-label">let v oboru</div></div>
+        <div class="closing-stat"><div class="cs-num">100 %</div><div class="cs-label">spokojených klientů</div></div>
+      </div>
+    </div>
+
+    <div class="vpc-section">
+      <div class="vpc-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+        </svg>
+      </div>
+      <div class="vpc-body">
+        <div class="vpc-title">Máte otázky? Váš obchodní zástupce je tu pro vás.</div>
+        <div class="vpc-text">Každá instalace je jiná — a my to víme. Rádi s vámi probereme možná rizika, alternativní řešení, způsoby financování nebo jednoduše to, co vás zajímá. Bez tlaku, bez zbytečných řečí.</div>
+        <div class="vpc-pills">
+          <span class="vpc-pill">Možná rizika a jak jim předejít</span>
+          <span class="vpc-pill">Alternativy a srovnání</span>
+          <span class="vpc-pill">Způsoby financování</span>
+          <span class="vpc-pill">Dotace NZÚ</span>
+          <span class="vpc-pill">Harmonogram a termíny</span>
+          <span class="vpc-pill">Cokoli dalšího</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <div class="page-footer">
+    <span><span class="pf-accent">NANTO</span>s.r.o. · {{firma_adresa}} · {{firma_email}} · IČO: {{firma_ico}}</span>
+    <span>Strana 3 / 3</span>
+  </div>
+</div>
+
+</body>
+</html>`
+
+const HTML_VZDUCHOTECHNIKA = `<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<title>Cenová nabídka – Vzduchotechnika</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --yellow: #FFC93C;
+    --yellow-light: #FFF8E7;
+    --gray: #4A4A4A;
+    --black: #111111;
+    --muted: #6B7280;
+    --border: #DDDDDD;
+    --bg: #F5F5F5;
+    --white: #FFFFFF;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: white;
+    color: var(--black);
+    font-size: 11px;
+    line-height: 1.6;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .page {
+    width: 210mm;
+    min-height: 297mm;
+    max-height: 297mm;
+    page-break-after: always;
+    position: relative;
+    overflow: hidden;
+    background: white;
+    display: flex;
+    flex-direction: column;
+  }
+  .page:last-child { page-break-after: avoid; }
+  .cover-top-bar { height: 6px; background: var(--yellow); flex-shrink: 0; }
+  .cover-body { flex: 1; padding: 44px 52px 36px; display: flex; flex-direction: column; }
+  .cover-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 56px; }
+  .logo-row { display: flex; align-items: center; gap: 10px; }
+  .logo-mark { width: 38px; height: 38px; background: var(--yellow); border-radius: 7px; display: flex; align-items: center; justify-content: center; }
+  .logo-mark svg { width: 20px; height: 20px; }
+  .logo-text { font-family: 'Montserrat', sans-serif; font-size: 18px; font-weight: 700; color: var(--black); letter-spacing: 0.5px; }
+  .logo-sub { font-size: 9px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-top: 1px; }
+  .cover-doc-info { text-align: right; }
+  .cdi-label { font-size: 9px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 4px; }
+  .cdi-val { font-size: 13px; font-weight: 600; color: var(--gray); }
+  .cover-hero { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+  .cover-tag { display: inline-flex; align-items: center; gap: 8px; background: var(--yellow-light); border: 1px solid var(--yellow); border-radius: 20px; padding: 5px 14px; margin-bottom: 24px; width: fit-content; }
+  .cover-tag-dot { width: 7px; height: 7px; background: var(--yellow); border-radius: 50%; }
+  .cover-tag span { font-size: 10px; font-weight: 600; color: var(--gray); letter-spacing: 1px; text-transform: uppercase; }
+  .cover-title { font-family: 'Montserrat', sans-serif; font-size: 44px; font-weight: 700; color: var(--black); line-height: 1.05; margin-bottom: 10px; }
+  .cover-title .accent { color: var(--yellow); }
+  .cover-subtitle { font-size: 13px; color: var(--muted); line-height: 1.7; max-width: 360px; margin-bottom: 44px; }
+  .cover-client { background: var(--bg); border-radius: 10px; padding: 20px 24px; display: inline-flex; gap: 28px; align-items: center; width: 440px; }
+  .cc-label { font-size: 9px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 5px; }
+  .cc-name { font-family: 'Montserrat', sans-serif; font-size: 16px; font-weight: 600; color: var(--black); margin-bottom: 3px; }
+  .cc-detail { font-size: 10.5px; color: var(--muted); }
+  .cc-divider { width: 1px; height: 44px; background: var(--border); }
+  .cover-bottom { border-top: 1px solid var(--border); padding: 16px 0 0; display: flex; justify-content: space-between; align-items: center; }
+  .cbd-item { text-align: center; }
+  .cbd-label { font-size: 9px; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 3px; }
+  .cbd-val { font-size: 12px; font-weight: 500; color: var(--gray); }
+  .cbd-val-small { font-size: 10.5px; color: var(--muted); margin-top: 1px; }
+  .cover-bottom-sep { width: 1px; height: 28px; background: var(--border); }
+  .inner { flex: 1; padding: 30px 52px 44px; display: flex; flex-direction: column; }
+  .page-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 14px; border-bottom: 2px solid var(--black); margin-bottom: 28px; flex-shrink: 0; }
+  .ph-left { display: flex; align-items: center; gap: 8px; }
+  .ph-logo-sm { width: 26px; height: 26px; background: var(--yellow); border-radius: 5px; display: flex; align-items: center; justify-content: center; }
+  .ph-logo-sm svg { width: 14px; height: 14px; }
+  .ph-company { font-family: 'Montserrat', sans-serif; font-size: 13px; font-weight: 700; color: var(--black); }
+  .ph-right { text-align: right; }
+  .ph-title { font-size: 11px; font-weight: 600; color: var(--gray); }
+  .ph-meta { font-size: 10px; color: var(--muted); }
+  .section-label { font-size: 9px; font-weight: 600; letter-spacing: 2.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 14px; display: flex; align-items: center; gap: 10px; }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .quote-table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 11px; }
+  .quote-table thead tr { background: var(--black); }
+  .quote-table thead th { padding: 9px 11px; font-family: 'Montserrat', sans-serif; font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 600; color: white; text-align: left; }
+  .quote-table thead th.r { text-align: right; }
+  .quote-table tbody tr { border-bottom: 1px solid var(--border); }
+  .quote-table tbody tr:nth-child(even) { background: #FAFAF8; }
+  .quote-table td { padding: 9px 11px; vertical-align: middle; }
+  .quote-table td.num { color: var(--muted); font-size: 10px; width: 28px; }
+  .quote-table td.name { font-weight: 500; color: var(--black); }
+  .quote-table td.r { text-align: right; }
+  .quote-table td.total { text-align: right; font-weight: 600; color: var(--black); }
+  .totals-wrap { display: flex; justify-content: flex-end; margin-bottom: 20px; }
+  .totals-box { width: 250px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .tot-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 14px; border-bottom: 1px solid var(--border); font-size: 11px; }
+  .tot-row:last-child { border-bottom: none; background: var(--yellow); padding: 11px 14px; }
+  .tot-label { color: var(--muted); }
+  .tot-row:last-child .tot-label { color: var(--black); font-weight: 600; font-size: 12px; }
+  .tot-val { font-weight: 600; color: var(--black); }
+  .tot-row:last-child .tot-val { font-size: 14px; font-weight: 700; color: var(--black); }
+  .validity-row { display: flex; align-items: center; gap: 16px; background: var(--bg); border-radius: 7px; padding: 12px 16px; margin-bottom: 0; font-size: 11px; }
+  .vr-item { display: flex; align-items: center; gap: 6px; }
+  .vr-dot { width: 6px; height: 6px; background: var(--yellow); border-radius: 50%; flex-shrink: 0; }
+  .vr-label { color: var(--muted); }
+  .vr-val { font-weight: 500; color: var(--black); }
+  .vr-sep { width: 1px; height: 14px; background: var(--border); }
+  .zaloha-note { display: flex; gap: 10px; align-items: flex-start; background: #F0F7FF; border: 1px solid #C7DFF7; border-radius: 7px; padding: 12px 14px; margin-top: 10px; font-size: 11px; color: #374151; line-height: 1.65; }
+  .zn-icon { color: #3B82F6; flex-shrink: 0; margin-top: 1px; }
+  .zn-text strong { font-weight: 600; color: var(--black); }
+  .process-banner { background: var(--black); border-radius: 10px; padding: 16px 22px; margin-bottom: 16px; flex-shrink: 0; }
+  .pb-eyebrow { font-size: 9px; letter-spacing: 2.5px; text-transform: uppercase; color: rgba(255,255,255,0.45); margin-bottom: 4px; }
+  .pb-title { font-family: 'Montserrat', sans-serif; font-size: 17px; font-weight: 700; color: white; margin-bottom: 4px; }
+  .pb-sub { font-size: 10.5px; color: rgba(255,255,255,0.6); line-height: 1.55; max-width: 420px; }
+  .steps-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; flex: 1; }
+  .step-card { border: 1px solid var(--border); border-radius: 7px; padding: 10px 12px; position: relative; background: white; }
+  .step-card.highlight { border-color: var(--yellow); background: var(--yellow-light); }
+  .step-num { width: 22px; height: 22px; background: var(--black); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Montserrat', sans-serif; font-size: 10px; font-weight: 700; color: white; margin-bottom: 6px; }
+  .step-card.highlight .step-num { background: var(--yellow); color: var(--black); }
+  .step-title { font-family: 'Montserrat', sans-serif; font-size: 10.5px; font-weight: 600; color: var(--black); margin-bottom: 3px; }
+  .step-desc { font-size: 9.5px; color: var(--muted); line-height: 1.55; }
+  .step-tags { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 6px; }
+  .step-tag { background: var(--bg); border: 1px solid var(--border); border-radius: 3px; padding: 1px 5px; font-size: 8.5px; color: var(--muted); }
+  .step-card.highlight .step-tag { background: white; border-color: var(--yellow); }
+  .closing-section { display: flex; gap: 20px; align-items: center; background: var(--yellow-light); border: 1px solid var(--yellow); border-radius: 9px; padding: 14px 18px; margin-top: 10px; }
+  .closing-left { flex: 1; }
+  .closing-title { font-family: 'Montserrat', sans-serif; font-size: 12.5px; font-weight: 700; color: var(--black); margin-bottom: 4px; }
+  .closing-text { font-size: 9.5px; color: var(--muted); line-height: 1.6; margin-bottom: 8px; max-width: 340px; }
+  .closing-link { display: inline-flex; align-items: center; gap: 5px; color: var(--gray); font-size: 10px; font-weight: 500; text-decoration: none; border-bottom: 1px solid var(--border); padding-bottom: 1px; }
+  .closing-stats { display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; padding-left: 20px; border-left: 1px solid var(--yellow); }
+  .closing-stat { text-align: center; }
+  .cs-num { font-family: 'Montserrat', sans-serif; font-size: 18px; font-weight: 700; color: var(--black); line-height: 1; }
+  .cs-label { font-size: 8.5px; color: var(--muted); margin-top: 2px; white-space: nowrap; }
+  .vpc-section { margin-top: 10px; border-top: 1px solid var(--border); padding-top: 10px; display: flex; gap: 14px; align-items: flex-start; }
+  .vpc-icon { width: 30px; height: 30px; background: var(--yellow); border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+  .vpc-icon svg { width: 13px; height: 13px; }
+  .vpc-body { flex: 1; }
+  .vpc-title { font-family: 'Montserrat', sans-serif; font-size: 10.5px; font-weight: 700; color: var(--black); margin-bottom: 3px; }
+  .vpc-text { font-size: 9.5px; color: var(--muted); line-height: 1.6; }
+  .vpc-pills { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+  .vpc-pill { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 2px 8px; font-size: 9px; color: var(--gray); font-weight: 500; }
+  .page-footer { flex-shrink: 0; border-top: 1px solid var(--border); padding: 8px 52px; display: flex; justify-content: space-between; align-items: center; font-size: 9px; color: var(--muted); background: white; }
+  .pf-accent { color: var(--yellow); font-weight: 700; margin-right: 4px; }
+  @media print {
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    body { background: white; }
+    .page { width: 210mm; height: 297mm; overflow: hidden; }
+    @page { size: A4; margin: 0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- PAGE 1: COVER -->
+<div class="page">
+  <div class="cover-top-bar"></div>
+  <div class="cover-body">
+    <div class="cover-header">
+      <div class="logo-row">
+        <div class="logo-mark">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+        </div>
+        <div>
+          <div class="logo-text">NANTO</div>
+          <div class="logo-sub">s.r.o.</div>
+        </div>
+      </div>
+      <div class="cover-doc-info">
+        <div class="cdi-label">Číslo nabídky</div>
+        <div class="cdi-val">{{nabidka_kod}}</div>
+      </div>
+    </div>
+
+    <div class="cover-hero">
+      <div class="cover-tag">
+        <span class="cover-tag-dot"></span>
+        <span>Vzduchotechnika</span>
+      </div>
+      <div class="cover-title">Cenová nabídka<br>&amp; návrh<br><span class="accent">spolupráce</span></div>
+      <div class="cover-subtitle">Přinášíme vám nejen cenovou nabídku, ale komplexní návrh vzduchotechnického systému šitého na míru vašemu prostoru. Naším cílem je optimální vzduchová pohoda.</div>
+
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div class="cover-client">
+          <div>
+            <div class="cc-label">Připraveno pro</div>
+            <div class="cc-name">{{klient_jmeno}}</div>
+            <div class="cc-detail">{{klient_adresa}}</div>
+          </div>
+          <div class="cc-divider"></div>
+          <div>
+            <div class="cc-label">Datum nabídky</div>
+            <div class="cc-name" style="font-size:13px;">{{datum_vystaveni}}</div>
+            <div class="cc-detail">Platnost 30 dní</div>
+          </div>
+        </div>
+        <div class="cover-client">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="width:34px;height:34px;background:var(--yellow);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;color:var(--black);flex-shrink:0;">{{obchodnik_inicialy}}</div>
+            <div>
+              <div class="cc-label">Váš obchodní partner</div>
+              <div class="cc-name">{{obchodnik_jmeno}}</div>
+            </div>
+          </div>
+          <div class="cc-divider"></div>
+          <div>
+            <div class="cc-label">Kontakt</div>
+            <div class="cc-name" style="font-size:12px;">{{obchodnik_telefon}}</div>
+            <div class="cc-detail">{{obchodnik_email}}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cover-bottom">
+      <div class="cbd-item">
+        <div class="cbd-label">Datum nabídky</div>
+        <div class="cbd-val">{{datum_vystaveni}}</div>
+      </div>
+      <div class="cover-bottom-sep"></div>
+      <div class="cbd-item">
+        <div class="cbd-label">Platnost</div>
+        <div class="cbd-val">{{datum_platnosti}}</div>
+      </div>
+      <div class="cover-bottom-sep"></div>
+      <div class="cbd-item">
+        <div class="cbd-label">Zpracoval</div>
+        <div class="cbd-val">{{obchodnik_jmeno}}</div>
+      </div>
+      <div class="cover-bottom-sep"></div>
+      <div class="cbd-item">
+        <div class="cbd-label">Kontakt</div>
+        <div class="cbd-val">{{obchodnik_telefon}}</div>
+        <div class="cbd-val-small">{{obchodnik_email}}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE 2: NABÍDKA -->
+<div class="page">
+  <div class="inner">
+    <div class="page-header">
+      <div class="ph-left">
+        <div class="ph-logo-sm">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+          </svg>
+        </div>
+        <div class="ph-company">NANTO s.r.o.</div>
+      </div>
+      <div class="ph-right">
+        <div class="ph-title">Cenová nabídka — Vzduchotechnika</div>
+        <div class="ph-meta">{{nabidka_kod}} · {{datum_vystaveni}}</div>
+      </div>
+    </div>
+
+    <div class="section-label">Položky nabídky</div>
+    <table class="quote-table">
+      <thead>
+        <tr>
+          <th style="width:28px;">#</th>
+          <th>Popis produktu / služby</th>
+          <th class="r" style="width:38px;">Ks</th>
+          <th class="r" style="width:90px;">Cena / MJ</th>
+          <th class="r" style="width:90px;">Celkem</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#polozky}}
+        <tr>
+          <td class="num">{{polozka_poradi}}</td>
+          <td class="name">{{polozka_nazev}}</td>
+          <td class="r">{{polozka_mnozstvi}}</td>
+          <td class="r">{{polozka_cena_kus}}</td>
+          <td class="total">{{polozka_celkem}}</td>
+        </tr>
+        {{/polozky}}
+      </tbody>
+    </table>
+
+    <div class="totals-wrap">
+      <div class="totals-box">
+        <div class="tot-row"><span class="tot-label">Celkem bez DPH</span><span class="tot-val">{{cena_bez_dph}}</span></div>
+        <div class="tot-row"><span class="tot-label">DPH {{dph_sazba}} %</span><span class="tot-val">{{dph_castka}}</span></div>
+        <div class="tot-row"><span class="tot-label">Celkem s DPH</span><span class="tot-val">{{cena_s_dph}}</span></div>
+      </div>
+    </div>
+
+    <div class="validity-row">
+      <div class="vr-item"><span class="vr-dot"></span><span class="vr-label">Platnost nabídky:</span><span class="vr-val">30 dní od {{datum_vystaveni}}</span></div>
+      <div class="vr-sep"></div>
+      <div class="vr-item"><span class="vr-dot"></span><span class="vr-label">Platnost do:</span><span class="vr-val">{{datum_platnosti}}</span></div>
+      <div class="vr-sep"></div>
+      <div class="vr-item"><span class="vr-dot"></span><span class="vr-label">Obchodník:</span><span class="vr-val">{{obchodnik_jmeno}}</span></div>
+    </div>
+
+    <div class="zaloha-note">
+      <div class="zn-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      </div>
+      <div class="zn-text">
+        <strong>Zálohu a platební podmínky nastavíme dle aktuálního harmonogramu.</strong> Chápeme, že ne vždy má smysl hradit vše najednou — pokud se termín realizace posouvá, společně nastavíme platební plán, který vám dává smysl. Materiál nakupujeme strategicky, abychom vás chránili před zdražením.
+      </div>
+    </div>
+
+  </div>
+  <div class="page-footer">
+    <span><span class="pf-accent">NANTO</span>s.r.o. · {{firma_adresa}} · {{firma_email}} · IČO: {{firma_ico}}</span>
+    <span>Strana 2 / 3</span>
+  </div>
+</div>
+
+<!-- PAGE 3: JAK POSTUPUJEME -->
+<div class="page">
+  <div class="inner">
+    <div class="page-header">
+      <div class="ph-left">
+        <div class="ph-logo-sm">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+          </svg>
+        </div>
+        <div class="ph-company">NANTO s.r.o.</div>
+      </div>
+      <div class="ph-right">
+        <div class="ph-title">Jak postupujeme</div>
+        <div class="ph-meta">{{nabidka_kod}} · {{datum_vystaveni}}</div>
+      </div>
+    </div>
+
+    <div class="process-banner">
+      <div class="pb-eyebrow">Náš proces</div>
+      <div class="pb-title">Od nabídky k funkčnímu vzduchotechnickému systému</div>
+      <div class="pb-sub">Každou vzduchotechnickou instalaci bereme jako partnerský projekt. Provázíme vás od první konzultace až po předání — přehledně, bez překvapení.</div>
+    </div>
+
+    <div class="steps-grid">
+      <div class="step-card highlight">
+        <div class="step-num">1</div>
+        <div class="step-title">Konzultace a návrh řešení</div>
+        <div class="step-desc">Bezplatná konzultace, analýza požadavků a návrh optimálního vzduchotechnického systému. Detailní cenová nabídka s technickým popisem.</div>
+        <div class="step-tags"><span class="step-tag">Zdarma</span><span class="step-tag">Do 48 hodin</span></div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">2</div>
+        <div class="step-title">Smlouva a záloha</div>
+        <div class="step-desc">Po odsouhlasení nabídky podepíšeme smlouvu o dílo. Záloha zajistí objednání materiálu a rezervaci termínu montáže.</div>
+        <div class="step-tags"><span class="step-tag">Smlouva o dílo</span></div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">3</div>
+        <div class="step-title">Příprava a materiál</div>
+        <div class="step-desc">Objednání vzduchotechnické jednotky, potrubí a veškerého příslušenství. Koordinujeme dodávky a informujeme vás o stavební připravenosti.</div>
+        <div class="step-tags"><span class="step-tag">1–3 týdny</span><span class="step-tag">Stavební příprava</span></div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">4</div>
+        <div class="step-title">Instalace vzduchovodů</div>
+        <div class="step-desc">Vedení potrubních rozvodů, osazení distribučních elementů a prostupů dle projektu. Práce probíhají čistě a dle harmonogramu.</div>
+        <div class="step-tags"><span class="step-tag">1–3 dny</span></div>
+      </div>
+      <div class="step-card highlight">
+        <div class="step-num">5</div>
+        <div class="step-title">Montáž zařízení a zprovoznění</div>
+        <div class="step-desc">Instalace vzduchotechnické jednotky, elektrické zapojení, regulace a nastavení optimálních parametrů.</div>
+        <div class="step-tags"><span class="step-tag">Testování</span><span class="step-tag">Nastavení</span></div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">6</div>
+        <div class="step-title">Předání a zaškolení</div>
+        <div class="step-desc">Podpis předávacího protokolu, předání dokumentace. Zaškolení obsluhy a doporučení pro údržbu systému.</div>
+        <div class="step-tags"><span class="step-tag">Protokol</span><span class="step-tag">Dokumentace</span><span class="step-tag">Záruka</span></div>
+      </div>
+    </div>
+
+    <div class="closing-section">
+      <div class="closing-left">
+        <div class="closing-title">Těšíme se na spolupráci.</div>
+        <div class="closing-text">Nejsme jen dodavatel — jsme partner, který vás provede celým procesem. Navrhujeme tak, aby to dávalo smysl pro váš dům i peněženku. Pracujeme čistě, komunikujeme otevřeně a za svou prací si stojíme.</div>
+        <a href="https://nanto.cz/reference" class="closing-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          Podívejte se na naše reference — nanto.cz/reference
+        </a>
+      </div>
+      <div class="closing-stats">
+        <div class="closing-stat"><div class="cs-num">100+</div><div class="cs-label">realizací ročně</div></div>
+        <div class="closing-stat"><div class="cs-num">10+</div><div class="cs-label">let v oboru</div></div>
+        <div class="closing-stat"><div class="cs-num">100 %</div><div class="cs-label">spokojených klientů</div></div>
+      </div>
+    </div>
+
+    <div class="vpc-section">
+      <div class="vpc-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+        </svg>
+      </div>
+      <div class="vpc-body">
+        <div class="vpc-title">Máte otázky? Váš obchodní zástupce je tu pro vás.</div>
+        <div class="vpc-text">Každá instalace je jiná — a my to víme. Rádi s vámi probereme možná rizika, alternativní řešení, způsoby financování nebo jednoduše to, co vás zajímá. Bez tlaku, bez zbytečných řečí.</div>
+        <div class="vpc-pills">
+          <span class="vpc-pill">Možná rizika a jak jim předejít</span>
+          <span class="vpc-pill">Alternativy a srovnání</span>
+          <span class="vpc-pill">Způsoby financování</span>
+          <span class="vpc-pill">Dotace NZÚ</span>
+          <span class="vpc-pill">Harmonogram a termíny</span>
+          <span class="vpc-pill">Cokoli dalšího</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <div class="page-footer">
+    <span><span class="pf-accent">NANTO</span>s.r.o. · {{firma_adresa}} · {{firma_email}} · IČO: {{firma_ico}}</span>
+    <span>Strana 3 / 3</span>
+  </div>
+</div>
+
+</body>
+</html>`
+
+const HTML_JINE = `<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<title>Cenová nabídka – Technické řešení</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --yellow: #FFC93C;
+    --yellow-light: #FFF8E7;
+    --gray: #4A4A4A;
+    --black: #111111;
+    --muted: #6B7280;
+    --border: #DDDDDD;
+    --bg: #F5F5F5;
+    --white: #FFFFFF;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: white;
+    color: var(--black);
+    font-size: 11px;
+    line-height: 1.6;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .page {
+    width: 210mm;
+    min-height: 297mm;
+    max-height: 297mm;
+    page-break-after: always;
+    position: relative;
+    overflow: hidden;
+    background: white;
+    display: flex;
+    flex-direction: column;
+  }
+  .page:last-child { page-break-after: avoid; }
+  .cover-top-bar { height: 6px; background: var(--yellow); flex-shrink: 0; }
+  .cover-body { flex: 1; padding: 44px 52px 36px; display: flex; flex-direction: column; }
+  .cover-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 56px; }
+  .logo-row { display: flex; align-items: center; gap: 10px; }
+  .logo-mark { width: 38px; height: 38px; background: var(--yellow); border-radius: 7px; display: flex; align-items: center; justify-content: center; }
+  .logo-mark svg { width: 20px; height: 20px; }
+  .logo-text { font-family: 'Montserrat', sans-serif; font-size: 18px; font-weight: 700; color: var(--black); letter-spacing: 0.5px; }
+  .logo-sub { font-size: 9px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-top: 1px; }
+  .cover-doc-info { text-align: right; }
+  .cdi-label { font-size: 9px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 4px; }
+  .cdi-val { font-size: 13px; font-weight: 600; color: var(--gray); }
+  .cover-hero { flex: 1; display: flex; flex-direction: column; justify-content: center; }
+  .cover-tag { display: inline-flex; align-items: center; gap: 8px; background: var(--yellow-light); border: 1px solid var(--yellow); border-radius: 20px; padding: 5px 14px; margin-bottom: 24px; width: fit-content; }
+  .cover-tag-dot { width: 7px; height: 7px; background: var(--yellow); border-radius: 50%; }
+  .cover-tag span { font-size: 10px; font-weight: 600; color: var(--gray); letter-spacing: 1px; text-transform: uppercase; }
+  .cover-title { font-family: 'Montserrat', sans-serif; font-size: 44px; font-weight: 700; color: var(--black); line-height: 1.05; margin-bottom: 10px; }
+  .cover-title .accent { color: var(--yellow); }
+  .cover-subtitle { font-size: 13px; color: var(--muted); line-height: 1.7; max-width: 360px; margin-bottom: 44px; }
+  .cover-client { background: var(--bg); border-radius: 10px; padding: 20px 24px; display: inline-flex; gap: 28px; align-items: center; width: 440px; }
+  .cc-label { font-size: 9px; color: var(--muted); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 5px; }
+  .cc-name { font-family: 'Montserrat', sans-serif; font-size: 16px; font-weight: 600; color: var(--black); margin-bottom: 3px; }
+  .cc-detail { font-size: 10.5px; color: var(--muted); }
+  .cc-divider { width: 1px; height: 44px; background: var(--border); }
+  .cover-bottom { border-top: 1px solid var(--border); padding: 16px 0 0; display: flex; justify-content: space-between; align-items: center; }
+  .cbd-item { text-align: center; }
+  .cbd-label { font-size: 9px; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 3px; }
+  .cbd-val { font-size: 12px; font-weight: 500; color: var(--gray); }
+  .cbd-val-small { font-size: 10.5px; color: var(--muted); margin-top: 1px; }
+  .cover-bottom-sep { width: 1px; height: 28px; background: var(--border); }
+  .inner { flex: 1; padding: 30px 52px 44px; display: flex; flex-direction: column; }
+  .page-header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 14px; border-bottom: 2px solid var(--black); margin-bottom: 28px; flex-shrink: 0; }
+  .ph-left { display: flex; align-items: center; gap: 8px; }
+  .ph-logo-sm { width: 26px; height: 26px; background: var(--yellow); border-radius: 5px; display: flex; align-items: center; justify-content: center; }
+  .ph-logo-sm svg { width: 14px; height: 14px; }
+  .ph-company { font-family: 'Montserrat', sans-serif; font-size: 13px; font-weight: 700; color: var(--black); }
+  .ph-right { text-align: right; }
+  .ph-title { font-size: 11px; font-weight: 600; color: var(--gray); }
+  .ph-meta { font-size: 10px; color: var(--muted); }
+  .section-label { font-size: 9px; font-weight: 600; letter-spacing: 2.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 14px; display: flex; align-items: center; gap: 10px; }
+  .section-label::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+  .quote-table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 11px; }
+  .quote-table thead tr { background: var(--black); }
+  .quote-table thead th { padding: 9px 11px; font-family: 'Montserrat', sans-serif; font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 600; color: white; text-align: left; }
+  .quote-table thead th.r { text-align: right; }
+  .quote-table tbody tr { border-bottom: 1px solid var(--border); }
+  .quote-table tbody tr:nth-child(even) { background: #FAFAF8; }
+  .quote-table td { padding: 9px 11px; vertical-align: middle; }
+  .quote-table td.num { color: var(--muted); font-size: 10px; width: 28px; }
+  .quote-table td.name { font-weight: 500; color: var(--black); }
+  .quote-table td.r { text-align: right; }
+  .quote-table td.total { text-align: right; font-weight: 600; color: var(--black); }
+  .totals-wrap { display: flex; justify-content: flex-end; margin-bottom: 20px; }
+  .totals-box { width: 250px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .tot-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 14px; border-bottom: 1px solid var(--border); font-size: 11px; }
+  .tot-row:last-child { border-bottom: none; background: var(--yellow); padding: 11px 14px; }
+  .tot-label { color: var(--muted); }
+  .tot-row:last-child .tot-label { color: var(--black); font-weight: 600; font-size: 12px; }
+  .tot-val { font-weight: 600; color: var(--black); }
+  .tot-row:last-child .tot-val { font-size: 14px; font-weight: 700; color: var(--black); }
+  .validity-row { display: flex; align-items: center; gap: 16px; background: var(--bg); border-radius: 7px; padding: 12px 16px; margin-bottom: 0; font-size: 11px; }
+  .vr-item { display: flex; align-items: center; gap: 6px; }
+  .vr-dot { width: 6px; height: 6px; background: var(--yellow); border-radius: 50%; flex-shrink: 0; }
+  .vr-label { color: var(--muted); }
+  .vr-val { font-weight: 500; color: var(--black); }
+  .vr-sep { width: 1px; height: 14px; background: var(--border); }
+  .zaloha-note { display: flex; gap: 10px; align-items: flex-start; background: #F0F7FF; border: 1px solid #C7DFF7; border-radius: 7px; padding: 12px 14px; margin-top: 10px; font-size: 11px; color: #374151; line-height: 1.65; }
+  .zn-icon { color: #3B82F6; flex-shrink: 0; margin-top: 1px; }
+  .zn-text strong { font-weight: 600; color: var(--black); }
+  .process-banner { background: var(--black); border-radius: 10px; padding: 16px 22px; margin-bottom: 16px; flex-shrink: 0; }
+  .pb-eyebrow { font-size: 9px; letter-spacing: 2.5px; text-transform: uppercase; color: rgba(255,255,255,0.45); margin-bottom: 4px; }
+  .pb-title { font-family: 'Montserrat', sans-serif; font-size: 17px; font-weight: 700; color: white; margin-bottom: 4px; }
+  .pb-sub { font-size: 10.5px; color: rgba(255,255,255,0.6); line-height: 1.55; max-width: 420px; }
+  .steps-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; flex: 1; }
+  .step-card { border: 1px solid var(--border); border-radius: 7px; padding: 10px 12px; position: relative; background: white; }
+  .step-card.highlight { border-color: var(--yellow); background: var(--yellow-light); }
+  .step-num { width: 22px; height: 22px; background: var(--black); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Montserrat', sans-serif; font-size: 10px; font-weight: 700; color: white; margin-bottom: 6px; }
+  .step-card.highlight .step-num { background: var(--yellow); color: var(--black); }
+  .step-title { font-family: 'Montserrat', sans-serif; font-size: 10.5px; font-weight: 600; color: var(--black); margin-bottom: 3px; }
+  .step-desc { font-size: 9.5px; color: var(--muted); line-height: 1.55; }
+  .step-tags { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 6px; }
+  .step-tag { background: var(--bg); border: 1px solid var(--border); border-radius: 3px; padding: 1px 5px; font-size: 8.5px; color: var(--muted); }
+  .step-card.highlight .step-tag { background: white; border-color: var(--yellow); }
+  .closing-section { display: flex; gap: 20px; align-items: center; background: var(--yellow-light); border: 1px solid var(--yellow); border-radius: 9px; padding: 14px 18px; margin-top: 10px; }
+  .closing-left { flex: 1; }
+  .closing-title { font-family: 'Montserrat', sans-serif; font-size: 12.5px; font-weight: 700; color: var(--black); margin-bottom: 4px; }
+  .closing-text { font-size: 9.5px; color: var(--muted); line-height: 1.6; margin-bottom: 8px; max-width: 340px; }
+  .closing-link { display: inline-flex; align-items: center; gap: 5px; color: var(--gray); font-size: 10px; font-weight: 500; text-decoration: none; border-bottom: 1px solid var(--border); padding-bottom: 1px; }
+  .closing-stats { display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; padding-left: 20px; border-left: 1px solid var(--yellow); }
+  .closing-stat { text-align: center; }
+  .cs-num { font-family: 'Montserrat', sans-serif; font-size: 18px; font-weight: 700; color: var(--black); line-height: 1; }
+  .cs-label { font-size: 8.5px; color: var(--muted); margin-top: 2px; white-space: nowrap; }
+  .vpc-section { margin-top: 10px; border-top: 1px solid var(--border); padding-top: 10px; display: flex; gap: 14px; align-items: flex-start; }
+  .vpc-icon { width: 30px; height: 30px; background: var(--yellow); border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+  .vpc-icon svg { width: 13px; height: 13px; }
+  .vpc-body { flex: 1; }
+  .vpc-title { font-family: 'Montserrat', sans-serif; font-size: 10.5px; font-weight: 700; color: var(--black); margin-bottom: 3px; }
+  .vpc-text { font-size: 9.5px; color: var(--muted); line-height: 1.6; }
+  .vpc-pills { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+  .vpc-pill { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 2px 8px; font-size: 9px; color: var(--gray); font-weight: 500; }
+  .page-footer { flex-shrink: 0; border-top: 1px solid var(--border); padding: 8px 52px; display: flex; justify-content: space-between; align-items: center; font-size: 9px; color: var(--muted); background: white; }
+  .pf-accent { color: var(--yellow); font-weight: 700; margin-right: 4px; }
+  @media print {
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    body { background: white; }
+    .page { width: 210mm; height: 297mm; overflow: hidden; }
+    @page { size: A4; margin: 0; }
+  }
+</style>
+</head>
+<body>
+
+<!-- PAGE 1: COVER -->
+<div class="page">
+  <div class="cover-top-bar"></div>
+  <div class="cover-body">
+    <div class="cover-header">
+      <div class="logo-row">
+        <div class="logo-mark">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+        </div>
+        <div>
+          <div class="logo-text">NANTO</div>
+          <div class="logo-sub">s.r.o.</div>
+        </div>
+      </div>
+      <div class="cover-doc-info">
+        <div class="cdi-label">Číslo nabídky</div>
+        <div class="cdi-val">{{nabidka_kod}}</div>
+      </div>
+    </div>
+
+    <div class="cover-hero">
+      <div class="cover-tag">
+        <span class="cover-tag-dot"></span>
+        <span>Technické řešení</span>
+      </div>
+      <div class="cover-title">Cenová nabídka<br>&amp; návrh<br><span class="accent">spolupráce</span></div>
+      <div class="cover-subtitle">Přinášíme vám nejen cenovou nabídku, ale komplexní návrh technického řešení šitého na míru vašim potřebám. Naším cílem je maximální kvalita provedení a vaše spokojenost.</div>
+
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div class="cover-client">
+          <div>
+            <div class="cc-label">Připraveno pro</div>
+            <div class="cc-name">{{klient_jmeno}}</div>
+            <div class="cc-detail">{{klient_adresa}}</div>
+          </div>
+          <div class="cc-divider"></div>
+          <div>
+            <div class="cc-label">Datum nabídky</div>
+            <div class="cc-name" style="font-size:13px;">{{datum_vystaveni}}</div>
+            <div class="cc-detail">Platnost 30 dní</div>
+          </div>
+        </div>
+        <div class="cover-client">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="width:34px;height:34px;background:var(--yellow);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Montserrat',sans-serif;font-size:11px;font-weight:700;color:var(--black);flex-shrink:0;">{{obchodnik_inicialy}}</div>
+            <div>
+              <div class="cc-label">Váš obchodní partner</div>
+              <div class="cc-name">{{obchodnik_jmeno}}</div>
+            </div>
+          </div>
+          <div class="cc-divider"></div>
+          <div>
+            <div class="cc-label">Kontakt</div>
+            <div class="cc-name" style="font-size:12px;">{{obchodnik_telefon}}</div>
+            <div class="cc-detail">{{obchodnik_email}}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cover-bottom">
+      <div class="cbd-item">
+        <div class="cbd-label">Datum nabídky</div>
+        <div class="cbd-val">{{datum_vystaveni}}</div>
+      </div>
+      <div class="cover-bottom-sep"></div>
+      <div class="cbd-item">
+        <div class="cbd-label">Platnost</div>
+        <div class="cbd-val">{{datum_platnosti}}</div>
+      </div>
+      <div class="cover-bottom-sep"></div>
+      <div class="cbd-item">
+        <div class="cbd-label">Zpracoval</div>
+        <div class="cbd-val">{{obchodnik_jmeno}}</div>
+      </div>
+      <div class="cover-bottom-sep"></div>
+      <div class="cbd-item">
+        <div class="cbd-label">Kontakt</div>
+        <div class="cbd-val">{{obchodnik_telefon}}</div>
+        <div class="cbd-val-small">{{obchodnik_email}}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE 2: NABÍDKA -->
+<div class="page">
+  <div class="inner">
+    <div class="page-header">
+      <div class="ph-left">
+        <div class="ph-logo-sm">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+          </svg>
+        </div>
+        <div class="ph-company">NANTO s.r.o.</div>
+      </div>
+      <div class="ph-right">
+        <div class="ph-title">Cenová nabídka</div>
+        <div class="ph-meta">{{nabidka_kod}} · {{datum_vystaveni}}</div>
+      </div>
+    </div>
+
+    <div class="section-label">Položky nabídky</div>
+    <table class="quote-table">
+      <thead>
+        <tr>
+          <th style="width:28px;">#</th>
+          <th>Popis produktu / služby</th>
+          <th class="r" style="width:38px;">Ks</th>
+          <th class="r" style="width:90px;">Cena / MJ</th>
+          <th class="r" style="width:90px;">Celkem</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{#polozky}}
+        <tr>
+          <td class="num">{{polozka_poradi}}</td>
+          <td class="name">{{polozka_nazev}}</td>
+          <td class="r">{{polozka_mnozstvi}}</td>
+          <td class="r">{{polozka_cena_kus}}</td>
+          <td class="total">{{polozka_celkem}}</td>
+        </tr>
+        {{/polozky}}
+      </tbody>
+    </table>
+
+    <div class="totals-wrap">
+      <div class="totals-box">
+        <div class="tot-row"><span class="tot-label">Celkem bez DPH</span><span class="tot-val">{{cena_bez_dph}}</span></div>
+        <div class="tot-row"><span class="tot-label">DPH {{dph_sazba}} %</span><span class="tot-val">{{dph_castka}}</span></div>
+        <div class="tot-row"><span class="tot-label">Celkem s DPH</span><span class="tot-val">{{cena_s_dph}}</span></div>
+      </div>
+    </div>
+
+    <div class="validity-row">
+      <div class="vr-item"><span class="vr-dot"></span><span class="vr-label">Platnost nabídky:</span><span class="vr-val">30 dní od {{datum_vystaveni}}</span></div>
+      <div class="vr-sep"></div>
+      <div class="vr-item"><span class="vr-dot"></span><span class="vr-label">Platnost do:</span><span class="vr-val">{{datum_platnosti}}</span></div>
+      <div class="vr-sep"></div>
+      <div class="vr-item"><span class="vr-dot"></span><span class="vr-label">Obchodník:</span><span class="vr-val">{{obchodnik_jmeno}}</span></div>
+    </div>
+
+    <div class="zaloha-note">
+      <div class="zn-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      </div>
+      <div class="zn-text">
+        <strong>Zálohu a platební podmínky nastavíme dle aktuálního harmonogramu.</strong> Chápeme, že ne vždy má smysl hradit vše najednou — pokud se termín realizace posouvá, společně nastavíme platební plán, který vám dává smysl. Materiál nakupujeme strategicky, abychom vás chránili před zdražením.
+      </div>
+    </div>
+
+  </div>
+  <div class="page-footer">
+    <span><span class="pf-accent">NANTO</span>s.r.o. · {{firma_adresa}} · {{firma_email}} · IČO: {{firma_ico}}</span>
+    <span>Strana 2 / 3</span>
+  </div>
+</div>
+
+<!-- PAGE 3: JAK POSTUPUJEME -->
+<div class="page">
+  <div class="inner">
+    <div class="page-header">
+      <div class="ph-left">
+        <div class="ph-logo-sm">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+          </svg>
+        </div>
+        <div class="ph-company">NANTO s.r.o.</div>
+      </div>
+      <div class="ph-right">
+        <div class="ph-title">Jak postupujeme</div>
+        <div class="ph-meta">{{nabidka_kod}} · {{datum_vystaveni}}</div>
+      </div>
+    </div>
+
+    <div class="process-banner">
+      <div class="pb-eyebrow">Náš proces</div>
+      <div class="pb-title">Od nabídky k úspěšné realizaci</div>
+      <div class="pb-sub">Každý projekt bereme jako partnerský závazek. Provázíme vás od první konzultace až po předání — přehledně, bez překvapení.</div>
+    </div>
+
+    <div class="steps-grid">
+      <div class="step-card highlight">
+        <div class="step-num">1</div>
+        <div class="step-title">Konzultace a návrh řešení</div>
+        <div class="step-desc">Bezplatná konzultace, analýza požadavků a návrh optimálního technického řešení. Detailní cenová nabídka s technickým popisem.</div>
+        <div class="step-tags"><span class="step-tag">Zdarma</span><span class="step-tag">Do 48 hodin</span></div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">2</div>
+        <div class="step-title">Smlouva a záloha</div>
+        <div class="step-desc">Po odsouhlasení nabídky podepíšeme smlouvu o dílo. Záloha zajistí objednání materiálu a rezervaci termínu realizace.</div>
+        <div class="step-tags"><span class="step-tag">Smlouva o dílo</span></div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">3</div>
+        <div class="step-title">Příprava a materiál</div>
+        <div class="step-desc">Objednání veškerého materiálu a zařízení. Koordinujeme dodávky a informujeme vás o potřebné připravenosti.</div>
+        <div class="step-tags"><span class="step-tag">1–3 týdny</span><span class="step-tag">Příprava místa</span></div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">4</div>
+        <div class="step-title">Realizace — 1. etapa</div>
+        <div class="step-desc">Zahájení montážních prací dle projektové dokumentace a dohodnutého harmonogramu. Pracujeme čistě a s minimálním narušením provozu.</div>
+        <div class="step-tags"><span class="step-tag">Dle harmonogramu</span></div>
+      </div>
+      <div class="step-card highlight">
+        <div class="step-num">5</div>
+        <div class="step-title">Dokončení a zprovoznění</div>
+        <div class="step-desc">Kompletní dokončení instalace, testování funkčnosti a nastavení všech parametrů na optimální hodnoty.</div>
+        <div class="step-tags"><span class="step-tag">Testování</span><span class="step-tag">Nastavení</span></div>
+      </div>
+      <div class="step-card">
+        <div class="step-num">6</div>
+        <div class="step-title">Předání a zaškolení</div>
+        <div class="step-desc">Podpis předávacího protokolu, předání veškeré dokumentace. Zaškolení na ovládání a doporučení pro provoz.</div>
+        <div class="step-tags"><span class="step-tag">Protokol</span><span class="step-tag">Dokumentace</span><span class="step-tag">Záruka</span></div>
+      </div>
+    </div>
+
+    <div class="closing-section">
+      <div class="closing-left">
+        <div class="closing-title">Těšíme se na spolupráci.</div>
+        <div class="closing-text">Nejsme jen dodavatel — jsme partner, který vás provede celým procesem. Navrhujeme tak, aby to dávalo smysl pro váš dům i peněženku. Pracujeme čistě, komunikujeme otevřeně a za svou prací si stojíme.</div>
+        <a href="https://nanto.cz/reference" class="closing-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          Podívejte se na naše reference — nanto.cz/reference
+        </a>
+      </div>
+      <div class="closing-stats">
+        <div class="closing-stat"><div class="cs-num">100+</div><div class="cs-label">realizací ročně</div></div>
+        <div class="closing-stat"><div class="cs-num">10+</div><div class="cs-label">let v oboru</div></div>
+        <div class="closing-stat"><div class="cs-num">100 %</div><div class="cs-label">spokojených klientů</div></div>
+      </div>
+    </div>
+
+    <div class="vpc-section">
+      <div class="vpc-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+        </svg>
+      </div>
+      <div class="vpc-body">
+        <div class="vpc-title">Máte otázky? Váš obchodní zástupce je tu pro vás.</div>
+        <div class="vpc-text">Každá instalace je jiná — a my to víme. Rádi s vámi probereme možná rizika, alternativní řešení, způsoby financování nebo jednoduše to, co vás zajímá. Bez tlaku, bez zbytečných řečí.</div>
+        <div class="vpc-pills">
+          <span class="vpc-pill">Možná rizika a jak jim předejít</span>
+          <span class="vpc-pill">Alternativy a srovnání</span>
+          <span class="vpc-pill">Způsoby financování</span>
+          <span class="vpc-pill">Dotace NZÚ</span>
+          <span class="vpc-pill">Harmonogram a termíny</span>
+          <span class="vpc-pill">Cokoli dalšího</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  <div class="page-footer">
+    <span><span class="pf-accent">NANTO</span>s.r.o. · {{firma_adresa}} · {{firma_email}} · IČO: {{firma_ico}}</span>
+    <span>Strana 3 / 3</span>
+  </div>
+</div>
+
+</body>
+</html>`
+
+async function main() {
+  const updates = [
+    { label: 'Klimatizace – NANTO', html: HTML_KLIMA },
+    { label: 'Tepelné čerpadlo – NANTO', html: HTML_TEPELNE_CERPADLO },
+    { label: 'Podlahové vytápění – NANTO', html: HTML_PODLAHOVE_TOPENI },
+    { label: 'Rekuperace – NANTO', html: HTML_REKUPERACE },
+    { label: 'Vzduchotechnika – NANTO', html: HTML_VZDUCHOTECHNIKA },
+    { label: 'Obecná nabídka – NANTO', html: HTML_JINE },
+  ]
+  for (const u of updates) {
+    const t = await prisma.quoteTemplate.findFirst({ where: { orgId: NANTO_ORG_ID, nazev: u.label } })
+    if (!t) { console.log(`Not found: ${u.label}`); continue }
+    await prisma.quoteTemplateHtml.upsert({
+      where: { templateId: t.id },
+      create: { templateId: t.id, htmlContent: u.html },
+      update: { htmlContent: u.html },
+    })
+    console.log(`Updated: ${u.label}`)
+  }
+  console.log('Done!')
+}
+main().catch(console.error).finally(() => prisma.$disconnect())

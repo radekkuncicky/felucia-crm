@@ -1,0 +1,57 @@
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
+import { NextResponse } from 'next/server'
+import { generatePredavakCislo } from '@/lib/zakazkyHelpers'
+import { canTechnikAccessZakazka } from '@/lib/zakazkyHelpers'
+
+export async function POST(req: Request) {
+  const session = await getServerSession(authOptions)
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const orgId = session.user.orgId
+  const role = session.user.role
+  const body = await req.json()
+  const { zakazkaId, etapaId } = body
+
+  if (!zakazkaId) return NextResponse.json({ error: 'Chybí zakazkaId' }, { status: 400 })
+
+  // Check access
+  if (role === 'TECHNIK' && !(await canTechnikAccessZakazka(session.user.id, zakazkaId))) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+  if (role === 'OBCHODNIK') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  const zakazka = await prisma.zakazka.findFirst({
+    where: { id: zakazkaId, orgId },
+    include: { polozky: { orderBy: { poradi: 'asc' } } },
+  })
+  if (!zakazka) return NextResponse.json({ error: 'Zakázka nenalezena' }, { status: 404 })
+
+  const cislo = await generatePredavakCislo(orgId)
+
+  const predavak = await prisma.predavak.create({
+    data: {
+      orgId,
+      zakazkaId,
+      cislo,
+      technikId: session.user.id,
+      stav: 'ROZPRACOVAN',
+      etapaId: etapaId ?? null,
+      polozky: {
+        create: zakazka.polozky.map(p => ({
+          zakazkaPolozkaId: p.id,
+          nazev: p.nazev,
+          planovanoMnozstvi: p.mnozstvi,
+          mnozstviPouzito: p.mnozstvi,
+          jednotka: p.jednotka,
+          zahrnuto: true,
+        })),
+      },
+    },
+  })
+
+  return NextResponse.json(predavak, { status: 201 })
+}

@@ -1,0 +1,148 @@
+import nodemailer from 'nodemailer'
+
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST,
+  port: Number(process.env.SMTP_PORT ?? 587),
+  secure: process.env.SMTP_PORT === '465',
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
+})
+
+export async function sendEmail(to: string, subject: string, html: string) {
+  await transporter.sendMail({
+    from: process.env.SMTP_FROM ?? 'FELUCIA CRM <noreply@felucia.io>',
+    to,
+    subject,
+    html,
+  })
+}
+
+function emailLayout(content: string) {
+  return `<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FELUCIA CRM</title>
+</head>
+<body style="margin:0;padding:0;background:#f4f6fb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6fb;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.08);">
+        <!-- Header -->
+        <tr>
+          <td style="background:#1A2744;padding:24px 32px;text-align:center;">
+            <div style="display:inline-flex;align-items:center;gap:10px;">
+              <div style="background:#FFC93C;border-radius:8px;width:36px;height:36px;display:inline-block;vertical-align:middle;text-align:center;line-height:36px;">
+                <span style="font-size:18px;font-weight:900;color:#1A2744;">F</span>
+              </div>
+              <span style="color:#fff;font-size:20px;font-weight:700;vertical-align:middle;margin-left:8px;">FELUCIA CRM</span>
+            </div>
+          </td>
+        </tr>
+        <!-- Content -->
+        <tr>
+          <td style="padding:32px;">
+            ${content}
+          </td>
+        </tr>
+        <!-- Footer -->
+        <tr>
+          <td style="background:#f8f9fc;padding:20px 32px;text-align:center;border-top:1px solid #e8ecf4;">
+            <p style="margin:0;color:#9aa3b2;font-size:12px;">
+              Tento email byl odeslán automaticky systémem FELUCIA CRM.<br/>
+              Pokud jste tuto akci neprovedli, ignorujte tento email.
+            </p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`
+}
+
+export function emailResetPassword(jmeno: string, url: string) {
+  return emailLayout(`
+    <h2 style="margin:0 0 8px;color:#1A2744;font-size:22px;">Obnova hesla</h2>
+    <p style="color:#6b7280;margin:0 0 24px;">Dobrý den, <strong>${jmeno}</strong>.</p>
+    <p style="color:#374151;margin:0 0 24px;">Obdrželi jsme žádost o obnovu hesla pro váš účet. Klikněte na tlačítko níže pro nastavení nového hesla.</p>
+    <div style="text-align:center;margin:32px 0;">
+      <a href="${url}" style="display:inline-block;background:#FFC93C;color:#1A2744;font-weight:700;font-size:15px;padding:14px 32px;border-radius:10px;text-decoration:none;">
+        Nastavit nové heslo
+      </a>
+    </div>
+    <p style="color:#9aa3b2;font-size:13px;margin:0;">Odkaz je platný <strong>1 hodinu</strong>. Pokud jste obnovu hesla nepožadovali, tento email ignorujte.</p>
+  `)
+}
+
+export function emailMagicLink(jmeno: string, url: string) {
+  return emailLayout(`
+    <h2 style="margin:0 0 8px;color:#1A2744;font-size:22px;">Přihlásit se do FELUCIA CRM</h2>
+    <p style="color:#6b7280;margin:0 0 24px;">Dobrý den, <strong>${jmeno}</strong>.</p>
+    <p style="color:#374151;margin:0 0 24px;">Kliknutím na tlačítko níže se okamžitě přihlásíte do systému — bez zadání hesla.</p>
+    <div style="text-align:center;margin:32px 0;">
+      <a href="${url}" style="display:inline-block;background:#FFC93C;color:#1A2744;font-weight:700;font-size:15px;padding:14px 32px;border-radius:10px;text-decoration:none;">
+        Přihlásit se do CRM
+      </a>
+    </div>
+    <p style="color:#9aa3b2;font-size:13px;margin:0;">Odkaz je platný <strong>15 minut</strong> a lze jej použít pouze jednou.</p>
+  `)
+}
+
+export function emailWelcome(jmeno: string, slug: string, loginUrl: string) {
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'felucia.io'
+  return emailLayout(`
+    <h2 style="margin:0 0 8px;color:#1A2744;font-size:22px;">Vítejte v FELUCIA CRM! 🎉</h2>
+    <p style="color:#6b7280;margin:0 0 24px;">Dobrý den, <strong>${jmeno}</strong>.</p>
+    <p style="color:#374151;margin:0 0 16px;">Váš účet byl úspěšně vytvořen a je připraven k použití.</p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8f9fc;border-radius:10px;margin:0 0 24px;">
+      <tr>
+        <td style="padding:16px 20px;">
+          <p style="margin:0 0 6px;color:#9aa3b2;font-size:12px;text-transform:uppercase;letter-spacing:.05em;">Vaše subdoména</p>
+          <p style="margin:0;color:#1A2744;font-size:16px;font-weight:700;">${slug}.${rootDomain}</p>
+        </td>
+      </tr>
+    </table>
+    <div style="text-align:center;margin:32px 0;">
+      <a href="${loginUrl}" style="display:inline-block;background:#FFC93C;color:#1A2744;font-weight:700;font-size:15px;padding:14px 32px;border-radius:10px;text-decoration:none;">
+        Přihlásit se do CRM
+      </a>
+    </div>
+    <p style="color:#374151;margin:0 0 8px;">Co dělat jako první:</p>
+    <ul style="color:#374151;margin:0 0 24px;padding-left:20px;line-height:1.8;">
+      <li>Importujte produktový katalog</li>
+      <li>Přidejte členy týmu</li>
+      <li>Vytvořte první obchodní případ</li>
+    </ul>
+    <p style="color:#9aa3b2;font-size:13px;margin:0;">
+      Potřebujete pomoc? Napište nám na
+      <a href="mailto:info@felucia.io" style="color:#FFC93C;">info@felucia.io</a>
+    </p>
+  `)
+}
+
+// ─── Zakázky email stubs (prepared for future SendGrid/Resend integration) ────
+
+export async function sendPredavakEmail(predavakId: string, recipientEmail: string): Promise<void> {
+  // TODO: integrate with SendGrid/Resend
+  console.log(`[Email připraven k odeslání] Předávací protokol ${predavakId} → ${recipientEmail}`)
+}
+
+export async function sendVyuctovaniEmail(vyuctovaniId: string, recipientEmail: string): Promise<void> {
+  // TODO: integrate with SendGrid/Resend
+  console.log(`[Email připraven k odeslání] Vyúčtování ${vyuctovaniId} → ${recipientEmail}`)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+export function emailPasswordChanged(jmeno: string) {
+  return emailLayout(`
+    <h2 style="margin:0 0 8px;color:#1A2744;font-size:22px;">Heslo bylo změněno</h2>
+    <p style="color:#374151;margin:0 0 24px;">Dobrý den, <strong>${jmeno}</strong>.</p>
+    <p style="color:#374151;margin:0 0 24px;">Heslo k vašemu účtu bylo úspěšně změněno.</p>
+    <p style="color:#9aa3b2;font-size:13px;">Pokud jste tuto změnu neprovedli, kontaktujte neprodleně administrátora systému.</p>
+  `)
+}

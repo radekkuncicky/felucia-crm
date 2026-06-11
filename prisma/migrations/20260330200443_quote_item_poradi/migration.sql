@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "quote_items" ADD COLUMN     "jednotka" TEXT NOT NULL DEFAULT 'ks',
+ADD COLUMN     "kod" TEXT,
+ADD COLUMN     "poradi" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "sleva" DECIMAL(5,2) NOT NULL DEFAULT 0;

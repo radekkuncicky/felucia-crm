@@ -1,0 +1,1296 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  OBCHODNIK
+  TECHNIK
+}
+
+enum TypKlienta {
+  FYZICKA_OSOBA
+  FIRMA
+}
+
+enum Technologie {
+  KLIMA
+  TEPELNE_CERPADLO
+  REKUPERACE
+  PODLAHOVE_TOPENI
+  VZDUCHOTECHNIKA
+  JINE
+}
+
+enum StavDealu {
+  NOVY
+  JEDNANI
+  NABIDKA
+  PRED_UZAVRENIM
+  USPECH
+  PAS
+  ZNEPLATNENO
+}
+
+enum TypAktivity {
+  HOVOR
+  EMAIL
+  SCHUZKA
+  POZNAMKA
+  UKOL
+}
+
+enum TypAkce {
+  CREATE
+  UPDATE
+  DELETE
+}
+
+enum PlanOrg {
+  STARTER
+  STANDARD
+  PROFESSIONAL
+  ENTERPRISE
+}
+
+enum ServisTyp {
+  ROCNI
+  POLOLETNI
+  DVOULETNI
+  JEDNOURAZOVY
+}
+
+enum ServisStav {
+  PLANOVANA
+  POTVRZENA
+  PROBIHA
+  DOKONCENA
+  ZRUSENA
+  PRESLA
+}
+
+enum ZarizeniTyp {
+  TEPELNE_CERPADLO
+  KLIMATIZACE
+  REKUPERACE
+  PODLAHOVE_VYTAPENI
+  VZDUCHOTECHNIKA
+  OHREV_TV
+  JINE
+}
+
+enum NavstevaTyp {
+  PLANOVANY_SERVIS
+  PORUCHA
+  ZARUCNI_OPRAVA
+  POZARUCNI_OPRAVA
+  UVEDENI_DO_PROVOZU
+  KONTROLA
+}
+
+enum TypPole {
+  TEXT
+  CISLO
+  DATUM
+  CHECKBOX
+  VYBER
+}
+
+enum Viditelnost {
+  ALL
+  OWN
+  SELECTED
+}
+
+enum QuoteTemplateTyp {
+  BASE
+  STANDARD
+  CUSTOM_HTML
+  SYSTEM
+}
+
+enum ZakazkaStav {
+  NOVA
+  PRIRAZENA
+  V_REALIZACI
+  PREDANA
+  VYUCTOVANA
+  HOTOVO
+}
+
+enum EtapaStav {
+  PLANOVANA
+  PROBIHAJICI
+  PREDANA
+}
+
+enum ZakazkaTyp {
+  OBCHODNI
+  SERVISNI
+}
+
+enum ZakazkaPolozkaStav {
+  CEKA
+  OBJEDNANO
+  NASKLADNENO
+  VYDANO
+}
+
+enum SkladPohybTyp {
+  VYDEJ
+  REZERVACE
+  STORNO
+  PRIJEM_SKLAD
+}
+
+enum PredavakStav {
+  ROZPRACOVAN
+  PODPISAN
+  SCHVALEN
+  ODMITNUTO
+}
+
+enum VyuctovaniStav {
+  NAVRH
+  KE_SCHVALENI
+  SCHVALENO
+}
+
+enum SodTyp {
+  DPH_12_BEZ_ZALOHY
+  DPH_12_SE_ZALOHOU
+  DPH_21_BEZ_ZALOHY
+  DPH_21_SE_ZALOHOU
+  PDP_BEZ_ZALOHY
+  PDP_SE_ZALOHOU
+}
+
+enum LeadZdroj {
+  WEB_FORMULAR
+  RUCNE
+  IMPORT
+}
+
+enum LeadStatus {
+  NOVY
+  KONTAKTOVAN
+  KVALIFIKOVAN
+  PREVEDEN
+  ZRUSEN
+}
+
+model Organization {
+  id            String    @id @default(cuid())
+  nazev         String
+  slug          String    @unique
+  email         String?
+  telefon       String?
+  ico           String?
+  dic           String?
+  sidlo         String?
+  web           String?
+  logo          String?
+  plan              PlanOrg   @default(STARTER)
+  planActiveTo      DateTime?
+  stripeCustomerId          String?
+  stripePlanId              String?
+  stripeSubscriptionStatus  String?
+  stripeCurrentPeriodEnd    DateTime?
+  aiTokensUsed      Int       @default(0)
+  aiTokensResetAt   DateTime  @default(now())
+  aiCreditsUsed     Int       @default(0)
+  aiCreditsExtra    Int       @default(0)
+  aktivni           Boolean   @default(true)
+  onboardingDone    Boolean   @default(false)
+  onboardingStep    Int       @default(0)
+  trialStartedAt    DateTime?
+  trialEndsAt       DateTime?
+  vytvoreno     DateTime  @default(now())
+
+  users                User[]
+  clients              Client[]
+  deals                Deal[]
+  products             Product[]
+  quoteTemplates       QuoteTemplate[]
+  contractTemplates    ContractTemplate[]
+  categories           Category[]
+  photos               Photo[]
+  apiKeys              ApiKey[]
+  auditLogs            AuditLog[]
+  customFields         CustomField[]
+  visibilityNodes      VisibilityNode[]
+  extensions           Extension[]
+  ceniky               Cenik[]
+  zarizeni             Zarizeni[]
+  servisniKontrakty    ServisniKontrakt[]
+  servisniNavstevy     ServisniNavsteva[]
+  orgSettings          OrgSettings?
+  orgTemplateMappings  OrgTemplateMapping[]
+  notifications        Notification[]
+  zakazky              Zakazka[]
+  zakazkaEtapy         ZakazkaEtapa[]
+  skladPohyby          SkladPohyb[]
+  predavaky            Predavak[]
+  vyuctovani           Vyuctovani[]
+  sod                  Sod[]
+  documents            Document[]
+  leady                Lead[]
+  aiUsageLogs          AiUsageLog[]
+
+  @@map("organizations")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  orgId        String
+  jmeno        String
+  email        String
+  hesloHash    String
+  role         Role     @default(OBCHODNIK)
+  aktivni      Boolean  @default(true)
+  isSuperAdmin  Boolean   @default(false)
+  serviceAccess Boolean   @default(false)
+  telefon      String?
+  avatar       String?
+  pushToken    String?
+  vytvoreno    DateTime  @default(now())
+  lastLoginAt  DateTime?
+
+  organization        Organization         @relation(fields: [orgId], references: [id])
+  deals               Deal[]
+  activities          Activity[]           @relation("ActivityUser")
+  assignedActivities  Activity[]           @relation("ActivityResitel")
+  auditLogs           AuditLog[]
+  visibilityNodes     VisibilityNodeUser[]
+  passwordResetTokens PasswordResetToken[]
+  magicLinkTokens     MagicLinkToken[]
+  servisniNavstevy    ServisniNavsteva[]
+  notifications       Notification[]
+  zakazkyVedouci      Zakazka[]            @relation("ZakazkaVedouci")
+  technikZakazky      TechnikZakazka[]
+  zakazkaFotky        ZakazkaFoto[]
+  zakazkyDokumenty    ZakázkaDokument[]
+  skladPohybyVytvoril SkladPohyb[]         @relation("SkladPohybVytvoril")
+  skladPohybySchvalil SkladPohyb[]         @relation("SkladPohybSchvalil")
+  predavakyTechnik    Predavak[]           @relation("PredavakTechnik")
+  predavakySchvalil   Predavak[]           @relation("PredavakSchvalil")
+  vyuctovaniSchvalil  Vyuctovani[]         @relation("VyuctovaniSchvalil")
+  zakazkaKomentare    ZakazkaKomentar[]
+  documents           Document[]
+  assignedLeady       Lead[]               @relation("LeadAssigned")
+  leadNotes           LeadNote[]
+  aiUsageLogs         AiUsageLog[]
+
+  @@unique([orgId, email])
+  @@map("users")
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  vytvoreno DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("password_reset_tokens")
+}
+
+model MagicLinkToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  vytvoreno DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("magic_link_tokens")
+}
+
+model Client {
+  id          String     @id @default(cuid())
+  orgId       String
+  typKlienta  TypKlienta @default(FYZICKA_OSOBA)
+  jmeno       String
+  prijmeni    String
+  telefon     String?
+  email     String?
+  ulice     String?
+  mesto     String?
+  psc       String?
+  ico       String?
+  dic       String?
+  poznamka  String?
+  vytvoreno DateTime @default(now())
+
+  organization      Organization       @relation(fields: [orgId], references: [id])
+  deals             Deal[]
+  zarizeni          Zarizeni[]
+  servisniKontrakty ServisniKontrakt[]
+  servisniNavstevy  ServisniNavsteva[]
+  zakazky           Zakazka[]
+
+  @@map("clients")
+}
+
+model Category {
+  id      String  @id @default(cuid())
+  orgId   String
+  nazev   String
+  barva   String  @default("#6B7280")
+  poradi  Int     @default(0)
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  products     Product[] @relation("ProductCategories")
+
+  @@map("categories")
+}
+
+model Deal {
+  id               String      @id @default(cuid())
+  orgId            String
+  clientId         String
+  userId           String?
+  kod              String?
+  technologie      Technologie
+  stav             StavDealu   @default(NOVY)
+  predmet          String?
+  hodnotaZalohy    Decimal?    @db.Decimal(12, 2)
+  splatnostZalohy  DateTime?
+  terminPrevzeti   DateTime?
+  terminRealizace  DateTime?
+  cisloSmlouvy     String?
+  adresaDila       String?
+  kontaktniOsoba   String?
+  kontaktniTelefon String?
+  poznamky         String?
+  duvodProhry      String?
+  dphSazba         Int         @default(12)
+  vytvoreno        DateTime    @default(now())
+
+  organization      Organization       @relation(fields: [orgId], references: [id])
+  client            Client             @relation(fields: [clientId], references: [id])
+  user              User?              @relation(fields: [userId], references: [id])
+  quoteItems        QuoteItem[]
+  activities        Activity[]
+  quotes            Quote[]
+  photos            Photo[]
+  zarizeni          Zarizeni[]
+  servisniKontrakty ServisniKontrakt[]
+  zakazky           Zakazka[]
+  sod               Sod[]
+  lead              Lead?
+
+  @@map("deals")
+}
+
+model Product {
+  id              String   @id @default(cuid())
+  orgId           String
+  kod             String?
+  nazev           String
+  produktovaRada  String?
+  jednotka        String   @default("ks")
+  popis           String?
+  dphSazba        Int      @default(12)
+  nakladovaCena   Decimal? @db.Decimal(12, 2) @map("nakupniCena")
+  standardniCena  Decimal  @db.Decimal(12, 2) @map("cena")
+  objednaciKod    String?
+  dodavatel       String?
+  dodaciLhuta     String?
+  aktivni         Boolean  @default(true)
+  vytvoreno       DateTime @default(now())
+
+  organization Organization  @relation(fields: [orgId], references: [id])
+  categories   Category[]    @relation("ProductCategories")
+  cenikPolozky CenikPolozka[]
+  quoteItems   QuoteItem[]
+
+  @@map("products")
+}
+
+model Cenik {
+  id        String   @id @default(cuid())
+  orgId     String
+  kod       String
+  nazev     String
+  popis     String?
+  aktivni   Boolean  @default(true)
+  vytvoreno DateTime @default(now())
+
+  organization Organization   @relation(fields: [orgId], references: [id])
+  polozky      CenikPolozka[]
+
+  @@unique([orgId, kod])
+  @@map("ceniky")
+}
+
+model CenikPolozka {
+  id        String  @id @default(cuid())
+  cenikId   String
+  productId String
+  cena      Decimal @db.Decimal(12, 2)
+
+  cenik   Cenik   @relation(fields: [cenikId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([cenikId, productId])
+  @@map("cenik_polozky")
+}
+
+model Quote {
+  id          String   @id @default(cuid())
+  orgId       String
+  dealId      String
+  templateId  String?
+  kod         String?
+  nazev       String   @default("Nabídka 1")
+  popis       String?
+  dphSazba    Int      @default(12)
+  aktivni     Boolean  @default(false)
+  vytvoreno   DateTime @default(now())
+
+  deal     Deal               @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  template QuoteTemplate?     @relation(fields: [templateId], references: [id])
+  items    QuoteItem[]
+
+  @@map("quotes")
+}
+
+model QuoteItem {
+  id        String  @id @default(cuid())
+  dealId    String
+  quoteId   String?
+  productId String?
+  kod       String?
+  nazev     String
+  mnozstvi  Decimal @db.Decimal(10, 3)
+  jednotka  String  @default("ks")
+  cenaZaKus   Decimal  @db.Decimal(12, 2)
+  nakupniCena Decimal? @db.Decimal(12, 2)
+  sleva       Decimal  @default(0) @db.Decimal(5, 2)
+  dphSazba    Int      @default(12)
+  poznamky    String?
+  poradi      Int      @default(0)
+
+  deal    Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  quote   Quote?   @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  product Product? @relation(fields: [productId], references: [id])
+
+  @@map("quote_items")
+}
+
+enum ActivityStav {
+  PLANOVANA
+  DOKONCENA
+  ZRUSENA
+}
+
+model Activity {
+  id          String       @id @default(cuid())
+  dealId      String
+  userId      String?
+  resitelId   String?
+  typ         TypAktivity
+  popis       String?
+  cil         String?
+  vysledek    String?
+  misto       String?
+  datum       DateTime
+  cas         String?
+  trvaniMin   Int?         @default(15)
+  splneno     Boolean      @default(false)
+  stav        ActivityStav @default(PLANOVANA)
+  reminderAt  DateTime?
+  vytvoreno   DateTime     @default(now())
+
+  deal    Deal  @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  user    User? @relation("ActivityUser", fields: [userId], references: [id])
+  resitel User? @relation("ActivityResitel", fields: [resitelId], references: [id])
+
+  @@map("activities")
+}
+
+model ContractTemplate {
+  id        String   @id @default(cuid())
+  orgId     String
+  nazev     String
+  obsah     String
+  typSablony String? @default("text")
+  vytvoreno DateTime @default(now())
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  sods         Sod[]
+
+  @@map("contract_templates")
+}
+
+model QuoteTemplate {
+  id            String           @id @default(cuid())
+  orgId         String
+  nazev         String
+  typ           QuoteTemplateTyp @default(BASE)
+  planRequired  PlanOrg          @default(STARTER)
+  isDefault     Boolean          @default(false)
+  isSystem      Boolean          @default(false)
+  // Zachováno pro zpětnou kompatibilitu (vzorové nabídky s položkami)
+  popis         String?
+  technologie   Technologie?
+  polozky       Json             @default("[]")
+  vytvoreno     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  organization      Organization        @relation(fields: [orgId], references: [id])
+  config            QuoteTemplateConfig?
+  htmlTemplate      QuoteTemplateHtml?
+  quotes            Quote[]
+  orgMappings       OrgTemplateMapping[]
+
+  @@map("quote_templates")
+}
+
+model QuoteTemplateConfig {
+  id                  String  @id @default(cuid())
+  templateId          String  @unique
+  primaryColor        String  @default("#4CAF50")
+  accentColor         String  @default("#1A2E1B")
+  headerText          String?
+  footerLine1         String?
+  footerLine2         String?
+  footerLine3         String?
+  showOpKod           Boolean @default(true)
+  showDatumPlatnosti  Boolean @default(true)
+  showPoznamka        Boolean @default(true)
+  logoUrl             String?
+
+  template QuoteTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@map("quote_template_configs")
+}
+
+model QuoteTemplateHtml {
+  id          String  @id @default(cuid())
+  templateId  String  @unique
+  htmlContent String  @db.Text
+  cssContent  String? @db.Text
+
+  template QuoteTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@map("quote_template_htmls")
+}
+
+model OrgTemplateMapping {
+  id          String   @id @default(cuid())
+  orgId       String
+  technologie String?  // null = výchozí pro vše
+  templateId  String
+
+  organization Organization  @relation(fields: [orgId], references: [id])
+  template     QuoteTemplate @relation(fields: [templateId], references: [id])
+
+  @@unique([orgId, technologie])
+  @@map("org_template_mappings")
+}
+
+model Photo {
+  id        String   @id @default(cuid())
+  orgId     String
+  dealId    String
+  nazev     String
+  cesta     String
+  vytvoreno DateTime @default(now())
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  deal         Deal         @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  @@map("photos")
+}
+
+model ApiKey {
+  id              String    @id @default(cuid())
+  orgId           String
+  nazev           String    @default("Bez názvu")
+  klic            String    @unique
+  aktivni         Boolean   @default(true)
+  allowedOrigins  String?
+  lastUsedAt      DateTime?
+  vytvoreno       DateTime  @default(now())
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@map("api_keys")
+}
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  orgId        String
+  userId       String?
+  typAkce      TypAkce
+  typZaznamu   String
+  zaznamId     String
+  zaznamNazev  String
+  zmeny        Json     @default("{}")
+  vytvoreno    DateTime @default(now())
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  user         User?        @relation(fields: [userId], references: [id])
+
+  @@map("audit_logs")
+}
+
+model CustomField {
+  id              String   @id @default(cuid())
+  orgId           String
+  entityType      String
+  nazev           String
+  typ             TypPole  @default(TEXT)
+  povinne         Boolean  @default(false)
+  povinneOdStavu  String?
+  poradi          Int      @default(0)
+  aktivni         Boolean  @default(true)
+  moznosti        Json?
+
+  organization     Organization       @relation(fields: [orgId], references: [id])
+  values           CustomFieldValue[]
+
+  @@map("custom_fields")
+}
+
+model CustomFieldValue {
+  id       String @id @default(cuid())
+  orgId    String
+  entityId String
+  fieldId  String
+  hodnota  String?
+
+  field CustomField @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+
+  @@unique([entityId, fieldId])
+  @@map("custom_field_values")
+}
+
+model VisibilityNode {
+  id       String  @id @default(cuid())
+  orgId    String
+  parentId String?
+  nazev    String
+  poradi   Int     @default(0)
+
+  organization Organization        @relation(fields: [orgId], references: [id])
+  parent       VisibilityNode?     @relation("NodeChildren", fields: [parentId], references: [id])
+  children     VisibilityNode[]    @relation("NodeChildren")
+  users        VisibilityNodeUser[]
+
+  @@map("visibility_nodes")
+}
+
+model VisibilityNodeUser {
+  id          String      @id @default(cuid())
+  nodeId      String
+  userId      String
+  viditelnost Viditelnost @default(ALL)
+
+  node VisibilityNode @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  user User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([nodeId, userId])
+  @@map("visibility_node_users")
+}
+
+model Extension {
+  id       String  @id @default(cuid())
+  orgId    String
+  nazev    String
+  aktivni  Boolean @default(false)
+  apiKlic  String?
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@unique([orgId, nazev])
+  @@map("extensions")
+}
+
+model OrgSettings {
+  id                    String  @id @default(cuid())
+  orgId                 String  @unique
+
+  // Moduly
+  modulServis           Boolean @default(true)
+  modulAnalytiky        Boolean @default(true)
+  modulDokumenty        Boolean @default(true)
+  modulDasa             Boolean @default(true)
+  modulCeniky           Boolean @default(true)
+
+  // Obchodní proces
+  povinnaAktivitaUOP    Boolean @default(false)
+  automatickyServis     Boolean @default(true)
+  schvaleniNabidky      Boolean @default(false)
+
+  // Notifikace
+  notifOpBezAktivity    Boolean @default(true)
+  notifBlizkTermin      Boolean @default(true)
+  notifNovyOP           Boolean @default(true)
+  notifDniBezeAktivity  Int     @default(7)
+
+  // Nabídky
+  defaultDphSazba       Int     @default(12)
+  defaultPlatnostDni    Int     @default(30)
+  zobrazitNakladoveCeny Boolean @default(false)
+  singleTemplate        Boolean @default(true)
+  obchodnikJmeno        String?
+  obchodnikTelefon      String?
+
+  // Servis
+  sendServisniProtokolEmail Boolean @default(false)
+
+  // Zakázky
+  zakazkyDefaultVedouciId   String?
+  zakazkyAutoAssignVedouci  Boolean @default(false)
+  zakazkyAutoVyuctovani     Boolean @default(true)
+  zakazkyPrefix             String?
+  zakazkyDefaultDph         Int     @default(12)
+
+  // Dokumenty
+  storageLimit              BigInt  @default(3221225472)
+
+  // Leady
+  modulLeady                Boolean @default(true)
+  notifNovyLead             Boolean @default(true)
+
+  // Vzhled
+  primaryColor          String  @default("#FFC93C")
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@map("org_settings")
+}
+
+model Zarizeni {
+  id              String      @id @default(cuid())
+  orgId           String
+  klientId        String
+  dealId          String?
+  nazev           String
+  typ             ZarizeniTyp @default(JINE)
+  vyrobniCislo    String?
+  datumInstalace  DateTime?
+  zarukaDo        DateTime?
+  poznamka        String?
+  aktivni         Boolean     @default(true)
+  qrToken         String?     @unique
+  vytvoreno       DateTime    @default(now())
+
+  organization      Organization       @relation(fields: [orgId], references: [id])
+  klient            Client             @relation(fields: [klientId], references: [id])
+  deal              Deal?              @relation(fields: [dealId], references: [id])
+  servisniKontrakty ServisniKontrakt[]
+  servisniNavstevy  ServisniNavsteva[]
+
+  @@map("zarizeni")
+}
+
+model ServisniKontrakt {
+  id              String     @id @default(cuid())
+  orgId           String
+  dealId          String?
+  zarizeniId      String?
+  klientId        String
+  cisloKontraktu  String?
+  nazev           String
+  typ             ServisTyp
+  intervalMesicu  Int
+  cena            Decimal?   @db.Decimal(12, 2)
+  zacatek         DateTime
+  konec           DateTime?
+  autoRenewal     Boolean    @default(false)
+  aktivni         Boolean    @default(true)
+  poznamka        String?
+  vytvoreno       DateTime   @default(now())
+
+  organization     Organization       @relation(fields: [orgId], references: [id])
+  deal             Deal?              @relation(fields: [dealId], references: [id])
+  zarizeni         Zarizeni?          @relation(fields: [zarizeniId], references: [id])
+  klient           Client             @relation(fields: [klientId], references: [id])
+  servisniNavstevy ServisniNavsteva[]
+
+  @@map("servisni_kontrakty")
+}
+
+model SystemSettings {
+  id                  String   @id @default(cuid())
+  maintenanceMode     Boolean  @default(false)
+  maintenanceMessage  String   @default("Systém je dočasně nedostupný. Pracujeme na opravě.")
+  announcementText    String?
+  announcementActive  Boolean  @default(false)
+  announcementColor   String   @default("#FFC93C")
+  updatedAt           DateTime @updatedAt
+
+  @@map("system_settings")
+}
+
+model ServisniNavsteva {
+  id               String      @id @default(cuid())
+  orgId            String
+  kontraktId       String?
+  zarizeniId       String?
+  klientId         String?
+  cisloNavstevy    String?
+  typ              NavstevaTyp @default(PLANOVANY_SERVIS)
+  planovanyTermin  DateTime
+  skutecnyTermin   DateTime?
+  trvaniMinut      Int?
+  stav             ServisStav  @default(PLANOVANA)
+  technikId        String?
+  poznamka         String?
+  zprava           String?
+  nalezeneZavady   String?
+  doporuceni       String?
+  nakladyCas       Decimal?    @db.Decimal(10, 2)
+  nakladyMaterial  Decimal?    @db.Decimal(12, 2)
+  fotky            Json        @default("[]")
+  podpisKlienta    String?
+  vytvoreno        DateTime    @default(now())
+
+  organization Organization      @relation(fields: [orgId], references: [id])
+  kontrakt     ServisniKontrakt? @relation(fields: [kontraktId], references: [id], onDelete: Cascade)
+  zarizeni     Zarizeni?         @relation(fields: [zarizeniId], references: [id])
+  klient       Client?           @relation(fields: [klientId], references: [id])
+  technik      User?             @relation(fields: [technikId], references: [id])
+
+  @@map("servisni_navstevy")
+}
+
+
+model Notification {
+  id        String   @id @default(cuid())
+  orgId     String
+  userId    String
+  typ       String
+  zprava    String
+  precteno  Boolean  @default(false)
+  dealId    String?
+  klientId  String?
+  url       String?
+  createdAt DateTime @default(now())
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, precteno])
+  @@index([orgId])
+  @@map("notifications")
+}
+
+model Zakazka {
+  id            String        @id @default(cuid())
+  orgId         String
+  cislo         String
+  opId          String?
+  klientId      String
+  nazev         String
+  technologie   String?
+  vedouciId     String?
+  stav          ZakazkaStav   @default(NOVA)
+  typ           ZakazkaTyp    @default(OBCHODNI)
+  poznamka      String?
+  pokyny        String?
+  mistoStavby   String?
+  montazOd      DateTime?
+  montazDo      DateTime?
+  vytvoreno     DateTime      @default(now())
+  uzavreno      DateTime?
+  updatedAt     DateTime      @updatedAt
+
+  organization  Organization  @relation(fields: [orgId], references: [id])
+  op            Deal?         @relation(fields: [opId], references: [id])
+  klient        Client        @relation(fields: [klientId], references: [id])
+  vedouci       User?         @relation("ZakazkaVedouci", fields: [vedouciId], references: [id])
+  techniciRel   TechnikZakazka[]
+  polozky       ZakazkaPolozka[]
+  predavaky     Predavak[]
+  vyuctovani    Vyuctovani[]
+  etapy         ZakazkaEtapa[]
+  skladPohyby   SkladPohyb[]
+  fotky         ZakazkaFoto[]
+  komentare     ZakazkaKomentar[]
+  dokumenty     ZakázkaDokument[]
+
+  @@unique([orgId, cislo])
+  @@index([orgId, stav])
+  @@map("zakazky")
+}
+
+model ZakazkaEtapa {
+  id          String         @id @default(cuid())
+  orgId       String
+  zakazkaId   String
+  cislo       Int
+  nazev       String?
+  montazOd    DateTime?
+  montazDo    DateTime?
+  stav        EtapaStav      @default(PLANOVANA)
+  poznamka    String?
+  vytvoreno   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  organization Organization  @relation(fields: [orgId], references: [id])
+  zakazka     Zakazka        @relation(fields: [zakazkaId], references: [id], onDelete: Cascade)
+  predavaky   Predavak[]
+  vyuctovani  Vyuctovani[]
+
+  @@unique([zakazkaId, cislo])
+  @@index([zakazkaId])
+  @@map("zakazka_etapy")
+}
+
+model ZakázkaDokument {
+  id        String   @id @default(cuid())
+  orgId     String
+  zakazkaId String
+  nazev     String
+  url       String   @db.Text
+  mime      String   @default("application/octet-stream")
+  nahralId  String
+  vytvoreno DateTime @default(now())
+
+  zakazka   Zakazka  @relation(fields: [zakazkaId], references: [id], onDelete: Cascade)
+  nahral    User     @relation(fields: [nahralId], references: [id])
+
+  @@index([zakazkaId])
+  @@map("zakazka_dokumenty")
+}
+
+model TechnikZakazka {
+  id          String    @id @default(cuid())
+  zakazkaId   String
+  technikId   String
+  prirazeno   DateTime  @default(now())
+
+  zakazka     Zakazka   @relation(fields: [zakazkaId], references: [id], onDelete: Cascade)
+  technik     User      @relation(fields: [technikId], references: [id])
+
+  @@unique([zakazkaId, technikId])
+  @@map("technik_zakazky")
+}
+
+model ZakazkaPolozka {
+  id              String              @id @default(cuid())
+  zakazkaId       String
+  nazev           String
+  kod             String?
+  mnozstvi        Decimal             @default(1)
+  jednotka        String              @default("ks")
+  prodejniCena    Decimal?
+  nakupniCena     Decimal?
+  dphSazba        Decimal             @default(12)
+  mnozstviPouzito Decimal?
+  stav            ZakazkaPolozkaStav  @default(CEKA)
+  hotovo          Boolean             @default(false)
+  poradi          Int                 @default(0)
+  poznamka        String?
+
+  zakazka         Zakazka             @relation(fields: [zakazkaId], references: [id], onDelete: Cascade)
+  skladPohyby     SkladPohyb[]
+  predavakPolozky PredavakPolozka[]
+
+  @@map("zakazka_polozky")
+}
+
+model SkladPohyb {
+  id            String          @id @default(cuid())
+  orgId         String
+  zakazkaId     String?
+  polozkaId     String?
+  typ           SkladPohybTyp
+  nazev         String
+  mnozstvi      Decimal
+  nakupniCena   Decimal?
+  duvod         String?
+  schvalenoId   String?
+  vytvorilId    String
+  vytvoreno     DateTime        @default(now())
+
+  organization  Organization    @relation(fields: [orgId], references: [id])
+  zakazka       Zakazka?        @relation(fields: [zakazkaId], references: [id])
+  polozka       ZakazkaPolozka? @relation(fields: [polozkaId], references: [id])
+  vytvoril      User            @relation("SkladPohybVytvoril", fields: [vytvorilId], references: [id])
+  schvalil      User?           @relation("SkladPohybSchvalil", fields: [schvalenoId], references: [id])
+
+  @@index([orgId, typ])
+  @@index([zakazkaId])
+  @@map("sklad_pohyby")
+}
+
+model Predavak {
+  id              String        @id @default(cuid())
+  orgId           String
+  zakazkaId       String
+  cislo           String
+  technikId       String
+  stav            PredavakStav  @default(ROZPRACOVAN)
+  podpisSvg       String?       @db.Text
+  klientPritomen  Boolean       @default(true)
+  poznamka        String?
+  odmitnutoDuvod     String?
+  upravenoPodpisano  Boolean   @default(false)
+  schvalenoId        String?
+  etapaId         String?
+  vytvoreno       DateTime      @default(now())
+  podpisano       DateTime?
+  schvaleno       DateTime?
+  updatedAt       DateTime      @updatedAt
+
+  organization    Organization  @relation(fields: [orgId], references: [id])
+  zakazka         Zakazka       @relation(fields: [zakazkaId], references: [id])
+  technik         User          @relation("PredavakTechnik", fields: [technikId], references: [id])
+  schvalil        User?         @relation("PredavakSchvalil", fields: [schvalenoId], references: [id])
+  etapa           ZakazkaEtapa? @relation(fields: [etapaId], references: [id])
+  polozky         PredavakPolozka[]
+  fotky           PredavakFoto[]
+
+  @@unique([orgId, cislo])
+  @@map("predavaky")
+}
+
+model PredavakPolozka {
+  id                String          @id @default(cuid())
+  predavakId        String
+  zakazkaPolozkaId  String?
+  nazev             String
+  planovanoMnozstvi Decimal         @default(1)
+  mnozstviPouzito   Decimal         @default(0)
+  jednotka          String          @default("ks")
+  zahrnuto          Boolean         @default(true)
+  poznamka          String?
+
+  predavak          Predavak        @relation(fields: [predavakId], references: [id], onDelete: Cascade)
+  zakazkaPolozka    ZakazkaPolozka? @relation(fields: [zakazkaPolozkaId], references: [id])
+
+  @@map("predavak_polozky")
+}
+
+model PredavakFoto {
+  id          String    @id @default(cuid())
+  predavakId  String
+  url         String
+  popis       String?
+  vytvoreno   DateTime  @default(now())
+
+  predavak    Predavak  @relation(fields: [predavakId], references: [id], onDelete: Cascade)
+
+  @@map("predavak_fotky")
+}
+
+model ZakazkaFoto {
+  id          String    @id @default(cuid())
+  zakazkaId   String
+  url         String
+  popis       String?
+  nahralId    String
+  vytvoreno   DateTime  @default(now())
+
+  zakazka     Zakazka   @relation(fields: [zakazkaId], references: [id], onDelete: Cascade)
+  nahral      User      @relation(fields: [nahralId], references: [id])
+
+  @@map("zakazka_fotky")
+}
+
+model Vyuctovani {
+  id          String          @id @default(cuid())
+  orgId       String
+  zakazkaId   String
+  cislo       String
+  stav        VyuctovaniStav  @default(NAVRH)
+  poznamka    String?
+  schvalenoId String?
+  etapaId     String?
+  vytvoreno   DateTime        @default(now())
+  schvaleno   DateTime?
+  updatedAt   DateTime        @updatedAt
+
+  organization Organization   @relation(fields: [orgId], references: [id])
+  zakazka     Zakazka         @relation(fields: [zakazkaId], references: [id])
+  schvalil    User?           @relation("VyuctovaniSchvalil", fields: [schvalenoId], references: [id])
+  etapa       ZakazkaEtapa?   @relation(fields: [etapaId], references: [id])
+  polozky     VyuctovaniPolozka[]
+
+  @@unique([orgId, cislo])
+  @@map("vyuctovani")
+}
+
+model VyuctovaniPolozka {
+  id            String      @id @default(cuid())
+  vyuctovaniId  String
+  nazev         String
+  mnozstvi      Decimal     @default(1)
+  jednotka      String      @default("ks")
+  nakupniCena   Decimal?
+  prodejniCena  Decimal
+  dphSazba      Decimal     @default(12)
+  poradi        Int         @default(0)
+
+  vyuctovani    Vyuctovani  @relation(fields: [vyuctovaniId], references: [id], onDelete: Cascade)
+
+  @@map("vyuctovani_polozky")
+}
+
+model ZakazkaKomentar {
+  id          String    @id @default(cuid())
+  zakazkaId   String
+  userId      String
+  text        String    @db.Text
+  vytvoreno   DateTime  @default(now())
+
+  zakazka     Zakazka   @relation(fields: [zakazkaId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id])
+
+  @@index([zakazkaId])
+  @@map("zakazka_komentare")
+}
+
+model Sod {
+  id                String   @id @default(cuid())
+  orgId             String
+  dealId            String
+  cislo             String
+
+  typ               SodTyp
+
+  // Klient
+  klientJmeno       String
+  klientAdresa      String?
+  klientEmail       String?
+  klientTelefon     String?
+  klientIco         String?
+  klientDic         String?
+
+  // Kontaktní osoba
+  kontaktniOsoba    String?
+  kontaktniTelefon  String?
+
+  // Dílo
+  predmetDila       String
+  adresaDila        String?
+
+  // Termíny
+  terminPrevzeti    String?
+  pocetDniRealizace Int?
+  zmenaTerm         String?
+
+  // Cena
+  cenaBezDph        Decimal? @db.Decimal(12, 2)
+  cenaSDph          Decimal? @db.Decimal(12, 2)
+  dphSazba          Decimal  @default(21) @db.Decimal(5, 2)
+
+  // Záloha
+  zalohaKc          Decimal? @db.Decimal(12, 2)
+  zalohaSplatnost   Int?     @default(14)
+  zalohaKategorie   String?
+
+  // Vygenerovaný text smlouvy (editovatelný, zdroj pro PDF)
+  textSmlouvy       String?
+  templateId        String?
+
+  // Metadata
+  poznamky          String?
+  vytvoreno         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  organization Organization      @relation(fields: [orgId], references: [id])
+  deal         Deal              @relation(fields: [dealId], references: [id])
+  template     ContractTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+
+  @@unique([orgId, cislo])
+  @@map("sod")
+}
+
+model Document {
+  id           String   @id @default(cuid())
+  orgId        String
+  nazev        String
+  originalName String
+  velikost     BigInt
+  mimeType     String
+  cesta        String
+  popis        String?
+  uploadedById String
+  vytvoreno    DateTime @default(now())
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  uploadedBy   User         @relation(fields: [uploadedById], references: [id])
+
+  @@index([orgId])
+  @@map("documents")
+}
+
+model Lead {
+  id                   String     @id @default(cuid())
+  orgId                String
+  jmeno                String
+  email                String?
+  telefon              String?
+  firma                String?
+  zdroj                LeadZdroj  @default(RUCNE)
+  status               LeadStatus @default(NOVY)
+  zprava               String?
+  assignedToId         String?
+  odhadovanaHodnota    Decimal?   @db.Decimal(12, 2)
+  tagy                 String[]   @default([])
+  duvodZruseni         String?
+  prevedenNaOpId       String?    @unique
+  prevedenNaKlientId   String?
+  apiKeyId             String?
+  vytvoreno            DateTime   @default(now())
+  updatedAt            DateTime   @updatedAt
+
+  organization       Organization @relation(fields: [orgId], references: [id])
+  assignedTo         User?        @relation("LeadAssigned", fields: [assignedToId], references: [id])
+  prevedenNaOp       Deal?        @relation(fields: [prevedenNaOpId], references: [id])
+  notes              LeadNote[]
+
+  @@index([orgId, status])
+  @@index([orgId, vytvoreno])
+  @@map("leady")
+}
+
+model LeadNote {
+  id        String   @id @default(cuid())
+  leadId    String
+  userId    String
+  text      String
+  vytvoreno DateTime @default(now())
+
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([leadId])
+  @@map("lead_notes")
+}
+
+model AiUsageLog {
+  id               String   @id @default(cuid())
+  orgId            String
+  userId           String
+  inputTokens      Int
+  outputTokens     Int
+  cacheReadTokens  Int      @default(0)
+  toolCalls        Int      @default(0)
+  credits          Int
+  model            String
+  vytvoreno        DateTime @default(now())
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  user         User         @relation(fields: [userId], references: [id])
+
+  @@index([orgId, vytvoreno])
+  @@index([userId, vytvoreno])
+  @@map("ai_usage_logs")
+}

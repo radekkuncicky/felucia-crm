@@ -1,0 +1,73 @@
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { prisma } from '@/lib/prisma'
+import { NextResponse } from 'next/server'
+
+export async function GET(req: Request) {
+  const session = await getServerSession(authOptions)
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { plan } = session.user as { plan?: string }
+  if (plan === 'STARTER') return NextResponse.json({ error: 'Nedostupné v tomto plánu.' }, { status: 403 })
+
+  const orgId = session.user.orgId
+  const { searchParams } = new URL(req.url)
+  const status = searchParams.get('status')
+  const zdroj = searchParams.get('zdroj')
+  const assignedToId = searchParams.get('assignedToId')
+  const search = searchParams.get('search')
+
+  const where: Record<string, unknown> = { orgId }
+  if (status) where.status = status
+  if (zdroj) where.zdroj = zdroj
+  if (assignedToId) where.assignedToId = assignedToId
+  if (search) {
+    where.OR = [
+      { jmeno: { contains: search, mode: 'insensitive' } },
+      { email: { contains: search, mode: 'insensitive' } },
+      { firma: { contains: search, mode: 'insensitive' } },
+      { telefon: { contains: search, mode: 'insensitive' } },
+    ]
+  }
+
+  const leady = await prisma.lead.findMany({
+    where,
+    include: {
+      assignedTo: { select: { id: true, jmeno: true, email: true } },
+      _count: { select: { notes: true } },
+    },
+    orderBy: { vytvoreno: 'desc' },
+  })
+
+  return NextResponse.json(leady)
+}
+
+export async function POST(req: Request) {
+  const session = await getServerSession(authOptions)
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { plan } = session.user as { plan?: string }
+  if (plan === 'STARTER') return NextResponse.json({ error: 'Nedostupné v tomto plánu.' }, { status: 403 })
+  if (session.user.role === 'TECHNIK') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  const orgId = session.user.orgId
+  const body = await req.json()
+
+  const lead = await prisma.lead.create({
+    data: {
+      orgId,
+      jmeno: body.jmeno,
+      email: body.email || null,
+      telefon: body.telefon || null,
+      firma: body.firma || null,
+      zprava: body.zprava || null,
+      zdroj: 'RUCNE',
+      status: 'NOVY',
+      assignedToId: body.assignedToId || null,
+      odhadovanaHodnota: body.odhadovanaHodnota ? parseFloat(body.odhadovanaHodnota) : null,
+      tagy: body.tagy || [],
+    },
+  })
+
+  return NextResponse.json(lead, { status: 201 })
+}

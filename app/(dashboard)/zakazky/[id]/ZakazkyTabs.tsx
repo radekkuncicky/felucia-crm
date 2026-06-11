@@ -1,0 +1,82 @@
+'use client'
+
+import Link from 'next/link'
+import { usePathname, useSearchParams } from 'next/navigation'
+
+// SVG icon paths (heroicons outline)
+const ICONS: Record<string, string> = {
+  polozky:    'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2',
+  technici:   'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0',
+  predavaky:  'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+  podklady:   'M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z',
+  vyuctovani: 'M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z',
+  foto:       'M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z M15 13a3 3 0 11-6 0 3 3 0 016 0z',
+  historie:   'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
+}
+
+const TABS = [
+  { key: 'polozky',    label: 'Položky' },
+  { key: 'technici',   label: 'Technici' },
+  { key: 'predavaky',  label: 'Protokoly' },
+  { key: 'podklady',   label: 'Podklady' },
+  { key: 'vyuctovani', label: 'Vyúčtování' },
+  { key: 'foto',       label: 'Foto' },
+  { key: 'historie',   label: 'Historie' },
+]
+
+const TABS_TECHNIK = [
+  { key: 'polozky',   label: 'Položky' },
+  { key: 'predavaky', label: 'Protokoly' },
+  { key: 'podklady',  label: 'Podklady' },
+  { key: 'foto',      label: 'Foto' },
+]
+
+interface Props {
+  zakazkaId: string
+  isTechnik: boolean
+}
+
+function Icon({ path }: { path: string }) {
+  return (
+    <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d={path} />
+    </svg>
+  )
+}
+
+export default function ZakazkyTabs({ zakazkaId, isTechnik }: Props) {
+  const tabs = isTechnik ? TABS_TECHNIK : TABS
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+
+  let activeTab = searchParams.get('tab') ?? 'polozky'
+  if (pathname.includes('/vyuctovani/')) activeTab = 'vyuctovani'
+  if (pathname.includes('/predavaky/')) activeTab = 'predavaky'
+
+  return (
+    <div className="sticky top-0 z-20 relative bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700">
+      {/* Fade edges to hint scrollability */}
+      <div className="pointer-events-none absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-white dark:from-slate-800 to-transparent z-10 rounded-l-xl" />
+      <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-white dark:from-slate-800 to-transparent z-10 rounded-r-xl" />
+      <nav className="flex gap-1.5 overflow-x-auto scrollbar-none px-3 py-2">
+        {tabs.map(tab => {
+          const isActive = tab.key === activeTab
+          return (
+            <Link
+              key={tab.key}
+              href={`/zakazky/${zakazkaId}?tab=${tab.key}`}
+              className={`inline-flex items-center gap-1.5 whitespace-nowrap px-3 py-2 text-sm font-medium rounded-full transition-colors flex-shrink-0 ${
+                isActive
+                  ? 'bg-[#1B5E20] text-white'
+                  : 'text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 hover:text-gray-700 dark:hover:text-slate-200'
+              }`}
+            >
+              <Icon path={ICONS[tab.key]} />
+              <span>{tab.label}</span>
+            </Link>
+          )
+        })}
+      </nav>
+    </div>
+  )
+}
