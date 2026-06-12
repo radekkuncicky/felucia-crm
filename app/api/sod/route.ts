@@ -4,6 +4,7 @@ import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { generateSodCislo } from '@/lib/sodHelpers'
 import { applySodFormOverrides, buildSodRenderData, renderSodTemplate } from '@/lib/sodRender'
+import { isHtmlContent, sanitizeFullDocumentHtml } from '@/lib/sanitizeHtml'
 
 export async function GET() {
   const session = await getServerSession(authOptions)
@@ -47,6 +48,8 @@ export async function POST(req: Request) {
     if (!template) return NextResponse.json({ error: 'Šablona nenalezena' }, { status: 404 })
     prefillData = await buildSodRenderData(dealId, orgId, cislo)
     textSmlouvy = renderSodTemplate(template.obsah, applySodFormOverrides(prefillData, rest))
+    // šablony uložené před zavedením sanitizace
+    if (isHtmlContent(textSmlouvy)) textSmlouvy = sanitizeFullDocumentHtml(textSmlouvy)
     if (template.typSablony && template.typSablony !== 'text') {
       resolvedTyp = template.typSablony as string
     }

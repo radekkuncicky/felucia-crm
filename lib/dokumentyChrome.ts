@@ -2,6 +2,7 @@ import { prisma } from './prisma'
 import { getOrgSettings } from './orgSettings'
 import { getPlanLimits } from './planLimits'
 import { orgLogoDataUrl } from './quoteRenderer'
+import { sanitizeDocumentHtml } from './sanitizeHtml'
 
 /**
  * Záhlaví/patička PDF dokumentů (puppeteer displayHeaderFooter).
@@ -77,7 +78,9 @@ export async function buildDokumentChrome(
   )
 
   if (styl === 'VLASTNI') {
-    const fill = (tpl: string) => tpl
+    // sanitizace až PO dosazení placeholderů — {{logo}} vkládá data: img,
+    // který musí projít; tenant HTML samotné projít nesmí bez očištění
+    const fill = (tpl: string) => sanitizeDocumentHtml(tpl
       .replaceAll('{{logo}}', logoImg)
       .replaceAll('{{organizace}}', esc(org.nazev ?? ''))
       .replaceAll('{{org_ico}}', esc(org.ico ?? ''))
@@ -89,7 +92,7 @@ export async function buildDokumentChrome(
       .replaceAll('{{barva}}', esc(barva))
       .replaceAll('{{strana}}', '<span class="pageNumber"></span>')
       .replaceAll('{{stran_celkem}}', '<span class="totalPages"></span>')
-      .replaceAll('{{datum}}', new Date().toLocaleDateString('cs-CZ'))
+      .replaceAll('{{datum}}', new Date().toLocaleDateString('cs-CZ')))
     return {
       headerTemplate: `<div style="font-size:9px;width:100%;-webkit-print-color-adjust:exact">${fill(settings.dokumentyHeaderHtml ?? '')}</div>`,
       footerTemplate: `<div style="font-size:9px;width:100%;-webkit-print-color-adjust:exact">${fill(settings.dokumentyFooterHtml ?? '')}</div>`,

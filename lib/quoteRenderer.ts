@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { buildQuoteHtml } from '@/lib/quoteHtml'
 import puppeteer from 'puppeteer'
+import { hardenPdfPage } from '@/lib/pdf'
 import fs from 'fs'
 import path from 'path'
 import type { QuoteTemplate, QuoteTemplateConfig, QuoteTemplateHtml } from '@prisma/client'
@@ -116,6 +117,8 @@ async function launchPuppeteer(html: string): Promise<Buffer> {
   })
   try {
     const page = await browser.newPage()
+    // JS off + síť jen na Google Fonts (tenant HTML šablony); page.evaluate níže funguje i tak
+    await hardenPdfPage(page)
     // Pipe evaluate() console output to Node/PM2 logs for debugging
     page.on('console', msg => console.log('[pdf-scale]', msg.text()))
     // networkidle0: all Google Font .woff2 files downloaded → correct metrics for layout measurement

@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server'
 import { generateSodHtml } from '@/lib/sodDocument'
 import { generatePdf } from '@/lib/pdf'
 import { buildDokumentChrome } from '@/lib/dokumentyChrome'
+import { sanitizeFullDocumentHtml } from '@/lib/sanitizeHtml'
 
 const PDF_STYLES = `
   body { font-family: 'Times New Roman', serif; font-size: 11pt; line-height: 1.7; color: #000; }
@@ -57,7 +58,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 
   if (sod.textSmlouvy) {
     html = sod.textSmlouvy.trimStart().startsWith('<')
-      ? wrapHtml(sod.textSmlouvy)
+      ? wrapHtml(sanitizeFullDocumentHtml(sod.textSmlouvy)) // i legacy data uložená před sanitizací
       : textToHtml(sod.textSmlouvy)
   } else {
     const datum = sod.vytvoreno.toLocaleDateString('cs-CZ')

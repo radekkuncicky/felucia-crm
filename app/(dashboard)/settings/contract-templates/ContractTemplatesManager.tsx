@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import DOMPurify from 'dompurify'
 import ConfirmModal from '@/components/ConfirmModal'
 import SodTemplateEditor, { SOD_PLACEHOLDERS } from '@/components/SodTemplateEditor'
 
@@ -47,10 +48,12 @@ const SAMPLE: Record<string, string> = {
 }
 
 function renderPreview(html: string): string {
-  return SOD_PLACEHOLDERS.reduce(
+  const filled = SOD_PLACEHOLDERS.reduce(
     (text, [ph]) => text.replaceAll(ph, `<mark class="sod-sample">${SAMPLE[ph] ?? ph}</mark>`),
     html
   )
+  // šablona může přijít z API neočištěná (legacy data) — nikdy ji nevkládat raw
+  return DOMPurify.sanitize(filled)
 }
 
 function stripHtml(html: string): string {

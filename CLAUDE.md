@@ -62,6 +62,13 @@ Obnova: `pg_restore --dbname=<URL> --no-owner <soubor.dump>`
 - Připomínky aktivit: bell notifikace vždy, email jen s nakonfigurovaným SMTP
 - `deploy.sh` restartuje web i worker (`pm2 startOrRestart ecosystem.config.js`)
 
+## PDF / tenant HTML (bezpečnost)
+- Tenant HTML (šablony smluv, textSmlouvy, CUSTOM_HTML nabídky, vlastní záhlaví/patička)
+  VŽDY přes `lib/sanitizeHtml.ts` (`sanitizeFullDocumentHtml` dokumenty, `sanitizeDocumentHtml` fragmenty)
+- Puppeteer: `hardenPdfPage()` z lib/pdf.ts — JS vypnutý, síť jen Google Fonts (SSRF ochrana);
+  `page.evaluate()` funguje i s vypnutým JS
+- Klientské náhledy tenant HTML přes DOMPurify, nikdy raw `dangerouslySetInnerHTML`
+
 ## Email
 - `lib/email.ts` (nodemailer) — bez `SMTP_HOST` v `.env` je odesílání vypnuté (`isEmailConfigured()`)
 

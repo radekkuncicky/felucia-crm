@@ -1,6 +1,7 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
+import { sanitizeFullDocumentHtml } from '@/lib/sanitizeHtml'
 import { NextResponse } from 'next/server'
 
 export async function GET() {
@@ -26,7 +27,7 @@ export async function POST(req: Request) {
   if (!nazev) return NextResponse.json({ error: 'nazev required' }, { status: 400 })
 
   const tpl = await db.contractTemplate.create({
-    data: { orgId, nazev, obsah: obsah ?? '' },
+    data: { orgId, nazev, obsah: sanitizeFullDocumentHtml(obsah ?? '') },
   })
   return NextResponse.json(tpl, { status: 201 })
 }

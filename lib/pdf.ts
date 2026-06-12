@@ -1,5 +1,27 @@
-import puppeteer from 'puppeteer'
+import puppeteer, { Page } from 'puppeteer'
 import type { DokumentChrome } from './dokumentyChrome'
+
+// Jediné povolené síťové cíle při renderu PDF — webfonty. Vše ostatní
+// (localhost, interní síť, exfiltrace přes img/css) se zahodí.
+const ALLOWED_URL_PREFIXES = [
+  'https://fonts.googleapis.com/',
+  'https://fonts.gstatic.com/',
+  'data:',
+  'about:',
+]
+
+export async function hardenPdfPage(page: Page, { allowJs = false } = {}): Promise<void> {
+  if (!allowJs) await page.setJavaScriptEnabled(false)
+  await page.setRequestInterception(true)
+  page.on('request', req => {
+    const url = req.url()
+    if (ALLOWED_URL_PREFIXES.some(p => url.startsWith(p))) {
+      req.continue().catch(() => {})
+    } else {
+      req.abort().catch(() => {})
+    }
+  })
+}
 
 export async function generatePdf(html: string, chrome?: DokumentChrome | null): Promise<Buffer> {
   const browser = await puppeteer.launch({
@@ -8,6 +30,7 @@ export async function generatePdf(html: string, chrome?: DokumentChrome | null):
   })
   try {
     const page = await browser.newPage()
+    await hardenPdfPage(page)
     await page.setContent(html, { waitUntil: 'networkidle0' })
     const pdf = await page.pdf({
       format: 'A4',

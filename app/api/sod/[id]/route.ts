@@ -1,6 +1,7 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
+import { isHtmlContent, sanitizeFullDocumentHtml } from '@/lib/sanitizeHtml'
 import { NextResponse } from 'next/server'
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
@@ -55,7 +56,11 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       zalohaSplatnost: body.zalohaSplatnost !== undefined ? body.zalohaSplatnost : sod.zalohaSplatnost,
       zalohaKategorie: body.zalohaKategorie !== undefined ? body.zalohaKategorie : sod.zalohaKategorie,
       poznamky: body.poznamky !== undefined ? body.poznamky : sod.poznamky,
-      textSmlouvy: body.textSmlouvy !== undefined ? body.textSmlouvy : sod.textSmlouvy,
+      textSmlouvy: body.textSmlouvy !== undefined
+        ? (typeof body.textSmlouvy === 'string' && isHtmlContent(body.textSmlouvy)
+            ? sanitizeFullDocumentHtml(body.textSmlouvy)
+            : body.textSmlouvy)
+        : sod.textSmlouvy,
     },
   })
 

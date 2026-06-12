@@ -1,6 +1,7 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
+import { sanitizeFullDocumentHtml } from '@/lib/sanitizeHtml'
 import { NextResponse } from 'next/server'
 
 export async function GET(
@@ -68,15 +69,16 @@ export async function PATCH(
     if (template.typ !== 'CUSTOM_HTML') {
       return NextResponse.json({ error: 'HTML lze editovat jen u CUSTOM_HTML šablon' }, { status: 400 })
     }
+    const cleanHtml = htmlContent !== undefined ? sanitizeFullDocumentHtml(htmlContent ?? '') : undefined
     await db.quoteTemplateHtml.upsert({
       where: { templateId: params.id },
       create: {
         templateId: params.id,
-        htmlContent: htmlContent ?? '',
+        htmlContent: cleanHtml ?? '',
         cssContent: cssContent ?? null,
       },
       update: {
-        ...(htmlContent !== undefined ? { htmlContent } : {}),
+        ...(cleanHtml !== undefined ? { htmlContent: cleanHtml } : {}),
         ...(cssContent !== undefined ? { cssContent } : {}),
       },
     })

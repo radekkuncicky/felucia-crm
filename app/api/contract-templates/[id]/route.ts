@@ -1,6 +1,7 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
+import { sanitizeFullDocumentHtml } from '@/lib/sanitizeHtml'
 import { NextResponse } from 'next/server'
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
@@ -10,9 +11,14 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const db = orgPrisma(orgId)
 
   const body = await req.json()
+  const data: Record<string, string> = {}
+  if (typeof body.nazev === 'string') data.nazev = body.nazev
+  if (typeof body.obsah === 'string') data.obsah = sanitizeFullDocumentHtml(body.obsah)
+  if (typeof body.typSablony === 'string') data.typSablony = body.typSablony
+
   const tpl = await db.contractTemplate.updateMany({
     where: { id: params.id, orgId },
-    data: body,
+    data,
   })
   if (tpl.count === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   return NextResponse.json({ ok: true })
