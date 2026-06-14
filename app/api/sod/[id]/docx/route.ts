@@ -3,6 +3,8 @@ import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { generateSodDocx } from '@/lib/sodDocx'
+import { renderSodContractHtml } from '@/lib/sodContractHtml'
+import htmlToDocx from 'html-to-docx'
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
@@ -22,6 +24,22 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   })
 
   if (!sod) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  // Pokud má SOD textSmlouvy (vyrenderováno ze šablony / ručně upraveno),
+  // DOCX vychází ze stejného HTML jako PDF — jinak by se dokumenty rozcházely.
+  if (sod.textSmlouvy) {
+    const html = renderSodContractHtml(sod.textSmlouvy)
+    const docxFromHtml = await htmlToDocx(html, undefined, {
+      font: 'Times New Roman',
+      table: { row: { cantSplit: true } },
+    })
+    return new NextResponse(docxFromHtml as unknown as BodyInit, {
+      headers: {
+        'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'Content-Disposition': `attachment; filename="${sod.cislo}.docx"`,
+      },
+    })
+  }
 
   const datum = sod.vytvoreno.toLocaleDateString('cs-CZ')
 

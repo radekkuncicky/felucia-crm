@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { sanitizeFullDocumentHtml } from '@/lib/sanitizeHtml'
+import { getPlanLimits } from '@/lib/planLimits'
 import { NextResponse } from 'next/server'
 
 export async function GET() {
@@ -25,6 +26,17 @@ export async function POST(req: Request) {
 
   const { nazev, obsah } = await req.json()
   if (!nazev) return NextResponse.json({ error: 'nazev required' }, { status: 400 })
+
+  const limits = getPlanLimits(session.user.plan ?? 'STARTER')
+  if (limits.maxContractTemplates !== Infinity) {
+    const count = await db.contractTemplate.count({ where: { orgId } })
+    if (count >= limits.maxContractTemplates) {
+      return NextResponse.json(
+        { error: `Dosáhli jste limitu ${limits.maxContractTemplates} smluvních šablon pro váš plán.`, code: 'PLAN_LIMIT_REACHED' },
+        { status: 403 },
+      )
+    }
+  }
 
   const tpl = await db.contractTemplate.create({
     data: { orgId, nazev, obsah: sanitizeFullDocumentHtml(obsah ?? '') },

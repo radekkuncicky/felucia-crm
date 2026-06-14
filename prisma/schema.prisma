@@ -931,6 +931,7 @@ model Zakazka {
   fotky         ZakazkaFoto[]
   komentare     ZakazkaKomentar[]
   dokumenty     ZakázkaDokument[]
+  kontakty      ZakazkaKontakt[]
 
   @@unique([orgId, cislo])
   @@index([orgId, stav])
@@ -975,6 +976,26 @@ model ZakázkaDokument {
 
   @@index([zakazkaId])
   @@map("zakazka_dokumenty")
+}
+
+model ZakazkaKontakt {
+  id         String   @id @default(cuid())
+  orgId      String
+  zakazkaId  String
+  profese    String
+  jmeno      String?
+  telefon    String?
+  email      String?
+  poznamka   String?
+  vytvorilId String?
+  vytvoreno  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  zakazka    Zakazka  @relation(fields: [zakazkaId], references: [id], onDelete: Cascade)
+
+  @@index([zakazkaId])
+  @@index([orgId])
+  @@map("zakazka_kontakty")
 }
 
 model TechnikZakazka {

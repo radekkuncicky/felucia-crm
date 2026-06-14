@@ -9,6 +9,7 @@ import HistorieTab from './HistorieTab'
 import FotoTab from './FotoTab'
 import VyuctovaniTab from './VyuctovaniTab'
 import PodkladyTab from './PodkladyTab'
+import KontaktyTab from './KontaktyTab'
 
 export default async function ZakazkaDetailPage({
   params,
@@ -52,6 +53,7 @@ export default async function ZakazkaDetailPage({
           orderBy: { vytvoreno: 'desc' },
           include: { nahral: { select: { id: true, jmeno: true } } },
         },
+        kontakty: { orderBy: { vytvoreno: 'asc' } },
       },
     }),
     isTechnik
@@ -171,6 +173,21 @@ export default async function ZakazkaDetailPage({
           opFotky={opFotky}
           opId={zakazka.op?.id ?? null}
           opKod={zakazka.op?.kod ?? null}
+        />
+      )}
+
+      {tab === 'kontakty' && (
+        <KontaktyTab
+          zakazkaId={zakazka.id}
+          kontakty={zakazka.kontakty.map(k => ({
+            id: k.id,
+            profese: k.profese,
+            jmeno: k.jmeno,
+            telefon: k.telefon,
+            email: k.email,
+            poznamka: k.poznamka,
+          }))}
+          canEdit={canEdit || isTechnik}
         />
       )}
 

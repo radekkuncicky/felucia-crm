@@ -37,6 +37,7 @@
     "docxtemplater": "^3.68.5",
     "dompurify": "^3.4.9",
     "dotenv": "^17.3.1",
+    "html-to-docx": "^1.8.0",
     "jose": "^6.2.2",
     "next": "14.2.35",
     "next-auth": "^4.24.13",

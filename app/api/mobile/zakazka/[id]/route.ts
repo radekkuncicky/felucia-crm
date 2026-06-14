@@ -48,6 +48,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
         orderBy: { vytvoreno: 'desc' },
         take: 1,
       },
+      kontakty: { orderBy: { vytvoreno: 'asc' } },
     },
   })
 
@@ -103,6 +104,15 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       popis: f.popis ?? null,
       vytvoreno: f.vytvoreno,
       nahral: f.nahral.jmeno,
+    })),
+    kontakty: zakazka.kontakty.map(k => ({
+      id: k.id,
+      profese: k.profese,
+      jmeno: k.jmeno ?? null,
+      telefon: k.telefon ?? null,
+      email: k.email ?? null,
+      poznamka: k.poznamka ?? null,
+      vytvoreno: k.vytvoreno,
     })),
     predavak: zakazka.predavaky[0]
       ? {

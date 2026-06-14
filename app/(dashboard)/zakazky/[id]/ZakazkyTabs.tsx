@@ -12,12 +12,14 @@ const ICONS: Record<string, string> = {
   vyuctovani: 'M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z',
   foto:       'M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z M15 13a3 3 0 11-6 0 3 3 0 016 0z',
   historie:   'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
+  kontakty:   'M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z',
 }
 
 const TABS = [
   { key: 'polozky',    label: 'Položky' },
   { key: 'technici',   label: 'Technici' },
   { key: 'predavaky',  label: 'Protokoly' },
+  { key: 'kontakty',   label: 'Kontakty' },
   { key: 'podklady',   label: 'Podklady' },
   { key: 'vyuctovani', label: 'Vyúčtování' },
   { key: 'foto',       label: 'Foto' },
@@ -27,6 +29,7 @@ const TABS = [
 const TABS_TECHNIK = [
   { key: 'polozky',   label: 'Položky' },
   { key: 'predavaky', label: 'Protokoly' },
+  { key: 'kontakty',  label: 'Kontakty' },
   { key: 'podklady',  label: 'Podklady' },
   { key: 'foto',      label: 'Foto' },
 ]
