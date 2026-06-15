@@ -525,6 +525,7 @@ model ContractTemplate {
   id        String   @id @default(cuid())
   orgId     String
   nazev     String
+  popis     String?
   obsah     String
   typSablony String? @default("text")
   vytvoreno DateTime @default(now())

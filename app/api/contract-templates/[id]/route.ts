@@ -11,8 +11,9 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const db = orgPrisma(orgId)
 
   const body = await req.json()
-  const data: Record<string, string> = {}
+  const data: Record<string, string | null> = {}
   if (typeof body.nazev === 'string') data.nazev = body.nazev
+  if (typeof body.popis === 'string') data.popis = body.popis.trim() || null
   if (typeof body.obsah === 'string') data.obsah = sanitizeFullDocumentHtml(body.obsah)
   if (typeof body.typSablony === 'string') data.typSablony = body.typSablony
 

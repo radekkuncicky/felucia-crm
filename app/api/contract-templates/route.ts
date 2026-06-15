@@ -24,7 +24,7 @@ export async function POST(req: Request) {
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)
 
-  const { nazev, obsah } = await req.json()
+  const { nazev, popis, obsah } = await req.json()
   if (!nazev) return NextResponse.json({ error: 'nazev required' }, { status: 400 })
 
   const limits = getPlanLimits(session.user.plan ?? 'STARTER')
@@ -39,7 +39,12 @@ export async function POST(req: Request) {
   }
 
   const tpl = await db.contractTemplate.create({
-    data: { orgId, nazev, obsah: sanitizeFullDocumentHtml(obsah ?? '') },
+    data: {
+      orgId,
+      nazev,
+      popis: typeof popis === 'string' && popis.trim() ? popis.trim() : null,
+      obsah: sanitizeFullDocumentHtml(obsah ?? ''),
+    },
   })
   return NextResponse.json(tpl, { status: 201 })
 }

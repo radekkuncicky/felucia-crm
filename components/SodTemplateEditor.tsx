@@ -7,7 +7,14 @@ import Underline from '@tiptap/extension-underline'
 import { Extension } from '@tiptap/core'
 import { Plugin, PluginKey } from '@tiptap/pm/state'
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { confirmDialog } from '@/components/ui/confirm'
+
+// Tabulky a vlastní <style>/celé dokumenty TipTap (StarterKit) neumí — při
+// převodu do rich režimu by se ztratily. Takový obsah otevíráme rovnou v HTML.
+function looksRichUnsafe(html: string): boolean {
+  return /<table|<style|<html|<!doctype/i.test(html)
+}
 
 export const SOD_PLACEHOLDERS: [string, string][] = [
   ['{{cislo_smlouvy}}', 'číslo smlouvy'],
@@ -111,6 +118,9 @@ export default function SodTemplateEditor({
   readonly = false,
   minHeight = '55vh',
 }: Props) {
+  const [mode, setMode] = useState<'rich' | 'html'>(() => (looksRichUnsafe(content) ? 'html' : 'rich'))
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -125,17 +135,44 @@ export default function SodTemplateEditor({
     },
   })
 
-  const prevRef = useRef(content)
+  // Editor synchronizujeme jen v rich režimu — v HTML režimu je zdrojem pravdy
+  // textarea a TipTap by obsah degradoval (zahodil tabulky/styly).
   useEffect(() => {
-    if (editor && content !== prevRef.current) {
-      prevRef.current = content
-      if (content !== editor.getHTML()) {
-        editor.commands.setContent(content || '<p></p>', { emitUpdate: false })
-      }
+    if (!editor || mode !== 'rich') return
+    if (content !== editor.getHTML()) {
+      editor.commands.setContent(content || '<p></p>', { emitUpdate: false })
     }
-  }, [content, editor])
+  }, [content, editor, mode])
+
+  async function toggleMode() {
+    if (mode === 'rich') {
+      setMode('html')
+      return
+    }
+    // html → rich: varuj, pokud by se ztratily tabulky/styly
+    if (looksRichUnsafe(content)) {
+      const ok = await confirmDialog(
+        'Šablona obsahuje tabulky nebo vlastní styly, které textový (vizuální) režim neumí zobrazit a při uložení by se ztratily. Přepnout přesto?',
+        { title: 'Přepnout do vizuálního režimu?', confirmLabel: 'Přepnout', cancelLabel: 'Zůstat v HTML' },
+      )
+      if (!ok) return
+    }
+    setMode('rich')
+  }
 
   function insertPlaceholder(ph: string) {
+    if (mode === 'html') {
+      const ta = textareaRef.current
+      const start = ta?.selectionStart ?? content.length
+      const end = ta?.selectionEnd ?? content.length
+      onChange?.(content.slice(0, start) + ph + content.slice(end))
+      requestAnimationFrame(() => {
+        if (!ta) return
+        ta.focus()
+        ta.selectionStart = ta.selectionEnd = start + ph.length
+      })
+      return
+    }
     editor?.chain().focus().insertContent(ph).run()
   }
 
@@ -145,6 +182,7 @@ export default function SodTemplateEditor({
         {/* Toolbar */}
         {!readonly && editor && (
           <div className="flex flex-wrap items-center gap-0.5 px-2 py-1.5 border-b border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/60">
+            {mode === 'rich' && (<>
             <ToolbarBtn title="Normální text" active={editor.isActive('paragraph')} onClick={() => editor.chain().focus().setParagraph().run()}>P</ToolbarBtn>
             <ToolbarBtn title="Nadpis 1" active={editor.isActive('heading', { level: 1 })} onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}>H1</ToolbarBtn>
             <ToolbarBtn title="Nadpis 2" active={editor.isActive('heading', { level: 2 })} onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}>H2</ToolbarBtn>
@@ -176,6 +214,17 @@ export default function SodTemplateEditor({
             <ToolbarBtn title="Číslovaný seznam" active={editor.isActive('orderedList')} onClick={() => editor.chain().focus().toggleOrderedList().run()}>
               <OrderedListIcon />
             </ToolbarBtn>
+            </>)}
+            <button
+              type="button"
+              title={mode === 'rich' ? 'Přepnout na HTML zdroják (tabulky, vlastní styly)' : 'Přepnout na vizuální režim'}
+              onMouseDown={e => { e.preventDefault(); toggleMode() }}
+              className="ml-auto flex items-center gap-1 px-2 py-1 rounded text-xs font-medium text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
+            >
+              {mode === 'rich'
+                ? <><CodeIcon /> HTML</>
+                : <><EyeIcon /> Vizuální</>}
+            </button>
           </div>
         )}
 
@@ -208,9 +257,22 @@ export default function SodTemplateEditor({
             color: rgb(147 197 253);
           }
         `}</style>
-        <div className="sod-editor">
-          <EditorContent editor={editor} />
-        </div>
+        {mode === 'html' ? (
+          <textarea
+            ref={textareaRef}
+            value={content}
+            readOnly={readonly}
+            onChange={e => onChange?.(e.target.value)}
+            spellCheck={false}
+            placeholder="<p>HTML zdroják smlouvy…</p>"
+            className="block w-full resize-y border-0 px-4 py-3 font-mono text-xs leading-relaxed text-gray-800 dark:text-slate-200 bg-white dark:bg-slate-800 focus:outline-none"
+            style={{ minHeight }}
+          />
+        ) : (
+          <div className="sod-editor">
+            <EditorContent editor={editor} />
+          </div>
+        )}
       </div>
 
       {/* Placeholder panel */}
@@ -271,6 +333,21 @@ function OrderedListIcon() {
   return (
     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5h11M9 12h11M9 19h11M4 5v.01M4 12v.01M4 19v.01" />
+    </svg>
+  )
+}
+function CodeIcon() {
+  return (
+    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+    </svg>
+  )
+}
+function EyeIcon() {
+  return (
+    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
     </svg>
   )
 }

@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 import DOMPurify from 'dompurify'
 import ConfirmModal from '@/components/ConfirmModal'
 import SodTemplateEditor, { SOD_PLACEHOLDERS } from '@/components/SodTemplateEditor'
@@ -9,6 +10,7 @@ import SodTemplateEditor, { SOD_PLACEHOLDERS } from '@/components/SodTemplateEdi
 interface Template {
   id: string
   nazev: string
+  popis?: string | null
   obsah: string
 }
 
@@ -65,10 +67,12 @@ export default function ContractTemplatesManager({ templates: initial }: Props) 
   const [templates, setTemplates] = useState(initial)
   const [editing, setEditing] = useState<Template | null>(null)
   const [creating, setCreating] = useState(false)
-  const [form, setForm] = useState({ nazev: '', obsah: '' })
+  const [form, setForm] = useState({ nazev: '', popis: '', obsah: '' })
   const [saving, setSaving] = useState(false)
+  const [importing, setImporting] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [previewHtml, setPreviewHtml] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   async function handleCreate() {
     setSaving(true)
@@ -81,7 +85,7 @@ export default function ContractTemplatesManager({ templates: initial }: Props) 
       const tpl = await res.json()
       setTemplates(prev => [...prev, tpl])
       setCreating(false)
-      setForm({ nazev: '', obsah: '' })
+      setForm({ nazev: '', popis: '', obsah: '' })
       router.refresh()
     }
     setSaving(false)
@@ -93,11 +97,11 @@ export default function ContractTemplatesManager({ templates: initial }: Props) 
     await fetch(`/api/contract-templates/${editing.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nazev: form.nazev, obsah: form.obsah }),
+      body: JSON.stringify({ nazev: form.nazev, popis: form.popis, obsah: form.obsah }),
     })
     setTemplates(prev => prev.map(t => t.id === editing.id ? { ...t, ...form } : t))
     setEditing(null)
-    setForm({ nazev: '', obsah: '' })
+    setForm({ nazev: '', popis: '', obsah: '' })
     setSaving(false)
     router.refresh()
   }
@@ -112,20 +116,58 @@ export default function ContractTemplatesManager({ templates: initial }: Props) 
 
   function startEdit(t: Template) {
     setEditing(t)
-    setForm({ nazev: t.nazev, obsah: t.obsah })
+    setForm({ nazev: t.nazev, popis: t.popis ?? '', obsah: t.obsah })
     setCreating(false)
+  }
+
+  async function handleDuplicate(t: Template) {
+    const res = await fetch('/api/contract-templates', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nazev: `${t.nazev} (kopie)`, popis: t.popis ?? '', obsah: t.obsah }),
+    })
+    if (res.ok) {
+      const tpl = await res.json()
+      setTemplates(prev => [...prev, tpl])
+      toast.success('Šablona zduplikována')
+      router.refresh()
+    } else {
+      const err = await res.json().catch(() => ({}))
+      toast.error(err.error ?? 'Duplikaci se nepodařilo provést')
+    }
+  }
+
+  async function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = '' // umožní znovu vybrat tentýž soubor
+    if (!file) return
+    setImporting(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch('/api/contract-templates/import', { method: 'POST', body: fd })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        toast.error(data.error ?? 'Import se nepodařil')
+        return
+      }
+      setForm(f => ({ ...f, obsah: data.html }))
+      toast.success('Soubor naimportován — doplňte {{placeholdery}} a uložte')
+    } finally {
+      setImporting(false)
+    }
   }
 
   function startCreate() {
     setCreating(true)
     setEditing(null)
-    setForm({ nazev: '', obsah: '' })
+    setForm({ nazev: '', popis: '', obsah: '' })
   }
 
   function cancel() {
     setCreating(false)
     setEditing(null)
-    setForm({ nazev: '', obsah: '' })
+    setForm({ nazev: '', popis: '', obsah: '' })
   }
 
   const isEditorOpen = creating || editing !== null
@@ -197,14 +239,31 @@ export default function ContractTemplatesManager({ templates: initial }: Props) 
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-5 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="font-semibold text-gray-900 dark:text-white">{creating ? 'Nová šablona' : 'Upravit šablonu'}</h3>
-            <button
-              type="button"
-              onClick={() => setPreviewHtml(renderPreview(form.obsah))}
-              disabled={!form.obsah}
-              className="text-sm text-primary dark:text-primary-light hover:underline disabled:opacity-40 disabled:no-underline"
-            >
-              Náhled s ukázkovými daty →
-            </button>
+            <div className="flex items-center gap-4">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".docx,.html,.htm"
+                onChange={handleImportFile}
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={importing}
+                className="text-sm text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 disabled:opacity-40"
+              >
+                {importing ? 'Importuji…' : '⬆ Import z DOCX/HTML'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setPreviewHtml(renderPreview(form.obsah))}
+                disabled={!form.obsah}
+                className="text-sm text-primary dark:text-primary-light hover:underline disabled:opacity-40 disabled:no-underline"
+              >
+                Náhled s ukázkovými daty →
+              </button>
+            </div>
           </div>
 
           <div>
@@ -214,6 +273,17 @@ export default function ContractTemplatesManager({ templates: initial }: Props) 
               value={form.nazev}
               onChange={e => setForm(f => ({ ...f, nazev: e.target.value }))}
               placeholder="Smlouva o dílo – Klimatizace 21 % se zálohou"
+              className="w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">Popis <span className="text-gray-400 font-normal">(nepovinné)</span></label>
+            <input
+              type="text"
+              value={form.popis}
+              onChange={e => setForm(f => ({ ...f, popis: e.target.value }))}
+              placeholder="Krátká poznámka, k čemu šablona slouží"
               className="w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400"
             />
           </div>
@@ -265,6 +335,7 @@ export default function ContractTemplatesManager({ templates: initial }: Props) 
               <tr key={t.id} className="hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors">
                 <td className="px-6 py-4">
                   <p className="font-medium text-gray-900 dark:text-white">{t.nazev}</p>
+                  {t.popis && <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">{t.popis}</p>}
                 </td>
                 <td className="px-6 py-4 text-sm text-gray-500 dark:text-slate-400 max-w-md">
                   <p className="truncate">{stripHtml(t.obsah).substring(0, 100)}{stripHtml(t.obsah).length > 100 ? '…' : ''}</p>
@@ -282,6 +353,12 @@ export default function ContractTemplatesManager({ templates: initial }: Props) 
                       className="text-sm text-primary dark:text-primary-light hover:text-blue-800 font-medium"
                     >
                       Upravit
+                    </button>
+                    <button
+                      onClick={() => handleDuplicate(t)}
+                      className="text-sm text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200"
+                    >
+                      Duplikovat
                     </button>
                     <button
                       onClick={() => setDeleteId(t.id)}
