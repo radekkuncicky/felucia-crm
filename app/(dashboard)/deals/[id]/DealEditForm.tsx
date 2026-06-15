@@ -33,9 +33,11 @@ interface DealData {
 
 export default function DealEditForm({
   deal,
+  klientAdresa,
   aktivniNabidkaCena,
 }: {
   deal: DealData
+  klientAdresa?: string
   aktivniNabidkaCena?: number
 }) {
   const router = useRouter()
@@ -196,7 +198,19 @@ export default function DealEditForm({
       </div>
 
       <div>
-        <label className={label}>Adresa díla</label>
+        <div className="flex items-center justify-between mb-1">
+          <label className={label}>Adresa díla / místo instalace</label>
+          {klientAdresa && (
+            <button
+              type="button"
+              onClick={() => set('adresaDila', klientAdresa)}
+              title="Vyplnit adresou klienta"
+              className="text-xs px-2 py-0.5 rounded-lg border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700"
+            >
+              Převzít z klienta
+            </button>
+          )}
+        </div>
         <input type="text" value={form.adresaDila} onChange={(e) => set('adresaDila', e.target.value)} className={inp} />
       </div>
 

@@ -12,6 +12,7 @@ import ZakazkyTabs from './ZakazkyTabs'
 import PipelineBar from './PipelineBar'
 import ZakazkaDetailHeader from './ZakazkaDetailHeader'
 import MontazDatePicker from './MontazDatePicker'
+import MistoStavbyEdit from './MistoStavbyEdit'
 import RychlaPoznamka from './RychlaPoznamka'
 import EtapySection from './EtapySection'
 import CopyLinkButton from './CopyLinkButton'
@@ -163,6 +164,14 @@ export default async function ZakazkaDetailLayout({
                   </a>
                 )}
               </div>
+
+              {/* Místo stavby / adresa instalace */}
+              <MistoStavbyEdit
+                zakazkaId={zakazka.id}
+                mistoStavby={zakazka.mistoStavby ?? null}
+                klientAdresa={adresa}
+                canEdit={canEdit}
+              />
 
               {/* Termín montáže */}
               <MontazDatePicker

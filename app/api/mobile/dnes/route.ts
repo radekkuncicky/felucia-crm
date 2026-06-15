@@ -38,6 +38,7 @@ export async function GET(req: Request) {
     montazOd: z.montazOd,
     montazDo: z.montazDo,
     adresa: klientAdresa(z.klient),
+    mistoStavby: z.mistoStavby ?? null,
     klient: {
       jmeno: z.klient.jmeno,
       prijmeni: z.klient.prijmeni,

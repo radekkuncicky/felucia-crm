@@ -249,6 +249,7 @@ export default async function DealDetailPage({
                   kontaktniTelefon: deal.kontaktniTelefon ?? '',
                   poznamky: deal.poznamky ?? '',
                 }}
+                klientAdresa={[deal.client.ulice, [deal.client.mesto, deal.client.psc].filter(Boolean).join(' ')].filter(Boolean).join(', ')}
                 aktivniNabidkaCena={cenaSDph > 0 ? cenaSDph : undefined}
               />
             </CollapsibleEdit>

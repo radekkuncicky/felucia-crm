@@ -66,6 +66,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       vedouciId: body.vedouciId,
       poznamka: body.poznamka,
       nazev: body.nazev,
+      mistoStavby: body.mistoStavby !== undefined ? (body.mistoStavby || null) : undefined,
       uzavreno: body.stav === 'HOTOVO' ? new Date() : undefined,
       montazOd: body.montazOd !== undefined ? (body.montazOd ? new Date(body.montazOd) : null) : undefined,
       montazDo: body.montazDo !== undefined ? (body.montazDo ? new Date(body.montazDo) : null) : undefined,

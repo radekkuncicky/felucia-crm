@@ -57,9 +57,11 @@ export async function POST(req: Request) {
   const body = await req.json()
 
   let opKod: string | null = null
+  let opAdresaDila: string | null = null
   if (body.opId) {
-    const op = await db.deal.findFirst({ where: { id: body.opId, orgId }, select: { kod: true } })
+    const op = await db.deal.findFirst({ where: { id: body.opId, orgId }, select: { kod: true, adresaDila: true } })
     opKod = op?.kod ?? null
+    opAdresaDila = op?.adresaDila ?? null
   }
   const cislo = await generateZakazkaCislo(orgId, opKod)
 
@@ -83,7 +85,7 @@ export async function POST(req: Request) {
       klientId: body.klientId,
       nazev: body.nazev,
       technologie: body.technologie ?? null,
-      mistoStavby: body.mistoStavby ?? null,
+      mistoStavby: body.mistoStavby ?? opAdresaDila ?? null,
       vedouciId: body.vedouciId ?? session.user.id,
       opId: body.opId ?? null,
       poznamka: body.poznamka ?? null,
