@@ -162,6 +162,9 @@ export default function Sidebar({ user, orgNazev }: Props) {
       setActiveGroup('aktivity')
     } else if (pathname.startsWith('/servis')) {
       setActiveGroup('servis')
+    } else if (pathname.startsWith('/zakazky/servisni') && user.role !== 'TECHNIK') {
+      // Servisní zakázky žijí ve skupině Servis (mimo techniky)
+      setActiveGroup('servis')
     } else if (pathname.startsWith('/zakazky')) {
       setActiveGroup('zakazky')
     } else if (pathname.startsWith('/leady')) {
@@ -331,35 +334,10 @@ export default function Sidebar({ user, orgNazev }: Props) {
             )}
 
             {/* Zakázky + Sklad - not for OBCHODNIK */}
+            {/* Servisní zakázky žijí ve skupině Servis (Professional+ s modulem), ne tady */}
             {user.role !== 'OBCHODNIK' && (
               <>
-                {hasServiceAccess ? (
-                  <>
-                    <GroupToggle
-                      open={activeGroup === 'zakazky'}
-                      onToggle={() => setActiveGroup(g => g === 'zakazky' ? null : 'zakazky')}
-                      icon={<NavIcon d={Icon.clipboard} />}
-                      label="Zakázky"
-                    />
-                    {(activeGroup === 'zakazky' || collapsed) && (
-                      <div className="space-y-0.5">
-                        {collapsed ? (
-                          <>
-                            <NavItem href="/zakazky" icon={<NavIcon d={Icon.clipboard} />} label="Obchodní zakázky" exact />
-                            <NavItem href="/zakazky/servisni" icon={<NavIcon d={Icon.wrench} />} label="Servisní zakázky" />
-                          </>
-                        ) : (
-                          <>
-                            <SubNavItem href="/zakazky" label="Obchodní zakázky" exact />
-                            <SubNavItem href="/zakazky/servisni" label="Servisní zakázky" />
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <NavItem href="/zakazky" icon={<NavIcon d={Icon.clipboard} />} label="Zakázky" />
-                )}
+                <NavItem href="/zakazky" icon={<NavIcon d={Icon.clipboard} />} label="Zakázky" exact />
                 <NavItem href="/sklad" icon={<NavIcon d={Icon.warehouse} />} label="Sklad" />
               </>
             )}
@@ -400,13 +378,21 @@ export default function Sidebar({ user, orgNazev }: Props) {
                 {(activeGroup === 'servis' || collapsed) && (
                   <div className="space-y-0.5">
                     {collapsed ? (
-                      <NavItem href="/servis" icon={<NavIcon d={Icon.wrench} />} label="Servis přehled" exact />
+                      <>
+                        <NavItem href="/servis" icon={<NavIcon d={Icon.wrench} />} label="Servis přehled" exact />
+                        {(hasServiceAccess || user.role === 'ADMIN') && (
+                          <NavItem href="/zakazky/servisni" icon={<NavIcon d={Icon.wrench} />} label="Servisní zakázky" />
+                        )}
+                      </>
                     ) : (
                       <>
                         <SubNavItem href="/servis" label="Přehled" exact />
                         <SubNavItem href="/servis/zarizeni" label="Zařízení" />
                         <SubNavItem href="/servis/kontrakty" label="Kontrakty" />
                         <SubNavItem href="/servis/plan" label="Plán servisů" />
+                        {(hasServiceAccess || user.role === 'ADMIN') && (
+                          <SubNavItem href="/zakazky/servisni" label="Servisní zakázky" />
+                        )}
                       </>
                     )}
                   </div>
