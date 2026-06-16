@@ -3,8 +3,8 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { NavigateButton } from '@/components/NavigateButton'
+import { type ServisniZakazkaStav, stavLabel, stavColor, jeProsla } from '@/lib/servisStav'
 
-type ServisStav = 'PLANOVANA' | 'POTVRZENA' | 'PROBIHA' | 'DOKONCENA' | 'ZRUSENA' | 'PRESLA'
 type NavstevaTyp = 'PLANOVANY_SERVIS' | 'PORUCHA' | 'ZARUCNI_OPRAVA' | 'POZARUCNI_OPRAVA' | 'UVEDENI_DO_PROVOZU' | 'KONTROLA'
 type ZarizeniTyp = 'TEPELNE_CERPADLO' | 'KLIMATIZACE' | 'REKUPERACE' | 'PODLAHOVE_VYTAPENI' | 'VZDUCHOTECHNIKA' | 'OHREV_TV' | 'JINE'
 
@@ -16,11 +16,11 @@ interface Zarizeni {
 
 interface Navsteva {
   id: string
-  cisloNavstevy: string | null
+  cislo: string | null
   typ: NavstevaTyp
   planovanyTermin: string
   skutecnyTermin: string | null
-  stav: ServisStav
+  stav: ServisniZakazkaStav
   technikId: string | null
   poznamka: string | null
   kontrakt: {
@@ -59,24 +59,6 @@ const navstevaTypLabels: Record<NavstevaTyp, string> = {
   POZARUCNI_OPRAVA: 'Pozáruční oprava',
   UVEDENI_DO_PROVOZU: 'Uvedení do provozu',
   KONTROLA: 'Kontrola',
-}
-
-const stavColors: Record<ServisStav, string> = {
-  PLANOVANA: 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300',
-  POTVRZENA: 'bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300',
-  PROBIHA: 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300',
-  DOKONCENA: 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300',
-  ZRUSENA: 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300',
-  PRESLA: 'bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300',
-}
-
-const stavLabels: Record<ServisStav, string> = {
-  PLANOVANA: 'Plánovaná',
-  POTVRZENA: 'Potvrzená',
-  PROBIHA: 'Probíhá',
-  DOKONCENA: 'Dokončená',
-  ZRUSENA: 'Zrušená',
-  PRESLA: 'Prošlá',
 }
 
 const COLORS = ['bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-orange-500', 'bg-pink-500', 'bg-teal-500']
@@ -265,7 +247,7 @@ export default function PlanClient({ navstevy, orgUsers, zarizeniList }: Props) 
                     {grouped[weekKey].map(n => {
                       const datum = new Date(n.planovanyTermin)
                       const isToday = datum.toDateString() === today.toDateString()
-                      const isPast = datum < today && n.stav === 'PLANOVANA'
+                      const isPast = jeProsla(n.stav, n.planovanyTermin)
                       return (
                         <div key={n.id} className={`flex items-center gap-4 px-5 py-3 ${isToday ? 'bg-blue-50 dark:bg-blue-900/10' : ''}`}>
                           {/* Date */}
@@ -292,8 +274,8 @@ export default function PlanClient({ navstevy, orgUsers, zarizeniList }: Props) 
                               {!n.zarizeni && n.kontrakt && (
                                 <span className="text-xs text-gray-500 dark:text-slate-400">{n.kontrakt.nazev}</span>
                               )}
-                              <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${stavColors[n.stav]}`}>
-                                {stavLabels[n.stav]}
+                              <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${stavColor(n.stav)}`}>
+                                {stavLabel(n.stav)}
                               </span>
                               <span className="text-xs text-gray-400 dark:text-slate-500">{navstevaTypLabels[n.typ]}</span>
                             </div>

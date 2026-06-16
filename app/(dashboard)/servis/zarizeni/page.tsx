@@ -22,8 +22,8 @@ export default async function ZarizeniPage() {
           where: { aktivni: true },
           select: { id: true, nazev: true, typ: true, konec: true, cisloKontraktu: true },
         },
-        servisniNavstevy: {
-          where: { stav: { in: ['PLANOVANA', 'POTVRZENA'] } },
+        servisniZakazky: {
+          where: { stav: { in: ['NAPLANOVANA'] } },
           orderBy: { planovanyTermin: 'asc' },
           take: 1,
           select: { planovanyTermin: true },
@@ -47,8 +47,8 @@ export default async function ZarizeniPage() {
       ...k,
       konec: k.konec ? k.konec.toISOString() : null,
     })),
-    servisniNavstevy: z.servisniNavstevy.map(n => ({
-      planovanyTermin: n.planovanyTermin.toISOString(),
+    servisniZakazky: z.servisniZakazky.map(n => ({
+      planovanyTermin: n.planovanyTermin!.toISOString(),
     })),
   }))
 

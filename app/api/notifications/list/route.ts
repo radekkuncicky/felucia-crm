@@ -72,18 +72,18 @@ export async function GET(req: Request) {
       orderBy: { vytvoreno: 'desc' },
     }),
     isPlatinum
-      ? db.servisniNavsteva.findMany({
-          where: { orgId, stav: 'PLANOVANA', planovanyTermin: { lte: thirtyDaysFromNow, gte: new Date() } },
+      ? db.servisniZakazka.findMany({
+          where: { orgId, stav: 'NAPLANOVANA', planovanyTermin: { lte: thirtyDaysFromNow, gte: new Date() } },
           include: {
             kontrakt: { include: { klient: { select: { jmeno: true, prijmeni: true } } } },
           },
           orderBy: { planovanyTermin: 'asc' },
           take: 10,
         })
-      : Promise.resolve([]),
+      : [],
     isPlatinum
-      ? db.servisniNavsteva.findMany({
-          where: { orgId, stav: 'PLANOVANA', planovanyTermin: { lt: new Date() } },
+      ? db.servisniZakazka.findMany({
+          where: { orgId, stav: 'NAPLANOVANA', planovanyTermin: { lt: new Date() } },
           include: {
             kontrakt: { include: { klient: { select: { jmeno: true, prijmeni: true } } } },
             zarizeni: { select: { nazev: true } },
@@ -91,7 +91,7 @@ export async function GET(req: Request) {
           orderBy: { planovanyTermin: 'asc' },
           take: 10,
         })
-      : Promise.resolve([]),
+      : [],
   ])
 
   return NextResponse.json({
@@ -123,7 +123,7 @@ export async function GET(req: Request) {
     })),
     bliziciSeServisy: bliziciSeServisy.map(n => ({
       id: n.id,
-      planovanyTermin: n.planovanyTermin.toISOString(),
+      planovanyTermin: n.planovanyTermin!.toISOString(),
       kontrakt: n.kontrakt ? {
         nazev: n.kontrakt.nazev,
         klient: { jmeno: n.kontrakt.klient.jmeno, prijmeni: n.kontrakt.klient.prijmeni },
@@ -131,7 +131,7 @@ export async function GET(req: Request) {
     })),
     servisyPoTerminu: servisyPoTerminu.map(n => ({
       id: n.id,
-      planovanyTermin: n.planovanyTermin.toISOString(),
+      planovanyTermin: n.planovanyTermin!.toISOString(),
       zarizeniNazev: (n as { zarizeni?: { nazev: string } | null }).zarizeni?.nazev ?? null,
       kontrakt: n.kontrakt ? {
         nazev: n.kontrakt.nazev,

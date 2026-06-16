@@ -24,16 +24,16 @@ export default async function ServisPage() {
   ] = await Promise.all([
     prisma.zarizeni.count({ where: { orgId, aktivni: true } }),
     prisma.servisniKontrakt.count({ where: { orgId, aktivni: true } }),
-    prisma.servisniNavsteva.count({
-      where: { orgId, stav: 'PLANOVANA', planovanyTermin: { lte: thirtyDaysFromNow, gte: now } },
+    prisma.servisniZakazka.count({
+      where: { orgId, stav: 'NAPLANOVANA', planovanyTermin: { lte: thirtyDaysFromNow, gte: now } },
     }),
-    prisma.servisniNavsteva.count({
-      where: { orgId, stav: 'PLANOVANA', planovanyTermin: { lt: now } },
+    prisma.servisniZakazka.count({
+      where: { orgId, stav: 'NAPLANOVANA', planovanyTermin: { lt: now } },
     }),
-    prisma.servisniNavsteva.findMany({
+    prisma.servisniZakazka.findMany({
       where: {
         orgId,
-        stav: { in: ['PLANOVANA', 'POTVRZENA'] },
+        stav: { in: ['NAPLANOVANA'] },
         planovanyTermin: { lte: thirtyDaysFromNow },
       },
       include: {
@@ -50,7 +50,7 @@ export default async function ServisPage() {
 
   const serializedNavstevy = upcomingNavstevy.map(n => ({
     ...n,
-    planovanyTermin: n.planovanyTermin.toISOString(),
+    planovanyTermin: n.planovanyTermin!.toISOString(),
     skutecnyTermin: n.skutecnyTermin ? n.skutecnyTermin.toISOString() : null,
     vytvoreno: n.vytvoreno.toISOString(),
     nakladyCas: n.nakladyCas ? String(n.nakladyCas) : null,

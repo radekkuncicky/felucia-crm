@@ -38,18 +38,18 @@ export async function GET(req: Request) {
         : { orgId, userId, vytvoreno: { gte: oneDayAgo } },
     }),
     isPlatinum
-      ? db.servisniNavsteva.count({
-          where: { orgId, stav: 'PLANOVANA', planovanyTermin: { lte: thirtyDaysFromNow } },
+      ? db.servisniZakazka.count({
+          where: { orgId, stav: 'NAPLANOVANA', planovanyTermin: { lte: thirtyDaysFromNow } },
         })
       : Promise.resolve(0),
     isPlatinum
-      ? db.servisniNavsteva.count({
-          where: { orgId, stav: 'PLANOVANA', planovanyTermin: { lte: sevenDaysFromNow } },
+      ? db.servisniZakazka.count({
+          where: { orgId, stav: 'NAPLANOVANA', planovanyTermin: { lte: sevenDaysFromNow } },
         })
       : Promise.resolve(0),
     isPlatinum
-      ? db.servisniNavsteva.count({
-          where: { orgId, stav: 'PLANOVANA', planovanyTermin: { lt: now } },
+      ? db.servisniZakazka.count({
+          where: { orgId, stav: 'NAPLANOVANA', planovanyTermin: { lt: now } },
         })
       : Promise.resolve(0),
     db.notification.count({ where: { userId, precteno: false } }),

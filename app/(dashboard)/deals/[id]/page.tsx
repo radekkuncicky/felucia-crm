@@ -66,7 +66,7 @@ export default async function DealDetailPage({
           where: { dealId: params.id, orgId },
           include: {
             zarizeni: { select: { id: true, nazev: true, typ: true, vyrobniCislo: true, datumInstalace: true, zarukaDo: true } },
-            servisniNavstevy: {
+            servisniZakazky: {
               include: { technik: { select: { id: true, jmeno: true } } },
               orderBy: { planovanyTermin: 'asc' },
               take: 20,
@@ -450,11 +450,11 @@ export default async function DealDetailPage({
               datumInstalace: k.zarizeni.datumInstalace ? k.zarizeni.datumInstalace.toISOString() : null,
               zarukaDo: k.zarizeni.zarukaDo ? k.zarizeni.zarukaDo.toISOString() : null,
             } : null,
-            servisniNavstevy: k.servisniNavstevy.map(n => ({
+            servisniZakazky: k.servisniZakazky.map(n => ({
               id: n.id,
-              cisloNavstevy: n.cisloNavstevy ?? null,
+              cislo: n.cislo ?? null,
               typ: n.typ,
-              planovanyTermin: n.planovanyTermin.toISOString(),
+              planovanyTermin: n.planovanyTermin!.toISOString(),
               skutecnyTermin: n.skutecnyTermin ? n.skutecnyTermin.toISOString() : null,
               stav: n.stav,
               zprava: n.zprava ?? null,

@@ -1,24 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-
-const STAV_LABELS: Record<string, string> = {
-  PLANOVANA: 'Plánovaná',
-  POTVRZENA: 'Potvrzená',
-  PROBIHA: 'Probíhá',
-  DOKONCENA: 'Dokončená',
-  ZRUSENA: 'Zrušená',
-  PRESLA: 'Prošlá',
-}
-
-const STAV_COLORS: Record<string, string> = {
-  PLANOVANA: 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300',
-  POTVRZENA: 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300',
-  PROBIHA: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300',
-  DOKONCENA: 'bg-gray-100 text-gray-700 dark:bg-slate-700 dark:text-slate-300',
-  ZRUSENA: 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300',
-  PRESLA: 'bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300',
-}
+import { stavLabel, stavColor } from '@/lib/servisStav'
 
 const TYP_LABELS: Record<string, string> = {
   PLANOVANY_SERVIS: 'Plánovaný servis',
@@ -41,7 +24,7 @@ interface Navsteva {
   stav: string
   typ: string
   planovanyTermin: string
-  cisloNavstevy: string | null
+  cislo: string | null
   technik: { id: string; jmeno: string } | null
   kontrakt: {
     klient: { id: string; jmeno: string; prijmeni: string }
@@ -155,8 +138,8 @@ export default function ServisOverviewClient({ stats, upcomingNavstevy }: Props)
                   </div>
                   <div className="flex-shrink-0 flex items-center gap-2">
                     <span className="text-xs text-gray-500 dark:text-slate-400">{TYP_LABELS[n.typ] ?? n.typ}</span>
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STAV_COLORS[n.stav]}`}>
-                      {STAV_LABELS[n.stav]}
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${stavColor(n.stav)}`}>
+                      {stavLabel(n.stav)}
                     </span>
                   </div>
                 </div>

@@ -105,10 +105,10 @@ export async function GET(req: Request) {
       },
       include: { client: { select: { jmeno: true, prijmeni: true } } },
     }),
-    db.servisniNavsteva.findMany({
-      where: { orgId, stav: { in: ['PLANOVANA', 'POTVRZENA', 'PROBIHA'] } },
+    db.servisniZakazka.findMany({
+      where: { orgId, stav: { in: ['NAPLANOVANA', 'PROBIHA'] }, planovanyTermin: { not: null } },
       include: { kontrakt: { include: { klient: { select: { jmeno: true, prijmeni: true } } } } },
-    }).catch(() => []),
+    }),
   ])
 
   const vevents: string[] = []
@@ -157,6 +157,7 @@ export async function GET(req: Request) {
   }
 
   for (const n of servisNavstevy) {
+    if (!n.planovanyTermin) continue
     const klient = n.kontrakt ? `${n.kontrakt.klient.jmeno} ${n.kontrakt.klient.prijmeni}` : ''
     vevents.push(vevent(
       `servis-${n.id}`,

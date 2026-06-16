@@ -2,12 +2,18 @@ import { getPlanLimits } from '@/lib/planLimits'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
+import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
+
+// Horizont dopředného generování zakázek z kontraktu. Dál se dogeneruje postupně
+// (zabrání zahlcení seznamu u kontraktu bez konce / s krátkým intervalem).
+const GENEROVAT_MESICU = 24
 
 function generateNavstevy(kontraktId: string, orgId: string, zacatek: Date, konec: Date | null, intervalMesicu: number) {
   const dates: Date[] = []
   const current = new Date(zacatek)
-  const end = konec ?? new Date(current.getFullYear() + 5, current.getMonth(), current.getDate())
+  const horizont = new Date(zacatek.getFullYear(), zacatek.getMonth() + GENEROVAT_MESICU, zacatek.getDate())
+  const end = konec && konec < horizont ? konec : horizont
 
   while (current < end) {
     dates.push(new Date(current))
@@ -18,7 +24,7 @@ function generateNavstevy(kontraktId: string, orgId: string, zacatek: Date, kone
     orgId,
     kontraktId,
     planovanyTermin: d,
-    stav: 'PLANOVANA' as const,
+    stav: 'NAPLANOVANA' as const,
   }))
 }
 
@@ -68,8 +74,21 @@ export async function POST(req: Request) {
     kontrakt.intervalMesicu,
   )
 
+  // Čísla SZ-YY-NNNN přidělíme v transakci pod advisory zámkem (bezpečné při souběhu).
   if (navstevyData.length > 0) {
-    await db.servisniNavsteva.createMany({ data: navstevyData })
+    const yy = new Date().getFullYear().toString().slice(2)
+    const prefix = `SZ-${yy}-`
+    await prisma.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`szc:${orgId}:${yy}`}))`
+      const last = await tx.servisniZakazka.findFirst({
+        where: { orgId, cislo: { startsWith: prefix } },
+        orderBy: { cislo: 'desc' },
+        select: { cislo: true },
+      })
+      let n = last?.cislo ? parseInt(last.cislo.slice(prefix.length), 10) : 0
+      const data = navstevyData.map((v) => ({ ...v, cislo: `${prefix}${String(++n).padStart(4, '0')}` }))
+      await tx.servisniZakazka.createMany({ data })
+    })
   }
 
   return NextResponse.json(kontrakt, { status: 201 })
@@ -87,8 +106,8 @@ export async function GET() {
     include: {
       klient: { select: { id: true, jmeno: true, prijmeni: true } },
       deal: { select: { id: true, kod: true, predmet: true } },
-      servisniNavstevy: {
-        where: { stav: 'PLANOVANA' },
+      servisniZakazky: {
+        where: { stav: 'NAPLANOVANA' },
         orderBy: { planovanyTermin: 'asc' },
         take: 1,
       },

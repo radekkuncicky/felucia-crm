@@ -53,7 +53,7 @@ ALTER TABLE "servisni_zakazky"
 UPDATE "servisni_zakazky" SET "updatedAt" = "vytvoreno";
 ALTER TABLE "servisni_zakazky" ALTER COLUMN "updatedAt" SET NOT NULL;
 
--- Backfill čísel SZ-YY-NNN. Řada per (org, rok vzniku), pořadí dle data vzniku.
+-- Backfill čísel SZ-YY-NNNN (4 číslice). Řada per (org, rok vzniku), pořadí dle data vzniku.
 WITH ordered AS (
   SELECT
     "id",
@@ -66,7 +66,7 @@ WITH ordered AS (
   WHERE "cislo" IS NULL
 )
 UPDATE "servisni_zakazky" s
-SET "cislo" = 'SZ-' || o.yy || '-' || lpad(o.rn::text, 3, '0')
+SET "cislo" = 'SZ-' || o.yy || '-' || lpad(o.rn::text, 4, '0')
 FROM ordered o
 WHERE s."id" = o."id";
 

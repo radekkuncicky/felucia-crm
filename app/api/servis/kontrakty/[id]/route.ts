@@ -16,7 +16,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
     include: {
       klient: { select: { id: true, jmeno: true, prijmeni: true } },
       deal: { select: { id: true, kod: true, predmet: true } },
-      servisniNavstevy: {
+      servisniZakazky: {
         include: { technik: { select: { id: true, jmeno: true } } },
         orderBy: { planovanyTermin: 'asc' },
       },

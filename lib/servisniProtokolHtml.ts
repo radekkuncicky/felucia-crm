@@ -70,9 +70,9 @@ function safeImageSrc(src: string | null | undefined): string | null {
 
 type Navsteva = {
   id: string
-  cisloNavstevy: string | null
+  cislo: string | null
   typ: string
-  planovanyTermin: Date | string
+  planovanyTermin: Date | string | null
   skutecnyTermin: Date | string | null
   trvaniMinut: number | null
   zprava: string | null
@@ -119,7 +119,7 @@ export function generateServisniProtokolHtml(
   klient: Klient,
   org: Org,
 ): string {
-  const cislo = esc(navsteva.cisloNavstevy ?? navsteva.id.slice(0, 8).toUpperCase())
+  const cislo = esc(navsteva.cislo ?? navsteva.id.slice(0, 8).toUpperCase())
   const datum = fmtDate(navsteva.planovanyTermin)
   const datumTisku = new Date().toLocaleString('cs-CZ', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 

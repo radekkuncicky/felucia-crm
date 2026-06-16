@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { jwtVerify } from 'jose'
 import { notFound } from 'next/navigation'
+import { stavLabel, stavColor } from '@/lib/servisStav'
 
 const TYP_LABELS: Record<string, string> = {
   TEPELNE_CERPADLO: 'Tepelné čerpadlo',
@@ -19,24 +20,6 @@ const NAVSTEVA_TYP_LABELS: Record<string, string> = {
   POZARUCNI_OPRAVA: 'Pozáruční oprava',
   UVEDENI_DO_PROVOZU: 'Uvedení do provozu',
   KONTROLA: 'Kontrola',
-}
-
-const STAV_LABELS: Record<string, string> = {
-  PLANOVANA: 'Plánovaná',
-  POTVRZENA: 'Potvrzená',
-  PROBIHA: 'Probíhá',
-  DOKONCENA: 'Dokončená',
-  ZRUSENA: 'Zrušená',
-  PRESLA: 'Prošlá',
-}
-
-const STAV_COLORS: Record<string, string> = {
-  PLANOVANA: 'bg-blue-100 text-blue-700',
-  POTVRZENA: 'bg-teal-100 text-teal-700',
-  PROBIHA: 'bg-yellow-100 text-yellow-700',
-  DOKONCENA: 'bg-green-100 text-green-700',
-  ZRUSENA: 'bg-red-100 text-red-700',
-  PRESLA: 'bg-orange-100 text-orange-700',
 }
 
 function zarukaStatus(zarukaDo: Date | null) {
@@ -67,7 +50,7 @@ export default async function PublicZarizeniPage({ params }: { params: { token: 
         take: 1,
         select: { nazev: true, typ: true, intervalMesicu: true, zacatek: true, konec: true },
       },
-      servisniNavstevy: {
+      servisniZakazky: {
         orderBy: { planovanyTermin: 'desc' },
         take: 5,
         include: { technik: { select: { jmeno: true } } },
@@ -240,22 +223,22 @@ export default async function PublicZarizeniPage({ params }: { params: { token: 
         </div>
 
         {/* Historie servisů */}
-        {zarizeni.servisniNavstevy.length > 0 && (
+        {zarizeni.servisniZakazky.length > 0 && (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="px-5 py-3 bg-gray-50 border-b border-gray-100">
               <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Historie servisů</h2>
             </div>
             <div className="divide-y divide-gray-50">
-              {zarizeni.servisniNavstevy.map(n => (
+              {zarizeni.servisniZakazky.map(n => (
                 <div key={n.id} className="p-5">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-wrap items-center gap-2 mb-1">
                         <span className="text-sm font-semibold text-gray-800">
-                          {new Date(n.planovanyTermin).toLocaleDateString('cs-CZ')}
+                          {n.planovanyTermin ? new Date(n.planovanyTermin).toLocaleDateString('cs-CZ') : 'Bez termínu'}
                         </span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STAV_COLORS[n.stav] ?? 'bg-gray-100 text-gray-600'}`}>
-                          {STAV_LABELS[n.stav] ?? n.stav}
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${stavColor(n.stav) || 'bg-gray-100 text-gray-600'}`}>
+                          {stavLabel(n.stav)}
                         </span>
                       </div>
                       <p className="text-xs text-gray-500">{NAVSTEVA_TYP_LABELS[n.typ] ?? n.typ}{n.technik ? ` · ${n.technik.jmeno}` : ''}</p>

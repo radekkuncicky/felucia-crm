@@ -13,10 +13,10 @@ export default async function PlanPage() {
   if (!getPlanLimits(plan).hasServiceModule) return <PlatinumGuard />
 
   const [navstevy, orgUsers, zarizeniList] = await Promise.all([
-    prisma.servisniNavsteva.findMany({
+    prisma.servisniZakazka.findMany({
       where: {
         orgId,
-        stav: { in: ['PLANOVANA', 'POTVRZENA', 'PROBIHA'] },
+        stav: { in: ['NAPLANOVANA', 'PROBIHA'] },
       },
       include: {
         kontrakt: {
@@ -44,7 +44,7 @@ export default async function PlanPage() {
 
   const serialized = navstevy.map(n => ({
     ...n,
-    planovanyTermin: n.planovanyTermin.toISOString(),
+    planovanyTermin: n.planovanyTermin!.toISOString(),
     skutecnyTermin: n.skutecnyTermin ? n.skutecnyTermin.toISOString() : null,
     vytvoreno: n.vytvoreno.toISOString(),
     kontrakt: n.kontrakt ? {

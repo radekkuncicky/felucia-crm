@@ -178,7 +178,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
 
     if (zarizeniIds.length > 0) {
       // Smaz servisni navstevy linked na zarizeni (bez cascade z kontraktu)
-      await tx.servisniNavsteva.deleteMany({ where: { zarizeniId: { in: zarizeniIds } } })
+      await tx.servisniZakazka.deleteMany({ where: { zarizeniId: { in: zarizeniIds } } })
     }
 
     // Smaz servisni kontrakty OP (cascade maze jejich navstevy — uz smazane, ok)

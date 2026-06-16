@@ -8,6 +8,7 @@ import { useTableColumns, ColumnDef } from '@/hooks/useTableColumns'
 import ColumnConfigButton from '@/components/ColumnConfigButton'
 import { ResizeHandle } from '@/components/ResizeHandle'
 import ConfirmModal from '@/components/ConfirmModal'
+import { type ServisniZakazkaStav, stavLabel, stavColor, jeProsla, jeAktivni } from '@/lib/servisStav'
 
 const KONTR_DEFS: ColumnDef[] = [
   { id: 'cislo', label: 'Číslo', defaultVisible: true, defaultWidth: 110 },
@@ -21,7 +22,6 @@ const KONTR_DEFS: ColumnDef[] = [
 
 
 type ServisTyp = 'ROCNI' | 'POLOLETNI' | 'DVOULETNI' | 'JEDNOURAZOVY'
-type ServisStav = 'PLANOVANA' | 'POTVRZENA' | 'PROBIHA' | 'DOKONCENA' | 'ZRUSENA' | 'PRESLA'
 type ZarizeniTyp = 'TEPELNE_CERPADLO' | 'KLIMATIZACE' | 'REKUPERACE' | 'PODLAHOVE_VYTAPENI' | 'VZDUCHOTECHNIKA' | 'OHREV_TV' | 'JINE'
 type NavstevaTyp = 'PLANOVANY_SERVIS' | 'PORUCHA' | 'ZARUCNI_OPRAVA' | 'POZARUCNI_OPRAVA' | 'UVEDENI_DO_PROVOZU' | 'KONTROLA'
 
@@ -45,11 +45,11 @@ interface ZarizeniListItem {
 
 interface Navsteva {
   id: string
-  cisloNavstevy: string | null
+  cislo: string | null
   typ: NavstevaTyp
   planovanyTermin: string
   skutecnyTermin: string | null
-  stav: ServisStav
+  stav: ServisniZakazkaStav
   technikId: string | null
   technik: { id: string; jmeno: string } | null
   poznamka: string | null
@@ -78,7 +78,7 @@ interface Kontrakt {
   klient: { id: string; jmeno: string; prijmeni: string }
   zarizeni: ZarizeniRef | null
   deal: { id: string; kod: string | null; predmet: string | null } | null
-  servisniNavstevy: Navsteva[]
+  servisniZakazky: Navsteva[]
 }
 
 interface OrgUser {
@@ -108,27 +108,9 @@ const navstevaTypLabels: Record<NavstevaTyp, string> = {
   KONTROLA: 'Kontrola',
 }
 
-const stavLabels: Record<ServisStav, string> = {
-  PLANOVANA: 'Plánovaná',
-  POTVRZENA: 'Potvrzená',
-  PROBIHA: 'Probíhá',
-  DOKONCENA: 'Dokončená',
-  ZRUSENA: 'Zrušená',
-  PRESLA: 'Prošlá',
-}
-
-const stavColors: Record<ServisStav, string> = {
-  PLANOVANA: 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300',
-  POTVRZENA: 'bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300',
-  PROBIHA: 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300',
-  DOKONCENA: 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300',
-  ZRUSENA: 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300',
-  PRESLA: 'bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300',
-}
-
 function getPristiServis(navstevy: Navsteva[]) {
   return navstevy
-    .filter(n => n.stav === 'PLANOVANA' || n.stav === 'POTVRZENA')
+    .filter(n => n.stav === 'NAPLANOVANA')
     .sort((a, b) => new Date(a.planovanyTermin).getTime() - new Date(b.planovanyTermin).getTime())[0] ?? null
 }
 
@@ -142,7 +124,7 @@ function calcProfitability(kontrakt: Kontrakt) {
     ? Math.round((monthsActive / 12) * cenaRocne)
     : 0
 
-  const naklady = kontrakt.servisniNavstevy
+  const naklady = kontrakt.servisniZakazky
     .filter(n => n.stav === 'DOKONCENA')
     .reduce((s, n) => s + (n.nakladyCas ?? 0) + (n.nakladyMaterial ?? 0), 0)
 
@@ -339,7 +321,7 @@ export default function KontraktyClient({ kontrakty, orgUsers, zarizeniList }: P
   }
 
   const selectedNavsteva = dokoncitNavstevaId
-    ? selectedKontrakt?.servisniNavstevy.find(n => n.id === dokoncitNavstevaId) ?? null
+    ? selectedKontrakt?.servisniZakazky.find(n => n.id === dokoncitNavstevaId) ?? null
     : null
 
   return (
@@ -414,7 +396,7 @@ export default function KontraktyClient({ kontrakty, orgUsers, zarizeniList }: P
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
                 {filtered.map(k => {
-                  const pristi = getPristiServis(k.servisniNavstevy)
+                  const pristi = getPristiServis(k.servisniZakazky)
                   const isUrgent = pristi && new Date(pristi.planovanyTermin) <= new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
                   return (
                     <tr key={k.id} className="hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors">
@@ -648,29 +630,29 @@ export default function KontraktyClient({ kontrakty, orgUsers, zarizeniList }: P
                 )}
 
                 <div className="space-y-2">
-                  {selectedKontrakt.servisniNavstevy.length === 0 && (
+                  {selectedKontrakt.servisniZakazky.length === 0 && (
                     <p className="text-sm text-gray-500 dark:text-slate-400 text-center py-4">Žádné naplánované návštěvy</p>
                   )}
-                  {[...selectedKontrakt.servisniNavstevy]
+                  {[...selectedKontrakt.servisniZakazky]
                     .sort((a, b) => new Date(b.planovanyTermin).getTime() - new Date(a.planovanyTermin).getTime())
                     .map((n: Navsteva) => (
                     <div key={n.id} className={`p-3 rounded-lg border ${
                       n.stav === 'DOKONCENA' ? 'border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20' :
                       n.stav === 'ZRUSENA' ? 'border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20' :
-                      n.stav === 'PRESLA' ? 'border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-900/20' :
+                      jeProsla(n.stav, n.planovanyTermin) ? 'border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-900/20' :
                       'border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-900/30'
                     }`}>
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
                           <div className="flex flex-wrap items-center gap-2 mb-1">
-                            {n.cisloNavstevy && (
-                              <span className="font-mono text-xs text-gray-400 dark:text-slate-500">{n.cisloNavstevy}</span>
+                            {n.cislo && (
+                              <span className="font-mono text-xs text-gray-400 dark:text-slate-500">{n.cislo}</span>
                             )}
                             <span className="text-sm font-medium text-gray-900 dark:text-white">
                               {new Date(n.planovanyTermin).toLocaleDateString('cs-CZ')}
                             </span>
-                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${stavColors[n.stav]}`}>
-                              {stavLabels[n.stav]}
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${stavColor(n.stav)}`}>
+                              {stavLabel(n.stav)}
                             </span>
                             <span className="text-xs text-gray-500 dark:text-slate-400">{navstevaTypLabels[n.typ]}</span>
                             {n.technik && (
@@ -703,7 +685,7 @@ export default function KontraktyClient({ kontrakty, orgUsers, zarizeniList }: P
                             </div>
                           )}
                         </div>
-                        {(n.stav === 'PLANOVANA' || n.stav === 'POTVRZENA') && (
+                        {jeAktivni(n.stav) && (
                           <button
                             onClick={() => {
                               setDokoncitNavstevaId(n.id)
@@ -757,8 +739,8 @@ export default function KontraktyClient({ kontrakty, orgUsers, zarizeniList }: P
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="px-6 py-5 border-b border-gray-200 dark:border-slate-700">
               <h3 className="text-lg font-bold text-gray-900 dark:text-white">Dokončit návštěvu</h3>
-              {selectedNavsteva?.cisloNavstevy && (
-                <p className="text-sm text-gray-500 dark:text-slate-400">{selectedNavsteva.cisloNavstevy}</p>
+              {selectedNavsteva?.cislo && (
+                <p className="text-sm text-gray-500 dark:text-slate-400">{selectedNavsteva.cislo}</p>
               )}
             </div>
             <div className="px-6 py-4 space-y-4">

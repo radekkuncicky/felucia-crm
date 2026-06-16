@@ -31,10 +31,10 @@ export default async function CalendarPage() {
       },
       include: { client: { select: { jmeno: true, prijmeni: true } } },
     }),
-    prisma.servisniNavsteva.findMany({
-      where: { orgId, stav: { in: ['PLANOVANA', 'POTVRZENA', 'PROBIHA'] } },
+    prisma.servisniZakazka.findMany({
+      where: { orgId, stav: { in: ['NAPLANOVANA', 'PROBIHA'] }, planovanyTermin: { not: null } },
       include: { kontrakt: { include: { klient: { select: { jmeno: true, prijmeni: true } } } } },
-    }).catch(() => [] as never[]),
+    }),
     prisma.zakazka.findMany({
       where: {
         orgId,
@@ -107,6 +107,7 @@ export default async function CalendarPage() {
   }
 
   for (const n of servisNavstevy) {
+    if (!n.planovanyTermin) continue
     const klient = n.kontrakt ? `${n.kontrakt.klient.jmeno} ${n.kontrakt.klient.prijmeni}` : ''
     events.push({
       id: `servis-${n.id}`,

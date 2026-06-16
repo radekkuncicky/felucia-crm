@@ -21,7 +21,7 @@ export default async function KontraktyPage() {
         zarizeni: {
           select: { id: true, nazev: true, typ: true, vyrobniCislo: true },
         },
-        servisniNavstevy: {
+        servisniZakazky: {
           include: { technik: { select: { id: true, jmeno: true } } },
           orderBy: { planovanyTermin: 'asc' },
         },
@@ -46,9 +46,9 @@ export default async function KontraktyPage() {
     zacatek: k.zacatek.toISOString(),
     konec: k.konec ? k.konec.toISOString() : null,
     vytvoreno: k.vytvoreno.toISOString(),
-    servisniNavstevy: k.servisniNavstevy.map(n => ({
+    servisniZakazky: k.servisniZakazky.map(n => ({
       ...n,
-      planovanyTermin: n.planovanyTermin.toISOString(),
+      planovanyTermin: n.planovanyTermin!.toISOString(),
       skutecnyTermin: n.skutecnyTermin ? n.skutecnyTermin.toISOString() : null,
       vytvoreno: n.vytvoreno.toISOString(),
       nakladyCas: n.nakladyCas ? Number(n.nakladyCas) : null,
