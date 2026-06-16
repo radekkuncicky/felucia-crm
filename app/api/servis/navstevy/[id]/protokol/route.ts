@@ -4,7 +4,9 @@ import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { generateServisniProtokolHtml } from '@/lib/servisniProtokolHtml'
-import puppeteer from 'puppeteer'
+import { generatePdf } from '@/lib/pdf'
+import { buildDokumentChrome } from '@/lib/dokumentyChrome'
+import { orgLogoDataUrl } from '@/lib/quoteRenderer'
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
@@ -50,20 +52,16 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
   if (!org) return NextResponse.json({ error: 'Org not found' }, { status: 404 })
 
   try {
-    const html = generateServisniProtokolHtml(navsteva, navsteva.zarizeni, navsteva.klient, org)
+    // Logo jako data URL - relativní cesta se v hardened PDF (síť jen fonty) nenačte.
+    const html = generateServisniProtokolHtml(
+      navsteva,
+      navsteva.zarizeni,
+      navsteva.klient,
+      { ...org, logo: orgLogoDataUrl(org.logo) },
+    )
 
-    const browser = await puppeteer.launch({
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    })
-    const page = await browser.newPage()
-    await page.setContent(html, { waitUntil: 'networkidle0' })
-    const pdf = await page.pdf({
-      format: 'A4',
-      printBackground: true,
-      margin: { top: '0', right: '0', bottom: '0', left: '0' },
-    })
-    await browser.close()
+    const chrome = await buildDokumentChrome(orgId, plan)
+    const pdf = await generatePdf(html, chrome)
 
     const cislo = navsteva.cisloNavstevy ?? navsteva.id.slice(0, 8).toUpperCase()
     const filename = `servisni-protokol-${cislo}.pdf`

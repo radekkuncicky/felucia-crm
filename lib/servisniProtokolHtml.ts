@@ -17,6 +17,18 @@ const NAVSTEVA_TYP_LABELS: Record<string, string> = {
   KONTROLA: 'Kontrola',
 }
 
+// Escapuje VŠECHNY dynamické hodnoty (data tenanta) do HTML. Bez toho hrozí
+// injection do PDF. Pole protokolu jsou prostý text, ne HTML, takže escapujeme,
+// nesanitizujeme. Datové URL (logo, fotky, podpis) projdou beze změny.
+function esc(s: unknown): string {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 function fmt(n: number) {
   return n.toLocaleString('cs-CZ', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
 }
@@ -46,6 +58,14 @@ function zarukaColor(zarukaDo: Date | string | null) {
   if (diff < 0) return '#dc2626'
   if (diff < 90) return '#d97706'
   return '#16a34a'
+}
+
+// Jen datové URL (data:) projdou do <img src>. Cokoli jiného (http, relativní
+// cesta, javascript:) zahodíme - hardened PDF stejně síť mimo fonty blokuje a
+// nechceme tenant-controlled URL v dokumentu.
+function safeImageSrc(src: string | null | undefined): string | null {
+  if (!src) return null
+  return src.startsWith('data:') ? src : null
 }
 
 type Navsteva = {
@@ -89,6 +109,7 @@ type Org = {
   ico: string | null
   email: string | null
   telefon: string | null
+  // Předvyřešená data URL loga (orgLogoDataUrl) z routy, ne relativní cesta.
   logo: string | null
 }
 
@@ -98,7 +119,7 @@ export function generateServisniProtokolHtml(
   klient: Klient,
   org: Org,
 ): string {
-  const cislo = navsteva.cisloNavstevy ?? navsteva.id.slice(0, 8).toUpperCase()
+  const cislo = esc(navsteva.cisloNavstevy ?? navsteva.id.slice(0, 8).toUpperCase())
   const datum = fmtDate(navsteva.planovanyTermin)
   const datumTisku = new Date().toLocaleString('cs-CZ', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 
@@ -106,15 +127,20 @@ export function generateServisniProtokolHtml(
   const nakladyMaterial = Number(navsteva.nakladyMaterial ?? 0)
   const celkemNaklady = nakladyCas + nakladyMaterial
 
-  const fotky = Array.isArray(navsteva.fotky) ? navsteva.fotky as string[] : []
+  const fotky = (Array.isArray(navsteva.fotky) ? navsteva.fotky as string[] : [])
+    .map(safeImageSrc)
+    .filter((s): s is string => s !== null)
 
   const adresaKlienta = klient
     ? [klient.ulice, [klient.mesto, klient.psc].filter(Boolean).join(' ')].filter(Boolean).join(', ')
     : '—'
 
-  const logoHtml = org.logo
-    ? `<img src="${org.logo}" alt="Logo" style="height:50px;object-fit:contain;" />`
-    : `<span style="font-size:20px;font-weight:800;color:#1a1a2e;">${org.nazev}</span>`
+  const logoSrc = safeImageSrc(org.logo)
+  const logoHtml = logoSrc
+    ? `<img src="${esc(logoSrc)}" alt="Logo" style="height:50px;object-fit:contain;" />`
+    : `<span style="font-size:20px;font-weight:800;color:#1a1a2e;">${esc(org.nazev)}</span>`
+
+  const podpisSrc = safeImageSrc(navsteva.podpisKlienta)
 
   return `<!DOCTYPE html>
 <html lang="cs">
@@ -264,15 +290,15 @@ export function generateServisniProtokolHtml(
       <div class="grid3">
         <div class="field">
           <div class="field-label">Název</div>
-          <div class="field-value">${zarizeni.nazev}</div>
+          <div class="field-value">${esc(zarizeni.nazev)}</div>
         </div>
         <div class="field">
           <div class="field-label">Typ</div>
-          <div class="field-value">${TYP_LABELS[zarizeni.typ] ?? zarizeni.typ}</div>
+          <div class="field-value">${esc(TYP_LABELS[zarizeni.typ] ?? zarizeni.typ)}</div>
         </div>
         <div class="field">
           <div class="field-label">Výrobní číslo</div>
-          <div class="field-value">${zarizeni.vyrobniCislo ?? '—'}</div>
+          <div class="field-value">${esc(zarizeni.vyrobniCislo ?? '—')}</div>
         </div>
         <div class="field">
           <div class="field-label">Datum instalace</div>
@@ -297,19 +323,19 @@ export function generateServisniProtokolHtml(
       <div class="grid2">
         <div class="field">
           <div class="field-label">Jméno</div>
-          <div class="field-value">${klient.jmeno} ${klient.prijmeni}</div>
+          <div class="field-value">${esc(`${klient.jmeno} ${klient.prijmeni}`)}</div>
         </div>
         <div class="field">
           <div class="field-label">Adresa</div>
-          <div class="field-value">${adresaKlienta}</div>
+          <div class="field-value">${esc(adresaKlienta)}</div>
         </div>
         <div class="field">
           <div class="field-label">Telefon</div>
-          <div class="field-value">${klient.telefon ? `<a href="tel:${klient.telefon}">${klient.telefon}</a>` : '—'}</div>
+          <div class="field-value">${klient.telefon ? `<a href="tel:${esc(klient.telefon)}">${esc(klient.telefon)}</a>` : '—'}</div>
         </div>
         <div class="field">
           <div class="field-label">Email</div>
-          <div class="field-value">${klient.email ? `<a href="mailto:${klient.email}">${klient.email}</a>` : '—'}</div>
+          <div class="field-value">${klient.email ? `<a href="mailto:${esc(klient.email)}">${esc(klient.email)}</a>` : '—'}</div>
         </div>
       </div>
     </div>
@@ -323,7 +349,7 @@ export function generateServisniProtokolHtml(
       <div class="grid3">
         <div class="field">
           <div class="field-label">Typ návštěvy</div>
-          <div class="field-value">${NAVSTEVA_TYP_LABELS[navsteva.typ] ?? navsteva.typ}</div>
+          <div class="field-value">${esc(NAVSTEVA_TYP_LABELS[navsteva.typ] ?? navsteva.typ)}</div>
         </div>
         <div class="field">
           <div class="field-label">Plánovaný termín</div>
@@ -339,7 +365,7 @@ export function generateServisniProtokolHtml(
         </div>
         <div class="field">
           <div class="field-label">Technik</div>
-          <div class="field-value">${navsteva.technik?.jmeno ?? '—'}</div>
+          <div class="field-value">${esc(navsteva.technik?.jmeno ?? '—')}</div>
         </div>
       </div>
     </div>
@@ -349,7 +375,7 @@ export function generateServisniProtokolHtml(
   <div class="section">
     <div class="section-title">Co bylo provedeno</div>
     <div class="section-body">
-      <div class="${navsteva.zprava ? 'text-block' : 'text-block empty'}">${navsteva.zprava ?? 'Bez zprávy'}</div>
+      <div class="${navsteva.zprava ? 'text-block' : 'text-block empty'}">${navsteva.zprava ? esc(navsteva.zprava) : 'Bez zprávy'}</div>
     </div>
   </div>
 
@@ -357,7 +383,7 @@ export function generateServisniProtokolHtml(
   <div class="section">
     <div class="section-title">Nalezené závady</div>
     <div class="section-body">
-      <div class="${navsteva.nalezeneZavady ? 'text-block' : 'text-block empty'}">${navsteva.nalezeneZavady ?? 'Bez závad'}</div>
+      <div class="${navsteva.nalezeneZavady ? 'text-block' : 'text-block empty'}">${navsteva.nalezeneZavady ? esc(navsteva.nalezeneZavady) : 'Bez závad'}</div>
     </div>
   </div>
 
@@ -365,7 +391,7 @@ export function generateServisniProtokolHtml(
   <div class="section">
     <div class="section-title">Doporučení</div>
     <div class="section-body">
-      <div class="${navsteva.doporuceni ? 'text-block' : 'text-block empty'}">${navsteva.doporuceni ?? 'Bez doporučení'}</div>
+      <div class="${navsteva.doporuceni ? 'text-block' : 'text-block empty'}">${navsteva.doporuceni ? esc(navsteva.doporuceni) : 'Bez doporučení'}</div>
     </div>
   </div>
 
@@ -389,7 +415,7 @@ export function generateServisniProtokolHtml(
       <div class="photos-grid">
         ${fotky.slice(0, 6).map(f => `
           <div class="photo-item">
-            <img src="${f}" alt="Fotodokumentace" />
+            <img src="${esc(f)}" alt="Fotodokumentace" />
           </div>
         `).join('')}
       </div>
@@ -404,16 +430,16 @@ export function generateServisniProtokolHtml(
       <div class="signatures">
         <div>
           <div class="signature-line">
-            ${navsteva.podpisKlienta ? `<img src="${navsteva.podpisKlienta}" style="height:44px;max-width:100%;object-fit:contain;" />` : ''}
+            ${podpisSrc ? `<img src="${esc(podpisSrc)}" style="height:44px;max-width:100%;object-fit:contain;" />` : ''}
           </div>
-          <div class="signature-name">Technik: ${navsteva.technik?.jmeno ?? '—'}</div>
+          <div class="signature-name">Technik: ${esc(navsteva.technik?.jmeno ?? '—')}</div>
         </div>
         <div>
           <div class="signature-line"></div>
-          <div class="signature-name">Klient: ${klient ? `${klient.jmeno} ${klient.prijmeni}` : '—'}</div>
+          <div class="signature-name">Klient: ${klient ? esc(`${klient.jmeno} ${klient.prijmeni}`) : '—'}</div>
         </div>
       </div>
-      ${navsteva.podpisKlienta ? `
+      ${podpisSrc ? `
       <div style="margin-top:12px;font-size:9.5pt;color:#15803d;">
         ☑ Klient převzal a podepsal
       </div>
@@ -424,9 +450,9 @@ export function generateServisniProtokolHtml(
   <!-- FOOTER -->
   <div class="footer">
     <div>
-      <strong>${org.nazev}</strong>${org.sidlo ? ` · ${org.sidlo}` : ''}${org.ico ? ` · IČO: ${org.ico}` : ''}${org.telefon ? ` · ${org.telefon}` : ''}${org.email ? ` · ${org.email}` : ''}
+      <strong>${esc(org.nazev)}</strong>${org.sidlo ? ` · ${esc(org.sidlo)}` : ''}${org.ico ? ` · IČO: ${esc(org.ico)}` : ''}${org.telefon ? ` · ${esc(org.telefon)}` : ''}${org.email ? ` · ${esc(org.email)}` : ''}
     </div>
-    <div>Vytištěno: ${datumTisku}</div>
+    <div>Vytištěno: ${esc(datumTisku)}</div>
   </div>
 
 </div>
