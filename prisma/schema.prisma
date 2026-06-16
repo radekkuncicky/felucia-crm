@@ -64,6 +64,8 @@ enum ServisTyp {
   JEDNOURAZOVY
 }
 
+// DEPRECATED: nahrazeno ServisniZakazkaStav. Ponecháno dočasně kvůli migraci,
+// smaže se až po ověření, že už ho nic nereferencuje.
 enum ServisStav {
   PLANOVANA
   POTVRZENA
@@ -71,6 +73,28 @@ enum ServisStav {
   DOKONCENA
   ZRUSENA
   PRESLA
+}
+
+// Sjednocený životní cyklus servisní zakázky.
+// Hlavní cesta: NOVA -> NAPLANOVANA -> PROBIHA -> DOKONCENA -> VYUCTOVANA -> UZAVRENA.
+// "Prošlý termín" není stav, počítá se dynamicky (NAPLANOVANA AND planovanyTermin < now).
+enum ServisniZakazkaStav {
+  NOVA
+  NAPLANOVANA
+  PROBIHA
+  DOKONCENA
+  VYUCTOVANA
+  UZAVRENA
+  CEKA
+  ZRUSENA
+  REKLAMACE
+}
+
+enum ServisniPolozkaTyp {
+  PRACE
+  MATERIAL
+  DOPRAVA
+  JINE
 }
 
 enum ZarizeniTyp {
@@ -227,7 +251,8 @@ model Organization {
   ceniky               Cenik[]
   zarizeni             Zarizeni[]
   servisniKontrakty    ServisniKontrakt[]
-  servisniNavstevy     ServisniNavsteva[]
+  servisniZakazky      ServisniZakazka[]
+  servisniPolozky      ServisniPolozka[]
   orgSettings          OrgSettings?
   orgTemplateMappings  OrgTemplateMapping[]
   notifications        Notification[]
@@ -268,7 +293,7 @@ model User {
   visibilityNodes     VisibilityNodeUser[]
   passwordResetTokens PasswordResetToken[]
   magicLinkTokens     MagicLinkToken[]
-  servisniNavstevy    ServisniNavsteva[]
+  servisniZakazky     ServisniZakazka[]
   notifications       Notification[]
   zakazkyVedouci      Zakazka[]            @relation("ZakazkaVedouci")
   technikZakazky      TechnikZakazka[]
@@ -335,7 +360,7 @@ model Client {
   deals             Deal[]
   zarizeni          Zarizeni[]
   servisniKontrakty ServisniKontrakt[]
-  servisniNavstevy  ServisniNavsteva[]
+  servisniZakazky   ServisniZakazka[]
   zakazky           Zakazka[]
 
   @@map("clients")
@@ -802,7 +827,7 @@ model Zarizeni {
   klient            Client             @relation(fields: [klientId], references: [id])
   deal              Deal?              @relation(fields: [dealId], references: [id])
   servisniKontrakty ServisniKontrakt[]
-  servisniNavstevy  ServisniNavsteva[]
+  servisniZakazky   ServisniZakazka[]
 
   @@map("zarizeni")
 }
@@ -829,7 +854,7 @@ model ServisniKontrakt {
   deal             Deal?              @relation(fields: [dealId], references: [id])
   zarizeni         Zarizeni?          @relation(fields: [zarizeniId], references: [id])
   klient           Client             @relation(fields: [klientId], references: [id])
-  servisniNavstevy ServisniNavsteva[]
+  servisniZakazky  ServisniZakazka[]
 
   @@map("servisni_kontrakty")
 }
@@ -846,36 +871,78 @@ model SystemSettings {
   @@map("system_settings")
 }
 
-model ServisniNavsteva {
-  id               String      @id @default(cuid())
+// Centrální servisní objekt (povýšeno z původní ServisniNavsteva).
+// Pokrývá plánovaný i reaktivní servis. V UI uvnitř modulu SERVIS jen "Zakázka".
+model ServisniZakazka {
+  id               String              @id @default(cuid())
   orgId            String
   kontraktId       String?
   zarizeniId       String?
   klientId         String?
-  cisloNavstevy    String?
-  typ              NavstevaTyp @default(PLANOVANY_SERVIS)
-  planovanyTermin  DateTime
+  cislo            String?
+  typ              NavstevaTyp         @default(PLANOVANY_SERVIS)
+  stav             ServisniZakazkaStav @default(NOVA)
+
+  // Plánování (reaktivní zakázka termín nemá -> nullable)
+  planovanyTermin  DateTime?
   skutecnyTermin   DateTime?
   trvaniMinut      Int?
-  stav             ServisStav  @default(PLANOVANA)
   technikId        String?
+  cekaDuvod        String?
+
+  // Protokol / výsledek práce
   poznamka         String?
   zprava           String?
   nalezeneZavady   String?
   doporuceni       String?
-  nakladyCas       Decimal?    @db.Decimal(10, 2)
-  nakladyMaterial  Decimal?    @db.Decimal(12, 2)
-  fotky            Json        @default("[]")
+  nakladyCas       Decimal?            @db.Decimal(10, 2)
+  nakladyMaterial  Decimal?            @db.Decimal(12, 2)
+  fotky            Json                @default("[]")
   podpisKlienta    String?
-  vytvoreno        DateTime    @default(now())
+  protokolDokoncen DateTime?
+
+  // Vyúčtování (brána: bez protokolu nelze vyúčtovat - hlídá API)
+  vyfakturovano       Boolean          @default(false)
+  vyfakturovanoDatum  DateTime?
+  zaplaceno           Boolean          @default(false)
+  zaplacenoDatum      DateTime?
+
+  vytvoreno        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
 
   organization Organization      @relation(fields: [orgId], references: [id])
   kontrakt     ServisniKontrakt? @relation(fields: [kontraktId], references: [id], onDelete: Cascade)
   zarizeni     Zarizeni?         @relation(fields: [zarizeniId], references: [id])
   klient       Client?           @relation(fields: [klientId], references: [id])
   technik      User?             @relation(fields: [technikId], references: [id])
+  polozky      ServisniPolozka[]
 
-  @@map("servisni_navstevy")
+  @@unique([orgId, cislo])
+  @@index([orgId, stav])
+  @@index([orgId, planovanyTermin])
+  @@map("servisni_zakazky")
+}
+
+// Položka vyúčtování servisní zakázky. Lehká, oddělená od prodejní
+// VyuctovaniPolozka (servisní zásah netahá těžký model).
+model ServisniPolozka {
+  id                String             @id @default(cuid())
+  orgId             String
+  servisniZakazkaId String
+  typ               ServisniPolozkaTyp @default(PRACE)
+  popis             String
+  mnozstvi          Decimal            @default(1) @db.Decimal(12, 2)
+  jednotka          String             @default("ks")
+  cenaZaJednotku    Decimal?           @db.Decimal(12, 2)
+  krytoKontraktem   Boolean            @default(false)
+  dphSazba          Decimal            @default(12) @db.Decimal(5, 2)
+  poradi            Int                @default(0)
+
+  organization    Organization    @relation(fields: [orgId], references: [id])
+  servisniZakazka ServisniZakazka @relation(fields: [servisniZakazkaId], references: [id], onDelete: Cascade)
+
+  @@index([servisniZakazkaId])
+  @@map("servisni_polozky")
 }
 
 
