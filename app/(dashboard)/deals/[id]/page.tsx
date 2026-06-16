@@ -126,6 +126,23 @@ export default async function DealDetailPage({
     marzeProc = konecnaCena > 0 ? (marzeKc / konecnaCena) * 100 : 0
   }
 
+  const mappedActivities = deal.activities.map(a => ({
+    id: a.id,
+    typ: a.typ,
+    popis: a.popis,
+    datum: new Date(a.datum).toISOString().split('T')[0],
+    cas: a.cas ?? null,
+    trvaniMin: a.trvaniMin ?? null,
+    splneno: a.splneno,
+    stav: a.stav as 'PLANOVANA' | 'DOKONCENA' | 'ZRUSENA',
+    userJmeno: a.user?.jmeno ?? '',
+    cil: a.cil ?? null,
+    vysledek: a.vysledek ?? null,
+    misto: a.misto ?? null,
+    resitelJmeno: a.resitel?.jmeno ?? null,
+    resitelId: a.resitelId ?? null,
+  }))
+
   return (
     <div className="space-y-4">
       <TabActivator id={deal.id} kod={deal.kod} technologie={deal.technologie} />
@@ -230,9 +247,16 @@ export default async function DealDetailPage({
       {/* Tab content */}
       {tab === 'prehled' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Left: notes + collapsible edit form */}
+          {/* Left: notes + activities + collapsible edit form */}
           <div className="space-y-4">
             <DealNotesCard dealId={deal.id} poznamky={deal.poznamky ?? ''} />
+            <ActivitiesSection
+              dealId={deal.id}
+              activities={mappedActivities}
+              users={orgUsers.map(u => ({ id: u.id, jmeno: u.jmeno }))}
+              currentUserId={session!.user.id}
+              currentUserJmeno={session!.user.jmeno}
+            />
             <CollapsibleEdit>
               <DealEditForm
                 deal={{
@@ -326,31 +350,6 @@ export default async function DealDetailPage({
               </div>
             )}
 
-            {/* Recent activities timeline */}
-            {deal.activities.length > 0 && (
-              <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4">
-                <h3 className="text-sm font-semibold text-gray-700 dark:text-slate-300 mb-3">Poslední aktivity</h3>
-                <div className="space-y-2">
-                  {deal.activities.slice(0, 5).map(a => {
-                    const icons: Record<string, string> = { HOVOR: '📞', EMAIL: '✉️', SCHUZKA: '🤝', POZNAMKA: '📝', UKOL: '✅' }
-                    return (
-                      <div key={a.id} className="flex items-start gap-2.5">
-                        <span className="text-base flex-shrink-0 mt-0.5">{icons[a.typ] ?? '•'}</span>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm text-gray-700 dark:text-slate-300 truncate">{a.popis}</p>
-                          <p className="text-xs text-gray-400 dark:text-slate-500">{new Date(a.datum).toLocaleDateString('cs-CZ')}{a.user ? ` · ${a.user.jmeno}` : ''}</p>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-                {deal.activities.length > 5 && (
-                  <Link href={`/deals/${deal.id}?tab=aktivity`} className="text-xs text-blue-600 hover:underline mt-3 inline-block">
-                    Zobrazit všechny ({deal.activities.length}) →
-                  </Link>
-                )}
-              </div>
-            )}
           </div>
         </div>
       )}
@@ -415,22 +414,7 @@ export default async function DealDetailPage({
       {tab === 'aktivity' && (
         <ActivitiesSection
           dealId={deal.id}
-          activities={deal.activities.map(a => ({
-            id: a.id,
-            typ: a.typ,
-            popis: a.popis,
-            datum: new Date(a.datum).toISOString().split('T')[0],
-            cas: a.cas ?? null,
-            trvaniMin: a.trvaniMin ?? null,
-            splneno: a.splneno,
-            stav: a.stav as 'PLANOVANA' | 'DOKONCENA' | 'ZRUSENA',
-            userJmeno: a.user?.jmeno ?? '',
-            cil: a.cil ?? null,
-            vysledek: a.vysledek ?? null,
-            misto: a.misto ?? null,
-            resitelJmeno: a.resitel?.jmeno ?? null,
-            resitelId: a.resitelId ?? null,
-          }))}
+          activities={mappedActivities}
           users={orgUsers.map(u => ({ id: u.id, jmeno: u.jmeno }))}
           currentUserId={session!.user.id}
           currentUserJmeno={session!.user.jmeno}
