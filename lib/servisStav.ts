@@ -44,6 +44,28 @@ export function stavColor(stav: string): string {
   return SERVIS_STAV_COLORS[stav as ServisniZakazkaStav] ?? ''
 }
 
+// Typy servisní zakázky (NavstevaTyp) — sdílené popisky pro UI.
+export type NavstevaTyp =
+  | 'PLANOVANY_SERVIS'
+  | 'PORUCHA'
+  | 'ZARUCNI_OPRAVA'
+  | 'POZARUCNI_OPRAVA'
+  | 'UVEDENI_DO_PROVOZU'
+  | 'KONTROLA'
+
+export const TYP_LABELS: Record<NavstevaTyp, string> = {
+  PLANOVANY_SERVIS: 'Plánovaný servis',
+  PORUCHA: 'Porucha',
+  ZARUCNI_OPRAVA: 'Záruční oprava',
+  POZARUCNI_OPRAVA: 'Pozáruční oprava',
+  UVEDENI_DO_PROVOZU: 'Uvedení do provozu',
+  KONTROLA: 'Kontrola',
+}
+
+export function typLabel(typ: string): string {
+  return TYP_LABELS[typ as NavstevaTyp] ?? typ
+}
+
 // Akční stavy: zakázka ještě není uzavřená, dá se na ní pracovat / dokončit ji.
 export const SERVIS_STAV_AKTIVNI: ServisniZakazkaStav[] = ['NOVA', 'NAPLANOVANA', 'PROBIHA', 'CEKA']
 

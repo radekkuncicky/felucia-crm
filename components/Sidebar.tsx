@@ -161,10 +161,8 @@ export default function Sidebar({ user, orgNazev }: Props) {
     } else if (pathname.startsWith('/activities')) {
       setActiveGroup('aktivity')
     } else if (pathname.startsWith('/servis')) {
-      setActiveGroup('servis')
-    } else if (pathname.startsWith('/zakazky/servisni') && user.role !== 'TECHNIK') {
-      // Servisní zakázky žijí ve skupině Servis (mimo techniky)
-      setActiveGroup('servis')
+      // Servisní zakázky žijí ve skupině Servis (mimo techniky, ti je mají ve skupině Zakázky)
+      setActiveGroup(user.role === 'TECHNIK' ? 'zakazky' : 'servis')
     } else if (pathname.startsWith('/zakazky')) {
       setActiveGroup('zakazky')
     } else if (pathname.startsWith('/leady')) {
@@ -283,12 +281,12 @@ export default function Sidebar({ user, orgNazev }: Props) {
                     {collapsed ? (
                       <>
                         <NavItem href="/zakazky" icon={<NavIcon d={Icon.clipboard} />} label="Obchodní zakázky" exact />
-                        <NavItem href="/zakazky/servisni" icon={<NavIcon d={Icon.wrench} />} label="Servisní zakázky" />
+                        <NavItem href="/servis/zakazky" icon={<NavIcon d={Icon.wrench} />} label="Servisní zakázky" />
                       </>
                     ) : (
                       <>
                         <SubNavItem href="/zakazky" label="Obchodní zakázky" exact />
-                        <SubNavItem href="/zakazky/servisni" label="Servisní zakázky" />
+                        <SubNavItem href="/servis/zakazky" label="Servisní zakázky" />
                       </>
                     )}
                   </div>
@@ -380,19 +378,15 @@ export default function Sidebar({ user, orgNazev }: Props) {
                     {collapsed ? (
                       <>
                         <NavItem href="/servis" icon={<NavIcon d={Icon.wrench} />} label="Servis přehled" exact />
-                        {(hasServiceAccess || user.role === 'ADMIN') && (
-                          <NavItem href="/zakazky/servisni" icon={<NavIcon d={Icon.wrench} />} label="Servisní zakázky" />
-                        )}
+                        <NavItem href="/servis/zakazky" icon={<NavIcon d={Icon.clipboard} />} label="Zakázky" />
                       </>
                     ) : (
                       <>
                         <SubNavItem href="/servis" label="Přehled" exact />
+                        <SubNavItem href="/servis/zakazky" label="Zakázky" />
                         <SubNavItem href="/servis/zarizeni" label="Zařízení" />
                         <SubNavItem href="/servis/kontrakty" label="Kontrakty" />
                         <SubNavItem href="/servis/plan" label="Plán servisů" />
-                        {(hasServiceAccess || user.role === 'ADMIN') && (
-                          <SubNavItem href="/zakazky/servisni" label="Servisní zakázky" />
-                        )}
                       </>
                     )}
                   </div>
