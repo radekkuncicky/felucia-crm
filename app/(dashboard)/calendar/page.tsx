@@ -33,7 +33,12 @@ export default async function CalendarPage() {
     }),
     prisma.servisniZakazka.findMany({
       where: { orgId, stav: { in: ['NAPLANOVANA', 'PROBIHA'] }, planovanyTermin: { not: null } },
-      include: { kontrakt: { include: { klient: { select: { jmeno: true, prijmeni: true } } } } },
+      include: {
+        kontrakt: { select: { nazev: true, klient: { select: { jmeno: true, prijmeni: true } } } },
+        klient: { select: { jmeno: true, prijmeni: true } },
+        zarizeni: { select: { nazev: true } },
+        technik: { select: { jmeno: true } },
+      },
     }),
     prisma.zakazka.findMany({
       where: {
@@ -108,14 +113,18 @@ export default async function CalendarPage() {
 
   for (const n of servisNavstevy) {
     if (!n.planovanyTermin) continue
-    const klient = n.kontrakt ? `${n.kontrakt.klient.jmeno} ${n.kontrakt.klient.prijmeni}` : ''
+    const klientObj = n.kontrakt?.klient ?? n.klient
+    const klient = klientObj ? `${klientObj.jmeno} ${klientObj.prijmeni}` : ''
+    const predmet = n.zarizeni?.nazev ?? n.kontrakt?.nazev ?? 'Servis'
+    const subtitle = n.technik ? `${klient}${klient ? ' · ' : ''}${n.technik.jmeno}` : klient
     events.push({
       id: `servis-${n.id}`,
       kind: 'SERVIS',
       date: n.planovanyTermin.toISOString().split('T')[0],
-      title: `Servis: ${n.kontrakt?.nazev ?? 'Servisní návštěva'}`,
-      subtitle: klient,
-      href: `/servis/kontrakty`,
+      time: `${String(n.planovanyTermin.getHours()).padStart(2, '0')}:${String(n.planovanyTermin.getMinutes()).padStart(2, '0')}`,
+      title: `Servis: ${predmet}`,
+      subtitle,
+      href: `/servis/zakazky/${n.id}`,
     })
   }
 

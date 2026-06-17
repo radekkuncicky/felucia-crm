@@ -147,8 +147,10 @@ export async function updateServisniZakazka(
       skutecnyTermin: has('skutecnyTermin')
         ? (body.skutecnyTermin ? new Date(body.skutecnyTermin as string) : null)
         : z.skutecnyTermin,
-      planovanyTermin: body.planovanyTermin
-        ? new Date(body.planovanyTermin as string)
+      // has() pattern: explicitní null vyprázdní termín (detail i drag-to-pool v dispečinku),
+      // chybějící klíč zachová stávající (dřív null mlčky ignorováno = termín nešel smazat).
+      planovanyTermin: has('planovanyTermin')
+        ? (body.planovanyTermin ? new Date(body.planovanyTermin as string) : null)
         : z.planovanyTermin,
     },
     include: ZAKAZKA_INCLUDE,
