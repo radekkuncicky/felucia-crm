@@ -150,6 +150,18 @@ export default function VyuctovaniDetailClient({ vyuctovani: initial, role, defa
     } finally { setLoading(false) }
   }
 
+  // Ověří skutečný stav na serveru; 'UNKNOWN' = síť/server nedostupný
+  async function reconcileStav(): Promise<VyuctovaniStav | 'UNKNOWN'> {
+    try {
+      const r = await fetch(`/api/vyuctovani/${initial.id}`)
+      if (!r.ok) return 'UNKNOWN'
+      const data = await r.json()
+      return data.stav as VyuctovaniStav
+    } catch {
+      return 'UNKNOWN'
+    }
+  }
+
   async function handleSchvalit() {
     setConfirmSchvalit(false)
     setLoading(true)
@@ -162,6 +174,29 @@ export default function VyuctovaniDetailClient({ vyuctovani: initial, role, defa
           ? 'Vyúčtování schváleno — zakázka automaticky označena jako Vyúčtovaná'
           : 'Vyúčtování schváleno')
         router.refresh()
+        return
+      }
+      // Chyba — ověř skutečný stav (souběžný request mohl vyúčtování mezitím schválit)
+      const real = await reconcileStav()
+      if (real === 'SCHVALENO') {
+        setStav('SCHVALENO')
+        setToast('Vyúčtování schváleno')
+        router.refresh()
+      } else if (real === 'UNKNOWN') {
+        setToast('Nepodařilo se ověřit stav, obnovte stránku')
+      } else {
+        const err = await res.json().catch(() => ({}))
+        setToast(err.error ?? 'Chyba při schvalování')
+      }
+    } catch {
+      // POST spadl na síti — ověř, zda akce přesto neprošla
+      const real = await reconcileStav()
+      if (real === 'SCHVALENO') {
+        setStav('SCHVALENO')
+        setToast('Vyúčtování schváleno')
+        router.refresh()
+      } else {
+        setToast('Nepodařilo se ověřit stav, obnovte stránku')
       }
     } finally { setLoading(false) }
   }

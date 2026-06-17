@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { PredavakStav } from '@prisma/client'
 
@@ -45,6 +46,7 @@ interface Props {
 }
 
 export default function PredavakyTab({ zakazkaId, predavaky: initialPredavaky, canCreate, canApprove, etapy = [] }: Props) {
+  const router = useRouter()
   const [predavaky, setPredavaky] = useState(initialPredavaky)
   const [loading, setLoading] = useState<string | null>(null)
   const [odmitnutiModal, setOdmitnutiModal] = useState<string | null>(null)
@@ -77,12 +79,49 @@ export default function PredavakyTab({ zakazkaId, predavaky: initialPredavaky, c
     }
   }
 
+  // Ověří skutečný stav protokolu na serveru; 'UNKNOWN' = síť/server nedostupný
+  async function reconcilePredavakStav(predavakId: string): Promise<PredavakStav | 'UNKNOWN'> {
+    try {
+      const r = await fetch(`/api/predavaky/${predavakId}`)
+      if (!r.ok) return 'UNKNOWN'
+      const data = await r.json()
+      return data.stav as PredavakStav
+    } catch {
+      return 'UNKNOWN'
+    }
+  }
+
+  function markSchvalen(predavakId: string) {
+    setPredavaky(prev => prev.map(p => p.id === predavakId ? { ...p, stav: 'SCHVALEN' as PredavakStav } : p))
+    // Refresh kvůli sousednímu tabu Vyúčtování (nově vzniklé vyúčtování čte z props)
+    router.refresh()
+  }
+
   async function handleSchvalit(predavakId: string) {
     setLoading(predavakId)
+    setChyba(null)
     try {
       const res = await fetch(`/api/predavaky/${predavakId}/schvalit`, { method: 'POST' })
       if (res.ok) {
-        setPredavaky(prev => prev.map(p => p.id === predavakId ? { ...p, stav: 'SCHVALEN' as PredavakStav } : p))
+        markSchvalen(predavakId)
+        return
+      }
+      // Chyba — ověř skutečný stav (souběžný request mohl protokol mezitím schválit)
+      const real = await reconcilePredavakStav(predavakId)
+      if (real === 'SCHVALEN') {
+        markSchvalen(predavakId)
+      } else if (real === 'UNKNOWN') {
+        setChyba('Nepodařilo se ověřit stav, obnovte stránku')
+      } else {
+        const err = await res.json().catch(() => ({}))
+        setChyba(err.error ?? 'Nepodařilo se schválit protokol')
+      }
+    } catch {
+      const real = await reconcilePredavakStav(predavakId)
+      if (real === 'SCHVALEN') {
+        markSchvalen(predavakId)
+      } else {
+        setChyba('Nepodařilo se ověřit stav, obnovte stránku')
       }
     } finally {
       setLoading(null)
@@ -102,7 +141,15 @@ export default function PredavakyTab({ zakazkaId, predavaky: initialPredavaky, c
         setPredavaky(prev => prev.map(p => p.id === predavakId ? { ...p, stav: 'ODMITNUTO' as PredavakStav } : p))
         setOdmitnutiModal(null)
         setOdmitnutiDuvod('')
+        router.refresh()
+      } else {
+        const err = await res.json().catch(() => ({}))
+        setOdmitnutiModal(null)
+        setChyba(err.error ?? 'Nepodařilo se odmítnout protokol')
       }
+    } catch {
+      setOdmitnutiModal(null)
+      setChyba('Chyba připojení, zkuste znovu')
     } finally {
       setLoading(null)
     }
