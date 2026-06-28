@@ -2,31 +2,11 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
+import { buildSodRenderData, sodPlaceholderValues } from '@/lib/sodRender'
 
-// Placeholdery které lze doplnit při generování a mohou být prázdné
-const CHECKABLE: Array<{ key: string; prefillFn: (deal: Deal) => string }> = [
-  { key: 'termin_prevzeti', prefillFn: d => d.terminPrevzeti ? new Date(d.terminPrevzeti).toLocaleDateString('cs-CZ') : '' },
-  { key: 'pocet_dni_realizace', prefillFn: () => '' },
-  { key: 'zmena_term', prefillFn: () => '' },
-  { key: 'hodnota_zalohy', prefillFn: d => d.hodnotaZalohy ? String(d.hodnotaZalohy) : '' },
-  { key: 'zaloha_splatnost', prefillFn: () => '14' },
-  { key: 'klient_adresa', prefillFn: d => [d.client?.ulice, d.client?.psc, d.client?.mesto].filter(Boolean).join(', ') },
-  { key: 'klient_email', prefillFn: d => d.client?.email ?? '' },
-  { key: 'klient_telefon', prefillFn: d => d.client?.telefon ?? '' },
-  { key: 'klient_ico', prefillFn: d => d.client?.ico ?? '' },
-  { key: 'klient_dic', prefillFn: d => d.client?.dic ?? '' },
-]
-
-type Deal = {
-  terminPrevzeti: Date | null
-  hodnotaZalohy: unknown
-  client: {
-    ulice: string | null; psc: string | null; mesto: string | null
-    email: string | null; telefon: string | null; ico: string | null; dic: string | null
-  }
-  quotes: Array<{ dphSazba: unknown; items: Array<{ mnozstvi: unknown; cenaZaKus: unknown; sleva: unknown }> }>
-  dphSazba?: unknown
-}
+// Placeholdery, které se nikdy nevyplňují ručně (auto / nemá smysl je
+// ukazovat jako prázdné pole k doplnění).
+const NEVYPLNUJ_RUCNE = new Set(['org_logo_bw', 'cislo_smlouvy', 'datum'])
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
@@ -60,9 +40,13 @@ export async function GET(req: Request) {
     Array.from(template.obsah.matchAll(/\{\{(\w+)\}\}/g), m => m[1])
   )
 
-  const emptyPlaceholders = CHECKABLE
-    .filter(({ key, prefillFn }) => usedInTemplate.has(key) && !prefillFn(deal as Deal))
-    .map(({ key }) => key)
+  // Skutečné hodnoty placeholderů (stejná cesta jako generování) → prázdné =
+  // ty, které šablona používá, ale po naplnění z OP zůstanou prázdné. Tím
+  // sedí počet ve varování s počtem polí k doplnění v modalu.
+  const values = sodPlaceholderValues(await buildSodRenderData(dealId, orgId, 'NÁHLED'))
+  const emptyPlaceholders = Array.from(usedInTemplate).filter(
+    k => !NEVYPLNUJ_RUCNE.has(k) && String(values[k] ?? '').trim() === ''
+  )
 
   const seZalohou = usedInTemplate.has('hodnota_zalohy') || usedInTemplate.has('zaloha_splatnost')
 

@@ -2,6 +2,11 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { SOD_PLACEHOLDER_LABELS } from '@/lib/sodPlaceholders'
+
+// Placeholdery, které mají v modalu vlastní pole (níže). Zbytek prázdných
+// se vypíše dynamicky jako „Doplnit do smlouvy".
+const DEDICATED = new Set(['termin_prevzeti', 'pocet_dni_realizace', 'zmena_term', 'hodnota_zalohy', 'zaloha_splatnost'])
 
 interface Template {
   id: string
@@ -65,6 +70,8 @@ export default function GenerateSodModal({ dealId, templates, onClose }: Props) 
   const [zmenaTerm, setZmenaTerm] = useState('')
   const [zalohaKc, setZalohaKc] = useState('')
   const [zalohaSplatnost, setZalohaSplatnost] = useState('14')
+  // Dynamická pole pro ostatní prázdné placeholdery (klient_ico, klient_dic…)
+  const [extra, setExtra] = useState<Record<string, string>>({})
 
   useEffect(() => {
     if (!templateId) return
@@ -81,6 +88,11 @@ export default function GenerateSodModal({ dealId, templates, onClose }: Props) 
         setZmenaTerm(data.prefill.zmenaTerm)
         setZalohaKc(data.prefill.zalohaKc > 0 ? String(data.prefill.zalohaKc) : '')
         setZalohaSplatnost(String(data.prefill.zalohaSplatnost))
+        const extraInit: Record<string, string> = {}
+        for (const k of data.emptyPlaceholders as string[]) {
+          if (!DEDICATED.has(k)) extraInit[k] = ''
+        }
+        setExtra(extraInit)
       })
       .catch(() => setError('Chyba při načítání dat šablony'))
       .finally(() => setCheckLoading(false))
@@ -101,6 +113,7 @@ export default function GenerateSodModal({ dealId, templates, onClose }: Props) 
           zmenaTerm: zmenaTerm || null,
           zalohaKc: checkData?.seZalohou && zalohaKc ? Number(zalohaKc) : null,
           zalohaSplatnost: checkData?.seZalohou ? Number(zalohaSplatnost) : null,
+          overrides: extra,
         }),
       })
       if (res.ok) {
@@ -120,6 +133,7 @@ export default function GenerateSodModal({ dealId, templates, onClose }: Props) 
   const empty = checkData?.emptyPlaceholders ?? []
   const used = checkData?.usedPlaceholders ?? []
   const showZmenaTerm = used.includes('zmena_term')
+  const extraKeys = Object.keys(extra)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -274,6 +288,25 @@ export default function GenerateSodModal({ dealId, templates, onClose }: Props) 
                       />
                     </div>
                   </div>
+                </div>
+              )}
+
+              {/* Ostatní prázdná pole ze šablony (klient_ico, klient_dic…) */}
+              {extraKeys.length > 0 && (
+                <div className="space-y-3">
+                  <SectionHeading>Doplnit do smlouvy</SectionHeading>
+                  {extraKeys.map(k => (
+                    <div key={k}>
+                      <Label empty>{SOD_PLACEHOLDER_LABELS[k] ?? k}</Label>
+                      <input
+                        type="text"
+                        value={extra[k]}
+                        onChange={e => setExtra(prev => ({ ...prev, [k]: e.target.value }))}
+                        disabled={generating}
+                        className={extra[k]?.trim() ? inputCls : inputEmptyCls}
+                      />
+                    </div>
+                  ))}
                 </div>
               )}
             </>
