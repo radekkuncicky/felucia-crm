@@ -130,10 +130,17 @@ export async function updateServisniZakazka(
 
   const has = (k: string) => body[k] !== undefined
 
+  // Dokončení protokolu je navázané na přechod do stavu DOKONCENA (brána do
+  // vyúčtování). Nastaví se jednou, zpětně se nemaže.
+  const novyStav = has('stav') ? (body.stav as string) : z.stav
+  const protokolDokoncen =
+    novyStav === 'DOKONCENA' && !z.protokolDokoncen ? new Date() : z.protokolDokoncen
+
   const updated = await db.servisniZakazka.update({
     where: { id },
     data: {
       stav: has('stav') ? (body.stav as never) : z.stav,
+      protokolDokoncen,
       typ: has('typ') ? (body.typ as never) : z.typ,
       technikId: has('technikId') ? ((body.technikId as string) || null) : z.technikId,
       poznamka: has('poznamka') ? (body.poznamka as string | null) : z.poznamka,
@@ -152,6 +159,11 @@ export async function updateServisniZakazka(
       planovanyTermin: has('planovanyTermin')
         ? (body.planovanyTermin ? new Date(body.planovanyTermin as string) : null)
         : z.planovanyTermin,
+      // Označení zaplacení (vyfakturováno řeší samostatná brána vyuctovat()).
+      zaplaceno: has('zaplaceno') ? Boolean(body.zaplaceno) : z.zaplaceno,
+      zaplacenoDatum: has('zaplaceno')
+        ? (body.zaplaceno ? (z.zaplacenoDatum ?? new Date()) : null)
+        : z.zaplacenoDatum,
     },
     include: ZAKAZKA_INCLUDE,
   })

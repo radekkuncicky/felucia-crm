@@ -4,6 +4,7 @@ import { useState, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { NavigateButton } from '@/components/NavigateButton'
+import VyuctovaniSekce from '@/components/servis/VyuctovaniSekce'
 import {
   type NavstevaTyp,
   SERVIS_STAV_LABELS,
@@ -33,6 +34,7 @@ interface Zakazka {
   fotky: string[]
   protokolDokoncen: string | null
   vyfakturovano: boolean
+  zaplaceno: boolean
   klient: { id: string; jmeno: string; adresa: string; telefon: string | null } | null
   kontrakt: { id: string; nazev: string; cisloKontraktu: string | null } | null
   zarizeni: { id: string; nazev: string; typ: string; vyrobniCislo: string | null } | null
@@ -297,6 +299,14 @@ export default function ZakazkaDetailClient({ zakazka, orgUsers, canEdit }: Prop
               </div>
             </div>
           </div>
+
+          <VyuctovaniSekce
+            zakazkaId={zakazka.id}
+            protokolDokoncen={zakazka.protokolDokoncen}
+            vyfakturovano={zakazka.vyfakturovano}
+            zaplaceno={zakazka.zaplaceno}
+            canEdit={canEdit}
+          />
 
           <div className={cardClass}>
             <div className="flex items-center justify-between mb-3">

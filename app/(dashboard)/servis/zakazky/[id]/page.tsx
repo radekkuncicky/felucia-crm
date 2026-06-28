@@ -74,6 +74,7 @@ export default async function ServisZakazkaDetailPage({ params }: { params: { id
     fotky: (z.fotky as string[]) ?? [],
     protokolDokoncen: z.protokolDokoncen ? z.protokolDokoncen.toISOString() : null,
     vyfakturovano: z.vyfakturovano,
+    zaplaceno: z.zaplaceno,
     klient: klient
       ? {
           id: klient.id,
