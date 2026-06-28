@@ -1,11 +1,16 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
+import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import { generateSodHtml } from '@/lib/sodDocument'
 import { generatePdf } from '@/lib/pdf'
 import { buildDokumentChrome } from '@/lib/dokumentyChrome'
 import { renderSodContractHtml } from '@/lib/sodContractHtml'
+import { renderQuotePdf } from '@/lib/quoteRenderer'
+import { mergePdfs } from '@/lib/mergePdfs'
+import fs from 'fs'
+import path from 'path'
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
@@ -19,7 +24,10 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     where: { id: params.id, orgId },
     include: {
       organization: {
-        select: { nazev: true, sidlo: true, ico: true, dic: true, email: true, telefon: true },
+        select: {
+          nazev: true, sidlo: true, ico: true, dic: true, email: true, telefon: true,
+          prilohaVopPath: true, prilohaVzspPath: true, prilohaCenikPath: true,
+        },
       },
     },
   })
@@ -60,9 +68,43 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   }
 
   const chrome = await buildDokumentChrome(orgId, session.user.plan)
-  const pdf = await generatePdf(html, chrome)
+  const sodPdf = await generatePdf(html, chrome)
 
-  return new NextResponse(pdf as unknown as BodyInit, {
+  const pdfParts: Buffer[] = [sodPdf]
+
+  // Cenová nabídka
+  if (sod.prilohaNabidka && sod.dealId) {
+    try {
+      const activeQuote = await prisma.quote.findFirst({
+        where: { dealId: sod.dealId, orgId, aktivni: true },
+        select: { id: true },
+      })
+      if (activeQuote) {
+        const qPdf = await renderQuotePdf(activeQuote.id, orgId, session.user.plan)
+        pdfParts.push(qPdf)
+      }
+    } catch { /* skip if quote PDF fails */ }
+  }
+
+  // Statické přílohy (VOP, VZSP, Ceník)
+  const attachDefs: { flag: boolean; pathField: string | null | undefined }[] = [
+    { flag: sod.prilohaVop,   pathField: sod.organization.prilohaVopPath },
+    { flag: sod.prilohaVzsp,  pathField: sod.organization.prilohaVzspPath },
+    { flag: sod.prilohaCenik, pathField: sod.organization.prilohaCenikPath },
+  ]
+
+  for (const { flag, pathField } of attachDefs) {
+    if (!flag || !pathField) continue
+    try {
+      const absPath = path.join(process.cwd(), 'public', pathField)
+      const buf = fs.readFileSync(absPath)
+      pdfParts.push(buf)
+    } catch { /* file missing — skip */ }
+  }
+
+  const finalPdf = pdfParts.length > 1 ? await mergePdfs(pdfParts) : pdfParts[0]
+
+  return new NextResponse(finalPdf as unknown as BodyInit, {
     headers: {
       'Content-Type': 'application/pdf',
       'Content-Disposition': `attachment; filename="${sod.cislo}.pdf"`,

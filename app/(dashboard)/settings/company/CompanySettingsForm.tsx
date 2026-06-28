@@ -13,6 +13,7 @@ interface OrgData {
   email: string
   web: string
   logo: string
+  logoBw: string
 }
 
 export default function CompanySettingsForm({ org }: { org: OrgData }) {
@@ -22,6 +23,7 @@ export default function CompanySettingsForm({ org }: { org: OrgData }) {
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
   const [logoUploading, setLogoUploading] = useState(false)
+  const [logoBwUploading, setLogoBwUploading] = useState(false)
 
   function set(field: keyof OrgData, value: string) {
     setForm(f => ({ ...f, [field]: value }))
@@ -42,6 +44,23 @@ export default function CompanySettingsForm({ org }: { org: OrgData }) {
       }
     } finally {
       setLogoUploading(false)
+    }
+  }
+
+  async function handleLogoBwUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setLogoBwUploading(true)
+    try {
+      const fd = new FormData()
+      fd.append('logo', file)
+      const res = await fetch('/api/settings/company/logo-bw', { method: 'POST', body: fd })
+      if (res.ok) {
+        const data = await res.json()
+        set('logoBw', data.logoBw)
+      }
+    } finally {
+      setLogoBwUploading(false)
     }
   }
 
@@ -106,19 +125,30 @@ export default function CompanySettingsForm({ org }: { org: OrgData }) {
         <input value={form.web} onChange={e => set('web', e.target.value)} className={inp} placeholder="https://www.firma.cz" />
       </div>
 
-      <div>
-        <label className={lbl}>Logo URL (nebo cesta k nahranému souboru)</label>
-        <input value={form.logo} onChange={e => set('logo', e.target.value)} className={inp} placeholder="/uploads/logo.png" />
-        <div className="flex gap-2 mt-2">
-          <label className="cursor-pointer inline-flex items-center gap-2 text-sm text-blue-600 border border-blue-300 px-3 py-1.5 rounded-lg hover:bg-blue-50">
+      <div className="space-y-4">
+        <div>
+          <label className={lbl}>Barevné logo</label>
+          <label className="cursor-pointer inline-flex items-center gap-2 text-sm text-blue-600 border border-blue-300 px-3 py-1.5 rounded-lg hover:bg-blue-50 dark:border-blue-700 dark:text-blue-400 dark:hover:bg-blue-900/20">
             {logoUploading ? 'Nahrávám…' : 'Vybrat soubor'}
-            <input type="file" accept=".jpg,.jpeg,.png" className="hidden" onChange={handleLogoUpload} />
+            <input type="file" accept=".jpg,.jpeg,.png,.svg" className="hidden" onChange={handleLogoUpload} />
           </label>
+          {form.logo && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={form.logo} alt="Barevné logo" className="mt-2 h-16 object-contain border border-gray-200 dark:border-slate-600 rounded-lg p-2 bg-white" />
+          )}
         </div>
-        {form.logo && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={form.logo} alt="Logo náhled" className="mt-2 h-16 object-contain border border-gray-200 dark:border-slate-600 rounded-lg p-1" />
-        )}
+
+        <div>
+          <label className={lbl}>Černobílé logo <span className="text-gray-400 font-normal">(používá se ve smlouvách)</span></label>
+          <label className="cursor-pointer inline-flex items-center gap-2 text-sm text-blue-600 border border-blue-300 px-3 py-1.5 rounded-lg hover:bg-blue-50 dark:border-blue-700 dark:text-blue-400 dark:hover:bg-blue-900/20">
+            {logoBwUploading ? 'Nahrávám…' : 'Vybrat soubor'}
+            <input type="file" accept=".jpg,.jpeg,.png,.svg" className="hidden" onChange={handleLogoBwUpload} />
+          </label>
+          {form.logoBw && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={form.logoBw} alt="Černobílé logo" className="mt-2 h-16 object-contain border border-gray-200 dark:border-slate-600 rounded-lg p-2 bg-white" />
+          )}
+        </div>
       </div>
 
       <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 text-xs text-blue-700 dark:text-blue-300">

@@ -3,9 +3,11 @@
 import { confirmDialog } from '@/components/ui/confirm'
 import { toast } from 'sonner'
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { SodTyp } from '@prisma/client'
+import dynamic from 'next/dynamic'
+
+const GenerateSodModal = dynamic(() => import('@/components/GenerateSodModal'), { ssr: false })
 
 const TYP_LABELS: Record<SodTyp, string> = {
   DPH_12_BEZ_ZALOHY: '12% bez zálohy',
@@ -44,14 +46,11 @@ interface Props {
 }
 
 export default function SmlouvyTab({ dealId, role }: Props) {
-  const router = useRouter()
   const [sods, setSods] = useState<Sod[]>([])
   const [templates, setTemplates] = useState<Template[]>([])
   const [loading, setLoading] = useState(true)
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [selectedTemplate, setSelectedTemplate] = useState('')
-  const [generating, setGenerating] = useState(false)
-  const [genError, setGenError] = useState('')
+  const [showModal, setShowModal] = useState(false)
 
   useEffect(() => {
     Promise.all([
@@ -59,34 +58,9 @@ export default function SmlouvyTab({ dealId, role }: Props) {
       fetch('/api/contract-templates').then(r => r.json()),
     ]).then(([sodsData, tplData]) => {
       if (Array.isArray(sodsData)) setSods(sodsData)
-      if (Array.isArray(tplData)) {
-        setTemplates(tplData)
-        if (tplData.length > 0) setSelectedTemplate(tplData[0].id)
-      }
+      if (Array.isArray(tplData)) setTemplates(tplData)
     }).finally(() => setLoading(false))
   }, [dealId])
-
-  async function handleGenerate() {
-    if (!selectedTemplate) return
-    setGenError('')
-    setGenerating(true)
-    try {
-      const res = await fetch('/api/sod', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dealId, templateId: selectedTemplate }),
-      })
-      if (res.ok) {
-        const sod = await res.json()
-        router.push(`/sod/${sod.id}`)
-      } else {
-        const d = await res.json()
-        setGenError(d.error ?? 'Chyba při generování')
-      }
-    } finally {
-      setGenerating(false)
-    }
-  }
 
   async function handleDelete(sodId: string, cislo: string) {
     if (!(await confirmDialog(`Smazat SOD ${cislo}? Tato akce je nevratná.`, { confirmLabel: 'Smazat' }))) return
@@ -110,33 +84,27 @@ export default function SmlouvyTab({ dealId, role }: Props) {
         <div className="px-5 py-4 border-b border-gray-200 dark:border-slate-700">
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <h2 className="font-semibold text-gray-900 dark:text-white flex-1">Smlouvy o dílo</h2>
-            {!loading && templates.length === 0 ? (
-              <Link href="/settings/contract-templates" className="text-sm text-primary dark:text-primary-light hover:underline">
-                Nejprve nastavte šablony smluv →
-              </Link>
-            ) : (
-              <div className="flex items-center gap-2">
-                <select
-                  value={selectedTemplate}
-                  onChange={e => setSelectedTemplate(e.target.value)}
-                  disabled={generating || loading}
-                  className="border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+            {!loading && (
+              templates.length === 0 ? (
+                <Link
+                  href="/settings/contract-templates"
+                  className="text-sm text-primary dark:text-primary-light hover:underline"
                 >
-                  {templates.map(t => (
-                    <option key={t.id} value={t.id}>{t.nazev}</option>
-                  ))}
-                </select>
+                  Nejprve nastavte šablony smluv →
+                </Link>
+              ) : (
                 <button
-                  onClick={handleGenerate}
-                  disabled={generating || !selectedTemplate}
-                  className="inline-flex items-center gap-1.5 text-sm font-medium text-white bg-primary hover:bg-primary-hover px-3 py-2 rounded-lg transition-colors disabled:opacity-50 whitespace-nowrap"
+                  onClick={() => setShowModal(true)}
+                  className="inline-flex items-center gap-1.5 text-sm font-medium text-white bg-primary hover:bg-primary-hover px-3 py-2 rounded-lg transition-colors whitespace-nowrap"
                 >
-                  {generating ? 'Generuji…' : 'Generovat smlouvu'}
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Nová smlouva
                 </button>
-              </div>
+              )
             )}
           </div>
-          {genError && <p className="text-sm text-red-600 dark:text-red-400 mt-2">{genError}</p>}
         </div>
 
         {loading ? (
@@ -144,13 +112,20 @@ export default function SmlouvyTab({ dealId, role }: Props) {
         ) : sods.length === 0 ? (
           <div className="px-5 py-8 text-center">
             <p className="text-sm text-gray-500 dark:text-slate-400">Zatím žádné smlouvy o dílo.</p>
-            <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">Klikněte na &bdquo;Nová smlouva o dílo&ldquo; pro vytvoření.</p>
+            <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">
+              Klikněte na &bdquo;Nová smlouva&ldquo; pro vytvoření.
+            </p>
           </div>
         ) : (
           <div className="divide-y divide-gray-100 dark:divide-slate-700">
             {sods.map(sod => (
-              <div key={sod.id} className="px-5 py-3.5 flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-slate-700/30">
-                <span className="font-mono text-sm font-semibold text-gray-900 dark:text-white w-32 shrink-0">{sod.cislo}</span>
+              <div
+                key={sod.id}
+                className="px-5 py-3.5 flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-slate-700/30"
+              >
+                <span className="font-mono text-sm font-semibold text-gray-900 dark:text-white w-32 shrink-0">
+                  {sod.cislo}
+                </span>
                 <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${TYP_COLORS[sod.typ]}`}>
                   {TYP_LABELS[sod.typ]}
                 </span>
@@ -195,6 +170,14 @@ export default function SmlouvyTab({ dealId, role }: Props) {
           </div>
         )}
       </div>
+
+      {showModal && templates.length > 0 && (
+        <GenerateSodModal
+          dealId={dealId}
+          templates={templates}
+          onClose={() => setShowModal(false)}
+        />
+      )}
     </div>
   )
 }

@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import DOMPurify from 'dompurify'
 import ConfirmModal from '@/components/ConfirmModal'
 import SodTemplateEditor, { SOD_PLACEHOLDERS } from '@/components/SodTemplateEditor'
+import ContractTemplateGuide from '@/components/ContractTemplateGuide'
 
 interface Template {
   id: string
@@ -16,6 +17,9 @@ interface Template {
 
 interface Props {
   templates: Template[]
+  prilohaVop: string | null
+  prilohaVzsp: string | null
+  prilohaCenik: string | null
 }
 
 const SAMPLE: Record<string, string> = {
@@ -54,17 +58,32 @@ function renderPreview(html: string): string {
     (text, [ph]) => text.replaceAll(ph, `<mark class="sod-sample">${SAMPLE[ph] ?? ph}</mark>`),
     html
   )
-  // šablona může přijít z API neočištěná (legacy data) — nikdy ji nevkládat raw
   return DOMPurify.sanitize(filled)
+}
+
+function isFullDocHtml(html: string): boolean {
+  return /^<!doctype|^<html/i.test(html.trimStart())
+}
+
+function renderFullDocPreview(html: string): string {
+  return SOD_PLACEHOLDERS.reduce(
+    (text, [ph]) => text.replaceAll(ph, SAMPLE[ph] ?? ph),
+    html
+  )
 }
 
 function stripHtml(html: string): string {
   return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
 }
 
-export default function ContractTemplatesManager({ templates: initial }: Props) {
+export default function ContractTemplatesManager({ templates: initial, prilohaVop: initVop, prilohaVzsp: initVzsp, prilohaCenik: initCenik }: Props) {
   const router = useRouter()
   const [templates, setTemplates] = useState(initial)
+  const [attachPaths, setAttachPaths] = useState<Record<string, string | null>>({
+    vop: initVop, vzsp: initVzsp, cenik: initCenik,
+  })
+  const [attachUploading, setAttachUploading] = useState<Record<string, boolean>>({})
+  const [attachDeleting, setAttachDeleting] = useState<Record<string, boolean>>({})
   const [editing, setEditing] = useState<Template | null>(null)
   const [creating, setCreating] = useState(false)
   const [form, setForm] = useState({ nazev: '', popis: '', obsah: '' })
@@ -72,6 +91,22 @@ export default function ContractTemplatesManager({ templates: initial }: Props) 
   const [importing, setImporting] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [previewHtml, setPreviewHtml] = useState<string | null>(null)
+  const [previewFullDoc, setPreviewFullDoc] = useState<string | null>(null)
+
+  function openPreview(content: string) {
+    if (isFullDocHtml(content)) {
+      setPreviewFullDoc(renderFullDocPreview(content))
+      setPreviewHtml(null)
+    } else {
+      setPreviewHtml(renderPreview(content))
+      setPreviewFullDoc(null)
+    }
+  }
+
+  function closePreview() {
+    setPreviewHtml(null)
+    setPreviewFullDoc(null)
+  }
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   async function handleCreate() {
@@ -158,6 +193,35 @@ export default function ContractTemplatesManager({ templates: initial }: Props) 
     }
   }
 
+  async function handleAttachUpload(typ: string, file: File) {
+    setAttachUploading(p => ({ ...p, [typ]: true }))
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch(`/api/settings/company/priloha/${typ}`, { method: 'POST', body: fd })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok) {
+        setAttachPaths(p => ({ ...p, [typ]: data.path }))
+        toast.success('Soubor nahrán')
+      } else {
+        toast.error(data.error ?? 'Nahrávání selhalo')
+      }
+    } finally {
+      setAttachUploading(p => ({ ...p, [typ]: false }))
+    }
+  }
+
+  async function handleAttachDelete(typ: string) {
+    setAttachDeleting(p => ({ ...p, [typ]: true }))
+    try {
+      await fetch(`/api/settings/company/priloha/${typ}`, { method: 'DELETE' })
+      setAttachPaths(p => ({ ...p, [typ]: null }))
+      toast.success('Příloha odebrána')
+    } finally {
+      setAttachDeleting(p => ({ ...p, [typ]: false }))
+    }
+  }
+
   function startCreate() {
     setCreating(true)
     setEditing(null)
@@ -185,35 +249,47 @@ export default function ContractTemplatesManager({ templates: initial }: Props) 
       />
 
       {/* Preview modal */}
-      {previewHtml !== null && (
+      {(previewHtml !== null || previewFullDoc !== null) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col">
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
             <div className="flex items-center justify-between px-5 py-3 border-b border-gray-200 dark:border-slate-700">
               <div>
                 <p className="font-semibold text-gray-900 dark:text-white text-sm">Náhled smlouvy</p>
-                <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">Ukázková data — barevně zvýrazněné hodnoty budou doplněny z OP</p>
+                <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">Ukázková data — hodnoty budou doplněny z OP při generování</p>
               </div>
-              <button onClick={() => setPreviewHtml(null)} className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-300">
+              <button onClick={closePreview} className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-300">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
-            <div className="overflow-y-auto flex-1 p-8">
-              <style>{`
-                .sod-preview { font-family: 'Times New Roman', serif; font-size: 11pt; line-height: 1.7; color: #111; }
-                .sod-preview h1 { font-size: 14pt; font-weight: bold; text-align: center; margin: 1em 0 0.8em; }
-                .sod-preview h2 { font-size: 12pt; font-weight: bold; margin: 1em 0 0.5em; }
-                .sod-preview h3 { font-size: 11pt; font-weight: bold; margin: 0.8em 0 0.4em; }
-                .sod-preview p { margin: 0 0 0.6em; }
-                .sod-preview ul, .sod-preview ol { padding-left: 1.5em; margin: 0.4em 0; }
-                .sod-preview li { margin: 0.2em 0; }
-                .sod-sample { background: #fef9c3; color: #92400e; border-radius: 2px; padding: 0 2px; font-style: normal; }
-              `}</style>
-              <div
-                className="sod-preview"
-                dangerouslySetInnerHTML={{ __html: previewHtml }}
-              />
+            <div className="overflow-y-auto flex-1">
+              {previewFullDoc !== null ? (
+                <iframe
+                  srcDoc={previewFullDoc}
+                  className="w-full border-0"
+                  style={{ height: '75vh' }}
+                  sandbox="allow-same-origin"
+                  title="Náhled šablony"
+                />
+              ) : (
+                <div className="p-8">
+                  <style>{`
+                    .sod-preview { font-family: 'Times New Roman', serif; font-size: 11pt; line-height: 1.7; color: #111; }
+                    .sod-preview h1 { font-size: 14pt; font-weight: bold; text-align: center; margin: 1em 0 0.8em; }
+                    .sod-preview h2 { font-size: 12pt; font-weight: bold; margin: 1em 0 0.5em; }
+                    .sod-preview h3 { font-size: 11pt; font-weight: bold; margin: 0.8em 0 0.4em; }
+                    .sod-preview p { margin: 0 0 0.6em; }
+                    .sod-preview ul, .sod-preview ol { padding-left: 1.5em; margin: 0.4em 0; }
+                    .sod-preview li { margin: 0.2em 0; }
+                    .sod-sample { background: #fef9c3; color: #92400e; border-radius: 2px; padding: 0 2px; font-style: normal; }
+                  `}</style>
+                  <div
+                    className="sod-preview"
+                    dangerouslySetInnerHTML={{ __html: previewHtml! }}
+                  />
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -233,6 +309,8 @@ export default function ContractTemplatesManager({ templates: initial }: Props) 
           </button>
         )}
       </div>
+
+      <ContractTemplateGuide />
 
       {/* Editor */}
       {isEditorOpen && (
@@ -257,7 +335,7 @@ export default function ContractTemplatesManager({ templates: initial }: Props) 
               </button>
               <button
                 type="button"
-                onClick={() => setPreviewHtml(renderPreview(form.obsah))}
+                onClick={() => openPreview(form.obsah)}
                 disabled={!form.obsah}
                 className="text-sm text-primary dark:text-primary-light hover:underline disabled:opacity-40 disabled:no-underline"
               >
@@ -343,7 +421,7 @@ export default function ContractTemplatesManager({ templates: initial }: Props) 
                 <td className="px-6 py-4 text-right">
                   <div className="flex items-center justify-end gap-3">
                     <button
-                      onClick={() => setPreviewHtml(renderPreview(t.obsah))}
+                      onClick={() => openPreview(t.obsah)}
                       className="text-sm text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200"
                     >
                       Náhled
@@ -372,6 +450,71 @@ export default function ContractTemplatesManager({ templates: initial }: Props) 
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Přílohy smluv */}
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700">
+        <div className="px-5 py-4 border-b border-gray-200 dark:border-slate-700">
+          <h2 className="font-semibold text-gray-900 dark:text-white">Přílohy smluv</h2>
+          <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+            PDF soubory, které lze přiložit k vygenerované smlouvě o dílo (VOP, záruční podmínky, ceník).
+          </p>
+        </div>
+        <div className="divide-y divide-gray-100 dark:divide-slate-700">
+          {([
+            { typ: 'vop',   label: 'Všeobecné obchodní podmínky (VOP)' },
+            { typ: 'vzsp',  label: 'Všeobecné záruční a servisní podmínky (VZSP)' },
+            { typ: 'cenik', label: 'Ceník' },
+          ] as const).map(({ typ, label }) => (
+            <div key={typ} className="px-5 py-3.5 flex items-center gap-4">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-800 dark:text-slate-200">{label}</p>
+                {attachPaths[typ] ? (
+                  <p className="text-xs text-green-600 dark:text-green-400 mt-0.5 truncate">
+                    ✓ Nahráno
+                  </p>
+                ) : (
+                  <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">Žádný soubor</p>
+                )}
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {attachPaths[typ] && (
+                  <a
+                    href={attachPaths[typ]!}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-xs text-primary dark:text-primary-light hover:underline"
+                  >
+                    Zobrazit
+                  </a>
+                )}
+                <label className={`cursor-pointer text-xs font-medium text-white px-3 py-1.5 rounded-lg transition-colors ${attachUploading[typ] ? 'bg-gray-400 cursor-not-allowed' : 'bg-primary hover:bg-primary-hover'}`}>
+                  {attachUploading[typ] ? 'Nahrávám…' : attachPaths[typ] ? 'Nahradit' : 'Nahrát PDF'}
+                  <input
+                    type="file"
+                    accept="application/pdf"
+                    className="hidden"
+                    disabled={attachUploading[typ]}
+                    onChange={e => {
+                      const f = e.target.files?.[0]
+                      e.target.value = ''
+                      if (f) handleAttachUpload(typ, f)
+                    }}
+                  />
+                </label>
+                {attachPaths[typ] && (
+                  <button
+                    onClick={() => handleAttachDelete(typ)}
+                    disabled={attachDeleting[typ]}
+                    className="text-xs text-red-500 hover:text-red-700 dark:text-red-400 disabled:opacity-50"
+                  >
+                    {attachDeleting[typ] ? '…' : 'Odebrat'}
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   )

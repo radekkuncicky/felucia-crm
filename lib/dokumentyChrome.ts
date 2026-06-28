@@ -55,7 +55,7 @@ export async function buildDokumentChrome(
   const [org, saved] = await Promise.all([
     prisma.organization.findUnique({
       where: { id: orgId },
-      select: { nazev: true, logo: true, ico: true, dic: true, sidlo: true, email: true, telefon: true, web: true },
+      select: { nazev: true, logo: true, logoBw: true, ico: true, dic: true, sidlo: true, email: true, telefon: true, web: true },
     }),
     getOrgSettings(orgId),
   ])
@@ -67,7 +67,7 @@ export async function buildDokumentChrome(
   if (styl === 'ZADNY') return null
 
   const barva = settings.primaryColor || '#4CAF50'
-  const logo = orgLogoDataUrl(org.logo)
+  const logo = orgLogoDataUrl(org.logoBw ?? org.logo)
   const logoImg = logo ? `<img src="${logo}" style="height:24px;max-width:140px;object-fit:contain" />` : ''
   const cislovani = settings.dokumentyCislovani
     ? `Strana <span class="pageNumber"></span> z <span class="totalPages"></span>`
@@ -121,12 +121,11 @@ export async function buildDokumentChrome(
   // LINKA (výchozí)
   return {
     headerTemplate: `
-      <div style="width:100%;margin:0 10mm;font-size:10px;font-family:Helvetica,Arial,sans-serif;color:#333">
-        <div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:5px">
+      <div style="width:100%;margin:0 10mm;font-size:10px;font-family:Helvetica,Arial,sans-serif;color:#333;border-bottom:1px solid #e0e0e0;padding-bottom:5px;-webkit-print-color-adjust:exact">
+        <div style="display:flex;justify-content:space-between;align-items:center">
           <span>${logoImg}</span>
           <span style="font-weight:bold">${esc(org.nazev ?? '')}</span>
         </div>
-        <div style="-webkit-print-color-adjust:exact;border-bottom:2px solid ${barva}"></div>
       </div>`,
     footerTemplate: `
       <div style="width:100%;margin:0 10mm;font-size:8px;font-family:Helvetica,Arial,sans-serif;color:#666">

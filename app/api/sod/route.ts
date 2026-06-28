@@ -50,8 +50,9 @@ export async function POST(req: Request) {
     textSmlouvy = renderSodTemplate(template.obsah, applySodFormOverrides(prefillData, rest))
     // šablony uložené před zavedením sanitizace
     if (isHtmlContent(textSmlouvy)) textSmlouvy = sanitizeFullDocumentHtml(textSmlouvy)
-    if (template.typSablony && template.typSablony !== 'text') {
-      resolvedTyp = template.typSablony as string
+    const SOD_TYP_VALUES = ['DPH_12_BEZ_ZALOHY', 'DPH_12_SE_ZALOHOU', 'DPH_21_BEZ_ZALOHY', 'DPH_21_SE_ZALOHOU', 'PDP_BEZ_ZALOHY', 'PDP_SE_ZALOHOU']
+    if (template.typSablony && SOD_TYP_VALUES.includes(template.typSablony)) {
+      resolvedTyp = template.typSablony
     }
   }
 

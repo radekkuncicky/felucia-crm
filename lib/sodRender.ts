@@ -1,5 +1,6 @@
 import { prisma } from './prisma'
 import { predmetDilaByTechnologie, kategorieByTechnologie } from './sodHelpers'
+import { orgLogoDataUrl } from './quoteRenderer'
 
 export interface SodRenderData {
   cisloSmlouvy: string
@@ -30,9 +31,63 @@ export interface SodRenderData {
   orgDic: string
   zmenaTerm: string
   technologie: string
+  orgLogoBw: string
+}
+
+function buildLogoBwHtml(logoBwPath: string | null | undefined): string {
+  const dataUrl = orgLogoDataUrl(logoBwPath)
+  if (dataUrl) return `<img src="${dataUrl}" alt="logo" style="height:22px;max-width:110px;object-fit:contain;display:block;" />`
+  return '<div class="brand-mark"></div>'
 }
 
 const fmtKc = (n: number) => Math.round(n).toLocaleString('cs-CZ') + ' Kč'
+const fmtKcDecimal = (n: unknown) => n != null ? Math.round(Number(n)).toLocaleString('cs-CZ') + ' Kč' : ''
+
+export function buildSodRenderDataFromSodRecord(
+  sod: {
+    cislo: string; vytvoreno: Date
+    klientJmeno: string; klientAdresa: string | null; klientEmail: string | null
+    klientTelefon: string | null; klientIco: string | null; klientDic: string | null
+    kontaktniOsoba: string | null; kontaktniTelefon: string | null
+    predmetDila: string; adresaDila: string | null
+    terminPrevzeti: string | null; pocetDniRealizace: number | null; zmenaTerm: string | null
+    cenaBezDph: unknown; cenaSDph: unknown; dphSazba: unknown
+    zalohaKc: unknown; zalohaSplatnost: number | null
+  },
+  org: { nazev: string | null; sidlo: string | null; ico: string | null; dic: string | null; logoBw?: string | null }
+): SodRenderData {
+  return {
+    cisloSmlouvy: sod.cislo,
+    datum: new Date(sod.vytvoreno).toLocaleDateString('cs-CZ'),
+    klientJmeno: sod.klientJmeno ?? '',
+    klientAdresa: sod.klientAdresa ?? '',
+    klientEmail: sod.klientEmail ?? '',
+    klientTelefon: sod.klientTelefon ?? '',
+    klientIco: sod.klientIco ?? '',
+    klientDic: sod.klientDic ?? '',
+    kontaktniOsoba: sod.kontaktniOsoba ?? sod.klientJmeno ?? '',
+    kontaktniTelefon: sod.kontaktniTelefon ?? sod.klientTelefon ?? '',
+    predmet: sod.predmetDila ?? '',
+    adresaDila: sod.adresaDila ?? sod.klientAdresa ?? '',
+    obchodnik: '',
+    terminRealizace: '',
+    terminPrevzeti: sod.terminPrevzeti ?? '',
+    pocetDniRealizace: sod.pocetDniRealizace != null ? String(sod.pocetDniRealizace) : '',
+    hodnotaZalohy: fmtKcDecimal(sod.zalohaKc),
+    zalohaSplatnost: sod.zalohaSplatnost != null ? String(sod.zalohaSplatnost) : '',
+    konecnaCena: fmtKcDecimal(sod.cenaBezDph),
+    cenaSDph: fmtKcDecimal(sod.cenaSDph),
+    dphSazba: sod.dphSazba != null ? String(Number(sod.dphSazba)) : '',
+    kodOP: '',
+    organizace: org.nazev ?? '',
+    orgSidlo: org.sidlo ?? '',
+    orgIco: org.ico ?? '',
+    orgDic: org.dic ?? '',
+    zmenaTerm: sod.zmenaTerm ?? '',
+    technologie: '',
+    orgLogoBw: buildLogoBwHtml(org.logoBw),
+  }
+}
 
 /**
  * Hodnoty z formuláře smlouvy (POST /api/sod) mají přednost před daty z OP —
@@ -68,7 +123,7 @@ export async function buildSodRenderData(dealId: string, orgId: string, cisloSml
     }),
     prisma.organization.findFirst({
       where: { id: orgId },
-      select: { nazev: true, sidlo: true, ico: true, dic: true },
+      select: { nazev: true, sidlo: true, ico: true, dic: true, logoBw: true },
     }),
   ])
 
@@ -117,6 +172,7 @@ export async function buildSodRenderData(dealId: string, orgId: string, cisloSml
     orgDic: org.dic ?? '',
     zmenaTerm: '',
     technologie: kategorieByTechnologie(deal.technologie ?? ''),
+    orgLogoBw: buildLogoBwHtml(org.logoBw),
   }
 }
 
@@ -150,6 +206,7 @@ export function renderSodTemplate(obsah: string, data: SodRenderData): string {
     '{{org_dic}}': data.orgDic,
     '{{zmena_term}}': data.zmenaTerm,
     '{{technologie}}': data.technologie,
+    '{{org_logo_bw}}': data.orgLogoBw,
   }
 
   return Object.entries(map).reduce(

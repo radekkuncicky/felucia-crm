@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { SodTyp } from '@prisma/client'
+import DatePickerInput from '@/components/DatePickerInput'
 
 const SE_ZALOHOU: SodTyp[] = ['DPH_12_SE_ZALOHOU', 'DPH_21_SE_ZALOHOU', 'PDP_SE_ZALOHOU']
 
@@ -51,6 +52,7 @@ export default function SodNewClient({ dealId }: Props) {
   const [klientDic, setKlientDic] = useState('')
 
   // Sekce 3 — Kontaktní osoba
+  const [kontaktniStejna, setKontaktniStejna] = useState(true)
   const [kontaktniOsoba, setKontaktniOsoba] = useState('')
   const [kontaktniTelefon, setKontaktniTelefon] = useState('')
 
@@ -87,8 +89,12 @@ export default function SodNewClient({ dealId }: Props) {
         setKlientTelefon(d.klientTelefon ?? '')
         setKlientIco(d.klientIco ?? '')
         setKlientDic(d.klientDic ?? '')
-        setKontaktniOsoba(d.kontaktniOsoba ?? d.klientJmeno ?? '')
-        setKontaktniTelefon(d.kontaktniTelefon ?? d.klientTelefon ?? '')
+        const prefillKontOsoba = d.kontaktniOsoba ?? d.klientJmeno ?? ''
+        const prefillKontTel = d.kontaktniTelefon ?? d.klientTelefon ?? ''
+        const stejna = prefillKontOsoba === (d.klientJmeno ?? '')
+        setKontaktniStejna(stejna)
+        setKontaktniOsoba(stejna ? '' : prefillKontOsoba)
+        setKontaktniTelefon(stejna ? '' : prefillKontTel)
         setPredmetDila(d.predmetDila ?? '')
         setAdresaDila(d.adresaDila ?? '')
         setCenaBezDph(d.cenaBezDph ?? null)
@@ -124,8 +130,8 @@ export default function SodNewClient({ dealId }: Props) {
           klientTelefon: klientTelefon || null,
           klientIco: klientIco || null,
           klientDic: klientDic || null,
-          kontaktniOsoba: kontaktniOsoba || null,
-          kontaktniTelefon: kontaktniTelefon || null,
+          kontaktniOsoba: kontaktniStejna ? klientJmeno : (kontaktniOsoba || null),
+          kontaktniTelefon: kontaktniStejna ? klientTelefon : (kontaktniTelefon || null),
           predmetDila,
           adresaDila: adresaDila || null,
           terminPrevzeti: terminPrevzeti || null,
@@ -258,10 +264,10 @@ export default function SodNewClient({ dealId }: Props) {
               </Field>
             </div>
             <Field label="E-mail" required>
-              <input type="email" value={klientEmail} onChange={e => setKlientEmail(e.target.value)} className={inputCls} />
+              <input type="email" value={klientEmail} onChange={e => setKlientEmail(e.target.value)} required className={inputCls} />
             </Field>
             <Field label="Telefon" required>
-              <input type="tel" value={klientTelefon} onChange={e => setKlientTelefon(e.target.value)} className={inputCls} />
+              <input type="tel" value={klientTelefon} onChange={e => setKlientTelefon(e.target.value)} required className={inputCls} />
             </Field>
             <Field label="IČO">
               <input type="text" value={klientIco} onChange={e => setKlientIco(e.target.value)} className={inputCls} />
@@ -274,15 +280,37 @@ export default function SodNewClient({ dealId }: Props) {
 
         {/* SEKCE 3 — Kontaktní osoba */}
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 px-5 py-5">
-          <SectionTitle>Kontaktní osoba</SectionTitle>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Jméno">
-              <input type="text" value={kontaktniOsoba} onChange={e => setKontaktniOsoba(e.target.value)} className={inputCls} />
-            </Field>
-            <Field label="Telefon">
-              <input type="tel" value={kontaktniTelefon} onChange={e => setKontaktniTelefon(e.target.value)} className={inputCls} />
-            </Field>
+          <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-100 dark:border-slate-700">
+            <h3 className="text-sm font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide">Kontaktní osoba</h3>
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={kontaktniStejna}
+                onChange={e => setKontaktniStejna(e.target.checked)}
+                className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary"
+              />
+              <span className="text-sm text-gray-600 dark:text-slate-400">Stejná jako klient</span>
+            </label>
           </div>
+          {kontaktniStejna ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Field label="Jméno">
+                <div className={readonlyCls}>{klientJmeno || '—'}</div>
+              </Field>
+              <Field label="Telefon">
+                <div className={readonlyCls}>{klientTelefon || '—'}</div>
+              </Field>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Field label="Jméno" required>
+                <input type="text" value={kontaktniOsoba} onChange={e => setKontaktniOsoba(e.target.value)} required className={inputCls} />
+              </Field>
+              <Field label="Telefon" required>
+                <input type="tel" value={kontaktniTelefon} onChange={e => setKontaktniTelefon(e.target.value)} required className={inputCls} />
+              </Field>
+            </div>
+          )}
         </div>
 
         {/* SEKCE 4 — Dílo */}
@@ -302,14 +330,14 @@ export default function SodNewClient({ dealId }: Props) {
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 px-5 py-5">
           <SectionTitle>Termíny</SectionTitle>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Field label="Termín převzetí staveniště">
-              <input type="date" value={terminPrevzeti} onChange={e => setTerminPrevzeti(e.target.value)} className={inputCls} />
+            <Field label="Termín předání díla" required>
+              <DatePickerInput value={terminPrevzeti} onChange={setTerminPrevzeti} required className={inputCls} />
             </Field>
-            <Field label="Počet dní realizace">
-              <input type="number" value={pocetDniRealizace} onChange={e => setPocetDniRealizace(e.target.value)} min="1" className={inputCls} />
+            <Field label="Počet dní realizace" required>
+              <input type="number" value={pocetDniRealizace} onChange={e => setPocetDniRealizace(e.target.value)} min="1" required className={inputCls} />
             </Field>
-            <Field label="Nejzazší termín změny">
-              <input type="date" value={zmenaTerm} onChange={e => setZmenaTerm(e.target.value)} className={inputCls} />
+            <Field label="Klient může změnit termín do" required>
+              <DatePickerInput value={zmenaTerm} onChange={setZmenaTerm} required className={inputCls} />
             </Field>
           </div>
         </div>

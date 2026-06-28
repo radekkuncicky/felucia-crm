@@ -218,6 +218,10 @@ model Organization {
   sidlo         String?
   web           String?
   logo          String?
+  logoBw        String?
+  prilohaVopPath   String?
+  prilohaVzspPath  String?
+  prilohaCenikPath  String?
   plan              PlanOrg   @default(STARTER)
   planActiveTo      DateTime?
   stripeCustomerId          String?
@@ -1296,6 +1300,12 @@ model Sod {
   // Vygenerovaný text smlouvy (editovatelný, zdroj pro PDF)
   textSmlouvy       String?
   templateId        String?
+
+  // Prilohy PDF
+  prilohaVop        Boolean  @default(false)
+  prilohaVzsp       Boolean  @default(false)
+  prilohaCenik      Boolean  @default(false)
+  prilohaNabidka    Boolean  @default(false)
 
   // Metadata
   poznamky          String?
