@@ -6,7 +6,7 @@ import { SOD_PLACEHOLDER_LABELS } from '@/lib/sodPlaceholders'
 
 // Placeholdery, které mají v modalu vlastní pole (níže). Zbytek prázdných
 // se vypíše dynamicky jako „Doplnit do smlouvy".
-const DEDICATED = new Set(['termin_prevzeti', 'pocet_dni_realizace', 'zmena_term', 'hodnota_zalohy', 'zaloha_splatnost'])
+const DEDICATED = new Set(['termin_prevzeti', 'pocet_dni_realizace', 'zmena_term', 'hodnota_zalohy', 'zaloha_splatnost', 'kontaktni_osoba', 'kontaktni_telefon'])
 
 interface Template {
   id: string
@@ -21,6 +21,8 @@ interface CheckData {
     terminPrevzeti: string
     pocetDniRealizace: string
     zmenaTerm: string
+    kontaktniOsoba: string
+    kontaktniTelefon: string
     zalohaKc: number
     zalohaSplatnost: number
     cenaBezDph: number
@@ -70,6 +72,12 @@ export default function GenerateSodModal({ dealId, templates, onClose }: Props) 
   const [zmenaTerm, setZmenaTerm] = useState('')
   const [zalohaKc, setZalohaKc] = useState('')
   const [zalohaSplatnost, setZalohaSplatnost] = useState('14')
+  // Kontaktní osoba: 'op' = převzít z OP (jméno + telefon klienta), 'jina' = vypsat cizí osobu
+  const [kontaktMode, setKontaktMode] = useState<'op' | 'jina'>('op')
+  const [kontaktOsobaOp, setKontaktOsobaOp] = useState('')
+  const [kontaktTelefonOp, setKontaktTelefonOp] = useState('')
+  const [kontaktOsobaJina, setKontaktOsobaJina] = useState('')
+  const [kontaktTelefonJina, setKontaktTelefonJina] = useState('')
   // Dynamická pole pro ostatní prázdné placeholdery (klient_ico, klient_dic…)
   const [extra, setExtra] = useState<Record<string, string>>({})
 
@@ -88,6 +96,11 @@ export default function GenerateSodModal({ dealId, templates, onClose }: Props) 
         setZmenaTerm(data.prefill.zmenaTerm)
         setZalohaKc(data.prefill.zalohaKc > 0 ? String(data.prefill.zalohaKc) : '')
         setZalohaSplatnost(String(data.prefill.zalohaSplatnost))
+        setKontaktOsobaOp(data.prefill.kontaktniOsoba)
+        setKontaktTelefonOp(data.prefill.kontaktniTelefon)
+        setKontaktMode('op')
+        setKontaktOsobaJina('')
+        setKontaktTelefonJina('')
         const extraInit: Record<string, string> = {}
         for (const k of data.emptyPlaceholders as string[]) {
           if (!DEDICATED.has(k)) extraInit[k] = ''
@@ -101,6 +114,12 @@ export default function GenerateSodModal({ dealId, templates, onClose }: Props) 
   async function handleGenerate() {
     setError('')
     setGenerating(true)
+    // Cizí kontaktní osoba jde jako override; „z OP" necháme na datech z OP.
+    const allOverrides: Record<string, string> = { ...extra }
+    if (kontaktMode === 'jina') {
+      allOverrides['kontaktni_osoba'] = kontaktOsobaJina
+      allOverrides['kontaktni_telefon'] = kontaktTelefonJina
+    }
     try {
       const res = await fetch('/api/sod', {
         method: 'POST',
@@ -113,7 +132,7 @@ export default function GenerateSodModal({ dealId, templates, onClose }: Props) 
           zmenaTerm: zmenaTerm || null,
           zalohaKc: checkData?.seZalohou && zalohaKc ? Number(zalohaKc) : null,
           zalohaSplatnost: checkData?.seZalohou ? Number(zalohaSplatnost) : null,
-          overrides: extra,
+          overrides: allOverrides,
         }),
       })
       if (res.ok) {
@@ -133,6 +152,7 @@ export default function GenerateSodModal({ dealId, templates, onClose }: Props) 
   const empty = checkData?.emptyPlaceholders ?? []
   const used = checkData?.usedPlaceholders ?? []
   const showZmenaTerm = used.includes('zmena_term')
+  const showKontakt = used.includes('kontaktni_osoba') || used.includes('kontaktni_telefon')
   const extraKeys = Object.keys(extra)
 
   return (
@@ -257,6 +277,70 @@ export default function GenerateSodModal({ dealId, templates, onClose }: Props) 
                   </div>
                 )}
               </div>
+
+              {/* Kontaktní osoba */}
+              {showKontakt && (
+                <div className="space-y-3">
+                  <SectionHeading>Kontaktní osoba</SectionHeading>
+                  <div className="flex gap-4 text-sm">
+                    <label className="inline-flex items-center gap-1.5 cursor-pointer">
+                      <input
+                        type="radio"
+                        checked={kontaktMode === 'op'}
+                        onChange={() => setKontaktMode('op')}
+                        disabled={generating}
+                        className="accent-primary"
+                      />
+                      <span className="text-gray-700 dark:text-slate-300">Převzít z OP</span>
+                    </label>
+                    <label className="inline-flex items-center gap-1.5 cursor-pointer">
+                      <input
+                        type="radio"
+                        checked={kontaktMode === 'jina'}
+                        onChange={() => setKontaktMode('jina')}
+                        disabled={generating}
+                        className="accent-primary"
+                      />
+                      <span className="text-gray-700 dark:text-slate-300">Jiná osoba</span>
+                    </label>
+                  </div>
+                  {kontaktMode === 'op' ? (
+                    <div className="bg-gray-50 dark:bg-slate-700/50 rounded-lg px-3 py-2.5 text-sm">
+                      <p className="text-gray-900 dark:text-white">
+                        {kontaktOsobaOp || <span className="text-gray-400 dark:text-slate-500">Jméno klienta z OP</span>}
+                      </p>
+                      {kontaktTelefonOp && (
+                        <p className="text-gray-500 dark:text-slate-400 mt-0.5">{kontaktTelefonOp}</p>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label>Jméno</Label>
+                        <input
+                          type="text"
+                          value={kontaktOsobaJina}
+                          onChange={e => setKontaktOsobaJina(e.target.value)}
+                          placeholder="Jan Novák"
+                          disabled={generating}
+                          className={inputCls}
+                        />
+                      </div>
+                      <div>
+                        <Label>Telefon</Label>
+                        <input
+                          type="text"
+                          value={kontaktTelefonJina}
+                          onChange={e => setKontaktTelefonJina(e.target.value)}
+                          placeholder="+420…"
+                          disabled={generating}
+                          className={inputCls}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Záloha */}
               {checkData.seZalohou && (

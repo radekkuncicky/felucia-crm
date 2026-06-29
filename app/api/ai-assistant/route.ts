@@ -4,6 +4,7 @@ import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { getPlanLimits } from '@/lib/planLimits'
 import { checkRateLimit } from '@/lib/rateLimit'
+import { generateQuoteKod } from '@/lib/quoteKod'
 import { Technologie, StavDealu, TypAktivity, TypKlienta } from '@prisma/client'
 
 // ─── Tool definitions ────────────────────────────────────────────────────────
@@ -372,8 +373,7 @@ async function executeTool(
         const items = Array.isArray(input.items) ? input.items as Record<string, unknown>[] : []
         if (items.length === 0) return { result: JSON.stringify({ chyba: 'Nabídka musí mít alespoň jednu položku' }) }
 
-        const count = await db.quote.count({ where: { dealId } })
-        const kod = `NAB-${String(count + 1).padStart(2, '0')}`
+        const kod = await generateQuoteKod(orgId)
 
         const quote = await db.quote.create({
           data: {

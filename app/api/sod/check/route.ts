@@ -66,6 +66,8 @@ export async function GET(req: Request) {
       terminPrevzeti: deal.terminPrevzeti ? new Date(deal.terminPrevzeti).toLocaleDateString('cs-CZ') : '',
       pocetDniRealizace: '',
       zmenaTerm: '',
+      kontaktniOsoba: values['kontaktni_osoba'] ?? '',
+      kontaktniTelefon: values['kontaktni_telefon'] ?? '',
       zalohaKc: defaultZaloha,
       zalohaSplatnost: 14,
       cenaBezDph,
