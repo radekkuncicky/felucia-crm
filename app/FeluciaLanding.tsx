@@ -753,7 +753,7 @@ const PLANS = [
     name: 'STANDARD', price: '1 490',
     badge: { label: 'STANDARD', color: '#4CAF50', bg: 'rgba(76,175,80,0.12)' },
     features: ['2–5 uživatelů', 'Neomezené zakázky', 'Všechny šablony + editace', 'AI Dáša (500/měsíc)', 'Ceníky a analytiky'],
-    cta: 'Vyzkoušet Standard', ctaStyle: 'filled', featured: true, pop: 'NEJOBLÍBENĚJŠÍ',
+    cta: 'Vyzkoušet Standard', ctaStyle: 'filled', featured: false,
   },
   {
     name: 'PROFESSIONAL', price: '2 490',
