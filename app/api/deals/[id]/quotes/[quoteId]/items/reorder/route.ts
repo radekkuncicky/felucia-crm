@@ -19,7 +19,7 @@ export async function PUT(req: Request, { params }: { params: { id: string; quot
 
   await Promise.all(
     items.map(({ id, poradi }: { id: string; poradi: number }) =>
-      db.quoteItem.update({ where: { id }, data: { poradi } })
+      db.quoteItem.updateMany({ where: { id, quoteId: params.quoteId }, data: { poradi } })
     )
   )
 

@@ -14,7 +14,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string; po
 
   const { cena } = await req.json()
   const updated = await db.cenikPolozka.update({
-    where: { id: params.polozkaId },
+    where: { id: params.polozkaId, cenikId: params.id },
     data: { cena: Number(cena) },
     include: { product: { select: { id: true, nazev: true } } },
   })
@@ -30,6 +30,6 @@ export async function DELETE(_req: Request, { params }: { params: { id: string; 
   const cenik = await db.cenik.findFirst({ where: { id: params.id, orgId } })
   if (!cenik) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  await db.cenikPolozka.delete({ where: { id: params.polozkaId } })
+  await db.cenikPolozka.deleteMany({ where: { id: params.polozkaId, cenikId: params.id } })
   return NextResponse.json({ ok: true })
 }
