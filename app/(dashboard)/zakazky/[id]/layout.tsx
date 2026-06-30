@@ -43,7 +43,7 @@ export default async function ZakazkaDetailLayout({
   const isTechnik = role === 'TECHNIK'
   const canEdit = role === 'ADMIN' || role === 'OBCHODNIK'
 
-  if (isTechnik && !(await canTechnikAccessZakazka(session.user.id, params.id))) {
+  if (isTechnik && !(await canTechnikAccessZakazka(session.user.id, params.id, session.user.orgId))) {
     notFound()
   }
 

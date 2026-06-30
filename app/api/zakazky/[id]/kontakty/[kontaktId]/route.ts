@@ -8,7 +8,7 @@ import { parseKontaktInput } from '@/lib/zakazkaKontakt'
 async function guard(session: Session | null, zakazkaId: string) {
   if (!session) return { err: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
   const isTechnik = session.user.role === 'TECHNIK'
-  if (isTechnik && !(await canTechnikAccessZakazka(session.user.id, zakazkaId))) {
+  if (isTechnik && !(await canTechnikAccessZakazka(session.user.id, zakazkaId, session.user.orgId))) {
     return { err: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }
   }
   return { err: null }

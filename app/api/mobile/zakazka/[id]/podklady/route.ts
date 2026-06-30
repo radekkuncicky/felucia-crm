@@ -9,7 +9,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   if (authErr) return authErr
 
   const isTechnik = session!.user.role === 'TECHNIK'
-  if (isTechnik && !(await canTechnikAccessZakazka(session!.user.id, params.id))) {
+  if (isTechnik && !(await canTechnikAccessZakazka(session!.user.id, params.id, session!.user.orgId))) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
