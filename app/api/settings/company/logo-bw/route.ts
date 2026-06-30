@@ -15,6 +15,14 @@ export async function POST(req: NextRequest) {
   const file = formData.get('logo') as File | null
   if (!file) return NextResponse.json({ error: 'No file' }, { status: 400 })
 
+  const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml']
+  if (!ALLOWED_TYPES.includes(file.type)) {
+    return NextResponse.json({ error: 'Nepodporovaný formát. Povoleny jsou: JPG, PNG, WEBP, GIF, SVG.' }, { status: 400 })
+  }
+  if (file.size > 2 * 1024 * 1024) {
+    return NextResponse.json({ error: 'Soubor je příliš velký. Maximum je 2 MB.' }, { status: 400 })
+  }
+
   const bytes = await file.arrayBuffer()
   const buffer = Buffer.from(bytes)
 
