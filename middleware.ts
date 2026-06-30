@@ -128,6 +128,8 @@ export async function middleware(req: NextRequest) {
       url.pathname.startsWith('/api/zakazky') ||
       url.pathname.startsWith('/api/predavaky') ||
       url.pathname.startsWith('/api/auth') ||
+      url.pathname.startsWith('/api/notifications') ||
+      url.pathname.startsWith('/api/settings/profile') ||
       url.pathname.startsWith('/auth') ||
       url.pathname === '/dashboard'
 
