@@ -53,6 +53,20 @@ export async function canAccessZakazka(
   return !!rel
 }
 
+/** Technik sees only own servis orders; ADMIN sees all in org */
+export async function canAccessServisniZakazka(
+  session: MobileSession,
+  zakazkaId: string,
+): Promise<boolean> {
+  const z = await prisma.servisniZakazka.findFirst({
+    where: { id: zakazkaId, orgId: session.user.orgId },
+    select: { technikId: true },
+  })
+  if (!z) return false
+  if (session.user.role === 'ADMIN') return true
+  return z.technikId === session.user.id
+}
+
 /** Composed address string from client fields */
 export function klientAdresa(klient: { ulice?: string | null; mesto?: string | null; psc?: string | null }): string {
   return [klient.ulice, [klient.mesto, klient.psc].filter(Boolean).join(' ')].filter(Boolean).join(', ')

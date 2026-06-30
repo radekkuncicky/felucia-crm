@@ -72,6 +72,7 @@ export default async function ServisZakazkaDetailPage({ params }: { params: { id
     nakladyCas: z.nakladyCas ? String(z.nakladyCas) : null,
     nakladyMaterial: z.nakladyMaterial ? String(z.nakladyMaterial) : null,
     fotky: (z.fotky as string[]) ?? [],
+    podpisKlienta: z.podpisKlienta,
     protokolDokoncen: z.protokolDokoncen ? z.protokolDokoncen.toISOString() : null,
     vyfakturovano: z.vyfakturovano,
     zaplaceno: z.zaplaceno,

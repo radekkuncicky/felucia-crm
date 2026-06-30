@@ -4,6 +4,7 @@ import { useState, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { NavigateButton } from '@/components/NavigateButton'
+import { SignatureCanvas } from '@/components/SignatureCanvas'
 import VyuctovaniSekce from '@/components/servis/VyuctovaniSekce'
 import {
   type NavstevaTyp,
@@ -32,6 +33,7 @@ interface Zakazka {
   nakladyCas: string | null
   nakladyMaterial: string | null
   fotky: string[]
+  podpisKlienta: string | null
   protokolDokoncen: string | null
   vyfakturovano: boolean
   zaplaceno: boolean
@@ -62,8 +64,10 @@ export default function ZakazkaDetailClient({ zakazka, orgUsers, canEdit }: Prop
   const router = useRouter()
   const fileRef = useRef<HTMLInputElement>(null)
   const [saving, setSaving] = useState(false)
+  const [finishing, setFinishing] = useState(false)
   const [fotky, setFotky] = useState<string[]>(zakazka.fotky)
   const [uploading, setUploading] = useState(false)
+  const [podpis, setPodpis] = useState<string | null>(zakazka.podpisKlienta)
 
   const [form, setForm] = useState({
     stav: zakazka.stav,
@@ -84,30 +88,54 @@ export default function ZakazkaDetailClient({ zakazka, orgUsers, canEdit }: Prop
     setForm(f => ({ ...f, [k]: v }))
   }
 
+  async function patch(override: Record<string, unknown> = {}) {
+    return fetch(`/api/servis/zakazky/${zakazka.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        stav: form.stav,
+        typ: form.typ,
+        technikId: form.technikId || null,
+        planovanyTermin: form.planovanyTermin ? new Date(form.planovanyTermin).toISOString() : null,
+        skutecnyTermin: form.skutecnyTermin ? new Date(form.skutecnyTermin).toISOString() : null,
+        cekaDuvod: form.cekaDuvod || null,
+        poznamka: form.poznamka || null,
+        zprava: form.zprava || null,
+        nalezeneZavady: form.nalezeneZavady || null,
+        doporuceni: form.doporuceni || null,
+        nakladyCas: form.nakladyCas ? Number(form.nakladyCas) : null,
+        nakladyMaterial: form.nakladyMaterial ? Number(form.nakladyMaterial) : null,
+        podpisKlienta: podpis,
+        ...override,
+      }),
+    })
+  }
+
   async function save() {
     setSaving(true)
     try {
-      const res = await fetch(`/api/servis/zakazky/${zakazka.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          stav: form.stav,
-          typ: form.typ,
-          technikId: form.technikId || null,
-          planovanyTermin: form.planovanyTermin ? new Date(form.planovanyTermin).toISOString() : null,
-          skutecnyTermin: form.skutecnyTermin ? new Date(form.skutecnyTermin).toISOString() : null,
-          cekaDuvod: form.cekaDuvod || null,
-          poznamka: form.poznamka || null,
-          zprava: form.zprava || null,
-          nalezeneZavady: form.nalezeneZavady || null,
-          doporuceni: form.doporuceni || null,
-          nakladyCas: form.nakladyCas ? Number(form.nakladyCas) : null,
-          nakladyMaterial: form.nakladyMaterial ? Number(form.nakladyMaterial) : null,
-        }),
-      })
+      const res = await patch()
       if (res.ok) router.refresh()
     } finally {
       setSaving(false)
+    }
+  }
+
+  // Handoff: dokončení protokolu = přechod do DOKONCENA, což nastaví
+  // protokolDokoncen (brána do vyúčtování). Vyžaduje podpis klienta.
+  async function dokoncitProtokol() {
+    if (!podpis) {
+      alert('Pro dokončení protokolu je potřeba podpis klienta.')
+      return
+    }
+    if (!confirm('Dokončit protokol a předat zakázku? Po dokončení ji bude možné vyúčtovat.')) return
+    setFinishing(true)
+    try {
+      const res = await patch({ stav: 'DOKONCENA' })
+      if (res.ok) router.refresh()
+      else alert('Dokončení se nezdařilo.')
+    } finally {
+      setFinishing(false)
     }
   }
 
@@ -298,6 +326,52 @@ export default function ZakazkaDetailClient({ zakazka, orgUsers, canEdit }: Prop
                 <input type="number" min="0" step="0.01" value={form.nakladyMaterial} onChange={e => set('nakladyMaterial', e.target.value)} disabled={!canEdit} className={inputClass} />
               </div>
             </div>
+          </div>
+
+          <div className={cardClass}>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-semibold text-gray-900 dark:text-white">Předání zakázky</h2>
+              {zakazka.protokolDokoncen ? (
+                <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300">
+                  Protokol dokončen {new Date(zakazka.protokolDokoncen).toLocaleDateString('cs-CZ')}
+                </span>
+              ) : (
+                <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+                  Nedokončeno
+                </span>
+              )}
+            </div>
+            <label className={labelClass}>Podpis klienta</label>
+            <SignatureCanvas onChange={setPodpis} existingDataUrl={podpis} disabled={!canEdit || !!zakazka.protokolDokoncen} />
+            {!zakazka.protokolDokoncen && canEdit && (
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                <button
+                  onClick={dokoncitProtokol}
+                  disabled={finishing || saving}
+                  className="inline-flex items-center gap-2 bg-[#1B5E20] hover:bg-green-800 text-white text-sm font-semibold px-4 py-2 rounded-lg disabled:opacity-50 transition-colors"
+                >
+                  {finishing ? 'Dokončuji…' : 'Dokončit protokol a předat'}
+                </button>
+                <a
+                  href={`/api/servis/zakazky/${zakazka.id}/protokol`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-green-600 dark:text-green-400 hover:underline"
+                >
+                  Náhled protokolu (PDF)
+                </a>
+              </div>
+            )}
+            {zakazka.protokolDokoncen && (
+              <a
+                href={`/api/servis/zakazky/${zakazka.id}/protokol`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-3 inline-block text-sm text-green-600 dark:text-green-400 hover:underline"
+              >
+                Protokol (PDF)
+              </a>
+            )}
           </div>
 
           <VyuctovaniSekce

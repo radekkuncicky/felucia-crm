@@ -147,6 +147,7 @@ export async function updateServisniZakazka(
       zprava: has('zprava') ? (body.zprava as string | null) : z.zprava,
       nalezeneZavady: has('nalezeneZavady') ? (body.nalezeneZavady as string | null) : z.nalezeneZavady,
       doporuceni: has('doporuceni') ? (body.doporuceni as string | null) : z.doporuceni,
+      podpisKlienta: has('podpisKlienta') ? (body.podpisKlienta as string | null) : z.podpisKlienta,
       cekaDuvod: has('cekaDuvod') ? (body.cekaDuvod as string | null) : z.cekaDuvod,
       trvaniMinut: has('trvaniMinut') ? (body.trvaniMinut as number | null) : z.trvaniMinut,
       nakladyCas: has('nakladyCas') ? (body.nakladyCas as never) : z.nakladyCas,
