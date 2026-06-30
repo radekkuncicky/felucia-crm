@@ -26,7 +26,7 @@ export async function POST(req: Request) {
     data: { userId: user.id, token, expiresAt },
   })
 
-  const baseUrl = process.env.NEXTAUTH_URL ?? 'https://crm.workspace-felucia.io'
+  const baseUrl = process.env.NEXTAUTH_URL ?? 'https://felucia.io'
   const url = `${baseUrl}/auth/magic-link?token=${token}`
 
   try {
