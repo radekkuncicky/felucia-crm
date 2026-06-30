@@ -34,6 +34,14 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const file = formData.get('file') as File | null
   if (!file) return NextResponse.json({ error: 'No file' }, { status: 400 })
 
+  const ALLOWED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'image/heic', 'image/heif']
+  if (!ALLOWED_TYPES.includes(file.type)) {
+    return NextResponse.json({ error: 'Nepodporovaný formát. Povoleny jsou: JPG, PNG, WEBP, GIF, HEIC.' }, { status: 400 })
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    return NextResponse.json({ error: 'Soubor je příliš velký. Maximum je 10 MB.' }, { status: 400 })
+  }
+
   const bytes = await file.arrayBuffer()
   const buffer = Buffer.from(bytes)
 
