@@ -128,6 +128,10 @@ export async function updateServisniZakazka(
     if (!technik) return { ok: false, status: 400, error: 'Technik nenalezen' }
   }
 
+  if (body.zaplaceno === true && !['VYUCTOVANA', 'UZAVRENA'].includes(z.stav)) {
+    return { ok: false, status: 422, error: 'Zakázku lze označit jako zaplacenou pouze po vyúčtování.' }
+  }
+
   const has = (k: string) => body[k] !== undefined
 
   // Dokončení protokolu je navázané na přechod do stavu DOKONCENA (brána do
