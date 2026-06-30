@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 
 const ARES_BASE = 'https://ares.gov.cz/ekonomicke-subjekty-v-be/rest/ekonomicke-subjekty'
 const TIMEOUT_MS = 5000
@@ -42,6 +44,9 @@ function mapSubjekt(data: Record<string, unknown>): AresFirma {
 }
 
 export async function GET(req: Request) {
+  const session = await getServerSession(authOptions)
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const { searchParams } = new URL(req.url)
   const q = (searchParams.get('q') ?? '').trim()
 
