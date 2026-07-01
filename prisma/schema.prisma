@@ -984,6 +984,7 @@ model Zakazka {
   poznamka      String?
   pokyny        String?
   mistoStavby   String?
+  titulniFotoUrl String?
   montazOd      DateTime?
   montazDo      DateTime?
   vytvoreno     DateTime      @default(now())

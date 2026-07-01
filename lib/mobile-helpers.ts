@@ -71,3 +71,14 @@ export async function canAccessServisniZakazka(
 export function klientAdresa(klient: { ulice?: string | null; mesto?: string | null; psc?: string | null }): string {
   return [klient.ulice, [klient.mesto, klient.psc].filter(Boolean).join(' ')].filter(Boolean).join(', ')
 }
+
+/**
+ * Web uploads store photos as inline `data:` URIs; native app uploads store relative
+ * `/uploads/...` paths. Only relative paths need the origin prepended — `http(s):` and
+ * `data:` URIs are already self-contained and must pass through unchanged.
+ */
+export function toAbsoluteUrl(url: string | null | undefined, origin: string): string | null {
+  if (!url) return null
+  if (url.startsWith('http') || url.startsWith('data:')) return url
+  return `${origin}${url}`
+}

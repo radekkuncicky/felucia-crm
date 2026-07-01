@@ -23,7 +23,7 @@ function toLocalInput(iso: string | null): string {
   if (!iso) return ''
   const d = new Date(iso)
   const pad = (n: number) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
 function fmtMontaz(od: string | null, doo: string | null): string {
@@ -31,14 +31,12 @@ function fmtMontaz(od: string | null, doo: string | null): string {
   const odD = new Date(od)
   const locale = 'cs-CZ'
   const datePart = odD.toLocaleDateString(locale, { day: 'numeric', month: 'numeric', year: 'numeric' })
-  const odTime = odD.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })
-  if (!doo) return `${datePart} ${odTime}`
+  if (!doo) return datePart
   const dooD = new Date(doo)
-  const dooTime = dooD.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' })
   const sameDay = odD.toDateString() === dooD.toDateString()
-  if (sameDay) return `${datePart}  ${odTime} – ${dooTime}`
+  if (sameDay) return datePart
   const dateDoo = dooD.toLocaleDateString(locale, { day: 'numeric', month: 'numeric', year: 'numeric' })
-  return `${datePart} ${odTime} – ${dateDoo} ${dooTime}`
+  return `${datePart} – ${dateDoo}`
 }
 
 // Single-row inline editor for zakazka or etapa termín
@@ -70,12 +68,12 @@ function TerminEditor({
         <svg className="w-4 h-4 text-red-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
         </svg>
-        <input type="datetime-local" value={od} onChange={e => setOd(e.target.value)}
+        <input type="date" value={od} onChange={e => setOd(e.target.value)}
           className="border border-gray-300 dark:border-slate-600 rounded-lg px-2 py-1 text-xs bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-400"
           style={{ fontSize: 14 }}
         />
         <span className="text-xs text-gray-400">–</span>
-        <input type="datetime-local" value={doo} onChange={e => setDoo(e.target.value)} min={od}
+        <input type="date" value={doo} onChange={e => setDoo(e.target.value)} min={od}
           className="border border-gray-300 dark:border-slate-600 rounded-lg px-2 py-1 text-xs bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-400"
           style={{ fontSize: 14 }}
         />

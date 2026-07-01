@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { orgPrisma } from '@/lib/orgPrisma'
-import { getMobileOrWebSession, requireTechnikOrAdmin, canAccessZakazka, klientAdresa } from '@/lib/mobile-helpers'
+import { getMobileOrWebSession, requireTechnikOrAdmin, canAccessZakazka, klientAdresa, toAbsoluteUrl } from '@/lib/mobile-helpers'
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   const host = req.headers.get('host') ?? ''
@@ -62,6 +62,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     typ: zakazka.typ,
     technologie: zakazka.technologie,
     mistoStavby: zakazka.mistoStavby ?? null,
+    titulniFotoUrl: toAbsoluteUrl(zakazka.titulniFotoUrl, origin),
     montazOd: zakazka.montazOd,
     montazDo: zakazka.montazDo,
     poznamka: zakazka.poznamka,
@@ -100,7 +101,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     })),
     fotky: zakazka.fotky.map(f => ({
       id: f.id,
-      url: f.url.startsWith('http') ? f.url : `${origin}${f.url}`,
+      url: toAbsoluteUrl(f.url, origin) as string,
       popis: f.popis ?? null,
       vytvoreno: f.vytvoreno,
       nahral: f.nahral.jmeno,

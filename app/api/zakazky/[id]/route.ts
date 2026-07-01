@@ -47,11 +47,22 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (session.user.role === 'TECHNIK') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-
+  const isTechnik = session.user.role === 'TECHNIK'
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)
   const body = await req.json()
+
+  // Technik může měnit pouze mistoStavby
+  if (isTechnik) {
+    if (body.mistoStavby === undefined) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    const zakazka = await db.zakazka.findFirst({ where: { id: params.id, orgId } })
+    if (!zakazka) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    await db.zakazka.update({
+      where: { id: params.id, orgId },
+      data: { mistoStavby: body.mistoStavby || null },
+    })
+    return NextResponse.json({ ok: true })
+  }
 
   const puvodni = await db.zakazka.findFirst({
     where: { id: params.id, orgId },
