@@ -1,4 +1,4 @@
-import { prisma } from './prisma'
+import { prismaApp, rlsActive } from './prisma'
 
 /**
  * Modely s přímým sloupcem `orgId`. Drženo v sync se schema.prisma
@@ -67,7 +67,14 @@ function scopeData(data: unknown, orgId: string, model: string) {
 }
 
 /**
- * Prisma client s automaticky vynuceným tenant scopem.
+ * Prisma client s automaticky vynuceným tenant scopem — dvě vrstvy:
+ *
+ * 1. Aplikační (extension): orgId se přidá do where / zvaliduje v datech.
+ * 2. DB (Row Level Security, prisma/rls.sql): klient se připojuje jako role
+ *    nanto_app a před dotazem nastaví app.org_id (set_config, transaction-
+ *    local). Policy bez kontextu nevrátí nic (fail-closed) — chrání i vnořené
+ *    zápisy relací a budoucí chyby v extension. Bez RLS_DB_* v env vrstva 2
+ *    odpadá (fallback na owner klient).
  *
  * - čtení/update/delete: orgId se přidá do where (u unique dotazů jako
  *   extra filtr — záznam jiné org se tváří jako neexistující)
@@ -75,8 +82,11 @@ function scopeData(data: unknown, orgId: string, model: string) {
  *   orgId vyhodí chybu. Pozn.: vygenerované typy Prismy orgId v datech
  *   stále vyžadují — předávej ho explicitně, extension ho zvaliduje.
  *
- * Nepokrývá: $queryRaw/$executeRaw a vnořené relace v include/select
- * (ty jsou org-konzistentní přes FK rodiče).
+ * Transakce: db.$transaction (obě formy) nastaví app.org_id na začátku
+ * transakce; jednotlivé operace mimo transakci se balí do batch transakce
+ * [set_config, query]. Raw dotazy ($queryRaw/$executeRaw) mimo transakci
+ * kontext nemají — pod RLS nic nevrátí; používej je jen uvnitř
+ * db.$transaction, nebo tabulky bez orgId.
  *
  * Použití v API route:
  *   const db = orgPrisma(session.user.orgId)
@@ -85,11 +95,15 @@ function scopeData(data: unknown, orgId: string, model: string) {
 export function orgPrisma(orgId: string) {
   if (!orgId) throw new Error('orgPrisma: orgId je povinné')
 
-  return prisma.$extends({
+  const setOrgContext = () =>
+    prismaApp.$executeRaw`SELECT set_config('app.org_id', ${orgId}, true)`
+
+  const extended = prismaApp.$extends({
     name: 'orgScope',
     query: {
       $allModels: {
-        async $allOperations({ model, operation, args, query }) {
+        async $allOperations(params) {
+          const { model, operation, args, query } = params
           if (!TENANT_MODELS.has(model)) return query(args)
 
           const a = args as Record<string, unknown>
@@ -134,11 +148,53 @@ export function orgPrisma(orgId: string) {
               break
           }
 
-          return query(a)
+          // RLS kontext: operace už běžící v transakci ho dostala od
+          // proxovaného $transaction; samostatnou operaci zabalíme do
+          // batch transakce se set_config (oficiální Prisma RLS vzor).
+          // __internalParams je interní API — hlídá ho tests/rls.test.ts.
+          const inTransaction = Boolean(
+            (params as unknown as { __internalParams?: { transaction?: unknown } })
+              .__internalParams?.transaction
+          )
+          if (!rlsActive || inTransaction) return query(a)
+
+          const client = prismaApp as unknown as { $transaction(ops: unknown[]): Promise<unknown[]> }
+          const [, result] = await client.$transaction([setOrgContext(), query(a)])
+          return result
         },
       },
     },
   })
+
+  if (!rlsActive) return extended
+
+  // db.$transaction musí nastavit app.org_id na svém začátku (set_config
+  // s is_local=true platí do konce transakce). Interní operace transakci
+  // detekují přes __internalParams a znovu se nebalí.
+  type TxClient = Parameters<Parameters<typeof extended.$transaction>[0]>[0]
+  return new Proxy(extended, {
+    get(target, prop, receiver) {
+      if (prop !== '$transaction') return Reflect.get(target, prop, receiver)
+
+      return (
+        arg: unknown[] | ((tx: TxClient) => Promise<unknown>),
+        opts?: object,
+      ) => {
+        if (typeof arg === 'function') {
+          return target.$transaction(async (tx) => {
+            await tx.$executeRaw`SELECT set_config('app.org_id', ${orgId}, true)`
+            return arg(tx)
+          }, opts)
+        }
+        return target
+          .$transaction(
+            [target.$executeRaw`SELECT set_config('app.org_id', ${orgId}, true)`, ...arg] as never,
+            opts,
+          )
+          .then((results: unknown[]) => results.slice(1))
+      }
+    },
+  }) as typeof extended
 }
 
 export type OrgPrismaClient = ReturnType<typeof orgPrisma>

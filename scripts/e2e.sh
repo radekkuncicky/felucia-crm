@@ -27,9 +27,10 @@ sed -e 's#/nanto_crm"#/nanto_crm_test"#' \
     "$ROOT/.env" > "$ENVDIR/.env"
 grep -q nanto_crm_test "$ENVDIR/.env" || { echo "CHYBA: test DB URL se nepodařilo odvodit"; exit 1; }
 
-echo "==> Schéma test DB (prisma db push)"
-(cd "$ENVDIR" && npx prisma db push --accept-data-loss \
-  --url "$(grep '^DATABASE_URL' .env | cut -d'"' -f2)" >/dev/null)
+echo "==> Schéma test DB (prisma db push + RLS)"
+TEST_DB_URL="$(grep '^DATABASE_URL' "$ENVDIR/.env" | cut -d'"' -f2)"
+(cd "$ENVDIR" && npx prisma db push --accept-data-loss --url "$TEST_DB_URL" >/dev/null)
+psql "$TEST_DB_URL" -q -f "$ENVDIR/prisma/rls.sql" 2>/dev/null
 
 echo "==> Build (izolovaný, s cache)"
 (cd "$ENVDIR" && npm run build > /tmp/e2e-build.log 2>&1) \

@@ -42,9 +42,27 @@
 
 ## Testy
 - `npm test` (vitest, integrační nad DB `nanto_crm_test`)
+- `npm run test:e2e` → `scripts/e2e.sh` — Playwright v izolovaném prostředí
+  (rsync pracovního stromu do /var/tmp/felucia-e2e, vlastní build, DB nanto_crm_test,
+  server :3001). NIKDY nespouštěj `next dev`/`next build` přímo v /var/www/nanto-crm
+  mimo deploy.sh — rozbilo by to prod .next.
 - Tenant izolace: `lib/orgPrisma.ts` — v API routes používej `orgPrisma(session.user.orgId)`,
   nikdy holý `prisma` (ten jen pro auth/superadmin/webhooky před resolvnutím org)
 - Nový model s `orgId` → přidej do `TENANT_MODELS` v lib/orgPrisma.ts (hlídá test)
+  a přegeneruj RLS: `npx tsx scripts/generate-rls-sql.ts` (viz níže)
+
+## RLS (Row Level Security)
+- Druhá obranná linie pod orgPrisma: orgPrisma se připojuje jako DB role `nanto_app`
+  (credentials `RLS_DB_USER`/`RLS_DB_PASSWORD` v .env, URL se odvozuje z DATABASE_URL)
+  a nastavuje `app.org_id` per dotaz/transakce. Policy fail-closed — bez kontextu nic.
+- Bare `prisma` (auth/superadmin/worker/migrace) jede jako owner `nanto` — RLS na něj neplatí.
+- `prisma/rls.sql` generuje `scripts/generate-rls-sql.ts` ze schema.prisma; po změně
+  tenant modelů přegenerovat a aplikovat: `psql <DB_URL> -f prisma/rls.sql` (prod ručně,
+  test DB aplikují tests/setup.ts a scripts/e2e.sh samy)
+- `db.$queryRaw`/`$executeRaw` na tenant tabulky jen uvnitř `db.$transaction`
+  (jinak bez kontextu nic nevrátí)
+- Rollback: smazat RLS_DB_* z .env + restart (orgPrisma spadne na owner klient)
+- Stojí na interním `__internalParams.transaction` (hlídá tests/rls.test.ts)
 
 ## DB
 ```
@@ -61,6 +79,11 @@ Obnova: `pg_restore --dbname=<URL> --no-owner <soubor.dump>`
 - pg-boss nad stejnou DB, schéma `pgboss`; fronty: `reminders-sweep` (cron 1 min), `activity-reminder`
 - Připomínky aktivit: bell notifikace vždy, email jen s nakonfigurovaným SMTP
 - `deploy.sh` restartuje web i worker (`pm2 startOrRestart ecosystem.config.js`)
+
+## CSP
+- Content-Security-Policy nastavuje middleware.ts s per-request nonce
+  (script-src bez 'unsafe-inline', + 'strict-dynamic'); root layout čte
+  headers() → všechny stránky se renderují dynamicky. CSP hlavičku hlídá E2E test.
 
 ## PDF / tenant HTML (bezpečnost)
 - Tenant HTML (šablony smluv, textSmlouvy, CUSTOM_HTML nabídky, vlastní záhlaví/patička)
