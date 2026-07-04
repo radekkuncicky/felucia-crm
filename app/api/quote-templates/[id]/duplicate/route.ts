@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
+import { checkQuoteTemplateLimit } from '@/lib/checkPlanLimit'
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
@@ -11,6 +12,10 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   const tpl = await db.quoteTemplate.findFirst({ where: { id: params.id, orgId } })
   if (!tpl) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  if (!(await checkQuoteTemplateLimit(orgId))) {
+    return NextResponse.json({ error: 'Dosažen limit šablon pro váš plán.', code: 'PLAN_LIMIT_REACHED' }, { status: 403 })
+  }
 
   // Kopie je vždy vlastní (nesystémová, ne výchozí) šablona, kterou pak uživatel upraví.
   const copy = await db.quoteTemplate.create({

@@ -3,6 +3,7 @@ import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { Technologie } from '@prisma/client'
+import { checkQuoteTemplateLimit } from '@/lib/checkPlanLimit'
 
 export async function GET() {
   const session = await getServerSession(authOptions)
@@ -29,6 +30,10 @@ export async function POST(req: Request) {
 
   if (!nazev) {
     return NextResponse.json({ error: 'Název je povinný' }, { status: 400 })
+  }
+
+  if (!(await checkQuoteTemplateLimit(orgId))) {
+    return NextResponse.json({ error: 'Dosažen limit šablon pro váš plán.', code: 'PLAN_LIMIT_REACHED' }, { status: 403 })
   }
 
   const template = await db.quoteTemplate.create({
