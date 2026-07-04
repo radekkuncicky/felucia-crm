@@ -72,3 +72,28 @@ test('API vrací JSON pro přihlášeného (session funguje)', async ({ page }) 
   const res = await page.request.get('/api/notifications')
   expect(res.status()).toBeLessThan(500)
 })
+
+test('CSP: script-src má nonce a nemá unsafe-inline', async ({ page }) => {
+  const res = await page.goto('/dashboard')
+  const csp = res?.headers()['content-security-policy'] ?? ''
+  const scriptSrc = csp.split(';').find((d) => d.trim().startsWith('script-src')) ?? ''
+  expect(scriptSrc).toMatch(/'nonce-[A-Za-z0-9+/=]+'/)
+  expect(scriptSrc).toContain("'strict-dynamic'")
+  expect(scriptSrc).not.toContain('unsafe-inline')
+})
+
+test.describe('nepřihlášený', () => {
+  test.use({ storageState: { cookies: [], origins: [] } })
+
+  test('CSP: signin (dřív statická stránka) se hydratuje — formulář reaguje', async ({ page }) => {
+    const errors: string[] = []
+    page.on('pageerror', (err) => errors.push(String(err)))
+    await page.goto('/auth/signin')
+    await page.locator('input[type="email"]').fill('x@y.cz')
+    await page.locator('input[type="password"]').fill('spatne')
+    await page.locator('button[type="submit"]').click()
+    // hydratovaný formulář zobrazí chybu (bez hydratace by se nic nestalo)
+    await expect(page.locator('body')).toContainText('Nesprávný email nebo heslo', { timeout: 10_000 })
+    expect(errors).toEqual([])
+  })
+})
