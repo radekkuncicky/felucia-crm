@@ -207,6 +207,18 @@ export default function PredavakClient({ predavak: initial, currentUserId, role 
     }
   }
 
+  // Ověří skutečný stav na serveru; 'UNKNOWN' = síť/server nedostupný (nepropadne ven)
+  async function reconcileStav(): Promise<PredavakStav | 'UNKNOWN'> {
+    try {
+      const r = await fetch(`/api/predavaky/${initial.id}`)
+      if (!r.ok) return 'UNKNOWN'
+      const data = await r.json()
+      return data.stav as PredavakStav
+    } catch {
+      return 'UNKNOWN'
+    }
+  }
+
   async function handleSchvalit() {
     setConfirmSchvalit(false)
     setSaving(true)
@@ -216,9 +228,29 @@ export default function PredavakClient({ predavak: initial, currentUserId, role 
         setStav('SCHVALEN')
         showToast('Protokol schválen, vyúčtování vytvořeno', 'ok')
         router.refresh()
+        return
+      }
+      // Chyba — ověř skutečný stav (souběžný request mohl protokol mezitím schválit)
+      const real = await reconcileStav()
+      if (real === 'SCHVALEN') {
+        setStav('SCHVALEN')
+        showToast('Protokol schválen, vyúčtování vytvořeno', 'ok')
+        router.refresh()
+      } else if (real === 'UNKNOWN') {
+        showToast('Nepodařilo se ověřit stav, obnovte stránku', 'err')
       } else {
-        const err = await res.json()
+        const err = await res.json().catch(() => ({}))
         showToast(err.error ?? 'Chyba při schvalování', 'err')
+      }
+    } catch {
+      // POST spadl na síti — ověř, zda akce přesto neprošla
+      const real = await reconcileStav()
+      if (real === 'SCHVALEN') {
+        setStav('SCHVALEN')
+        showToast('Protokol schválen, vyúčtování vytvořeno', 'ok')
+        router.refresh()
+      } else {
+        showToast('Nepodařilo se ověřit stav, obnovte stránku', 'err')
       }
     } finally {
       setSaving(false)

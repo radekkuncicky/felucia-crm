@@ -5,6 +5,43 @@ import PlatinumGuard from '@/components/PlatinumGuard'
 import { getPlanLimits } from '@/lib/planLimits'
 import ServisOverviewClient from './ServisOverviewClient'
 
+const LIST_INCLUDE = {
+  kontrakt: { select: { nazev: true, klient: { select: { jmeno: true, prijmeni: true } } } },
+  zarizeni: { select: { nazev: true } },
+  klient: { select: { jmeno: true, prijmeni: true } },
+  technik: { select: { jmeno: true } },
+} as const
+
+type Row = {
+  id: string
+  cislo: string | null
+  typ: string
+  stav: string
+  planovanyTermin: Date | null
+  kontrakt: { nazev: string; klient: { jmeno: string; prijmeni: string } } | null
+  zarizeni: { nazev: string } | null
+  klient: { jmeno: string; prijmeni: string } | null
+  technik: { jmeno: string } | null
+}
+
+function serialize(r: Row) {
+  return {
+    id: r.id,
+    cislo: r.cislo,
+    typ: r.typ,
+    stav: r.stav,
+    planovanyTermin: r.planovanyTermin ? r.planovanyTermin.toISOString() : null,
+    klientNazev:
+      r.kontrakt?.klient
+        ? `${r.kontrakt.klient.jmeno} ${r.kontrakt.klient.prijmeni}`
+        : r.klient
+        ? `${r.klient.jmeno} ${r.klient.prijmeni}`
+        : null,
+    predmet: r.zarizeni?.nazev ?? r.kontrakt?.nazev ?? null,
+    technikJmeno: r.technik?.jmeno ?? null,
+  }
+}
+
 export default async function ServisPage() {
   const session = await getServerSession(authOptions)
   const orgId = session!.user.orgId
@@ -13,66 +50,55 @@ export default async function ServisPage() {
   if (!getPlanLimits(plan).hasServiceModule) return <PlatinumGuard />
 
   const now = new Date()
-  const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000)
 
   const [
     zarizeniCount,
     aktivniKontrakty,
-    nadchazejiNavstevy,
-    presleNavstevy,
-    upcomingNavstevy,
+    nezaplanovane,
+    prosle,
+    cekajici,
+    nevyfakturovane,
   ] = await Promise.all([
     prisma.zarizeni.count({ where: { orgId, aktivni: true } }),
     prisma.servisniKontrakt.count({ where: { orgId, aktivni: true } }),
-    prisma.servisniNavsteva.count({
-      where: { orgId, stav: 'PLANOVANA', planovanyTermin: { lte: thirtyDaysFromNow, gte: now } },
+    prisma.servisniZakazka.findMany({
+      where: { orgId, stav: 'NOVA' },
+      include: LIST_INCLUDE,
+      orderBy: { vytvoreno: 'desc' },
+      take: 8,
     }),
-    prisma.servisniNavsteva.count({
-      where: { orgId, stav: 'PLANOVANA', planovanyTermin: { lt: now } },
-    }),
-    prisma.servisniNavsteva.findMany({
-      where: {
-        orgId,
-        stav: { in: ['PLANOVANA', 'POTVRZENA'] },
-        planovanyTermin: { lte: thirtyDaysFromNow },
-      },
-      include: {
-        kontrakt: {
-          include: { klient: { select: { id: true, jmeno: true, prijmeni: true } } },
-        },
-        zarizeni: { select: { id: true, nazev: true, typ: true } },
-        technik: { select: { id: true, jmeno: true } },
-      },
+    prisma.servisniZakazka.findMany({
+      where: { orgId, stav: 'NAPLANOVANA', planovanyTermin: { lt: now } },
+      include: LIST_INCLUDE,
       orderBy: { planovanyTermin: 'asc' },
-      take: 20,
+      take: 8,
+    }),
+    prisma.servisniZakazka.findMany({
+      where: { orgId, stav: 'CEKA' },
+      include: LIST_INCLUDE,
+      orderBy: { vytvoreno: 'desc' },
+      take: 8,
+    }),
+    prisma.servisniZakazka.findMany({
+      where: { orgId, stav: 'DOKONCENA', vyfakturovano: false },
+      include: LIST_INCLUDE,
+      orderBy: { vytvoreno: 'desc' },
+      take: 8,
     }),
   ])
-
-  const serializedNavstevy = upcomingNavstevy.map(n => ({
-    ...n,
-    planovanyTermin: n.planovanyTermin.toISOString(),
-    skutecnyTermin: n.skutecnyTermin ? n.skutecnyTermin.toISOString() : null,
-    vytvoreno: n.vytvoreno.toISOString(),
-    nakladyCas: n.nakladyCas ? String(n.nakladyCas) : null,
-    nakladyMaterial: n.nakladyMaterial ? String(n.nakladyMaterial) : null,
-    kontrakt: n.kontrakt ? {
-      ...n.kontrakt,
-      cena: n.kontrakt.cena ? String(n.kontrakt.cena) : null,
-      zacatek: n.kontrakt.zacatek.toISOString(),
-      konec: n.kontrakt.konec ? n.kontrakt.konec.toISOString() : null,
-      vytvoreno: n.kontrakt.vytvoreno.toISOString(),
-    } : null,
-  }))
 
   return (
     <div className="space-y-4">
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 px-6 py-5">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Servisní přehled</h1>
-        <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">Správa zařízení, kontraktů a servisních návštěv</p>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Servisní nástěnka</h1>
+        <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">Co vyžaduje pozornost — zakázky podle stavu</p>
       </div>
       <ServisOverviewClient
-        stats={{ zarizeniCount, aktivniKontrakty, nadchazejiNavstevy, presleNavstevy }}
-        upcomingNavstevy={serializedNavstevy}
+        stats={{ zarizeniCount, aktivniKontrakty }}
+        nezaplanovane={nezaplanovane.map(serialize)}
+        prosle={prosle.map(serialize)}
+        cekajici={cekajici.map(serialize)}
+        nevyfakturovane={nevyfakturovane.map(serialize)}
       />
     </div>
   )

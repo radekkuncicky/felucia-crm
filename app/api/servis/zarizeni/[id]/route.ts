@@ -18,14 +18,14 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
       deal: { select: { id: true, kod: true, predmet: true } },
       servisniKontrakty: {
         include: {
-          servisniNavstevy: {
-            where: { stav: 'PLANOVANA' },
+          servisniZakazky: {
+            where: { stav: 'NAPLANOVANA' },
             orderBy: { planovanyTermin: 'asc' },
             take: 1,
           },
         },
       },
-      servisniNavstevy: {
+      servisniZakazky: {
         orderBy: { planovanyTermin: 'desc' },
         take: 10,
         include: { technik: { select: { id: true, jmeno: true } } },

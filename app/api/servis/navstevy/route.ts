@@ -1,102 +1,42 @@
+// DEPRECATED alias. Mobilní app felucia-tech volá /api/servis/navstevy a čeká
+// starý tvar (ServisStav, cisloNavstevy). Vrací proto data přes legacy shim.
+// Nové UI používá /api/servis/zakazky. AŽ se app přepíše, tento soubor SMAZAT.
+// TODO(servis-refactor): odstranit po nasazení nové app.
 import { getPlanLimits } from '@/lib/planLimits'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
+import { listServisniZakazky, createServisniZakazka } from '@/lib/servisZakazkaService'
+import { legacyStavToNew, toLegacyNavsteva } from '@/lib/servisLegacy'
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { orgId, plan } = session.user
-  const db = orgPrisma(orgId)
   if (!getPlanLimits(plan).hasServiceModule) return NextResponse.json({ error: 'Vyžadován plán Professional nebo Enterprise' }, { status: 403 })
 
   const { searchParams } = new URL(req.url)
-  const from = searchParams.get('from')
-  const to = searchParams.get('to')
-  const stav = searchParams.get('stav')
-
-  const navstevy = await db.servisniNavsteva.findMany({
-    where: {
-      orgId,
-      ...(from || to ? {
-        planovanyTermin: {
-          ...(from ? { gte: new Date(from) } : {}),
-          ...(to ? { lte: new Date(to) } : {}),
-        },
-      } : {}),
-      ...(stav ? { stav: stav as 'PLANOVANA' | 'POTVRZENA' | 'PROBIHA' | 'DOKONCENA' | 'ZRUSENA' | 'PRESLA' } : {}),
-    },
-    include: {
-      kontrakt: {
-        select: {
-          id: true,
-          nazev: true,
-          klient: { select: { id: true, jmeno: true, prijmeni: true } },
-        },
-      },
-      zarizeni: { select: { id: true, nazev: true, typ: true } },
-      technik: { select: { id: true, jmeno: true } },
-    },
-    orderBy: { planovanyTermin: 'asc' },
+  const stavParam = searchParams.get('stav')
+  const zakazky = await listServisniZakazky(orgId, {
+    from: searchParams.get('from'),
+    to: searchParams.get('to'),
+    stav: stavParam ? legacyStavToNew(stavParam) : null,
   })
-
-  return NextResponse.json(navstevy)
+  return NextResponse.json(zakazky.map(toLegacyNavsteva))
 }
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { orgId, plan } = session.user
-  const db = orgPrisma(orgId)
   if (!getPlanLimits(plan).hasServiceModule) return NextResponse.json({ error: 'Vyžadován plán Professional nebo Enterprise' }, { status: 403 })
 
   const body = await req.json()
-  const { planovanyTermin, technikId, poznamka, typ, zarizeniId, klientId, kontraktId } = body
+  // App nezakládá zakázky bez termínu - termín tu zůstává povinný kvůli kompatibilitě.
+  if (!body.planovanyTermin) return NextResponse.json({ error: 'planovanyTermin required' }, { status: 400 })
+  if (body.stav) body.stav = legacyStavToNew(body.stav) ?? undefined
 
-  if (!planovanyTermin) return NextResponse.json({ error: 'planovanyTermin required' }, { status: 400 })
-
-  // SECURITY FIX: Validate that the provided date is actually parseable
-  const parsedTermin = new Date(planovanyTermin)
-  if (isNaN(parsedTermin.getTime())) {
-    return NextResponse.json({ error: 'Neplatný formát data planovanyTermin' }, { status: 400 })
-  }
-
-  // SECURITY FIX: Verify all referenced IDs belong to this org to prevent cross-tenant IDOR
-  if (zarizeniId) {
-    const zarizeni = await db.zarizeni.findFirst({ where: { id: zarizeniId, orgId } })
-    if (!zarizeni) return NextResponse.json({ error: 'Zařízení nebylo nalezeno' }, { status: 400 })
-  }
-  if (klientId) {
-    const klient = await db.client.findFirst({ where: { id: klientId, orgId } })
-    if (!klient) return NextResponse.json({ error: 'Klient nebyl nalezen' }, { status: 400 })
-  }
-  if (kontraktId) {
-    const kontrakt = await db.servisniKontrakt.findFirst({ where: { id: kontraktId, orgId } })
-    if (!kontrakt) return NextResponse.json({ error: 'Kontrakt nebyl nalezen' }, { status: 400 })
-  }
-  if (technikId) {
-    const technik = await db.user.findFirst({ where: { id: technikId, orgId } })
-    if (!technik) return NextResponse.json({ error: 'Technik nebyl nalezen v této organizaci' }, { status: 400 })
-  }
-
-  const year = new Date().getFullYear().toString().slice(2)
-  const count = await db.servisniNavsteva.count({ where: { orgId } })
-  const cisloNavstevy = `SN-${year}-${String(count + 1).padStart(3, '0')}`
-
-  const navsteva = await db.servisniNavsteva.create({
-    data: {
-      orgId,
-      cisloNavstevy,
-      typ: typ || 'PLANOVANY_SERVIS',
-      planovanyTermin: parsedTermin,
-      technikId: technikId || null,
-      poznamka: poznamka || null,
-      kontraktId: kontraktId || null,
-      zarizeniId: zarizeniId || null,
-      klientId: klientId || null,
-    },
-  })
-
-  return NextResponse.json(navsteva, { status: 201 })
+  const res = await createServisniZakazka(orgId, body)
+  if (!res.ok) return NextResponse.json({ error: res.error }, { status: res.status })
+  return NextResponse.json(toLegacyNavsteva(res.data as never), { status: 201 })
 }

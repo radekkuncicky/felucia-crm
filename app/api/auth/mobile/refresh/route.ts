@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { jwtVerify, SignJWT, type JWTPayload } from 'jose'
 import { secret } from '@/lib/mobile-auth'
+import { prisma } from '@/lib/prisma'
 
 interface MobileTokenPayload extends JWTPayload {
   userId: string
@@ -27,6 +28,16 @@ export async function POST(req: Request) {
     payload = result.payload as MobileTokenPayload
   } catch {
     return NextResponse.json({ error: 'Token neplatný nebo expirovaný' }, { status: 401 })
+  }
+
+  // Ověř, že uživatel i org jsou stále aktivní — bez tohoto by deaktivovaný
+  // technik mohl donekonečna obnovovat token, protože JWT je self-contained.
+  const user = await prisma.user.findFirst({
+    where: { id: payload.userId, aktivni: true },
+    include: { organization: { select: { aktivni: true } } },
+  })
+  if (!user || !user.organization?.aktivni) {
+    return NextResponse.json({ error: 'Účet byl deaktivován' }, { status: 401 })
   }
 
   const exp = Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60 // 30 days

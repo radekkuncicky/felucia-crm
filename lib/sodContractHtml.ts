@@ -35,7 +35,15 @@ function textToHtml(text: string): string {
 
 /** Vrátí kompletní HTML dokument z uloženého textSmlouvy (HTML i prostý text). */
 export function renderSodContractHtml(textSmlouvy: string): string {
-  return textSmlouvy.trimStart().startsWith('<')
-    ? wrap(sanitizeFullDocumentHtml(textSmlouvy)) // i legacy data uložená před sanitizací
-    : textToHtml(textSmlouvy)
+  const trimmed = textSmlouvy.trimStart()
+  if (!trimmed.startsWith('<')) return textToHtml(textSmlouvy)
+
+  // Kompletní HTML dokument (šablona se svým vlastním <style>) — vrátit přímo,
+  // jinak by wrap() vnořil celý dokument do <body> a přebil by CSS.
+  if (/^<!doctype|^<html/i.test(trimmed)) {
+    return sanitizeFullDocumentHtml(textSmlouvy)
+  }
+
+  // HTML fragment (legacy šablony bez DOCTYPE/html tagu) — obalit standardním wrap.
+  return wrap(sanitizeFullDocumentHtml(textSmlouvy))
 }

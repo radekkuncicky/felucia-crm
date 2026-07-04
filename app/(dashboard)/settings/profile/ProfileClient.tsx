@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react'
 import { signOut } from 'next-auth/react'
-import Image from 'next/image'
+import AvatarCropModal from '@/components/AvatarCropModal'
 
 const roleLabels: Record<string, string> = {
   ADMIN: 'Administrátor', OBCHODNIK: 'Obchodník', TECHNIK: 'Technik',
@@ -46,6 +46,8 @@ export default function ProfileClient({ user: init }: { user: UserData }) {
   // Avatar
   const fileRef = useRef<HTMLInputElement>(null)
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
+  const [cropFile, setCropFile] = useState<File | null>(null)
+  const [avatarVersion, setAvatarVersion] = useState(Date.now())
 
   function showToast(msg: string, type: 'ok' | 'err') {
     setToast({ msg, type })
@@ -87,15 +89,19 @@ export default function ProfileClient({ user: init }: { user: UserData }) {
     } finally { setSavingPwd(false) }
   }
 
-  async function uploadAvatar(file: File) {
+  async function uploadAvatar(blob: Blob) {
     setUploadingAvatar(true)
+    setCropFile(null)
+    // Reset file input so the same file can be re-selected
+    if (fileRef.current) fileRef.current.value = ''
     try {
       const fd = new FormData()
-      fd.append('avatar', file)
+      fd.append('avatar', blob, 'avatar.jpg')
       const res = await fetch('/api/settings/profile/avatar', { method: 'POST', body: fd })
       const data = await res.json()
       if (!res.ok) { showToast(data.error || 'Chyba nahrávání', 'err'); return }
       setUser(u => ({ ...u, avatar: data.avatar }))
+      setAvatarVersion(Date.now())
       showToast('Avatar aktualizován', 'ok')
     } finally { setUploadingAvatar(false) }
   }
@@ -106,6 +112,13 @@ export default function ProfileClient({ user: init }: { user: UserData }) {
   return (
     <>
       {toast && <Toast msg={toast.msg} type={toast.type} />}
+      {cropFile && (
+        <AvatarCropModal
+          file={cropFile}
+          onClose={() => { setCropFile(null); if (fileRef.current) fileRef.current.value = '' }}
+          onSave={uploadAvatar}
+        />
+      )}
 
       {/* Avatar + info */}
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-6">
@@ -113,7 +126,8 @@ export default function ProfileClient({ user: init }: { user: UserData }) {
           <div className="relative flex-shrink-0">
             <div className="w-20 h-20 rounded-full overflow-hidden bg-primary flex items-center justify-center text-white text-2xl font-bold">
               {user.avatar ? (
-                <Image src={`${user.avatar}?v=${Date.now()}`} alt="Avatar" width={80} height={80} className="object-cover w-full h-full" />
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={`${user.avatar}?v=${avatarVersion}`} alt="Avatar" className="object-cover w-full h-full" />
               ) : (
                 <span>{initials}</span>
               )}
@@ -138,7 +152,7 @@ export default function ProfileClient({ user: init }: { user: UserData }) {
               type="file"
               accept="image/*"
               className="hidden"
-              onChange={e => e.target.files?.[0] && uploadAvatar(e.target.files[0])}
+              onChange={e => { if (e.target.files?.[0]) setCropFile(e.target.files[0]) }}
             />
           </div>
           <div>

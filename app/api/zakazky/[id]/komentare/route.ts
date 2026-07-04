@@ -12,7 +12,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   const db = orgPrisma(orgId)
   const isTechnik = session.user.role === 'TECHNIK'
 
-  if (isTechnik && !(await canTechnikAccessZakazka(session.user.id, params.id))) {
+  if (isTechnik && !(await canTechnikAccessZakazka(session.user.id, params.id, session.user.orgId))) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -36,7 +36,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const db = orgPrisma(orgId)
   const isTechnik = session.user.role === 'TECHNIK'
 
-  if (isTechnik && !(await canTechnikAccessZakazka(session.user.id, params.id))) {
+  if (isTechnik && !(await canTechnikAccessZakazka(session.user.id, params.id, session.user.orgId))) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 

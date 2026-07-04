@@ -3,9 +3,9 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { type ServisniZakazkaStav, stavLabel, stavColor, jeProsla } from '@/lib/servisStav'
 
 type ServisTyp = 'ROCNI' | 'POLOLETNI' | 'DVOULETNI' | 'JEDNOURAZOVY'
-type ServisStav = 'PLANOVANA' | 'POTVRZENA' | 'PROBIHA' | 'DOKONCENA' | 'ZRUSENA' | 'PRESLA'
 type NavstevaTyp = 'PLANOVANY_SERVIS' | 'PORUCHA' | 'ZARUCNI_OPRAVA' | 'POZARUCNI_OPRAVA' | 'UVEDENI_DO_PROVOZU' | 'KONTROLA'
 type ZarizeniTyp = 'TEPELNE_CERPADLO' | 'KLIMATIZACE' | 'REKUPERACE' | 'PODLAHOVE_VYTAPENI' | 'VZDUCHOTECHNIKA' | 'OHREV_TV' | 'JINE'
 
@@ -20,11 +20,11 @@ interface ZarizeniItem {
 
 interface Navsteva {
   id: string
-  cisloNavstevy: string | null
+  cislo: string | null
   typ: NavstevaTyp
   planovanyTermin: string
   skutecnyTermin: string | null
-  stav: ServisStav
+  stav: ServisniZakazkaStav
   zprava: string | null
   nalezeneZavady: string | null
   trvaniMinut: number | null
@@ -41,7 +41,7 @@ interface Kontrakt {
   konec: string | null
   aktivni: boolean
   zarizeni: ZarizeniItem | null
-  servisniNavstevy: Navsteva[]
+  servisniZakazky: Navsteva[]
 }
 
 interface OrgUser {
@@ -70,24 +70,6 @@ const navstevaTypLabels: Record<NavstevaTyp, string> = {
   POZARUCNI_OPRAVA: 'Pozáruční oprava',
   UVEDENI_DO_PROVOZU: 'Uvedení do provozu',
   KONTROLA: 'Kontrola',
-}
-
-const stavColors: Record<ServisStav, string> = {
-  PLANOVANA: 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300',
-  POTVRZENA: 'bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-300',
-  PROBIHA: 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300',
-  DOKONCENA: 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300',
-  ZRUSENA: 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300',
-  PRESLA: 'bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300',
-}
-
-const stavLabels: Record<ServisStav, string> = {
-  PLANOVANA: 'Plánovaná',
-  POTVRZENA: 'Potvrzená',
-  PROBIHA: 'Probíhá',
-  DOKONCENA: 'Dokončená',
-  ZRUSENA: 'Zrušená',
-  PRESLA: 'Prošlá',
 }
 
 function zarizeniTypLabel(typ: ZarizeniTyp) {
@@ -120,9 +102,9 @@ export default function ServisTab({ zarizeni, kontrakty, orgUsers }: Props) {
   const [saving, setSaving] = useState(false)
 
   const aktivniKontrakt = kontrakty.find(k => k.aktivni) ?? null
-  const vsechnyNavstevy = kontrakty.flatMap(k => k.servisniNavstevy)
+  const vsechnyNavstevy = kontrakty.flatMap(k => k.servisniZakazky)
   const pristiNavsteva = vsechnyNavstevy
-    .filter(n => n.stav === 'PLANOVANA' || n.stav === 'POTVRZENA')
+    .filter(n => n.stav === 'NAPLANOVANA')
     .sort((a, b) => new Date(a.planovanyTermin).getTime() - new Date(b.planovanyTermin).getTime())[0] ?? null
   const posledniNavstevy = [...vsechnyNavstevy]
     .filter(n => n.stav === 'DOKONCENA')
@@ -238,8 +220,8 @@ export default function ServisTab({ zarizeni, kontrakty, orgUsers }: Props) {
                   <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">Technik: {pristiNavsteva.technik.jmeno}</p>
                 )}
               </div>
-              <span className={`text-xs px-2 py-1 rounded-full font-medium ${stavColors[pristiNavsteva.stav]}`}>
-                {stavLabels[pristiNavsteva.stav]}
+              <span className={`text-xs px-2 py-1 rounded-full font-medium ${stavColor(pristiNavsteva.stav)}`}>
+                {stavLabel(pristiNavsteva.stav)}
               </span>
             </div>
           )}
@@ -349,27 +331,27 @@ export default function ServisTab({ zarizeni, kontrakty, orgUsers }: Props) {
             )}
 
             <div className="space-y-2">
-              {k.servisniNavstevy.length === 0 && (
+              {k.servisniZakazky.length === 0 && (
                 <p className="text-sm text-gray-500 dark:text-slate-400 py-2">Žádné návštěvy</p>
               )}
-              {k.servisniNavstevy
+              {k.servisniZakazky
                 .sort((a, b) => new Date(b.planovanyTermin).getTime() - new Date(a.planovanyTermin).getTime())
                 .slice(0, 8)
                 .map(n => (
                 <div key={n.id} className={`flex items-start justify-between p-3 rounded-lg border ${
                   n.stav === 'DOKONCENA' ? 'border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20' :
                   n.stav === 'ZRUSENA' ? 'border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20' :
-                  n.stav === 'PRESLA' ? 'border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-900/20' :
+                  jeProsla(n.stav, n.planovanyTermin) ? 'border-orange-200 dark:border-orange-800 bg-orange-50 dark:bg-orange-900/20' :
                   'border-gray-200 dark:border-slate-700'
                 }`}>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      {n.cisloNavstevy && <span className="font-mono text-xs text-gray-400 dark:text-slate-500">{n.cisloNavstevy}</span>}
+                      {n.cislo && <span className="font-mono text-xs text-gray-400 dark:text-slate-500">{n.cislo}</span>}
                       <span className="text-sm font-medium text-gray-900 dark:text-white">
                         {new Date(n.planovanyTermin).toLocaleDateString('cs-CZ')}
                       </span>
-                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${stavColors[n.stav]}`}>
-                        {stavLabels[n.stav]}
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${stavColor(n.stav)}`}>
+                        {stavLabel(n.stav)}
                       </span>
                       <span className="text-xs text-gray-500 dark:text-slate-400">{navstevaTypLabels[n.typ]}</span>
                       {n.technik && <span className="text-xs text-gray-500 dark:text-slate-400">· {n.technik.jmeno}</span>}

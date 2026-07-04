@@ -37,3 +37,6 @@ yarn-error.log*
 next-env.d.ts
 
 /app/generated/prisma
+
+# tenant runtime uploads (avatary, loga, přílohy)
+/public/uploads

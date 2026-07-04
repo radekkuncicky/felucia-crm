@@ -1,4 +1,5 @@
 import { prisma } from './prisma'
+import { orgPrisma } from './orgPrisma'
 
 export async function generatePredavakCislo(orgId: string): Promise<string> {
   const year = new Date().getFullYear().toString().slice(2)
@@ -24,10 +25,12 @@ export async function generateVyuctovaniCislo(orgId: string): Promise<string> {
 
 export async function canTechnikAccessZakazka(
   technikId: string,
-  zakazkaId: string
+  zakazkaId: string,
+  orgId: string,
 ): Promise<boolean> {
-  const rel = await prisma.technikZakazka.findFirst({
-    where: { technikId, zakazkaId },
+  const db = orgPrisma(orgId)
+  const rel = await db.technikZakazka.findFirst({
+    where: { technikId, zakazkaId, zakazka: { orgId } },
   })
   return !!rel
 }

@@ -3,7 +3,10 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
+import { toLegacyNavsteva } from '@/lib/servisLegacy'
 
+// Čte mobilní app. Vrací starý tvar (stav PLANOVANA, cisloNavstevy) přes legacy shim.
+// TODO(servis-refactor): po úpravě app vracet nový tvar a shim sundat.
 export async function GET() {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -13,10 +16,10 @@ export async function GET() {
 
   const thirtyDaysFromNow = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
 
-  const navstevy = await db.servisniNavsteva.findMany({
+  const navstevy = await db.servisniZakazka.findMany({
     where: {
       orgId,
-      stav: 'PLANOVANA',
+      stav: 'NAPLANOVANA',
       planovanyTermin: { lte: thirtyDaysFromNow },
     },
     include: {
@@ -28,5 +31,5 @@ export async function GET() {
     orderBy: { planovanyTermin: 'asc' },
   })
 
-  return NextResponse.json(navstevy)
+  return NextResponse.json(navstevy.map(toLegacyNavsteva))
 }

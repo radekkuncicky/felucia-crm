@@ -8,14 +8,14 @@ export async function generateSodCislo(orgId: string): Promise<string> {
 
 export function predmetDilaByTechnologie(technologie: string): string {
   const map: Record<string, string> = {
-    KLIMA: 'Realizace klimatizace',
-    TEPELNE_CERPADLO: 'Realizace tepelného čerpadla',
-    REKUPERACE: 'Realizace rekuperace vzduchu',
-    VZDUCHOTECHNIKA: 'Realizace vzduchotechniky',
-    PODLAHOVE_TOPENI: 'Realizace podlahového vytápění',
-    JINE: 'Realizace díla',
+    KLIMA: 'Dodávka a montáž klimatizace',
+    TEPELNE_CERPADLO: 'Dodávka a montáž tepelného čerpadla',
+    REKUPERACE: 'Dodávka a montáž rekuperace vzduchu',
+    VZDUCHOTECHNIKA: 'Dodávka a montáž vzduchotechniky',
+    PODLAHOVE_TOPENI: 'Dodávka a montáž podlahového vytápění',
+    JINE: 'Dodávka a montáž díla',
   }
-  return map[technologie] ?? 'Realizace díla'
+  return map[technologie] ?? 'Dodávka a montáž díla'
 }
 
 export function kategorieByTechnologie(technologie: string): string {

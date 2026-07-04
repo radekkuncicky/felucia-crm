@@ -1,6 +1,7 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
+import { generateQuoteKod } from '@/lib/quoteKod'
 import { NextResponse } from 'next/server'
 
 export async function GET(req: Request) {
@@ -46,9 +47,8 @@ export async function POST(req: Request) {
   const deal = await db.deal.findFirst({ where: { id: dealId, orgId } })
   if (!deal) return NextResponse.json({ error: 'Deal not found' }, { status: 404 })
 
-  // Počet existujících nabídek pro kód
-  const count = await db.quote.count({ where: { dealId } })
-  const kod = `NAB-${String(count + 1).padStart(2, '0')}`
+  // Kód nabídky per org s rokem (NAB-YY-NNNN) — sjednoceno s /api/deals/[id]/quotes
+  const kod = await generateQuoteKod(orgId)
 
   // Fetch products for items missing jednotka — use product's jednotka as fallback
   const missingUnitProductIds = Array.from(new Set<string>(

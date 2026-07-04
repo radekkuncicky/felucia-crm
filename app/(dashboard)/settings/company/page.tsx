@@ -28,6 +28,7 @@ export default async function CompanySettingsPage() {
         email: org.email ?? '',
         web: org.web ?? '',
         logo: org.logo ?? '',
+        logoBw: org.logoBw ?? '',
       }} />
     </div>
   )

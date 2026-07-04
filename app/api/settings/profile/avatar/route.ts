@@ -20,7 +20,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Povoleny jsou pouze obrázky' }, { status: 400 })
   }
 
-  const ext = file.name.split('.').pop()?.toLowerCase() ?? 'jpg'
+  const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg'
   const filename = `${session.user.id}.${ext}`
   const dest = path.join(process.cwd(), 'public', 'uploads', 'avatars', filename)
 

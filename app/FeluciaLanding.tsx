@@ -113,12 +113,12 @@ function Navbar({ isDark }: { isDark: boolean }) {
 
         {/* Desktop CTAs */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }} className="hidden md:flex">
-          <Link href="/auth/signin" style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, fontWeight: 500, padding: '8px 16px', borderRadius: 10, border: '1px solid #4CAF50', color: '#4CAF50', textDecoration: 'none' }}>
+          <Link href="/auth/signin" style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, fontWeight: 500, padding: '8px 16px', borderRadius: 10, border: `1px solid ${isDark ? 'rgba(76,175,80,0.4)' : '#C8E6C9'}`, color: isDark ? '#7AAD7A' : '#4A6B4A', textDecoration: 'none' }}>
             Přihlásit se
           </Link>
-          <Link href="/auth/register" style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, fontWeight: 600, padding: '8px 18px', borderRadius: 10, background: '#4CAF50', color: 'white', textDecoration: 'none' }}>
-            Začít zdarma
-          </Link>
+          <a href="#beta" style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, fontWeight: 600, padding: '8px 18px', borderRadius: 10, background: '#4CAF50', color: 'white', textDecoration: 'none' }}>
+            Získat přístup
+          </a>
         </div>
 
         {/* Hamburger */}
@@ -147,10 +147,10 @@ function Navbar({ isDark }: { isDark: boolean }) {
                 style={{ flex: 1, textAlign: 'center', fontFamily: 'Inter, sans-serif', fontSize: 14, fontWeight: 500, padding: '10px 0', borderRadius: 10, border: '1px solid #4CAF50', color: '#4CAF50', textDecoration: 'none' }}>
                 Přihlásit se
               </Link>
-              <Link href="/auth/register" onClick={() => setMenuOpen(false)}
+              <a href="#beta" onClick={() => setMenuOpen(false)}
                 style={{ flex: 1, textAlign: 'center', fontFamily: 'Inter, sans-serif', fontSize: 14, fontWeight: 600, padding: '10px 0', borderRadius: 10, background: '#4CAF50', color: 'white', textDecoration: 'none' }}>
-                Začít zdarma
-              </Link>
+                Získat přístup
+              </a>
             </div>
           </div>
         </div>
@@ -180,8 +180,9 @@ function Hero({ isDark }: { isDark: boolean }) {
       <div style={{ position: 'relative', maxWidth: 1152, margin: '0 auto', padding: '0 24px', textAlign: 'center' }}>
         {/* Badge */}
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
-          <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 600, padding: '8px 16px', borderRadius: 999, background: isDark ? 'rgba(76,175,80,0.08)' : '#E8F5E9', border: `1px solid ${isDark ? 'rgba(76,175,80,0.25)' : '#C8E6C9'}`, color: '#4CAF50', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            ✦ CRM pro HVAC profesionály
+          <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 600, padding: '8px 16px', borderRadius: 999, background: isDark ? 'rgba(76,175,80,0.12)' : '#E8F5E9', border: `1px solid ${isDark ? 'rgba(76,175,80,0.35)' : '#A5D6A7'}`, color: '#4CAF50', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: '#4CAF50', boxShadow: '0 0 6px #4CAF50' }}/>
+            Spouštíme brzy · Přijímáme první testery
           </span>
         </div>
 
@@ -192,22 +193,22 @@ function Hero({ isDark }: { isDark: boolean }) {
           <span style={{ color: isDark ? '#C8A97A' : '#A0845C' }}>byznysem.</span>
         </h1>
 
-        <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 18, color: isDark ? '#7AAD7A' : '#4A6B4A', maxWidth: 520, margin: '0 auto 40px', lineHeight: 1.6 }}>
-          Specializovaný CRM pro HVAC firmy. Spravujte zakázky, nabídky a servis na jednom místě — s AI asistentkou Dášou.
+        <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 18, color: isDark ? '#7AAD7A' : '#4A6B4A', maxWidth: 540, margin: '0 auto 40px', lineHeight: 1.6 }}>
+          Specializovaný CRM pro HVAC firmy — zakázky, nabídky, servis a AI asistentka Dáša na jednom místě. Hledáme první testery, kteří nám pomůžou produkt vyladit.
         </p>
 
         {/* CTAs */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center', marginBottom: 28 }}>
-          <Link href="/auth/register" style={{ fontFamily: 'Inter, sans-serif', fontSize: 16, fontWeight: 600, padding: '14px 28px', borderRadius: 12, background: '#4CAF50', color: 'white', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            Vyzkoušet 14 dní →
-          </Link>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center', marginBottom: 20 }}>
+          <a href="#beta" style={{ fontFamily: 'Inter, sans-serif', fontSize: 16, fontWeight: 600, padding: '14px 28px', borderRadius: 12, background: '#4CAF50', color: 'white', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 8, boxShadow: '0 4px 20px rgba(76,175,80,0.4)' }}>
+            Chci být tester →
+          </a>
           <a href="#demo" style={{ fontFamily: 'Inter, sans-serif', fontSize: 16, fontWeight: 500, padding: '14px 28px', borderRadius: 12, border: `1px solid ${isDark ? 'rgba(76,175,80,0.3)' : '#C8E6C9'}`, color: isDark ? '#7AAD7A' : '#4A6B4A', background: 'transparent', cursor: 'pointer', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
             Zájem o demo
           </a>
         </div>
 
-        <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: isDark ? '#4A6B4A' : '#6B8F6B' }}>
-          14 dní zdarma · Bez závazků · Průvodce nastavením
+        <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: isDark ? '#4A6B4A' : '#6B8F6B', fontWeight: 500 }}>
+          Prvních 50 testerů dostane Professional plán <span style={{ color: '#4CAF50', fontWeight: 600 }}>zdarma na celý rok</span>
         </p>
       </div>
     </section>
@@ -272,6 +273,133 @@ function Features({ isDark }: { isDark: boolean }) {
               <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, lineHeight: 1.6, color: isDark ? '#6B8F6B' : '#4A6B4A' }}>{f.desc}</p>
             </div>
           ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// ─── Early Access ─────────────────────────────────────────────────────────────
+
+function EarlyAccess({ isDark }: { isDark: boolean }) {
+  const [form, setForm] = useState({ jmeno: '', email: '', firma: '', telefon: '' })
+  const [status, setStatus] = useState<'idle' | 'sending' | 'ok' | 'err'>('idle')
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setStatus('sending')
+    try {
+      const zprava = `ŽÁDOST O BETA PŘÍSTUP\n\nFirma: ${form.firma || 'neuvedena'}\nTelefon: ${form.telefon || 'neuvedeno'}\n\nChci být jedním z prvních testerů Felucia CRM a získat Professional plán zdarma na rok.`
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jmeno: form.jmeno, email: form.email, zprava }),
+      })
+      setStatus(res.ok ? 'ok' : 'err')
+    } catch { setStatus('err') }
+  }
+
+  const bg = isDark ? '#0A120A' : '#F4FAF4'
+  const cardBg = isDark ? '#0D1A0E' : 'white'
+  const heading = isDark ? '#E8F5E9' : '#1A2E1B'
+  const sub = isDark ? '#7AAD7A' : '#4A6B4A'
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '11px 14px', borderRadius: 10,
+    border: `1px solid ${isDark ? 'rgba(76,175,80,0.2)' : '#C8E6C9'}`,
+    background: isDark ? 'rgba(76,175,80,0.04)' : '#F4FAF4',
+    color: isDark ? '#E8F5E9' : '#1A2E1B',
+    fontFamily: 'Inter, sans-serif', fontSize: 14, outline: 'none', boxSizing: 'border-box',
+  }
+
+  return (
+    <section id="beta" style={{ padding: '96px 0', background: bg, borderTop: `1px solid ${isDark ? 'rgba(76,175,80,0.1)' : '#E8F5E9'}` }}>
+      <div style={{ maxWidth: 860, margin: '0 auto', padding: '0 24px' }}>
+        {/* Header */}
+        <div style={{ textAlign: 'center', marginBottom: 48 }}>
+          <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 600, padding: '6px 14px', borderRadius: 999, background: isDark ? 'rgba(76,175,80,0.12)' : '#E8F5E9', border: `1px solid ${isDark ? 'rgba(76,175,80,0.3)' : '#A5D6A7'}`, color: '#4CAF50', display: 'inline-block', marginBottom: 20 }}>
+            ✦ Uzavřená beta · Limitovaná místa
+          </span>
+          <h2 style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 'clamp(28px,4vw,44px)', fontWeight: 700, color: heading, letterSpacing: '-0.02em', lineHeight: 1.2, marginBottom: 16 }}>
+            Staňte se prvním testerem.<br/>
+            <span style={{ color: '#4CAF50' }}>Celý rok Professional zdarma.</span>
+          </h2>
+          <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 16, color: sub, maxWidth: 520, margin: '0 auto', lineHeight: 1.7 }}>
+            Hledáme HVAC firmy, které chtějí pomoci vyladit Felucii do finální podoby. Výměnou za zpětnou vazbu dostanete plný přístup ke všemu — včetně servisního modulu a AI Dáši — na 12 měsíců zdarma.
+          </p>
+        </div>
+
+        {/* Perks */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 48 }}>
+          {[
+            { icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z', title: 'Professional plán', desc: '12 měsíců zdarma — servis, AI Dáša, white-label, vše.' },
+            { icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z', title: 'Přímý kontakt', desc: 'Váš feedback jde přímo k nám. Tvoříme produkt spolu.' },
+            { icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z', title: 'Jen 50 míst', desc: 'Uzavřená skupina — žádné čekání, prioritní onboarding.' },
+          ].map((p, i) => (
+            <div key={i} style={{ borderRadius: 16, padding: '20px 22px', background: cardBg, border: `1px solid ${isDark ? 'rgba(76,175,80,0.12)' : '#E0EBE0'}`, display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+              <div style={{ width: 38, height: 38, borderRadius: 10, background: isDark ? 'rgba(76,175,80,0.12)' : '#E8F5E9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <svg width="18" height="18" fill="none" stroke="#4CAF50" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d={p.icon}/>
+                </svg>
+              </div>
+              <div>
+                <p style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 600, color: heading, marginBottom: 4 }}>{p.title}</p>
+                <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 12.5, color: sub, lineHeight: 1.5 }}>{p.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Form */}
+        <div style={{ borderRadius: 20, padding: '36px', background: cardBg, border: `1.5px solid ${isDark ? 'rgba(76,175,80,0.25)' : '#A5D6A7'}`, boxShadow: isDark ? '0 20px 60px rgba(0,0,0,0.5)' : '0 8px 40px rgba(76,175,80,0.1)' }}>
+          {status === 'ok' ? (
+            <div style={{ textAlign: 'center', padding: '32px 0' }}>
+              <div style={{ width: 56, height: 56, borderRadius: '50%', background: isDark ? 'rgba(76,175,80,0.15)' : '#E8F5E9', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+                <svg width="28" height="28" fill="none" stroke="#4CAF50" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7"/>
+                </svg>
+              </div>
+              <p style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 20, fontWeight: 700, color: '#4CAF50', marginBottom: 8 }}>Žádost přijata!</p>
+              <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, color: sub, lineHeight: 1.6 }}>
+                Ozveme se vám do 24 hodin s přihlašovacími údaji a průvodcem onboardingem.<br/>Jsme moc rádi, že s námi jdete od začátku.
+              </p>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit}>
+              <p style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 16, fontWeight: 600, color: heading, marginBottom: 24 }}>Požádat o beta přístup</p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, marginBottom: 14 }}>
+                <div>
+                  <label style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 500, color: sub, marginBottom: 6 }}>Jméno a příjmení *</label>
+                  <input required type="text" placeholder="Jan Novák" value={form.jmeno}
+                    onChange={e => setForm(f => ({ ...f, jmeno: e.target.value }))} style={inputStyle}/>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 500, color: sub, marginBottom: 6 }}>Email *</label>
+                  <input required type="email" placeholder="jan@vasefirma.cz" value={form.email}
+                    onChange={e => setForm(f => ({ ...f, email: e.target.value }))} style={inputStyle}/>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 500, color: sub, marginBottom: 6 }}>Název firmy</label>
+                  <input type="text" placeholder="HVAC s.r.o." value={form.firma}
+                    onChange={e => setForm(f => ({ ...f, firma: e.target.value }))} style={inputStyle}/>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 500, color: sub, marginBottom: 6 }}>Telefon</label>
+                  <input type="tel" placeholder="+420 777 000 000" value={form.telefon}
+                    onChange={e => setForm(f => ({ ...f, telefon: e.target.value }))} style={inputStyle}/>
+                </div>
+              </div>
+              {status === 'err' && <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: '#ef4444', marginBottom: 12 }}>Chyba při odesílání. Zkuste to prosím znovu.</p>}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+                <button type="submit" disabled={status === 'sending'}
+                  style={{ padding: '13px 32px', borderRadius: 12, background: '#4CAF50', color: 'white', fontFamily: 'Inter, sans-serif', fontSize: 15, fontWeight: 600, border: 'none', cursor: 'pointer', opacity: status === 'sending' ? 0.7 : 1, boxShadow: '0 4px 16px rgba(76,175,80,0.35)' }}>
+                  {status === 'sending' ? 'Odesílám…' : 'Chci být tester →'}
+                </button>
+                <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: isDark ? '#4A6B4A' : '#6B8F6B' }}>
+                  Žádná platební karta · Ozveme se do 24 hodin
+                </p>
+              </div>
+            </form>
+          )}
         </div>
       </div>
     </section>
@@ -625,7 +753,7 @@ const PLANS = [
     name: 'STANDARD', price: '1 490',
     badge: { label: 'STANDARD', color: '#4CAF50', bg: 'rgba(76,175,80,0.12)' },
     features: ['2–5 uživatelů', 'Neomezené zakázky', 'Všechny šablony + editace', 'AI Dáša (500/měsíc)', 'Ceníky a analytiky'],
-    cta: 'Vyzkoušet Standard', ctaStyle: 'filled', featured: true, pop: 'NEJOBLÍBENĚJŠÍ',
+    cta: 'Vyzkoušet Standard', ctaStyle: 'filled', featured: false,
   },
   {
     name: 'PROFESSIONAL', price: '2 490',
@@ -702,7 +830,7 @@ function Pricing({ isDark }: { isDark: boolean }) {
                   {plan.cta}
                 </a>
               ) : (
-                <Link href="/auth/register" style={{
+                <a href="#beta" style={{
                   display: 'block', textAlign: 'center', fontFamily: 'Inter, sans-serif', fontSize: 14, fontWeight: 600, padding: '12px 0', borderRadius: 12, textDecoration: 'none',
                   ...(plan.ctaStyle === 'filled'
                     ? { background: '#4CAF50', color: 'white' }
@@ -710,8 +838,8 @@ function Pricing({ isDark }: { isDark: boolean }) {
                     ? { background: isDark ? '#1A2E1B' : '#1565C0', color: 'white' }
                     : { border: `1px solid ${isDark ? 'rgba(76,175,80,0.3)' : '#C8E6C9'}`, color: isDark ? '#7AAD7A' : '#4A6B4A' }),
                 }}>
-                  {plan.cta}
-                </Link>
+                  Získat beta přístup
+                </a>
               )}
             </div>
           ))}
@@ -768,87 +896,6 @@ function FAQ({ isDark }: { isDark: boolean }) {
   )
 }
 
-// ─── Contact ──────────────────────────────────────────────────────────────────
-
-function Contact({ isDark }: { isDark: boolean }) {
-  const [form, setForm] = useState({ jmeno: '', email: '', zprava: '' })
-  const [status, setStatus] = useState<'idle' | 'sending' | 'ok' | 'err'>('idle')
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setStatus('sending')
-    try {
-      const res = await fetch('/api/contact', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(form) })
-      setStatus(res.ok ? 'ok' : 'err')
-    } catch { setStatus('err') }
-  }
-
-  const inputStyle: React.CSSProperties = {
-    width: '100%',
-    padding: '10px 14px',
-    borderRadius: 10,
-    border: `1px solid ${isDark ? 'rgba(76,175,80,0.2)' : '#C8E6C9'}`,
-    background: isDark ? 'rgba(76,175,80,0.04)' : '#F4FAF4',
-    color: isDark ? '#E8F5E9' : '#1A2E1B',
-    fontFamily: 'Inter, sans-serif',
-    fontSize: 14,
-    outline: 'none',
-    boxSizing: 'border-box',
-  }
-
-  return (
-    <section style={{ position: 'relative', overflow: 'hidden', padding: '96px 0', background: isDark ? '#0A120A' : '#F9FBF9', borderTop: `1px solid ${isDark ? 'rgba(76,175,80,0.1)' : '#E8F5E9'}` }}>
-      <div style={{ position: 'absolute', right: -20, bottom: 0, pointerEvents: 'none', opacity: isDark ? 0.08 : 0.06 }}>
-        <TreeSvg color={isDark ? '#81C784' : '#2E7D32'} />
-      </div>
-      <div style={{ position: 'relative', maxWidth: 640, margin: '0 auto', padding: '0 24px' }}>
-        <div style={{ textAlign: 'center', marginBottom: 40 }}>
-          <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 600, color: '#4CAF50', marginBottom: 12 }}>✦ Kontakt</p>
-          <h2 style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 'clamp(26px,3.5vw,36px)', fontWeight: 700, color: isDark ? '#E8F5E9' : '#1A2E1B', letterSpacing: '-0.02em' }}>
-            Máte otázku?
-          </h2>
-          <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, color: isDark ? '#6B8F6B' : '#4A6B4A', marginTop: 10 }}>
-            Napište nám — odpovídáme do 24 hodin v pracovní dny.
-          </p>
-        </div>
-
-        {status === 'ok' ? (
-          <div style={{ textAlign: 'center', padding: '48px 0', borderRadius: 20, background: isDark ? '#0D1A0E' : '#E8F5E9', border: `1px solid ${isDark ? 'rgba(76,175,80,0.2)' : '#C8E6C9'}` }}>
-            <p style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 18, fontWeight: 600, color: '#4CAF50' }}>✓ Zpráva odeslána</p>
-            <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: isDark ? '#6B8F6B' : '#4A6B4A', marginTop: 8 }}>Brzy se ozveme.</p>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} style={{ borderRadius: 20, padding: '28px 24px', background: isDark ? '#0D1A0E' : 'white', border: `0.5px solid ${isDark ? 'rgba(76,175,80,0.15)' : '#E0EBE0'}`, display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-              {[['Jméno', 'jmeno', 'text', 'Jan Novák'], ['Email', 'email', 'email', 'jan@firma.cz']].map(([label, key, type, ph]) => (
-                <div key={key}>
-                  <label style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 500, color: isDark ? '#A5C8A5' : '#4A6B4A', marginBottom: 6 }}>{label}</label>
-                  <input type={type} required placeholder={ph} value={(form as Record<string,string>)[key]}
-                    onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
-                    style={inputStyle}
-                  />
-                </div>
-              ))}
-            </div>
-            <div>
-              <label style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 500, color: isDark ? '#A5C8A5' : '#4A6B4A', marginBottom: 6 }}>Zpráva</label>
-              <textarea required rows={4} placeholder="Váš dotaz..." value={form.zprava}
-                onChange={e => setForm(f => ({ ...f, zprava: e.target.value }))}
-                style={{ ...inputStyle, resize: 'none' }}
-              />
-            </div>
-            {status === 'err' && <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: '#ef4444' }}>Chyba při odesílání. Zkuste to prosím znovu.</p>}
-            <button type="submit" disabled={status === 'sending'}
-              style={{ padding: '12px 0', borderRadius: 12, background: '#4CAF50', color: 'white', fontFamily: 'Inter, sans-serif', fontSize: 14, fontWeight: 600, border: 'none', cursor: 'pointer', opacity: status === 'sending' ? 0.7 : 1 }}>
-              {status === 'sending' ? 'Odesílám…' : 'Odeslat zprávu'}
-            </button>
-          </form>
-        )}
-      </div>
-    </section>
-  )
-}
-
 // ─── Footer ───────────────────────────────────────────────────────────────────
 
 function Footer({ isDark }: { isDark: boolean }) {
@@ -868,7 +915,7 @@ function Footer({ isDark }: { isDark: boolean }) {
           </div>
           {[
             { title: 'Produkt', links: [['#funkce','Funkce'],['#ceny','Ceny'],['#faq','FAQ']] },
-            { title: 'Účet', links: [['/auth/register','Registrace'],['/auth/signin','Přihlásit se']] },
+            { title: 'Účet', links: [['#beta','Beta přístup'],['/auth/signin','Přihlásit se']] },
             { title: 'Společnost', links: [['/terms','Podmínky'],['/privacy','Soukromí']] },
           ].map(col => (
             <div key={col.title}>
@@ -912,12 +959,12 @@ export default function FeluciaLanding() {
       <Navbar isDark={isDark} />
       <Hero isDark={isDark} />
       <Marquee isDark={isDark} />
+      <EarlyAccess isDark={isDark} />
       <DemoSection isDark={isDark} />
       <Features isDark={isDark} />
       <DasaSection isDark={isDark} />
       <Pricing isDark={isDark} />
       <FAQ isDark={isDark} />
-      <Contact isDark={isDark} />
       <Footer isDark={isDark} />
     </div>
   )

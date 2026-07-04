@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
 import { Technologie } from '@prisma/client'
 import DeleteTemplateButton from './DeleteTemplateButton'
+import DuplicateTemplateButton from './DuplicateTemplateButton'
 
 const techLabels: Record<Technologie, string> = {
   KLIMA: 'Klimatizace', TEPELNE_CERPADLO: 'Tepelné čerpadlo', REKUPERACE: 'Rekuperace',
@@ -83,6 +84,7 @@ export default async function QuoteTemplatesPage() {
                       <Link href={`/quote-templates/${tpl.id}`} className="text-sm text-blue-600 hover:text-blue-800 font-medium">
                         Upravit
                       </Link>
+                      <DuplicateTemplateButton id={tpl.id} />
                       <DeleteTemplateButton id={tpl.id} />
                     </div>
                   </td>

@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server'
 import { orgPrisma } from '@/lib/orgPrisma'
-import { getMobileOrWebSession, requireTechnikOrAdmin, klientAdresa } from '@/lib/mobile-helpers'
+import { getMobileOrWebSession, requireTechnikOrAdmin, klientAdresa, toAbsoluteUrl } from '@/lib/mobile-helpers'
 import type { ZakazkaStav } from '@prisma/client'
 
 export async function GET(req: Request) {
+  const host = req.headers.get('host') ?? ''
+  const proto = req.headers.get('x-forwarded-proto') ?? 'https'
+  const origin = host ? `${proto}://${host}` : new URL(req.url).origin
+
   const session = await getMobileOrWebSession(req)
   const authErr = requireTechnikOrAdmin(session)
   if (authErr) return authErr
@@ -50,6 +54,7 @@ export async function GET(req: Request) {
     montazDo: z.montazDo,
     adresa: klientAdresa(z.klient),
     mistoStavby: z.mistoStavby ?? null,
+    titulniFotoUrl: toAbsoluteUrl(z.titulniFotoUrl, origin),
     klient: {
       jmeno: z.klient.jmeno,
       prijmeni: z.klient.prijmeni,

@@ -21,6 +21,7 @@ export async function PATCH(req: Request) {
       email: body.email || null,
       web: body.web || null,
       logo: body.logo || null,
+      logoBw: body.logoBw || null,
     },
   })
   return NextResponse.json(updated)

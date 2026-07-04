@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 
+// Čte mobilní app. Vrací jen počty, takže shim stavů netřeba (filtry už nové).
+// TODO(servis-refactor): zkontrolovat při úpravě app.
 export async function GET() {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -23,13 +25,13 @@ export async function GET() {
   ] = await Promise.all([
     db.zarizeni.count({ where: { orgId, aktivni: true } }),
     db.servisniKontrakt.count({ where: { orgId, aktivni: true } }),
-    db.servisniNavsteva.count({
-      where: { orgId, stav: 'PLANOVANA', planovanyTermin: { lte: thirtyDaysFromNow, gte: now } },
+    db.servisniZakazka.count({
+      where: { orgId, stav: 'NAPLANOVANA', planovanyTermin: { lte: thirtyDaysFromNow, gte: now } },
     }),
-    db.servisniNavsteva.count({
-      where: { orgId, stav: 'PLANOVANA', planovanyTermin: { lt: now } },
+    db.servisniZakazka.count({
+      where: { orgId, stav: 'NAPLANOVANA', planovanyTermin: { lt: now } },
     }),
-    db.servisniNavsteva.count({
+    db.servisniZakazka.count({
       where: { orgId, stav: 'DOKONCENA' },
     }),
   ])

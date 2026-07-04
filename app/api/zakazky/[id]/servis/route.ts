@@ -4,6 +4,8 @@ import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { getPlanLimits } from '@/lib/planLimits'
 import { SignJWT } from 'jose'
+import { prisma } from '@/lib/prisma'
+import { nextServisniZakazkaCislo } from '@/lib/servisniZakazkaCislo'
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
@@ -93,7 +95,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       zarizeniId: finalZarizeniId,
       klientId: zakazka.klientId,
       cisloKontraktu,
-      nazev: `Servis — ${zakazka.nazev}`,
+      nazev: `Servis - ${zakazka.nazev}`,
       typ: typKontraktu ?? 'JEDNOURAZOVY',
       intervalMesicu,
       zacatek: new Date(),
@@ -101,22 +103,21 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     },
   })
 
-  // Get next visit number
-  const navstevaCount = await db.servisniNavsteva.count({ where: { kontrakt: { zarizeni: { orgId } } } })
-  const cisloNavstevy = `SN-${String(navstevaCount + 1).padStart(4, '0')}`
-
-  // Create first planned visit
-  const navsteva = await db.servisniNavsteva.create({
-    data: {
-      orgId,
-      kontraktId: kontrakt.id,
-      zarizeniId: finalZarizeniId,
-      klientId: zakazka.klientId,
-      cisloNavstevy,
-      typ: 'PLANOVANY_SERVIS',
-      planovanyTermin: new Date(pristiServis),
-      stav: 'PLANOVANA',
-    },
+  // První naplánovaná zakázka - číslo + insert v jedné transakci (bezpečné při souběhu)
+  const navsteva = await prisma.$transaction(async (tx) => {
+    const cislo = await nextServisniZakazkaCislo(tx, orgId)
+    return tx.servisniZakazka.create({
+      data: {
+        orgId,
+        kontraktId: kontrakt.id,
+        zarizeniId: finalZarizeniId,
+        klientId: zakazka.klientId,
+        cislo,
+        typ: 'PLANOVANY_SERVIS',
+        planovanyTermin: new Date(pristiServis),
+        stav: 'NAPLANOVANA',
+      },
+    })
   })
 
   return NextResponse.json({

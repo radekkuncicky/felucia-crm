@@ -22,6 +22,10 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     },
   })
   if (!predavak) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  // Idempotent: už schválený protokol → úspěch bez no-op (poražený v souběhu dvou kliků sem spadne)
+  if (predavak.stav === 'SCHVALEN') {
+    return NextResponse.json({ ok: true, alreadyApproved: true })
+  }
   if (predavak.stav !== 'PODPISAN') {
     return NextResponse.json({ error: 'Protokol musí být podepsán před schválením' }, { status: 422 })
   }
@@ -29,16 +33,24 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const zahrnutePolozky = predavak.polozky.filter(p => p.zahrnuto)
   const vyuctovaniCislo = await generateVyuctovaniCislo(orgId)
 
+  let raced = false
+  let vyuctovaniId: string | null = null
+
   await db.$transaction(async tx => {
-    // Approve predavak
-    await tx.predavak.update({
-      where: { id: params.id },
+    // Concurrency guard: jen request, který skutečně překlopí PODPISAN→SCHVALEN, pokračuje.
+    // Druhý souběžný request dostane count===0 a transakci přeskočí (žádné dvojí vyúčtování / dvojí výdej).
+    const flip = await tx.predavak.updateMany({
+      where: { id: params.id, stav: 'PODPISAN' },
       data: {
         stav: 'SCHVALEN',
         schvaleno: new Date(),
         schvalenoId: session.user.id,
       },
     })
+    if (flip.count !== 1) {
+      raced = true
+      return
+    }
 
     // Process warehouse movements for each included item
     for (const polozka of zahrnutePolozky) {
@@ -71,7 +83,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     }
 
     // Create Vyuctovani with items
-    const vyuctovani = await tx.vyuctovani.create({
+    const vyuctovani: { id: string } = await tx.vyuctovani.create({
       data: {
         orgId,
         zakazkaId: predavak.zakazkaId,
@@ -91,32 +103,9 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       },
     })
 
-    // Notify vedouci about vyuctovani
-    const vedouciId = predavak.zakazka.vedouciId
-    if (vedouciId) {
-      await tx.notification.create({
-        data: {
-          orgId,
-          userId: vedouciId,
-          typ: 'VYUCTOVANI_PRIPRAVENO',
-          zprava: `Vyúčtování ${vyuctovaniCislo} je připraveno ke kontrole`,
-          url: `/zakazky/${predavak.zakazkaId}?tab=vyuctovani`,
-        },
-      })
-    }
+    vyuctovaniId = vyuctovani.id
 
-    // Notify technik
-    await tx.notification.create({
-      data: {
-        orgId,
-        userId: predavak.technikId,
-        typ: 'PREDAVAK_SCHVALEN',
-        zprava: `Protokol ${predavak.cislo} byl schválen`,
-        url: `/zakazky/${predavak.zakazkaId}/predavaky/${predavak.id}`,
-      },
-    })
-
-    // Audit log
+    // Audit log — záznam o akci, zůstává awaitovaný v transakci
     await tx.auditLog.create({
       data: {
         orgId,
@@ -130,5 +119,35 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     })
   })
 
-  return NextResponse.json({ ok: true })
+  // Souběh: jiný request už protokol schválil — vrať idempotentní úspěch, nic dalšího nedělej
+  if (raced) {
+    return NextResponse.json({ ok: true, alreadyApproved: true })
+  }
+
+  // Notifikace fire-and-forget — response se vrátí hned po commitu, ztráta notifikace neshodí schválení
+  void (async () => {
+    const vedouciId = predavak.zakazka.vedouciId
+    if (vedouciId) {
+      await db.notification.create({
+        data: {
+          orgId,
+          userId: vedouciId,
+          typ: 'VYUCTOVANI_PRIPRAVENO',
+          zprava: `Vyúčtování ${vyuctovaniCislo} je připraveno ke kontrole`,
+          url: `/zakazky/${predavak.zakazkaId}?tab=vyuctovani`,
+        },
+      })
+    }
+    await db.notification.create({
+      data: {
+        orgId,
+        userId: predavak.technikId,
+        typ: 'PREDAVAK_SCHVALEN',
+        zprava: `Protokol ${predavak.cislo} byl schválen`,
+        url: `/zakazky/${predavak.zakazkaId}/predavaky/${predavak.id}`,
+      },
+    })
+  })().catch(() => {})
+
+  return NextResponse.json({ ok: true, vyuctovaniId })
 }

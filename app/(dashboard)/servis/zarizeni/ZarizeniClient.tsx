@@ -37,7 +37,7 @@ interface Zarizeni {
   klient: { id: string; jmeno: string; prijmeni: string }
   deal: { id: string; kod: string | null; predmet: string | null } | null
   servisniKontrakty: { id: string; nazev: string; typ: string; konec: string | null; cisloKontraktu: string | null }[]
-  servisniNavstevy: { planovanyTermin: string }[]
+  servisniZakazky: { planovanyTermin: string }[]
 }
 
 interface Client {
@@ -293,7 +293,7 @@ export default function ZarizeniClient({ zarizeni: initial, clients }: Props) {
         ) : (
           <div className="divide-y divide-gray-100 dark:divide-slate-700">
             {filtered.map(z => {
-              const nextNavsteva = z.servisniNavstevy[0]
+              const nextNavsteva = z.servisniZakazky[0]
               const zarukaStatus = isZarukaExpired(z.zarukaDo) ? 'expired' : isZarukaExpiring(z.zarukaDo) ? 'expiring' : 'ok'
               return (
                 <div key={z.id} className={`px-6 py-4 flex flex-col sm:flex-row sm:items-center gap-3 ${!z.aktivni ? 'opacity-50' : ''}`}>

@@ -28,7 +28,14 @@ export async function POST(req: Request) {
   const db = orgPrisma(orgId)
 
   const body = await req.json()
-  const { dealId, templateId, typ, ...rest } = body
+  const { dealId, templateId, typ, overrides: rawOverrides, ...rest } = body
+  // overrides: holý placeholder -> hodnota (ruční doplnění prázdných polí z modalu)
+  const overrides: Record<string, string> =
+    rawOverrides && typeof rawOverrides === 'object' ? rawOverrides : {}
+  const ov = (k: string) => {
+    const v = overrides[k]
+    return v != null && String(v).trim() !== '' ? String(v) : undefined
+  }
 
   if (!dealId) return NextResponse.json({ error: 'dealId je povinný' }, { status: 400 })
   if (!templateId && !typ) return NextResponse.json({ error: 'templateId nebo typ je povinný' }, { status: 400 })
@@ -47,11 +54,12 @@ export async function POST(req: Request) {
     const template = await db.contractTemplate.findFirst({ where: { id: templateId, orgId } })
     if (!template) return NextResponse.json({ error: 'Šablona nenalezena' }, { status: 404 })
     prefillData = await buildSodRenderData(dealId, orgId, cislo)
-    textSmlouvy = renderSodTemplate(template.obsah, applySodFormOverrides(prefillData, rest))
+    textSmlouvy = renderSodTemplate(template.obsah, applySodFormOverrides(prefillData, rest), overrides)
     // šablony uložené před zavedením sanitizace
     if (isHtmlContent(textSmlouvy)) textSmlouvy = sanitizeFullDocumentHtml(textSmlouvy)
-    if (template.typSablony && template.typSablony !== 'text') {
-      resolvedTyp = template.typSablony as string
+    const SOD_TYP_VALUES = ['DPH_12_BEZ_ZALOHY', 'DPH_12_SE_ZALOHOU', 'DPH_21_BEZ_ZALOHY', 'DPH_21_SE_ZALOHOU', 'PDP_BEZ_ZALOHY', 'PDP_SE_ZALOHOU']
+    if (template.typSablony && SOD_TYP_VALUES.includes(template.typSablony)) {
+      resolvedTyp = template.typSablony
     }
   }
 
@@ -63,16 +71,16 @@ export async function POST(req: Request) {
       typ: resolvedTyp,
       templateId: templateId ?? null,
       textSmlouvy,
-      klientJmeno: rest.klientJmeno ?? prefillData?.klientJmeno ?? '',
-      predmetDila: rest.predmetDila ?? prefillData?.predmet ?? '',
-      klientAdresa: rest.klientAdresa ?? prefillData?.klientAdresa ?? null,
-      klientEmail: rest.klientEmail ?? prefillData?.klientEmail ?? null,
-      klientTelefon: rest.klientTelefon ?? prefillData?.klientTelefon ?? null,
-      klientIco: rest.klientIco ?? prefillData?.klientIco ?? null,
-      klientDic: rest.klientDic ?? prefillData?.klientDic ?? null,
-      kontaktniOsoba: rest.kontaktniOsoba ?? prefillData?.kontaktniOsoba ?? null,
-      kontaktniTelefon: rest.kontaktniTelefon ?? prefillData?.kontaktniTelefon ?? null,
-      adresaDila: rest.adresaDila ?? prefillData?.adresaDila ?? null,
+      klientJmeno: rest.klientJmeno ?? ov('klient_jmeno') ?? prefillData?.klientJmeno ?? '',
+      predmetDila: rest.predmetDila ?? ov('predmet') ?? prefillData?.predmet ?? '',
+      klientAdresa: rest.klientAdresa ?? ov('klient_adresa') ?? prefillData?.klientAdresa ?? null,
+      klientEmail: rest.klientEmail ?? ov('klient_email') ?? prefillData?.klientEmail ?? null,
+      klientTelefon: rest.klientTelefon ?? ov('klient_telefon') ?? prefillData?.klientTelefon ?? null,
+      klientIco: rest.klientIco ?? ov('klient_ico') ?? prefillData?.klientIco ?? null,
+      klientDic: rest.klientDic ?? ov('klient_dic') ?? prefillData?.klientDic ?? null,
+      kontaktniOsoba: rest.kontaktniOsoba ?? ov('kontaktni_osoba') ?? prefillData?.kontaktniOsoba ?? null,
+      kontaktniTelefon: rest.kontaktniTelefon ?? ov('kontaktni_telefon') ?? prefillData?.kontaktniTelefon ?? null,
+      adresaDila: rest.adresaDila ?? ov('adresa_dila') ?? prefillData?.adresaDila ?? null,
       terminPrevzeti: rest.terminPrevzeti ?? null,
       pocetDniRealizace: rest.pocetDniRealizace ?? null,
       zmenaTerm: rest.zmenaTerm ?? null,
