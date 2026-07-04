@@ -40,3 +40,7 @@ next-env.d.ts
 
 # tenant runtime uploads (avatary, loga, přílohy)
 /public/uploads
+
+# E2E
+e2e/.auth/
+e2e/.results/
