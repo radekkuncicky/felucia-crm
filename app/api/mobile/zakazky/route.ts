@@ -19,13 +19,32 @@ export async function GET(req: Request) {
   const page = Math.max(1, parseInt(url.searchParams.get('page') ?? '1'))
   const limit = Math.min(50, Math.max(1, parseInt(url.searchParams.get('limit') ?? '20')))
   const stavParam = url.searchParams.get('stav') as ZakazkaStav | null
+  // filtr=aktivni|hotove — technik nepotřebuje 6 interních stavů
+  const filtr = url.searchParams.get('filtr')
+  const q = (url.searchParams.get('q') ?? '').trim().slice(0, 100)
   const skip = (page - 1) * limit
+
+  const AKTIVNI: ZakazkaStav[] = ['NOVA', 'PRIRAZENA', 'V_REALIZACI']
+  const HOTOVE: ZakazkaStav[] = ['PREDANA', 'VYUCTOVANA', 'HOTOVO']
 
   const where = {
     orgId,
     ...(stavParam ? { stav: stavParam } : {}),
+    ...(filtr === 'aktivni' ? { stav: { in: AKTIVNI } } : {}),
+    ...(filtr === 'hotove' ? { stav: { in: HOTOVE } } : {}),
     ...(role === 'TECHNIK'
       ? { techniciRel: { some: { technikId: userId } } }
+      : {}),
+    ...(q
+      ? {
+          OR: [
+            { cislo: { contains: q, mode: 'insensitive' as const } },
+            { nazev: { contains: q, mode: 'insensitive' as const } },
+            { mistoStavby: { contains: q, mode: 'insensitive' as const } },
+            { klient: { jmeno: { contains: q, mode: 'insensitive' as const } } },
+            { klient: { prijmeni: { contains: q, mode: 'insensitive' as const } } },
+          ],
+        }
       : {}),
   }
 
