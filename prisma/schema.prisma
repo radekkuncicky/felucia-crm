@@ -360,6 +360,7 @@ model Client {
   dic       String?
   poznamka  String?
   vytvoreno DateTime @default(now())
+  anonymizedAt DateTime?
 
   organization      Organization       @relation(fields: [orgId], references: [id])
   deals             Deal[]

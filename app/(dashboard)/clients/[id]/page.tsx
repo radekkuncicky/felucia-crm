@@ -220,7 +220,8 @@ export default async function ClientDetailPage({
               ico: client.ico ?? '',
               dic: client.dic ?? '',
               poznamka: client.poznamka ?? '',
-            }} />
+              anonymizedAt: client.anonymizedAt ? client.anonymizedAt.toISOString() : null,
+            }} isAdmin={session!.user.role === 'ADMIN' || !!session!.user.isSuperAdmin} />
           {(client.ulice || client.mesto) && (
             <div className="bg-white rounded-xl border border-gray-200 px-5 py-4">
               <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-2">Navigace</p>

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { parseEmailInput } from '@/lib/parseEmail'
+import ConfirmModal from '@/components/ConfirmModal'
 
 function parseFullAddress(text: string): { ulice: string; psc: string; mesto: string } | null {
   const trimmed = text.trim()
@@ -32,12 +33,13 @@ interface ClientData {
   ico: string
   dic: string
   poznamka: string
+  anonymizedAt: string | null
 }
 
 const inp = 'w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-slate-700 text-gray-900 dark:text-white'
 const lbl = 'block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1'
 
-export default function ClientEditForm({ client }: { client: ClientData }) {
+export default function ClientEditForm({ client, isAdmin }: { client: ClientData; isAdmin: boolean }) {
   const router = useRouter()
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -46,6 +48,8 @@ export default function ClientEditForm({ client }: { client: ClientData }) {
   const [typKlienta, setTypKlienta] = useState<TypKlienta>(client.typKlienta)
   const [form, setForm] = useState<ClientData>({ ...client })
   const [adresaHint, setAdresaHint] = useState(false)
+  const [showAnonymizeConfirm, setShowAnonymizeConfirm] = useState(false)
+  const [anonymizing, setAnonymizing] = useState(false)
 
   function set(field: keyof ClientData, value: string) {
     setForm(f => ({ ...f, [field]: value }))
@@ -140,8 +144,52 @@ export default function ClientEditForm({ client }: { client: ClientData }) {
   const adresaDisplay = [form.ulice, [form.mesto, form.psc].filter(Boolean).join(' ')].filter(Boolean).join(', ')
   const displayName = typKlienta === 'FIRMA' ? form.jmeno : `${form.jmeno} ${form.prijmeni}`.trim()
 
+  async function handleAnonymize() {
+    setAnonymizing(true)
+    setError('')
+    try {
+      const res = await fetch(`/api/clients/${client.id}/anonymize`, { method: 'POST' })
+      if (!res.ok) {
+        const data = await res.json()
+        setError(data.error || 'Anonymizace selhala')
+        return
+      }
+      setShowAnonymizeConfirm(false)
+      router.refresh()
+    } catch {
+      setError('Anonymizace selhala')
+    } finally {
+      setAnonymizing(false)
+    }
+  }
+
+  if (client.anonymizedAt) {
+    return (
+      <div className="space-y-4">
+        <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-5 space-y-3">
+          <h2 className="font-semibold text-gray-900 dark:text-white">Kontaktní údaje</h2>
+          <div className="bg-gray-50 dark:bg-slate-700/50 border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-2.5 text-sm text-gray-600 dark:text-slate-300">
+            Klient anonymizován dne {new Date(client.anonymizedAt).toLocaleDateString('cs-CZ')} — osobní údaje byly odstraněny na žádost
+            klienta (GDPR). Vazby na obchodní případy a zakázky zůstávají zachovány.
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-4">
+      <ConfirmModal
+        isOpen={showAnonymizeConfirm}
+        title="Anonymizovat klienta"
+        message="Jméno, telefon, email, adresa a IČO/DIČ budou nahrazeny anonymním placeholderem a nepůjde je vrátit zpět. Obchodní případy, zakázky a servisní historie klienta zůstanou zachovány beze změny — jen ztratí vazbu na osobní údaje. Použij, jen když klient požádal o výmaz podle GDPR."
+        confirmLabel="Anonymizovat"
+        danger
+        loading={anonymizing}
+        onConfirm={handleAnonymize}
+        onCancel={() => setShowAnonymizeConfirm(false)}
+      />
+
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-5 space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="font-semibold text-gray-900 dark:text-white">Kontaktní údaje</h2>
@@ -355,6 +403,17 @@ export default function ClientEditForm({ client }: { client: ClientData }) {
               <div className="border-t border-gray-100 dark:border-slate-700 pt-3">
                 <p className="text-xs text-gray-500 dark:text-slate-400">Poznámka</p>
                 <p className="text-sm text-gray-700 dark:text-slate-300 whitespace-pre-wrap">{client.poznamka}</p>
+              </div>
+            )}
+
+            {isAdmin && (
+              <div className="border-t border-gray-100 dark:border-slate-700 pt-3">
+                <button
+                  onClick={() => setShowAnonymizeConfirm(true)}
+                  className="text-xs text-red-500 hover:text-red-700 dark:hover:text-red-400"
+                >
+                  Anonymizovat klienta (GDPR výmaz)
+                </button>
               </div>
             )}
           </div>

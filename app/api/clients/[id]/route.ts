@@ -12,6 +12,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
   const client = await db.client.findFirst({ where: { id: params.id, orgId } })
   if (!client) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (client.anonymizedAt) return NextResponse.json({ error: 'Anonymizovaný klient nelze upravovat' }, { status: 409 })
 
   const body = await req.json()
   // SECURITY FIX: Include orgId in update where clause for defense-in-depth (prevents IDOR even if findFirst check were bypassed)
