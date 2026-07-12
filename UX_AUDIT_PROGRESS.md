@@ -5,6 +5,11 @@ Legenda: `[ ]` pending · `[~]` in-progress · `[x]` done
 
 Pravidla: před začátkem úkolu označit `[~]` + commit `start: <ID>`; po dokončení `[x]` + poznámka + commit. Po každém úkolu lint + typecheck. Pořadí: vlny 1→5, uvnitř vlny shora dolů.
 
+## Mimo audit (nahlášené bugy)
+
+- [x] **BUG-2026-07-12** — Dáša vytvořila 2 OP se stejným číslem (OP-26-100, dva create_deal paralelně ve stejné ms). Příčina: všechny generátory čísel = „přečti max, přičti 1" bez zámku; deals/quotes/kontrakty navíc bez unique constraintu.
+  - Poznámka: (1) Prod data opravena — 6 duplicitních párů OP přečíslováno (Hellstein→OP-26-101, Solák→102, Šimurda→103, 2× Mohelník backdatovaný import→104/105, Obec Těškovice→106; vždy zůstalo číslo na starším/používanějším z páru) + 3 páry duplicitních čísel nabídek (Dášina trojice z 29. 6. → NAB-26-0118/0119/0120). (2) Unique indexy deals(orgId,kod), quotes(orgId,kod), servisni_kontrakty(orgId,cisloKontraktu) — vytvořeno ručně v zamčené transakci + migrace 20260712130000 s IF NOT EXISTS přes `migrate deploy` (migrate dev hlásil drift a chtěl reset — nepoužívat). Zakázky/servisní zakázky/SOD/předáváky/vyúčtování už unique měly. (3) Kód: lib/uniqueKod.ts `createWithUniqueKod` (retry na P2002) + lib/dealKod.ts (centralizace OP generátoru, dřív duplicitně inline v Dáše); obaleno všech 7 create míst (2× deal, 5× quote). Testy 92/92 OK.
+
 ## VLNA 1 — Důvěra
 
 - [x] **K2** — Sdílený `lib/api.ts` s `apiFetch()` (auto `toast.error` při chybě). Nahradit tichá fetch volání (RychlaPoznamka, EtapySection, PipelineBar, FotoTab, MontazDatePicker, InlineStatusBadge, modul servis…). Optimistic UI vždy rollback + toast.

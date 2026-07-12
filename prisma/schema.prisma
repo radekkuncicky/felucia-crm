@@ -420,6 +420,7 @@ model Deal {
   sod               Sod[]
   lead              Lead?
 
+  @@unique([orgId, kod])
   @@map("deals")
 }
 
@@ -493,6 +494,7 @@ model Quote {
   template QuoteTemplate?     @relation(fields: [templateId], references: [id])
   items    QuoteItem[]
 
+  @@unique([orgId, kod])
   @@map("quotes")
 }
 
@@ -897,6 +899,7 @@ model ServisniKontrakt {
   klient           Client             @relation(fields: [klientId], references: [id])
   servisniZakazky  ServisniZakazka[]
 
+  @@unique([orgId, cisloKontraktu])
   @@map("servisni_kontrakty")
 }
 

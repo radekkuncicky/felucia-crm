@@ -5,6 +5,8 @@ import { NextResponse } from 'next/server'
 import { getPlanLimits } from '@/lib/planLimits'
 import { checkRateLimit } from '@/lib/rateLimit'
 import { generateQuoteKod } from '@/lib/quoteKod'
+import { generateDealKod } from '@/lib/dealKod'
+import { createWithUniqueKod } from '@/lib/uniqueKod'
 import { Technologie, StavDealu, TypAktivity, TypKlienta } from '@prisma/client'
 
 // ─── Tool definitions ────────────────────────────────────────────────────────
@@ -373,28 +375,29 @@ async function executeTool(
         const items = Array.isArray(input.items) ? input.items as Record<string, unknown>[] : []
         if (items.length === 0) return { result: JSON.stringify({ chyba: 'Nabídka musí mít alespoň jednu položku' }) }
 
-        const kod = await generateQuoteKod(orgId)
-
-        const quote = await db.quote.create({
-          data: {
-            dealId, orgId,
-            nazev: String(input.nazev ?? 'Varianta A'),
-            kod, dphSazba: 12, aktivni: false,
-            items: {
-              create: items.map((item, idx) => ({
-                dealId,
-                nazev: String(item.nazev ?? ''),
-                mnozstvi: Number(item.mnozstvi ?? 1),
-                cenaZaKus: Number(item.cenaZaKus ?? 0),
-                jednotka: String(item.jednotka ?? 'ks'),
-                sleva: 0,
-                productId: item.productId ? String(item.productId) : null,
-                poradi: idx,
-              })),
+        const quote = await createWithUniqueKod(
+          () => generateQuoteKod(orgId),
+          kod => db.quote.create({
+            data: {
+              dealId, orgId,
+              nazev: String(input.nazev ?? 'Varianta A'),
+              kod, dphSazba: 12, aktivni: false,
+              items: {
+                create: items.map((item, idx) => ({
+                  dealId,
+                  nazev: String(item.nazev ?? ''),
+                  mnozstvi: Number(item.mnozstvi ?? 1),
+                  cenaZaKus: Number(item.cenaZaKus ?? 0),
+                  jednotka: String(item.jednotka ?? 'ks'),
+                  sleva: 0,
+                  productId: item.productId ? String(item.productId) : null,
+                  poradi: idx,
+                })),
+              },
             },
-          },
-          include: { items: true },
-        })
+            include: { items: true },
+          }),
+        )
 
         const total = quote.items.reduce((s, i) => s + Number(i.mnozstvi) * Number(i.cenaZaKus), 0)
         return {
@@ -416,18 +419,12 @@ async function executeTool(
         const client = await db.client.findFirst({ where: { id: clientId, orgId } })
         if (!client) return { result: JSON.stringify({ chyba: 'Klient nenalezen' }) }
 
-        const yr = new Date().getFullYear() % 100
-        const prefix = `OP-${yr.toString().padStart(2, '0')}-`
-        const last = await db.deal.findFirst({
-          where: { orgId, kod: { startsWith: prefix } },
-          orderBy: { kod: 'desc' }, select: { kod: true },
-        })
-        const lastNum = last?.kod ? parseInt(last.kod.replace(prefix, ''), 10) : 0
-        const kod = `${prefix}${(lastNum + 1).toString().padStart(3, '0')}`
-
-        const deal = await db.deal.create({
-          data: { orgId, userId, clientId, technologie: technologie as Technologie, predmet, kod, stav: 'NOVY' },
-        })
+        const deal = await createWithUniqueKod(
+          () => generateDealKod(orgId),
+          kod => db.deal.create({
+            data: { orgId, userId, clientId, technologie: technologie as Technologie, predmet, kod, stav: 'NOVY' },
+          }),
+        )
 
         return { result: JSON.stringify({ ok: true, dealId: deal.id, kod: deal.kod }), navigateTo: `/deals/${deal.id}` }
       }
