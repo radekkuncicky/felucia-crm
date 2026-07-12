@@ -7,8 +7,8 @@ Pravidla: před začátkem úkolu označit `[~]` + commit `start: <ID>`; po doko
 
 ## VLNA 1 — Důvěra
 
-- [~] **K2** — Sdílený `lib/api.ts` s `apiFetch()` (auto `toast.error` při chybě). Nahradit tichá fetch volání (RychlaPoznamka, EtapySection, PipelineBar, FotoTab, MontazDatePicker, InlineStatusBadge, modul servis…). Optimistic UI vždy rollback + toast.
-  - Poznámka:
+- [x] **K2** — Sdílený `lib/api.ts` s `apiFetch()` (auto `toast.error` při chybě). Nahradit tichá fetch volání (RychlaPoznamka, EtapySection, PipelineBar, FotoTab, MontazDatePicker, InlineStatusBadge, modul servis…). Optimistic UI vždy rollback + toast.
+  - Poznámka: Hotovo. `lib/api.ts` — apiFetch vrací ApiResult (nevyhazuje, mechanická náhrada vzoru `if (res.ok)`), + zkratky api.get/post/patch/put/delete; toast.error automaticky (serverové `error` pole → fallback), opts `errorMessage`/`silent`. Migrováno 13 souborů: RychlaPoznamka, EtapySection (inline „Chyba" → toast), PipelineBar, FotoTab, MontazDatePicker, InlineStatusBadge (+ success toast po smazání OP), ZakazkyPageClient (inline+bulk stav s rollbackem), servis: ZakazkaDetailClient (patch/reklamace/fotky; alert(data.error) nahrazeny toastem — zbylé alert/confirm/prompt řeší K7), ZakazkySeznamClient, ZarizeniClient (+QR), KontraktyClient (4 volání dřív bez kontroly res.ok!), PlanClient (inline banner → toast), VyuctovaniSekce. Zbylé soubory s fetch bez toastu (deals taby, settings managery…) mají většinou vlastní inline error stavy — migrace průběžně při dotyku (S10 pravidlo). tsc + lint OK.
 - [ ] **S1** — Smazat 6 vlastních Toast implementací (PredavakClient, ProfileClient, UsersManager, DealActions, BillingActions, BillingClient), všude sonner. DealsKanban inline banner → toast.
   - Poznámka:
 - [ ] **K7** — `confirm()` v ZakazkaDetailClient → `confirmDialog()`. Projít kód, nahradit další confirm()/alert(). ESLint `no-restricted-globals` pro confirm/alert.

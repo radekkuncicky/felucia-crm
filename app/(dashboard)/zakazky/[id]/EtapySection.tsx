@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { EtapaStav } from '@prisma/client'
+import { api } from '@/lib/api'
 
 interface EtapaPredavak { id: string; cislo: string; stav: string }
 interface EtapaVyuctovani { id: string; cislo: string; stav: string }
@@ -327,24 +328,14 @@ function EditEtapaForm({
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
-  const [error, setError] = useState('')
 
   async function handleSave() {
     setSaving(true)
-    setError('')
     try {
-      const res = await fetch(`/api/zakazky/${zakazkaId}/etapy/${etapa.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nazev, montazOd: montazOd || null, montazDo: montazDo || null, stav, poznamka }),
-      })
-      if (res.ok) {
-        const updated = await res.json()
-        onSave(updated)
-      } else {
-        const d = await res.json()
-        setError(d.error ?? 'Chyba')
-      }
+      const res = await api.patch<Etapa>(`/api/zakazky/${zakazkaId}/etapy/${etapa.id}`,
+        { nazev, montazOd: montazOd || null, montazDo: montazDo || null, stav, poznamka },
+      )
+      if (res.ok && res.data) onSave(res.data)
     } finally {
       setSaving(false)
     }
@@ -353,14 +344,9 @@ function EditEtapaForm({
   async function handleDelete() {
     setDeleting(true)
     try {
-      const res = await fetch(`/api/zakazky/${zakazkaId}/etapy/${etapa.id}`, { method: 'DELETE' })
-      if (res.ok) {
-        onDelete()
-      } else {
-        const d = await res.json()
-        setError(d.error ?? 'Chyba')
-        setConfirmDelete(false)
-      }
+      const res = await api.delete(`/api/zakazky/${zakazkaId}/etapy/${etapa.id}`)
+      if (res.ok) onDelete()
+      else setConfirmDelete(false)
     } finally {
       setDeleting(false)
     }
@@ -406,7 +392,6 @@ function EditEtapaForm({
         <input value={poznamka} onChange={e => setPoznamka(e.target.value)} placeholder="Volitelná poznámka…"
           className="w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500" />
       </div>
-      {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
       <div className="flex items-center justify-between gap-2 flex-wrap">
         {canDelete && !confirmDelete && (
           <button onClick={() => setConfirmDelete(true)} className="text-xs text-red-500 hover:text-red-700 dark:text-red-400">
@@ -446,24 +431,14 @@ function AddEtapaForm({ zakazkaId, onSave, onCancel }: {
   const [montazOd, setMontazOd] = useState('')
   const [montazDo, setMontazDo] = useState('')
   const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
 
   async function handleSave() {
     setSaving(true)
-    setError('')
     try {
-      const res = await fetch(`/api/zakazky/${zakazkaId}/etapy`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nazev, montazOd: montazOd || null, montazDo: montazDo || null }),
-      })
-      if (res.ok) {
-        const etapa = await res.json()
-        onSave(etapa)
-      } else {
-        const d = await res.json()
-        setError(d.error ?? 'Chyba')
-      }
+      const res = await api.post<Etapa>(`/api/zakazky/${zakazkaId}/etapy`,
+        { nazev, montazOd: montazOd || null, montazDo: montazDo || null },
+      )
+      if (res.ok && res.data) onSave(res.data)
     } finally {
       setSaving(false)
     }
@@ -495,7 +470,6 @@ function AddEtapaForm({ zakazkaId, onSave, onCancel }: {
             className="w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500" />
         </div>
       </div>
-      {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
       <div className="flex gap-2 justify-end">
         <button onClick={onCancel} className="text-sm text-gray-500 dark:text-slate-400 px-3 py-1.5 border border-gray-300 dark:border-slate-600 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700">
           Zrušit

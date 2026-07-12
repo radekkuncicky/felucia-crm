@@ -7,6 +7,7 @@ import { NavigateButton } from '@/components/NavigateButton'
 import { SignatureCanvas } from '@/components/SignatureCanvas'
 import VyuctovaniSekce from '@/components/servis/VyuctovaniSekce'
 import ConfirmModal from '@/components/ConfirmModal'
+import { apiFetch, api } from '@/lib/api'
 import {
   type NavstevaTyp,
   type ServisniZakazkaStav,
@@ -116,7 +117,7 @@ export default function ZakazkaDetailClient({ zakazka, orgUsers, canEdit, isAdmi
 
   // Uloží formulář; stav se NEposílá — mění se výhradně akcemi (override).
   async function patch(override: Record<string, unknown> = {}) {
-    return fetch(`/api/servis/zakazky/${zakazka.id}`, {
+    return apiFetch(`/api/servis/zakazky/${zakazka.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -156,8 +157,6 @@ export default function ZakazkaDetailClient({ zakazka, orgUsers, canEdit, isAdmi
         router.refresh()
         return true
       }
-      const data = await res.json().catch(() => ({}))
-      alert(data.error ?? 'Změna stavu se nezdařila.')
       return false
     } finally {
       setActing(false)
@@ -186,18 +185,12 @@ export default function ZakazkaDetailClient({ zakazka, orgUsers, canEdit, isAdmi
   async function vytvoritReklamaci() {
     setActing(true)
     try {
-      const res = await fetch(`/api/servis/zakazky/${zakazka.id}/reklamace`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ poznamka: reklamacePoznamka || null }),
-      })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        alert(data.error ?? 'Reklamaci se nepodařilo založit.')
-        return
-      }
+      const res = await api.post<{ id: string }>(`/api/servis/zakazky/${zakazka.id}/reklamace`,
+        { poznamka: reklamacePoznamka || null },
+      )
+      if (!res.ok || !res.data) return
       setReklamaceOpen(false)
-      router.push(`/servis/zakazky/${data.id}`)
+      router.push(`/servis/zakazky/${res.data.id}`)
     } finally {
       setActing(false)
     }
@@ -219,11 +212,10 @@ export default function ZakazkaDetailClient({ zakazka, orgUsers, canEdit, isAdmi
     try {
       const fd = new FormData()
       fd.append('file', file)
-      const res = await fetch(`/api/servis/zakazky/${zakazka.id}/fotky`, { method: 'POST', body: fd })
-      if (res.ok) {
-        const data = await res.json()
-        setFotky(data.fotky)
-      }
+      const res = await apiFetch<{ fotky: string[] }>(`/api/servis/zakazky/${zakazka.id}/fotky`,
+        { method: 'POST', body: fd },
+        { errorMessage: 'Fotku se nepodařilo nahrát.' })
+      if (res.ok && res.data) setFotky(res.data.fotky)
     } finally {
       setUploading(false)
       if (fileRef.current) fileRef.current.value = ''
@@ -231,15 +223,12 @@ export default function ZakazkaDetailClient({ zakazka, orgUsers, canEdit, isAdmi
   }
 
   async function deleteFoto(index: number) {
-    const res = await fetch(`/api/servis/zakazky/${zakazka.id}/fotky`, {
+    const res = await apiFetch<{ fotky: string[] }>(`/api/servis/zakazky/${zakazka.id}/fotky`, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ index }),
-    })
-    if (res.ok) {
-      const data = await res.json()
-      setFotky(data.fotky)
-    }
+    }, { errorMessage: 'Fotku se nepodařilo smazat.' })
+    if (res.ok && res.data) setFotky(res.data.fotky)
   }
 
   const inputClass = 'w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500'

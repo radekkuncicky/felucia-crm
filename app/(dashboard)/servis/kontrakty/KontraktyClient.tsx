@@ -8,6 +8,7 @@ import { useTableColumns, ColumnDef } from '@/hooks/useTableColumns'
 import ColumnConfigButton from '@/components/ColumnConfigButton'
 import { ResizeHandle } from '@/components/ResizeHandle'
 import ConfirmModal from '@/components/ConfirmModal'
+import { api } from '@/lib/api'
 import { type ServisniZakazkaStav, stavLabel, stavColor, jeProsla, jeAktivni } from '@/lib/servisStav'
 
 const KONTR_DEFS: ColumnDef[] = [
@@ -174,19 +175,17 @@ export default function KontraktyClient({ kontrakty, orgUsers, zarizeniList }: P
     if (!selectedKontrakt || !addForm.planovanyTermin) return
     setSaving(true)
     try {
-      await fetch(`/api/servis/zakazky/${selectedKontrakt.id}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          planovanyTermin: addForm.planovanyTermin,
-          typ: addForm.typ,
-          technikId: addForm.technikId || null,
-          poznamka: addForm.poznamka || null,
-        }),
-      })
-      setAddNavsteva(false)
-      setAddForm({ planovanyTermin: '', typ: 'PLANOVANY_SERVIS', technikId: '', poznamka: '' })
-      router.refresh()
+      const res = await api.post(`/api/servis/zakazky/${selectedKontrakt.id}`, {
+        planovanyTermin: addForm.planovanyTermin,
+        typ: addForm.typ,
+        technikId: addForm.technikId || null,
+        poznamka: addForm.poznamka || null,
+      }, { errorMessage: 'Návštěvu se nepodařilo naplánovat.' })
+      if (res.ok) {
+        setAddNavsteva(false)
+        setAddForm({ planovanyTermin: '', typ: 'PLANOVANY_SERVIS', technikId: '', poznamka: '' })
+        router.refresh()
+      }
     } finally {
       setSaving(false)
     }
@@ -197,23 +196,21 @@ export default function KontraktyClient({ kontrakty, orgUsers, zarizeniList }: P
     setSaving(true)
     try {
       const z = zarizeniList.find(z => z.id === novyForm.zarizeniId)
-      await fetch('/api/servis/kontrakty', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          zarizeniId: novyForm.zarizeniId,
-          klientId: z?.klient.id,
-          nazev: novyForm.nazev,
-          typ: novyForm.typ,
-          cena: novyForm.cena ? Number(novyForm.cena) : null,
-          zacatek: novyForm.zacatek,
-          autoRenewal: novyForm.autoRenewal,
-        }),
-      })
-      setNovyKontraktOpen(false)
-      setNovyForm(emptyKontraktForm)
-      setZarizeniSearch('')
-      router.refresh()
+      const res = await api.post('/api/servis/kontrakty', {
+        zarizeniId: novyForm.zarizeniId,
+        klientId: z?.klient.id,
+        nazev: novyForm.nazev,
+        typ: novyForm.typ,
+        cena: novyForm.cena ? Number(novyForm.cena) : null,
+        zacatek: novyForm.zacatek,
+        autoRenewal: novyForm.autoRenewal,
+      }, { errorMessage: 'Kontrakt se nepodařilo vytvořit.' })
+      if (res.ok) {
+        setNovyKontraktOpen(false)
+        setNovyForm(emptyKontraktForm)
+        setZarizeniSearch('')
+        router.refresh()
+      }
     } finally {
       setSaving(false)
     }
@@ -224,13 +221,13 @@ export default function KontraktyClient({ kontrakty, orgUsers, zarizeniList }: P
     setSaving(true)
     setUkoncitKontraktId(null)
     try {
-      await fetch(`/api/servis/kontrakty/${ukoncitKontraktId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ aktivni: false, konec: new Date().toISOString() }),
-      })
-      setSelectedKontrakt(null)
-      router.refresh()
+      const res = await api.patch(`/api/servis/kontrakty/${ukoncitKontraktId}`,
+        { aktivni: false, konec: new Date().toISOString() },
+        { errorMessage: 'Kontrakt se nepodařilo ukončit.' })
+      if (res.ok) {
+        setSelectedKontrakt(null)
+        router.refresh()
+      }
     } finally {
       setSaving(false)
     }
@@ -239,13 +236,13 @@ export default function KontraktyClient({ kontrakty, orgUsers, zarizeniList }: P
   async function obnovitKontrakt(kontraktId: string) {
     setSaving(true)
     try {
-      await fetch(`/api/servis/kontrakty/${kontraktId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ aktivni: true, konec: null }),
-      })
-      setSelectedKontrakt(null)
-      router.refresh()
+      const res = await api.patch(`/api/servis/kontrakty/${kontraktId}`,
+        { aktivni: true, konec: null },
+        { errorMessage: 'Kontrakt se nepodařilo obnovit.' })
+      if (res.ok) {
+        setSelectedKontrakt(null)
+        router.refresh()
+      }
     } finally {
       setSaving(false)
     }

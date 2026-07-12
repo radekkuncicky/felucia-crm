@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { api } from '@/lib/api'
 
 interface EtapaTermin {
   id: string
@@ -125,49 +126,37 @@ export default function MontazDatePicker({ zakazkaId, montazOd, montazDo, canEdi
 
   // Save zakázka termín
   async function saveMain(od: string, doo: string) {
-    await fetch(`/api/zakazky/${zakazkaId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        montazOd: od ? new Date(od).toISOString() : null,
-        montazDo: doo ? new Date(doo).toISOString() : null,
-      }),
-    })
-    router.refresh()
+    const res = await api.patch(`/api/zakazky/${zakazkaId}`, {
+      montazOd: od ? new Date(od).toISOString() : null,
+      montazDo: doo ? new Date(doo).toISOString() : null,
+    }, { errorMessage: 'Termín montáže se nepodařilo uložit.' })
+    if (res.ok) router.refresh()
     setEditingMain(false)
   }
 
   async function clearMain() {
-    await fetch(`/api/zakazky/${zakazkaId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ montazOd: null, montazDo: null }),
-    })
-    router.refresh()
+    const res = await api.patch(`/api/zakazky/${zakazkaId}`,
+      { montazOd: null, montazDo: null },
+      { errorMessage: 'Termín montáže se nepodařilo smazat.' })
+    if (res.ok) router.refresh()
     setEditingMain(false)
   }
 
   // Save etapa termín
   async function saveEtapa(etapaId: string, od: string, doo: string) {
-    await fetch(`/api/zakazky/${zakazkaId}/etapy/${etapaId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        montazOd: od ? new Date(od).toISOString() : null,
-        montazDo: doo ? new Date(doo).toISOString() : null,
-      }),
-    })
-    router.refresh()
+    const res = await api.patch(`/api/zakazky/${zakazkaId}/etapy/${etapaId}`, {
+      montazOd: od ? new Date(od).toISOString() : null,
+      montazDo: doo ? new Date(doo).toISOString() : null,
+    }, { errorMessage: 'Termín etapy se nepodařilo uložit.' })
+    if (res.ok) router.refresh()
     setEditingEtapaId(null)
   }
 
   async function clearEtapa(etapaId: string) {
-    await fetch(`/api/zakazky/${zakazkaId}/etapy/${etapaId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ montazOd: null, montazDo: null }),
-    })
-    router.refresh()
+    const res = await api.patch(`/api/zakazky/${zakazkaId}/etapy/${etapaId}`,
+      { montazOd: null, montazDo: null },
+      { errorMessage: 'Termín etapy se nepodařilo smazat.' })
+    if (res.ok) router.refresh()
     setEditingEtapaId(null)
   }
 

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { api } from '@/lib/api'
 
 const TYP_LABELS: Record<string, string> = {
   TEPELNE_CERPADLO: 'Tepelné čerpadlo',
@@ -74,9 +75,10 @@ function QrModal({ zarizeni, onClose }: { zarizeni: Zarizeni; onClose: () => voi
       try {
         let token = zarizeni.qrToken
         if (!token) {
-          const res = await fetch(`/api/servis/zarizeni/${zarizeni.id}/qr-token`)
-          const data = await res.json()
-          token = data.qrToken
+          const res = await api.get<{ qrToken: string }>(`/api/servis/zarizeni/${zarizeni.id}/qr-token`,
+            { errorMessage: 'QR kód se nepodařilo vygenerovat.' })
+          if (!res.ok || !res.data) return
+          token = res.data.qrToken
         }
         const url = `https://felucia.io/zarizeni/${token}`
         setQrUrl(url)
@@ -223,19 +225,15 @@ export default function ZarizeniClient({ zarizeni: initial, clients }: Props) {
     if (!form.klientId || !form.nazev) return
     setSaving(true)
     try {
-      const res = await fetch('/api/servis/zarizeni', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          klientId: form.klientId,
-          nazev: form.nazev,
-          typ: form.typ,
-          vyrobniCislo: form.vyrobniCislo || null,
-          datumInstalace: form.datumInstalace || null,
-          zarukaDo: form.zarukaDo || null,
-          poznamka: form.poznamka || null,
-        }),
-      })
+      const res = await api.post('/api/servis/zarizeni', {
+        klientId: form.klientId,
+        nazev: form.nazev,
+        typ: form.typ,
+        vyrobniCislo: form.vyrobniCislo || null,
+        datumInstalace: form.datumInstalace || null,
+        zarukaDo: form.zarukaDo || null,
+        poznamka: form.poznamka || null,
+      }, { errorMessage: 'Zařízení se nepodařilo přidat.' })
       if (res.ok) {
         setShowAdd(false)
         setForm({ klientId: '', nazev: '', typ: 'JINE', vyrobniCislo: '', datumInstalace: '', zarukaDo: '', poznamka: '' })

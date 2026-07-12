@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import { api } from '@/lib/api'
 
 interface Foto {
   id: string
@@ -34,14 +35,11 @@ export default function FotoTab({ zakazkaId, fotky: initialFotky }: Props) {
         })
         const now = new Date()
         const popis = `${now.toLocaleDateString('cs-CZ')} ${now.toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit' })}`
-        const res = await fetch(`/api/zakazky/${zakazkaId}/foto`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: dataUrl, popis }),
-        })
-        if (res.ok) {
-          const foto = await res.json()
-          setFotky(prev => [{ ...foto, nahral: { id: '', jmeno: 'Vy' } }, ...prev])
+        const res = await api.post<Foto>(`/api/zakazky/${zakazkaId}/foto`,
+          { url: dataUrl, popis },
+          { errorMessage: `Fotku ${file.name} se nepodařilo nahrát.` })
+        if (res.ok && res.data) {
+          setFotky(prev => [{ ...res.data!, nahral: { id: '', jmeno: 'Vy' } }, ...prev])
         }
       }
     } finally {

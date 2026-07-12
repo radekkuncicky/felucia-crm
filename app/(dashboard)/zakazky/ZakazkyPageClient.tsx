@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation'
 import { ZakazkaStav } from '@prisma/client'
 import MobileSheet from '@/components/MobileSheet'
 import { techLabels, techColors } from '@/lib/constants'
+import { api } from '@/lib/api'
+import { toast } from 'sonner'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -405,11 +407,8 @@ export default function ZakazkyPageClient({ zakazky, vedouci, role }: Props) {
     setInlineLoadingId(id)
     setLocalZakazky(prev => prev.map(z => z.id === id ? { ...z, stav: nextStav } : z))
     try {
-      const res = await fetch(`/api/zakazky/${id}/stav`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ stav: nextStav }),
-      })
+      const res = await api.patch(`/api/zakazky/${id}/stav`, { stav: nextStav },
+        { errorMessage: 'Změnu stavu se nepodařilo uložit.' })
       if (!res.ok) setLocalZakazky(zakazky)
       else router.refresh()
     } finally {
@@ -424,13 +423,14 @@ export default function ZakazkyPageClient({ zakazky, vedouci, role }: Props) {
     const stav = bulkStav
     setLocalZakazky(prev => prev.map(z => selectedIds.includes(z.id) ? { ...z, stav } : z))
     try {
-      await Promise.all(selectedIds.map(id =>
-        fetch(`/api/zakazky/${id}/stav`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ stav }),
-        })
+      const results = await Promise.all(selectedIds.map(id =>
+        api.patch(`/api/zakazky/${id}/stav`, { stav }, { silent: true })
       ))
+      const failed = results.filter(r => !r.ok).length
+      if (failed > 0) {
+        setLocalZakazky(zakazky)
+        toast.error(`Změnu stavu se nepodařilo uložit u ${failed} z ${selectedIds.length} zakázek.`)
+      }
       setSelectedIds([])
       setBulkStav('')
       router.refresh()

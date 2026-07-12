@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { api } from '@/lib/api'
 
 interface Props {
   zakazkaId: string
@@ -61,11 +62,8 @@ export default function RychlaPoznamka({ zakazkaId }: Props) {
     if (!text.trim()) return
     setSaving(true)
     try {
-      const res = await fetch(`/api/zakazky/${zakazkaId}/komentare`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: text.trim() }),
-      })
+      const res = await api.post(`/api/zakazky/${zakazkaId}/komentare`, { text: text.trim() },
+        { errorMessage: 'Poznámku se nepodařilo uložit. Zkuste to prosím znovu.' })
       if (res.ok) {
         setDone(true)
         setText('')
