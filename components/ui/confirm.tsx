@@ -16,6 +16,7 @@ let trigger: Trigger | null = null
 
 /** Imperativní náhrada window.confirm() — vrací Promise<boolean>, renderuje ConfirmModal. */
 export function confirmDialog(message: string, opts?: ConfirmOptions): Promise<boolean> {
+  // eslint-disable-next-line no-restricted-properties -- záměrný fallback, když ConfirmHost ještě není namountovaný
   if (!trigger) return Promise.resolve(window.confirm(message))
   return trigger(message, opts)
 }

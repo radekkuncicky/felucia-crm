@@ -8,6 +8,8 @@ import { SignatureCanvas } from '@/components/SignatureCanvas'
 import VyuctovaniSekce from '@/components/servis/VyuctovaniSekce'
 import ConfirmModal from '@/components/ConfirmModal'
 import { apiFetch, api } from '@/lib/api'
+import { toast } from 'sonner'
+import { confirmDialog } from '@/components/ui/confirm'
 import {
   type NavstevaTyp,
   type ServisniZakazkaStav,
@@ -91,6 +93,8 @@ export default function ZakazkaDetailClient({ zakazka, orgUsers, canEdit, isAdmi
   const [podpis, setPodpis] = useState<string | null>(zakazka.podpisKlienta)
   const [confirmAction, setConfirmAction] = useState<'zrusit' | 'uzavrit' | null>(null)
   const [reklamaceOpen, setReklamaceOpen] = useState(false)
+  const [cekaOpen, setCekaOpen] = useState(false)
+  const [cekaDuvodDraft, setCekaDuvodDraft] = useState('')
   const [reklamacePoznamka, setReklamacePoznamka] = useState('')
   const [manualStavOpen, setManualStavOpen] = useState(false)
   const [manualStav, setManualStav] = useState(zakazka.stav)
@@ -164,21 +168,30 @@ export default function ZakazkaDetailClient({ zakazka, orgUsers, canEdit, isAdmi
   }
 
   function pozastavit() {
-    const duvod = window.prompt('Důvod čekání (např. čeká na díly):', form.cekaDuvod)
-    if (duvod === null) return
-    set('cekaDuvod', duvod)
-    changeStav('CEKA', { cekaDuvod: duvod || 'Bez udání důvodu' })
+    setCekaDuvodDraft(form.cekaDuvod)
+    setCekaOpen(true)
+  }
+
+  async function pozastavitPotvrdit() {
+    set('cekaDuvod', cekaDuvodDraft)
+    const ok = await changeStav('CEKA', { cekaDuvod: cekaDuvodDraft || 'Bez udání důvodu' })
+    if (ok) setCekaOpen(false)
   }
 
   // Handoff: dokončení protokolu = přechod do DOKONCENA, což nastaví
   // protokolDokoncen (brána do vyúčtování). Vyžaduje podpis klienta.
   async function dokoncitProtokol() {
     if (!podpis) {
-      alert('Pro dokončení protokolu je potřeba podpis klienta (sekce Předání zakázky).')
+      toast.warning('Pro dokončení protokolu je potřeba podpis klienta (sekce Předání zakázky).')
       document.getElementById('predani-sekce')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
       return
     }
-    if (!confirm('Dokončit protokol a předat zakázku? Po dokončení ji bude možné vyúčtovat.')) return
+    const ok = await confirmDialog('Dokončit protokol a předat zakázku? Po dokončení ji bude možné vyúčtovat.', {
+      title: 'Předání zakázky',
+      confirmLabel: 'Dokončit a předat',
+      danger: false,
+    })
+    if (!ok) return
     await changeStav('DOKONCENA')
   }
 
@@ -321,6 +334,38 @@ export default function ZakazkaDetailClient({ zakazka, orgUsers, canEdit, isAdmi
         onConfirm={async () => { const ok = await changeStav('UZAVRENA'); if (ok) setConfirmAction(null) }}
         onCancel={() => setConfirmAction(null)}
       />
+
+      {/* Pozastavení — důvod čekání */}
+      {cekaOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="px-6 py-5 border-b border-gray-200 dark:border-slate-700">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Pozastavit zakázku</h3>
+              <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
+                Zakázka přejde do stavu Čeká. Důvod uvidí dispečink i technik.
+              </p>
+            </div>
+            <div className="px-6 py-4">
+              <label className={labelClass}>Důvod čekání</label>
+              <input
+                type="text"
+                value={cekaDuvodDraft}
+                onChange={e => setCekaDuvodDraft(e.target.value)}
+                placeholder="Např. čeká na díly"
+                autoFocus
+                className={inputClass}
+                onKeyDown={e => { if (e.key === 'Enter') pozastavitPotvrdit() }}
+              />
+            </div>
+            <div className="px-6 py-4 border-t border-gray-200 dark:border-slate-700 flex gap-3 justify-end">
+              <button onClick={() => setCekaOpen(false)} className={ghostBtn}>Zpět</button>
+              <button onClick={pozastavitPotvrdit} disabled={acting} className={primaryBtn}>
+                {acting ? 'Ukládám…' : 'Pozastavit'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Reklamace modal */}
       {reklamaceOpen && (
