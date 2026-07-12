@@ -3,13 +3,15 @@
 import { useState, useCallback } from 'react'
 import ConfirmModal from '@/components/ConfirmModal'
 import { formatDate } from '@/lib/format'
+import { ActivityTypeIcon } from '@/components/ui/ActivityTypeIcon'
+import { IconMapPin } from '@/components/ui/Icons'
 
 const typOptions = [
-  { value: 'HOVOR',    label: 'Hovor',     icon: '📞' },
-  { value: 'EMAIL',    label: 'Email',     icon: '✉️' },
-  { value: 'SCHUZKA',  label: 'Schůzka',   icon: '🤝' },
-  { value: 'POZNAMKA', label: 'Poznámka',  icon: '📝' },
-  { value: 'UKOL',     label: 'Úkol',      icon: '✅' },
+  { value: 'HOVOR',    label: 'Hovor' },
+  { value: 'EMAIL',    label: 'Email' },
+  { value: 'SCHUZKA',  label: 'Schůzka' },
+  { value: 'POZNAMKA', label: 'Poznámka' },
+  { value: 'UKOL',     label: 'Úkol' },
 ]
 
 const stavConfig = {
@@ -129,8 +131,6 @@ function ActivityModal({
   const [error, setError]         = useState('')
   const [confirmDelete, setConfirmDelete] = useState(false)
 
-  const t = typOptions.find(o => o.value === typ)
-
   async function handleSave() {
     setSaving(true)
     setError('')
@@ -199,7 +199,7 @@ function ActivityModal({
           {/* Header */}
           <div className="px-6 py-4 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <span className="text-2xl">{t?.icon ?? '•'}</span>
+              <ActivityTypeIcon typ={act.typ} className="w-6 h-6" />
               <p className="font-semibold text-gray-900 dark:text-white">Upravit aktivitu</p>
             </div>
             <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-white p-1 rounded">
@@ -223,7 +223,7 @@ function ActivityModal({
               <div>
                 <label className="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">Typ</label>
                 <select value={typ} onChange={e => setTyp(e.target.value)} className={inp}>
-                  {typOptions.map(o => <option key={o.value} value={o.value}>{o.icon} {o.label}</option>)}
+                  {typOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                 </select>
               </div>
               <div>
@@ -248,7 +248,7 @@ function ActivityModal({
             {typ === 'SCHUZKA' && (
               <div>
                 <label className="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">
-                  📍 Místo schůzky
+                  Místo schůzky
                 </label>
                 <input
                   type="text"
@@ -370,7 +370,7 @@ function AddActivityModal({
             <div>
               <label className="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">Typ</label>
               <select value={form.typ} onChange={e => setForm(f => ({ ...f, typ: e.target.value }))} className={inp}>
-                {typOptions.map(t => <option key={t.value} value={t.value}>{t.icon} {t.label}</option>)}
+                {typOptions.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
             </div>
             <div>
@@ -390,7 +390,7 @@ function AddActivityModal({
           </div>
           {form.typ === 'SCHUZKA' && (
             <div>
-              <label className="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">📍 Místo schůzky</label>
+              <label className="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">Místo schůzky</label>
               <input type="text" value={form.misto} onChange={e => setForm(f => ({ ...f, misto: e.target.value }))} className={inp} placeholder="Adresa, název místa…" />
             </div>
           )}
@@ -616,7 +616,7 @@ export default function ActivitiesSection({ dealId, activities: initActivities, 
             <div>
               <label className="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">Typ</label>
               <select value={form.typ} onChange={e => setForm(f => ({ ...f, typ: e.target.value }))} className={inp}>
-                {typOptions.map(t => <option key={t.value} value={t.value}>{t.icon} {t.label}</option>)}
+                {typOptions.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
             </div>
             <div>
@@ -636,7 +636,7 @@ export default function ActivitiesSection({ dealId, activities: initActivities, 
           </div>
           {form.typ === 'SCHUZKA' && (
             <div>
-              <label className="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">📍 Místo schůzky</label>
+              <label className="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">Místo schůzky</label>
               <input type="text" value={form.misto} onChange={e => setForm(f => ({ ...f, misto: e.target.value }))} className={inp} placeholder="Adresa, název místa…" />
             </div>
           )}
@@ -679,8 +679,8 @@ export default function ActivitiesSection({ dealId, activities: initActivities, 
             <div key={act.id} className={`group px-6 py-3.5 hover:bg-gray-50 dark:hover:bg-slate-700/40 transition-colors ${stav === 'DOKONCENA' ? 'opacity-60' : ''}`}>
               <div className="flex gap-3">
                 {/* Icon */}
-                <div className="text-xl flex-shrink-0 mt-0.5 cursor-pointer" onClick={() => setSelectedAct(act)}>
-                  {t?.icon ?? '•'}
+                <div className="flex-shrink-0 mt-0.5 cursor-pointer" onClick={() => setSelectedAct(act)}>
+                  <ActivityTypeIcon typ={act.typ} className="w-5 h-5" />
                 </div>
                 {/* Content */}
                 <div className="flex-1 min-w-0 cursor-pointer" onClick={() => setSelectedAct(act)}>
@@ -692,7 +692,7 @@ export default function ActivitiesSection({ dealId, activities: initActivities, 
                     </span>
                     {act.cas && (
                       <span className="text-xs font-medium text-primary dark:text-primary-light">
-                        🕐 {act.cas}{act.trvaniMin ? ` · ${fmtTrvani(act.trvaniMin)}` : ''}
+                        {act.cas}{act.trvaniMin ? ` · ${fmtTrvani(act.trvaniMin)}` : ''}
                       </span>
                     )}
                     {act.userJmeno && <span className="text-xs text-gray-400 dark:text-slate-500">· {act.userJmeno}</span>}
@@ -701,7 +701,7 @@ export default function ActivitiesSection({ dealId, activities: initActivities, 
                       {stavConfig[stav]?.label ?? stav}
                     </span>
                   </div>
-                  {act.misto && <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">📍 {act.misto}</p>}
+                  {act.misto && <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5 flex items-center gap-1"><IconMapPin className="w-3.5 h-3.5 flex-shrink-0" /> {act.misto}</p>}
                   {act.cil && <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">Cíl: {act.cil}</p>}
                   {act.popis && <p className="text-sm text-gray-800 dark:text-slate-200 mt-0.5">{act.popis}</p>}
                   {act.vysledek && (

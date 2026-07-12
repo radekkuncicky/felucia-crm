@@ -218,7 +218,7 @@ export default function ClientEditForm({ client, isAdmin }: { client: ClientData
                       : 'text-gray-500 dark:text-slate-400 hover:text-gray-700'
                   }`}
                 >
-                  {typ === 'FYZICKA_OSOBA' ? '👤 Fyzická osoba' : '🏢 Firma'}
+                  {typ === 'FYZICKA_OSOBA' ? 'Fyzická osoba' : 'Firma'}
                 </button>
               ))}
             </div>

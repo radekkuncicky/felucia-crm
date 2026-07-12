@@ -3,12 +3,13 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
 import ExtensionsManager from './ExtensionsManager'
+import { IconMail, IconBuilding, IconPhone } from '@/components/ui/Icons'
 
 const AVAILABLE_EXTENSIONS = [
   { nazev: 'digisign', label: 'DigiSign', popis: 'Elektronické podepisování dokumentů', icon: '✍️' },
-  { nazev: 'mailchimp', label: 'Mailchimp', popis: 'Email marketing a automatizace', icon: '📧' },
-  { nazev: 'merk', label: 'Merk', popis: 'Obchodní rejstřík – automatické doplnění dat firmy', icon: '🏢' },
-  { nazev: 'ai-calls', label: 'AI analýza hovorů', popis: 'Nahrávání a přepis telefonních hovorů pomocí AI', icon: '🎙️' },
+  { nazev: 'mailchimp', label: 'Mailchimp', popis: 'Email marketing a automatizace', icon: <IconMail className="w-6 h-6" /> },
+  { nazev: 'merk', label: 'Merk', popis: 'Obchodní rejstřík – automatické doplnění dat firmy', icon: <IconBuilding className="w-6 h-6" /> },
+  { nazev: 'ai-calls', label: 'AI analýza hovorů', popis: 'Nahrávání a přepis telefonních hovorů pomocí AI', icon: <IconPhone className="w-6 h-6" /> },
 ]
 
 export default async function ExtensionsPage() {

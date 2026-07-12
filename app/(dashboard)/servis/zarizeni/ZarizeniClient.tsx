@@ -177,14 +177,14 @@ function QrModal({ zarizeni, onClose }: { zarizeni: Zarizeni; onClose: () => voi
               disabled={!qrSvg}
               className="w-full py-2 text-sm font-medium bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-800 dark:text-white rounded-lg disabled:opacity-40 transition-colors"
             >
-              🖨 Tisknout
+              Tisknout
             </button>
             <button
               onClick={copyUrl}
               disabled={!qrUrl}
               className="w-full py-2 text-sm font-medium border border-gray-300 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 rounded-lg disabled:opacity-40 transition-colors"
             >
-              {copied ? '✓ Zkopírováno!' : '📋 Kopírovat URL'}
+              {copied ? '✓ Zkopírováno!' : 'Kopírovat URL'}
             </button>
           </div>
         </div>

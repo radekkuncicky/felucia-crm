@@ -7,14 +7,14 @@ import { getPlanLimits } from '@/lib/planLimits'
 
 type StavDealu = 'NOVY' | 'JEDNANI' | 'NABIDKA' | 'PRED_UZAVRENIM' | 'USPECH' | 'PAS' | 'ZNEPLATNENO'
 
-const stavOptions: { value: StavDealu; label: string; color: string; dot: string; icon: string }[] = [
-  { value: 'NOVY',           label: 'Nový',             color: 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300',      dot: 'bg-gray-400',   icon: '⭕' },
-  { value: 'JEDNANI',        label: 'Jednání',          color: 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300',    dot: 'bg-blue-500',   icon: '💬' },
-  { value: 'NABIDKA',        label: 'Nabídka',          color: 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300', dot: 'bg-yellow-500', icon: '📄' },
-  { value: 'PRED_UZAVRENIM', label: 'Před uzavřením',   color: 'bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300', dot: 'bg-orange-500', icon: '🔒' },
-  { value: 'USPECH',         label: 'Úspěch',           color: 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300', dot: 'bg-green-500',  icon: '✅' },
-  { value: 'PAS',            label: 'Prohráno',           color: 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300',       dot: 'bg-red-500',    icon: '❌' },
-  { value: 'ZNEPLATNENO',    label: 'Zneplatněno',      color: 'bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400',    dot: 'bg-gray-400',   icon: '🚫' },
+const stavOptions: { value: StavDealu; label: string; color: string; dot: string }[] = [
+  { value: 'NOVY',           label: 'Nový',             color: 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300',      dot: 'bg-gray-400' },
+  { value: 'JEDNANI',        label: 'Jednání',          color: 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300',    dot: 'bg-blue-500' },
+  { value: 'NABIDKA',        label: 'Nabídka',          color: 'bg-yellow-100 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300', dot: 'bg-yellow-500' },
+  { value: 'PRED_UZAVRENIM', label: 'Před uzavřením',   color: 'bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300', dot: 'bg-orange-500' },
+  { value: 'USPECH',         label: 'Úspěch',           color: 'bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300', dot: 'bg-green-500' },
+  { value: 'PAS',            label: 'Prohráno',           color: 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300',       dot: 'bg-red-500' },
+  { value: 'ZNEPLATNENO',    label: 'Zneplatněno',      color: 'bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400',    dot: 'bg-gray-400' },
 ]
 
 interface Props {
@@ -282,7 +282,6 @@ export default function DealStatusBadge({ dealId, currentStav, plan, klientId, k
           className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full cursor-pointer hover:opacity-80 transition-opacity disabled:opacity-60 ${current.color}`}
           title="Klikněte pro změnu stavu"
         >
-          <span>{current.icon}</span>
           <span>{current.label}</span>
           <svg className="w-3 h-3 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />

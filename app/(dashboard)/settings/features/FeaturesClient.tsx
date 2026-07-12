@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react'
 import type { OrgSettingsData } from '@/lib/orgSettings'
 import { useUpdateOrgSettings } from '@/context/OrgSettingsContext'
+import { IconWrench, IconSparkles, IconChart, IconDocument, IconCoins, IconBox, IconCheck, IconActivity, IconBell, IconCalendar, IconClipboard } from '@/components/ui/Icons'
 
 interface Props {
   settings: OrgSettingsData
@@ -39,7 +40,7 @@ function Toggle({
 }
 
 interface ToggleRowProps {
-  icon: string
+  icon: React.ReactNode
   title: string
   description: string
   checked: boolean
@@ -51,7 +52,7 @@ interface ToggleRowProps {
 function ToggleRow({ icon, title, description, checked, onChange, disabled, badge }: ToggleRowProps) {
   return (
     <div className="flex items-center gap-4 py-4 px-5">
-      <div className="flex-shrink-0 text-2xl w-8 text-center">{icon}</div>
+      <div className="flex-shrink-0 w-8 flex justify-center text-gray-400 dark:text-slate-500">{icon}</div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <p className={`text-sm font-semibold ${disabled ? 'text-gray-400 dark:text-slate-500' : 'text-gray-900 dark:text-white'}`}>
@@ -134,7 +135,7 @@ export default function FeaturesClient({ settings, plan }: Props) {
         {/* Moduly */}
         <SectionCard title="Moduly">
           <ToggleRow
-            icon="🔧"
+            icon={<IconWrench className="w-6 h-6" />}
             title="Servisní modul"
             description="Správa servisních kontraktů a plánování návštěv."
             checked={vals.modulServis}
@@ -143,7 +144,7 @@ export default function FeaturesClient({ settings, plan }: Props) {
             badge={!isPlatinum ? 'Professional' : undefined}
           />
           <ToggleRow
-            icon="🤖"
+            icon={<IconSparkles className="w-6 h-6" />}
             title="AI asistentka Dáša"
             description="Hlasové a textové zadávání akcí v CRM."
             checked={vals.modulDasa}
@@ -152,21 +153,21 @@ export default function FeaturesClient({ settings, plan }: Props) {
             badge={!isPremiumPlus ? 'Standard+' : undefined}
           />
           <ToggleRow
-            icon="📊"
+            icon={<IconChart className="w-6 h-6" />}
             title="Analytiky"
             description="Grafy výkonnosti, funnel prodeje, přehledy obchodníků."
             checked={vals.modulAnalytiky}
             onChange={toggle('modulAnalytiky')}
           />
           <ToggleRow
-            icon="📁"
+            icon={<IconDocument className="w-6 h-6" />}
             title="Dokumenty"
             description="Správa příloh, PDF exportů a fotek zakázek."
             checked={vals.modulDokumenty}
             onChange={toggle('modulDokumenty')}
           />
           <ToggleRow
-            icon="💰"
+            icon={<IconCoins className="w-6 h-6" />}
             title="Ceníky"
             description="Více cenových hladin per produkt."
             checked={vals.modulCeniky}
@@ -175,7 +176,7 @@ export default function FeaturesClient({ settings, plan }: Props) {
             badge={!isPremiumPlus ? 'Standard+' : undefined}
           />
           <ToggleRow
-            icon="📥"
+            icon={<IconBox className="w-6 h-6" />}
             title="Leady"
             description="Správa potenciálních zákazníků z webových formulářů a ručního zadávání."
             checked={vals.modulLeady}
@@ -188,14 +189,14 @@ export default function FeaturesClient({ settings, plan }: Props) {
         {/* Obchodní proces */}
         <SectionCard title="Obchodní proces">
           <ToggleRow
-            icon="✅"
+            icon={<IconCheck className="w-6 h-6" />}
             title="Povinná aktivita před uzavřením OP"
             description="OP nelze přesunout do stavu Úspěch bez alespoň jedné aktivity typu Hovor nebo Schůzka."
             checked={vals.povinnaAktivitaUOP}
             onChange={toggle('povinnaAktivitaUOP')}
           />
           <ToggleRow
-            icon="🔄"
+            icon={<IconActivity className="w-6 h-6" />}
             title="Automatický návrh servisního kontraktu"
             description="Po uzavření OP nabídnout vytvoření servisního kontraktu."
             checked={vals.automatickyServis}
@@ -204,7 +205,7 @@ export default function FeaturesClient({ settings, plan }: Props) {
             badge={!isPlatinum ? 'Professional' : undefined}
           />
           <ToggleRow
-            icon="👁"
+            icon={<IconActivity className="w-6 h-6" />}
             title="Schválení nabídky adminem"
             description="Nabídka musí být schválena adminem před odesláním klientovi."
             checked={vals.schvaleniNabidky}
@@ -216,7 +217,7 @@ export default function FeaturesClient({ settings, plan }: Props) {
         <SectionCard title="Upomínky">
           <div className="py-4 px-5">
             <div className="flex items-center gap-4">
-              <div className="flex-shrink-0 text-2xl w-8 text-center">🔔</div>
+              <div className="flex-shrink-0 w-8 flex justify-center text-gray-400 dark:text-slate-500"><IconBell className="w-6 h-6" /></div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-gray-900 dark:text-white">Upomínky OP bez aktivity</p>
                 <div className="flex items-center gap-2 mt-1.5">
@@ -238,7 +239,7 @@ export default function FeaturesClient({ settings, plan }: Props) {
             </div>
           </div>
           <ToggleRow
-            icon="📅"
+            icon={<IconCalendar className="w-6 h-6" />}
             title="Upomínky blížících se termínů"
             description="Upozornění na servisní návštěvy a termíny aktivit."
             checked={vals.notifBlizkTermin}
@@ -252,7 +253,7 @@ export default function FeaturesClient({ settings, plan }: Props) {
             onChange={toggle('notifNovyOP')}
           />
           <ToggleRow
-            icon="📥"
+            icon={<IconBox className="w-6 h-6" />}
             title="Notifikace o nových leadech"
             description="Bell notifikace adminy a obchodníkům při novém leadu z webového formuláře."
             checked={vals.notifNovyLead}
@@ -266,7 +267,7 @@ export default function FeaturesClient({ settings, plan }: Props) {
         <SectionCard title="Nabídky a produkty">
           <div className="py-4 px-5 space-y-4">
             <div className="flex items-center gap-4">
-              <div className="flex-shrink-0 text-2xl w-8 text-center">🧾</div>
+              <div className="flex-shrink-0 w-8 flex justify-center text-gray-400 dark:text-slate-500"><IconClipboard className="w-6 h-6" /></div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-gray-900 dark:text-white">Výchozí sazba DPH</p>
                 <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">Předvyplněná sazba pro nové nabídky a produkty.</p>
@@ -302,7 +303,7 @@ export default function FeaturesClient({ settings, plan }: Props) {
             </div>
           </div>
           <ToggleRow
-            icon="👀"
+            icon={<IconActivity className="w-6 h-6" />}
             title="Zobrazit nákladové ceny technikům"
             description="Technici uvidí nákupní ceny a marže produktů."
             checked={vals.zobrazitNakladoveCeny}
@@ -313,7 +314,7 @@ export default function FeaturesClient({ settings, plan }: Props) {
         {/* Servis */}
         <SectionCard title="Servisní modul">
           <ToggleRow
-            icon="📄"
+            icon={<IconDocument className="w-6 h-6" />}
             title="Automaticky odesílat servisní protokol klientovi"
             description="Po dokončení návštěvy pošle systém email klientovi s PDF protokolem jako přílohou."
             checked={vals.sendServisniProtokolEmail}

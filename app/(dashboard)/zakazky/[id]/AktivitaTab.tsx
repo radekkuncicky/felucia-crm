@@ -1,5 +1,6 @@
 'use client'
 import { formatDateTime } from '@/lib/format'
+import { IconClipboard, IconBox, IconNote } from '@/components/ui/Icons'
 
 interface AuditEntry {
   id: string
@@ -25,11 +26,12 @@ function formatZmeny(zmeny: Record<string, unknown>): string {
   return JSON.stringify(zmeny)
 }
 
-function IconForType(typZaznamu: string) {
+function IconForType({ typZaznamu }: { typZaznamu: string }) {
+  const cls = 'w-4 h-4 text-gray-400 dark:text-slate-500'
   switch (typZaznamu) {
-    case 'Zakazka': return '📋'
-    case 'ZakazkaPolozka': return '📦'
-    default: return '📝'
+    case 'Zakazka': return <IconClipboard className={cls} />
+    case 'ZakazkaPolozka': return <IconBox className={cls} />
+    default: return <IconNote className={cls} />
   }
 }
 
@@ -48,7 +50,7 @@ export default function AktivitaTab({ aktivity }: Props) {
             <div key={a.id} className="flex gap-3">
               <div className="flex flex-col items-center">
                 <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-slate-700 flex items-center justify-center text-sm flex-shrink-0">
-                  {IconForType(a.typZaznamu)}
+                  <IconForType typZaznamu={a.typZaznamu} />
                 </div>
                 {i < aktivity.length - 1 && (
                   <div className="w-0.5 flex-1 bg-gray-100 dark:bg-slate-700 mt-2" />

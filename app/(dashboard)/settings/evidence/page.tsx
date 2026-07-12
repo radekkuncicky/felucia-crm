@@ -3,12 +3,13 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
 import EvidenceManager from './EvidenceManager'
+import { IconUser, IconClipboard, IconDocument, IconBox } from '@/components/ui/Icons'
 
 const ENTITY_TYPES = [
-  { key: 'Client', label: 'Klient', icon: '👤' },
-  { key: 'Deal', label: 'Obchodní případ', icon: '📋' },
-  { key: 'Quote', label: 'Nabídka', icon: '📄' },
-  { key: 'Product', label: 'Produkt', icon: '📦' },
+  { key: 'Client', label: 'Klient', icon: <IconUser className="w-5 h-5" /> },
+  { key: 'Deal', label: 'Obchodní případ', icon: <IconClipboard className="w-5 h-5" /> },
+  { key: 'Quote', label: 'Nabídka', icon: <IconDocument className="w-5 h-5" /> },
+  { key: 'Product', label: 'Produkt', icon: <IconBox className="w-5 h-5" /> },
 ]
 
 export default async function EvidencePage() {

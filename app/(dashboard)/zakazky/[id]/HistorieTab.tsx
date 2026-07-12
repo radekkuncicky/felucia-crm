@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { formatDateTime } from '@/lib/format'
+import { IconClipboard, IconBox, IconNote } from '@/components/ui/Icons'
 
 interface Komentar {
   id: string
@@ -154,7 +155,7 @@ export default function HistorieTab({ zakazkaId, komentare: initialKomentare, cu
                 <div key={a.id} className="flex gap-3">
                   <div className="flex flex-col items-center">
                     <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-slate-700 flex items-center justify-center text-sm flex-shrink-0">
-                      {a.typZaznamu === 'Zakazka' ? '📋' : a.typZaznamu === 'ZakazkaPolozka' ? '📦' : '📝'}
+                      {a.typZaznamu === 'Zakazka' ? <IconClipboard className="w-4 h-4" /> : a.typZaznamu === 'ZakazkaPolozka' ? <IconBox className="w-4 h-4" /> : <IconNote className="w-4 h-4" />}
                     </div>
                     {i < aktivity.length - 1 && <div className="w-0.5 flex-1 bg-gray-100 dark:bg-slate-700 mt-2" />}
                   </div>

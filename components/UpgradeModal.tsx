@@ -1,4 +1,5 @@
 'use client'
+import { IconSparkles } from '@/components/ui/Icons'
 
 interface Props {
   onClose: () => void
@@ -21,7 +22,7 @@ export default function UpgradeModal({ onClose, reason }: Props) {
 
         {/* Header */}
         <div className="text-center mb-6">
-          <div className="text-4xl mb-3">🚀</div>
+          <div className="flex justify-center mb-3"><IconSparkles className="w-10 h-10 text-primary" /></div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
             Přejděte na Standard
           </h2>

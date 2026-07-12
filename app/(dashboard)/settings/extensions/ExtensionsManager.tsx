@@ -5,7 +5,7 @@ interface ExtData {
   nazev: string
   label: string
   popis: string
-  icon: string
+  icon: React.ReactNode
   aktivni: boolean
   apiKlic: string
   id: string | null

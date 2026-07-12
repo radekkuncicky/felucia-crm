@@ -6,6 +6,8 @@ import { StavDealu, Technologie } from '@prisma/client'
 import { techLabels, techColors } from '@/lib/constants'
 import InlineStatusBadge from './InlineStatusBadge'
 import { formatDate, formatKcCompact } from '@/lib/format'
+import { ActivityTypeIcon } from '@/components/ui/ActivityTypeIcon'
+import { IconUser, IconWrench, IconCoins, IconCalendar, IconHammer } from '@/components/ui/Icons'
 
 interface DealPreview {
   id: string
@@ -30,10 +32,6 @@ interface Props {
   dealId: string | null
   onClose: () => void
   onStavChange?: (dealId: string, newStav: StavDealu) => void
-}
-
-const ACT_ICONS: Record<string, string> = {
-  HOVOR: '📞', EMAIL: '✉️', SCHUZKA: '🤝', POZNAMKA: '📝', UKOL: '✅',
 }
 
 const fmtKc = formatKcCompact
@@ -153,7 +151,7 @@ export default function DealSlideOver({ dealId, onClose, onStavChange }: Props) 
               <section>
                 <h3 className="text-[10px] uppercase tracking-widest text-gray-400 dark:text-slate-500 font-semibold mb-3">Základní informace</h3>
                 <div className="space-y-2.5">
-                  <InfoRow icon="👤" label="Klient">
+                  <InfoRow icon={<IconUser className="w-4 h-4" />} label="Klient">
                     <Link href={`/clients/${data.client.id}`} className="text-sm font-medium text-primary dark:text-primary-light hover:underline">
                       {data.client.jmeno} {data.client.prijmeni}
                     </Link>
@@ -165,33 +163,33 @@ export default function DealSlideOver({ dealId, onClose, onStavChange }: Props) 
                     )}
                   </InfoRow>
 
-                  <InfoRow icon="🔧" label="Technologie">
+                  <InfoRow icon={<IconWrench className="w-4 h-4" />} label="Technologie">
                     <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${techColors[data.technologie]}`}>
                       {techLabels[data.technologie]}
                     </span>
                   </InfoRow>
 
                   {cenaSDph > 0 && (
-                    <InfoRow icon="💰" label="Cena vč. DPH">
+                    <InfoRow icon={<IconCoins className="w-4 h-4" />} label="Cena vč. DPH">
                       <span className="text-sm font-semibold text-gray-900 dark:text-white">{fmtKc(cenaSDph)}</span>
                       <span className="text-xs text-gray-400 ml-1">({fmtKc(data.konecnaCena)} bez DPH)</span>
                     </InfoRow>
                   )}
 
                   {data.user && (
-                    <InfoRow icon="👤" label="Přiřazeno">
+                    <InfoRow icon={<IconUser className="w-4 h-4" />} label="Přiřazeno">
                       <span className="text-sm text-gray-700 dark:text-slate-300">{data.user.jmeno}</span>
                     </InfoRow>
                   )}
 
-                  <InfoRow icon="📅" label="Otevřeno">
+                  <InfoRow icon={<IconCalendar className="w-4 h-4" />} label="Otevřeno">
                     <span className="text-sm text-gray-600 dark:text-slate-400">
                       {formatDate(data.vytvoreno)}
                     </span>
                   </InfoRow>
 
                   {data.terminRealizace && (
-                    <InfoRow icon="🔨" label="Realizace">
+                    <InfoRow icon={<IconHammer className="w-4 h-4" />} label="Realizace">
                       <span className="text-sm text-orange-600 dark:text-orange-400">
                         {formatDate(data.terminRealizace)}
                       </span>
@@ -212,7 +210,7 @@ export default function DealSlideOver({ dealId, onClose, onStavChange }: Props) 
                   <div className="space-y-2">
                     {data.activities.map(act => (
                       <div key={act.id} className={`flex items-start gap-2.5 p-2.5 rounded-xl ${act.stav === 'DOKONCENA' ? 'opacity-50' : 'bg-gray-50 dark:bg-slate-800/60'}`}>
-                        <span className="text-base flex-shrink-0">{ACT_ICONS[act.typ] ?? '•'}</span>
+                        <ActivityTypeIcon typ={act.typ} className="w-4 h-4 flex-shrink-0" />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm text-gray-800 dark:text-slate-200 line-clamp-2">{act.popis}</p>
                           <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">
@@ -289,10 +287,10 @@ export default function DealSlideOver({ dealId, onClose, onStavChange }: Props) 
   )
 }
 
-function InfoRow({ icon, label, children }: { icon: string; label: string; children: React.ReactNode }) {
+function InfoRow({ icon, label, children }: { icon: React.ReactNode; label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-start gap-3">
-      <span className="text-base w-5 text-center flex-shrink-0 mt-0.5">{icon}</span>
+      <span className="w-5 flex justify-center flex-shrink-0 mt-0.5 text-gray-400 dark:text-slate-500">{icon}</span>
       <div className="flex-1 min-w-0">
         <p className="text-[10px] uppercase tracking-wider text-gray-400 dark:text-slate-500 font-semibold mb-0.5">{label}</p>
         <div>{children}</div>

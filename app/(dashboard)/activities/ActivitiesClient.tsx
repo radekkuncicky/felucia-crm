@@ -8,6 +8,7 @@ import ColumnConfigButton from '@/components/ColumnConfigButton'
 import { ResizeHandle } from '@/components/ResizeHandle'
 import ConfirmModal from '@/components/ConfirmModal'
 import { formatDate } from '@/lib/format'
+import { ActivityTypeIcon } from '@/components/ui/ActivityTypeIcon'
 
 const ACT_DEFS: ColumnDef[] = [
   { id: 'datum', label: 'Datum', defaultVisible: true, defaultWidth: 110 },
@@ -21,16 +22,12 @@ const ACT_DEFS: ColumnDef[] = [
 
 const typOptions = [
   { value: '', label: 'Všechny typy' },
-  { value: 'HOVOR', label: '📞 Hovor' },
-  { value: 'EMAIL', label: '✉️ Email' },
-  { value: 'SCHUZKA', label: '🤝 Schůzka' },
-  { value: 'POZNAMKA', label: '📝 Poznámka' },
-  { value: 'UKOL', label: '✅ Úkol' },
+  { value: 'HOVOR', label: 'Hovor' },
+  { value: 'EMAIL', label: 'Email' },
+  { value: 'SCHUZKA', label: 'Schůzka' },
+  { value: 'POZNAMKA', label: 'Poznámka' },
+  { value: 'UKOL', label: 'Úkol' },
 ]
-
-const typIcons: Record<string, string> = {
-  HOVOR: '📞', EMAIL: '✉️', SCHUZKA: '🤝', POZNAMKA: '📝', UKOL: '✅',
-}
 
 const typLabels: Record<string, string> = {
   HOVOR: 'Hovor', EMAIL: 'Email', SCHUZKA: 'Schůzka', POZNAMKA: 'Poznámka', UKOL: 'Úkol',
@@ -144,7 +141,7 @@ function ActivityModal({ act, onClose, onSaved, onDeleted }: {
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <span className="text-2xl">{typIcons[typ] ?? '•'}</span>
+            <ActivityTypeIcon typ={typ} className="w-6 h-6" />
             <div>
               <p className="font-semibold text-gray-900 dark:text-white">Upravit aktivitu</p>
               <Link href={`/deals/${act.deal.id}?tab=aktivity`} className="text-xs text-green-600 hover:underline" onClick={e => e.stopPropagation()}>
@@ -163,11 +160,11 @@ function ActivityModal({ act, onClose, onSaved, onDeleted }: {
             <div>
               <label className="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">Typ</label>
               <select value={typ} onChange={e => setTyp(e.target.value)} className={inp}>
-                <option value="HOVOR">📞 Hovor</option>
-                <option value="EMAIL">✉️ Email</option>
-                <option value="SCHUZKA">🤝 Schůzka</option>
-                <option value="POZNAMKA">📝 Poznámka</option>
-                <option value="UKOL">✅ Úkol</option>
+                <option value="HOVOR">Hovor</option>
+                <option value="EMAIL">Email</option>
+                <option value="SCHUZKA">Schůzka</option>
+                <option value="POZNAMKA">Poznámka</option>
+                <option value="UKOL">Úkol</option>
               </select>
             </div>
             <div>
@@ -225,11 +222,11 @@ function ActivityModal({ act, onClose, onSaved, onDeleted }: {
                     <div>
                       <label className="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">Typ</label>
                       <select value={followupTyp} onChange={e => setFollowupTyp(e.target.value)} className={inp}>
-                        <option value="HOVOR">📞 Hovor</option>
-                        <option value="EMAIL">✉️ Email</option>
-                        <option value="SCHUZKA">🤝 Schůzka</option>
-                        <option value="UKOL">✅ Úkol</option>
-                        <option value="POZNAMKA">📝 Poznámka</option>
+                        <option value="HOVOR">Hovor</option>
+                        <option value="EMAIL">Email</option>
+                        <option value="SCHUZKA">Schůzka</option>
+                        <option value="UKOL">Úkol</option>
+                        <option value="POZNAMKA">Poznámka</option>
                       </select>
                     </div>
                     <div>
@@ -358,7 +355,7 @@ export default function ActivitiesClient({ activities: initActivities, defaultTy
           <div key={act.id} onClick={() => setSelectedAct(act)} className={`p-4 space-y-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700/50 ${act.stav === 'DOKONCENA' ? 'opacity-60' : ''}`}>
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-center gap-2">
-                <span className="text-lg">{typIcons[act.typ] ?? '•'}</span>
+                <ActivityTypeIcon typ={act.typ} className="w-5 h-5" />
                 <div>
                   <div className="flex items-center gap-1.5">
                     <StavDot stav={act.stav} />
@@ -431,7 +428,7 @@ export default function ActivitiesClient({ activities: initActivities, defaultTy
                           <td key={col.id} className="px-4 py-3 overflow-hidden">
                             <span className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-700 dark:text-slate-300">
                               <StavDot stav={act.stav} />
-                              <span>{typIcons[act.typ] ?? '•'}</span>
+                              <ActivityTypeIcon typ={act.typ} />
                               <span className="truncate">{typLabels[act.typ] ?? act.typ}</span>
                             </span>
                           </td>

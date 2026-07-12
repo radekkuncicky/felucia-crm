@@ -18,7 +18,7 @@ interface FieldData {
 interface EntityType {
   key: string
   label: string
-  icon: string
+  icon: React.ReactNode
 }
 
 const TYP_OPTIONS = [

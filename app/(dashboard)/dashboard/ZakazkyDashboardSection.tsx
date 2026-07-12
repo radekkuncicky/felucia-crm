@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
 import { formatDate } from '@/lib/format'
+import { IconWrench, IconClipboard, IconCreditCard } from '@/components/ui/Icons'
 
 export default async function ZakazkyDashboardSection({ orgId }: { orgId: string }) {
   const [aktivni, vRealizaci, cekajPP, nevyuctovano, podpisanePP] = await Promise.all([
@@ -20,10 +21,10 @@ export default async function ZakazkyDashboardSection({ orgId }: { orgId: string
   ])
 
   const kpis = [
-    { label: 'Aktivní zakázky', value: aktivni, icon: '🔧', href: '/zakazky', color: 'text-primary dark:text-primary-light' },
+    { label: 'Aktivní zakázky', value: aktivni, icon: <IconWrench className="w-[18px] h-[18px]" />, href: '/zakazky', color: 'text-primary dark:text-primary-light' },
     { label: 'V realizaci', value: vRealizaci, icon: '⚙️', href: '/zakazky', color: 'text-orange-600 dark:text-orange-400' },
-    { label: 'Čekají na schválení PP', value: cekajPP, icon: '📋', href: '/predavaky', color: cekajPP > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-500 dark:text-slate-400' },
-    { label: 'Nevyúčtováno', value: nevyuctovano, icon: '💳', href: '/zakazky', color: nevyuctovano > 0 ? 'text-yellow-600 dark:text-yellow-400' : 'text-gray-500 dark:text-slate-400' },
+    { label: 'Čekají na schválení PP', value: cekajPP, icon: <IconClipboard className="w-[18px] h-[18px]" />, href: '/predavaky', color: cekajPP > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-500 dark:text-slate-400' },
+    { label: 'Nevyúčtováno', value: nevyuctovano, icon: <IconCreditCard className="w-[18px] h-[18px]" />, href: '/zakazky', color: nevyuctovano > 0 ? 'text-yellow-600 dark:text-yellow-400' : 'text-gray-500 dark:text-slate-400' },
   ]
 
   return (
@@ -55,7 +56,7 @@ export default async function ZakazkyDashboardSection({ orgId }: { orgId: string
       {podpisanePP.length > 0 && (
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-5">
           <h3 className="font-semibold text-gray-900 dark:text-white mb-3">
-            📋 Zakázky ke schválení ({podpisanePP.length})
+            Zakázky ke schválení ({podpisanePP.length})
           </h3>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">

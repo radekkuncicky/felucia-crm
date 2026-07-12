@@ -113,17 +113,16 @@ export default async function ClientDetailPage({
       label: deal.predmet ?? 'Nový obchodní případ',
       sub: `${deal.kod ?? ''} · Vytvořen · ${stavLabels[deal.stav]}`,
       href: `/deals/${deal.id}`,
-      icon: '📋',
+      icon: 'DEAL',
     })
     for (const act of deal.activities) {
-      const typIcons: Record<string, string> = { HOVOR: '📞', EMAIL: '✉️', SCHUZKA: '🤝', POZNAMKA: '📝', UKOL: '✅' }
       history.push({
         date: act.datum,
         type: 'activity',
         label: act.popis ?? act.typ,
         sub: `${deal.predmet ?? deal.kod ?? 'OP'} · ${act.typ}`,
         href: `/deals/${deal.id}?tab=aktivity`,
-        icon: typIcons[act.typ] ?? '•',
+        icon: act.typ,
       })
     }
   }

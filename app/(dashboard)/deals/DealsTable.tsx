@@ -515,12 +515,12 @@ export default function DealsTable({ deals, isAdmin = false }: Props) {
             </span>
             <span className="text-gray-400 dark:text-slate-600">|</span>
             <span className="text-green-700 dark:text-green-400">
-              👍 <span className="font-semibold">{fmtKc(stats.uspech.sum)}</span>{' '}
+              <span className="font-semibold">{fmtKc(stats.uspech.sum)}</span>{' '}
               <span className="opacity-70">({stats.uspech.count})</span>
             </span>
             <span className="text-gray-400 dark:text-slate-600">|</span>
             <span className="text-red-600 dark:text-red-400">
-              👎 <span className="font-semibold">{fmtKc(stats.pas.sum)}</span>{' '}
+              <span className="font-semibold">{fmtKc(stats.pas.sum)}</span>{' '}
               <span className="opacity-70">({stats.pas.count})</span>
             </span>
           </div>

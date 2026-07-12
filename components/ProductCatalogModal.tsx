@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { formatCislo } from '@/lib/format'
+import { IconBox } from '@/components/ui/Icons'
 
 interface CategoryData {
   id: string
@@ -290,7 +291,7 @@ export default function ProductCatalogModal({ onClose, onAdd }: Props) {
               {!loading && sorted.length === 0 && (
                 <tr>
                   <td colSpan={6} className="px-4 py-14 text-center">
-                    <div className="text-4xl mb-3">📦</div>
+                    <div className="flex justify-center mb-3"><IconBox className="w-10 h-10 text-gray-300 dark:text-slate-600" /></div>
                     <p className="text-sm text-gray-400 dark:text-slate-500">Žádné produkty nenalezeny</p>
                   </td>
                 </tr>

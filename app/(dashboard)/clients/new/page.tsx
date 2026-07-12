@@ -146,7 +146,7 @@ export default function NewClientPage() {
                     : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200'
                 }`}
               >
-                {typ === 'FYZICKA_OSOBA' ? '👤 Fyzická osoba' : '🏢 Firma'}
+                {typ === 'FYZICKA_OSOBA' ? 'Fyzická osoba' : 'Firma'}
               </button>
             ))}
           </div>

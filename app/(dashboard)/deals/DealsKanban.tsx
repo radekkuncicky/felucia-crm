@@ -82,7 +82,7 @@ function KanbanCard({ deal, overlay = false }: { deal: KanbanDeal; overlay?: boo
 
       {/* Client */}
       <p className="text-xs text-gray-500 dark:text-slate-400 truncate">
-        👤 {deal.clientJmeno}
+        {deal.clientJmeno}
       </p>
 
       {/* Bottom row */}
