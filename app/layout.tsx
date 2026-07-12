@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter, Montserrat, Space_Grotesk } from 'next/font/google'
+import { headers } from 'next/headers'
 import './globals.css'
 import { Providers } from './providers'
 import CookieConsent from './components/CookieConsent'
@@ -38,6 +39,9 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
+  // Nonce z middlewaru — čtení headers() zároveň vynutí dynamické
+  // renderování všech stránek (statický prerender by nonce neměl).
+  const nonce = headers().get('x-nonce') ?? undefined
   return (
     <html lang="cs" suppressHydrationWarning>
       <head>
@@ -50,6 +54,7 @@ export default function RootLayout({
         <meta name="grovetech-vibe-verify" content="gtai-verify-orhdm2d0morjzphe" />
         <script
           type="application/ld+json"
+          nonce={nonce}
           dangerouslySetInnerHTML={{
             __html: JSON.stringify({
               '@context': 'https://schema.org',

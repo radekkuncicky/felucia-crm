@@ -2,6 +2,8 @@ import 'dotenv/config'
 import PgBoss from 'pg-boss'
 import { prisma } from '../lib/prisma'
 import { findDueReminders, processReminder } from './reminders'
+import { sweepWebhookOutbox, deliverWebhook } from './webhooks'
+import { QUEUE_WEBHOOK_SWEEP, QUEUE_WEBHOOK_DELIVER, type WebhookJob } from '../lib/webhooks'
 
 /**
  * Background worker (PM2 proces nanto-crm-worker, samostatný od Next.js).
@@ -10,6 +12,8 @@ import { findDueReminders, processReminder } from './reminders'
  * Fronty:
  *  - reminders-sweep   cron každou minutu, zařadí zralé připomínky
  *  - activity-reminder zpracování jedné připomínky (bell + email)
+ *  - webhooks-sweep    cron každou minutu, vymete webhook_outbox
+ *  - webhook-deliver   doručení jedné události na jeden endpoint
  */
 
 const QUEUE_SWEEP = 'reminders-sweep'
@@ -42,7 +46,29 @@ async function main() {
     console.log(`[reminder] aktivita ${job.data.activityId}: ${result}`)
   })
 
-  console.log('[worker] běží — fronty:', QUEUE_SWEEP, QUEUE_REMINDER)
+  await boss.createQueue(QUEUE_WEBHOOK_SWEEP)
+  await boss.createQueue(QUEUE_WEBHOOK_DELIVER)
+  await boss.schedule(QUEUE_WEBHOOK_SWEEP, '* * * * *')
+
+  await boss.work(QUEUE_WEBHOOK_SWEEP, async () => {
+    const n = await sweepWebhookOutbox(prisma, (job, opts) =>
+      boss.send(QUEUE_WEBHOOK_DELIVER, job, {
+        ...opts,
+        retryLimit: 5,
+        retryDelay: 60,
+        retryBackoff: true,
+        expireInSeconds: 30,
+      })
+    )
+    if (n > 0) console.log(`[webhooks] zařazeno ${n} doručení`)
+  })
+
+  await boss.work<WebhookJob>(QUEUE_WEBHOOK_DELIVER, async ([job]) => {
+    const result = await deliverWebhook(prisma, job.data)
+    console.log(`[webhook] ${job.data.event} → endpoint ${job.data.endpointId}: ${result}`)
+  })
+
+  console.log('[worker] běží — fronty:', QUEUE_SWEEP, QUEUE_REMINDER, QUEUE_WEBHOOK_SWEEP, QUEUE_WEBHOOK_DELIVER)
 
   const shutdown = async (signal: string) => {
     console.log(`[worker] ${signal}, ukončuji…`)

@@ -1,6 +1,7 @@
 import { prisma } from './prisma'
 import { orgPrisma } from './orgPrisma'
 import { nextServisniZakazkaCislo } from './servisniZakazkaCislo'
+import { jePovolenyPrechod, stavLabel } from './servisStav'
 
 const ZAKAZKA_INCLUDE = {
   kontrakt: {
@@ -112,12 +113,18 @@ export async function createServisniZakazka(
 
 export type UpdateInput = Record<string, unknown>
 
+export type UpdateOptions = {
+  // Admin escape hatch: ruční přepis stavu mimo povolené přechody.
+  forceStav?: boolean
+}
+
 // Úprava servisní zakázky (stav, výsledek práce, náklady, termíny, cekaDuvod...).
 // stav už musí být nový enum (volající přemapuje legacy přes shim).
 export async function updateServisniZakazka(
   orgId: string,
   id: string,
   body: UpdateInput,
+  opts: UpdateOptions = {},
 ): Promise<ServiceResult<{ id: string }>> {
   const db = orgPrisma(orgId)
   const z = await db.servisniZakazka.findFirst({ where: { id, orgId } })
@@ -134,9 +141,17 @@ export async function updateServisniZakazka(
 
   const has = (k: string) => body[k] !== undefined
 
+  const novyStav = has('stav') ? (body.stav as string) : z.stav
+  if (novyStav !== z.stav && !opts.forceStav && !jePovolenyPrechod(z.stav, novyStav)) {
+    return {
+      ok: false,
+      status: 422,
+      error: `Přechod ${stavLabel(z.stav)} → ${stavLabel(novyStav)} není povolen.`,
+    }
+  }
+
   // Dokončení protokolu je navázané na přechod do stavu DOKONCENA (brána do
   // vyúčtování). Nastaví se jednou, zpětně se nemaže.
-  const novyStav = has('stav') ? (body.stav as string) : z.stav
   const protokolDokoncen =
     novyStav === 'DOKONCENA' && !z.protokolDokoncen ? new Date() : z.protokolDokoncen
 
@@ -173,5 +188,113 @@ export async function updateServisniZakazka(
     include: ZAKAZKA_INCLUDE,
   })
 
+  // Dokončení kontraktní zakázky naplánuje další návštěvu (+interval). Jediné
+  // místo dogenerace — funguje stejně z webu, mobilu i legacy aliasů. Selhání
+  // nesmí shodit samotné dokončení.
+  if (novyStav === 'DOKONCENA' && z.stav !== 'DOKONCENA' && z.kontraktId) {
+    try {
+      await naplanujDalsiNavstevu(orgId, updated)
+    } catch (err) {
+      console.error(`[servis] dogenerace návštěvy pro zakázku ${id} selhala:`, err)
+    }
+  }
+
   return { ok: true, data: updated }
+}
+
+// Po dokončení zakázky kryté aktivním kontraktem s intervalem naplánuje další
+// návštěvu (skutečný/teď + interval), pokud už žádná otevřená (NOVA/NAPLANOVANA
+// s termínem v budoucnu či bez termínu) pro kontrakt neexistuje a termín
+// nepřesahuje konec kontraktu. Vrací založenou zakázku, nebo null.
+export async function naplanujDalsiNavstevu(
+  orgId: string,
+  dokoncena: {
+    id: string
+    kontraktId: string | null
+    zarizeniId: string | null
+    klientId: string | null
+    technikId: string | null
+    skutecnyTermin: Date | null
+  },
+) {
+  if (!dokoncena.kontraktId) return null
+  const db = orgPrisma(orgId)
+
+  const kontrakt = await db.servisniKontrakt.findFirst({
+    where: { id: dokoncena.kontraktId, orgId, aktivni: true },
+    select: { id: true, intervalMesicu: true, konec: true },
+  })
+  if (!kontrakt || kontrakt.intervalMesicu <= 0) return null
+
+  const now = new Date()
+  const otevrena = await db.servisniZakazka.findFirst({
+    where: {
+      orgId,
+      kontraktId: kontrakt.id,
+      id: { not: dokoncena.id },
+      stav: { in: ['NOVA', 'NAPLANOVANA'] },
+      OR: [{ planovanyTermin: null }, { planovanyTermin: { gte: now } }],
+    },
+    select: { id: true },
+  })
+  if (otevrena) return null
+
+  const termin = new Date(dokoncena.skutecnyTermin ?? now)
+  termin.setMonth(termin.getMonth() + kontrakt.intervalMesicu)
+  if (kontrakt.konec && termin > kontrakt.konec) return null
+
+  return prisma.$transaction(async (tx) => {
+    const cislo = await nextServisniZakazkaCislo(tx, orgId)
+    return tx.servisniZakazka.create({
+      data: {
+        orgId,
+        cislo,
+        typ: 'PLANOVANY_SERVIS',
+        stav: 'NAPLANOVANA',
+        planovanyTermin: termin,
+        kontraktId: kontrakt.id,
+        zarizeniId: dokoncena.zarizeniId,
+        klientId: dokoncena.klientId,
+        technikId: dokoncena.technikId,
+      },
+    })
+  })
+}
+
+// Reklamace = nová zakázka navázaná na původní (puvodniZakazkaId), stav NOVA
+// bez termínu — objeví se dispečinku v poolu nezaplánovaných. Původní zakázka
+// zůstává netknutá (historie i vyúčtování).
+export async function createReklamace(
+  orgId: string,
+  puvodniId: string,
+  input: { poznamka?: string | null; typ?: string | null } = {},
+): Promise<ServiceResult<{ id: string }>> {
+  const db = orgPrisma(orgId)
+  const puvodni = await db.servisniZakazka.findFirst({ where: { id: puvodniId, orgId } })
+  if (!puvodni) return { ok: false, status: 404, error: 'Not found' }
+
+  if (!['DOKONCENA', 'VYUCTOVANA', 'UZAVRENA'].includes(puvodni.stav)) {
+    return { ok: false, status: 422, error: 'Reklamovat lze jen dokončenou zakázku.' }
+  }
+
+  const created = await prisma.$transaction(async (tx) => {
+    const cislo = await nextServisniZakazkaCislo(tx, orgId)
+    return tx.servisniZakazka.create({
+      data: {
+        orgId,
+        cislo,
+        typ: (input.typ as never) || 'ZARUCNI_OPRAVA',
+        stav: 'NOVA',
+        puvodniZakazkaId: puvodni.id,
+        kontraktId: puvodni.kontraktId,
+        zarizeniId: puvodni.zarizeniId,
+        klientId: puvodni.klientId,
+        technikId: puvodni.technikId,
+        poznamka: input.poznamka || `Reklamace k ${puvodni.cislo ?? 'zakázce'}`,
+      },
+      include: ZAKAZKA_INCLUDE,
+    })
+  })
+
+  return { ok: true, data: created }
 }

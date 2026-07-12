@@ -6,6 +6,7 @@ import { getPlanLimits } from '@/lib/planLimits'
 import { SignJWT } from 'jose'
 import { prisma } from '@/lib/prisma'
 import { nextServisniZakazkaCislo } from '@/lib/servisniZakazkaCislo'
+import { nextServisniKontraktCislo } from '@/lib/servisniKontraktCislo'
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
@@ -75,41 +76,32 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     finalZarizeniId = zarizeni.id
   }
 
-  // Get last kontrakt number
-  const lastKontrakt = await db.servisniKontrakt.findFirst({
-    where: { zarizeni: { orgId } },
-    orderBy: { vytvoreno: 'desc' },
-    select: { cisloKontraktu: true },
-  })
-  const cisloNum = lastKontrakt?.cisloKontraktu
-    ? parseInt(lastKontrakt.cisloKontraktu.replace(/\D/g, ''), 10) + 1
-    : 1
-  const cisloKontraktu = `SK-${String(cisloNum).padStart(4, '0')}`
-
   const intervalMesicu = typKontraktu === 'ROCNI' ? 12 : typKontraktu === 'POLOLETNI' ? 6 : typKontraktu === 'DVOULETNI' ? 24 : 0
 
-  // Create ServisniKontrakt
-  const kontrakt = await db.servisniKontrakt.create({
-    data: {
-      orgId,
-      zarizeniId: finalZarizeniId,
-      klientId: zakazka.klientId,
-      cisloKontraktu,
-      nazev: `Servis - ${zakazka.nazev}`,
-      typ: typKontraktu ?? 'JEDNOURAZOVY',
-      intervalMesicu,
-      zacatek: new Date(),
-      aktivni: true,
-    },
-  })
-
-  // První naplánovaná zakázka - číslo + insert v jedné transakci (bezpečné při souběhu)
-  const navsteva = await prisma.$transaction(async (tx) => {
-    const cislo = await nextServisniZakazkaCislo(tx, orgId)
-    return tx.servisniZakazka.create({
+  // Kontrakt + první zakázka v jedné transakci; čísla SK-YY-NNN a SZ-YY-NNNN
+  // přes advisory zámky (jednotné s /api/servis/kontrakty, dřív tu byl vlastní
+  // formát SK-0001 z parsování posledního čísla).
+  const { kontrakt, navsteva } = await prisma.$transaction(async (tx) => {
+    const cisloKontraktu = await nextServisniKontraktCislo(tx, orgId)
+    const k = await tx.servisniKontrakt.create({
       data: {
         orgId,
-        kontraktId: kontrakt.id,
+        zarizeniId: finalZarizeniId,
+        klientId: zakazka.klientId,
+        cisloKontraktu,
+        nazev: `Servis - ${zakazka.nazev}`,
+        typ: typKontraktu ?? 'JEDNOURAZOVY',
+        intervalMesicu,
+        zacatek: new Date(),
+        aktivni: true,
+      },
+    })
+
+    const cislo = await nextServisniZakazkaCislo(tx, orgId)
+    const n = await tx.servisniZakazka.create({
+      data: {
+        orgId,
+        kontraktId: k.id,
         zarizeniId: finalZarizeniId,
         klientId: zakazka.klientId,
         cislo,
@@ -118,6 +110,8 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         stav: 'NAPLANOVANA',
       },
     })
+
+    return { kontrakt: k, navsteva: n }
   })
 
   return NextResponse.json({

@@ -38,6 +38,8 @@ export default async function ServisZakazkaDetailPage({ params }: { params: { id
       zarizeni: { select: { id: true, nazev: true, typ: true, vyrobniCislo: true } },
       klient: { select: KLIENT_SELECT },
       technik: { select: { id: true, jmeno: true } },
+      puvodniZakazka: { select: { id: true, cislo: true, stav: true } },
+      reklamace: { select: { id: true, cislo: true, stav: true }, orderBy: { vytvoreno: 'desc' } },
     },
   })
 
@@ -86,7 +88,11 @@ export default async function ServisZakazkaDetailPage({ params }: { params: { id
       : null,
     kontrakt: z.kontrakt ? { id: z.kontrakt.id, nazev: z.kontrakt.nazev, cisloKontraktu: z.kontrakt.cisloKontraktu } : null,
     zarizeni: z.zarizeni,
+    puvodniZakazka: z.puvodniZakazka,
+    reklamace: z.reklamace,
   }
 
-  return <ZakazkaDetailClient zakazka={data} orgUsers={orgUsers} canEdit={true} />
+  const isAdmin = role === 'ADMIN' || !!session!.user.isSuperAdmin
+
+  return <ZakazkaDetailClient zakazka={data} orgUsers={orgUsers} canEdit={true} isAdmin={isAdmin} />
 }

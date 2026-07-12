@@ -152,6 +152,8 @@ export default function TermsPage() {
           <Section title="Čl. 9 — Zpracování osobních údajů">
             <p>9.1 Zpracování osobních údajů se řídí samostatnou Zásadou ochrany osobních údajů dostupnou na felucia.io/privacy.</p>
             <p>9.2 Pokud Uživatel prostřednictvím Služby zpracovává osobní údaje svých zákazníků nebo zaměstnanců, jedná jako správce osobních údajů a je plně odpovědný za soulad s nařízením GDPR. Poskytovatel v takovém případě vystupuje jako zpracovatel a je připraven uzavřít smlouvu o zpracování osobních údajů (DPA) na vyžádání.</p>
+            <p>9.3 Uživatel může u klienta v evidenci provést anonymizaci osobních údajů (jméno, kontakty, adresa, IČO/DIČ) v rámci naplnění práva na výmaz — vazby na obchodní případy, zakázky a účetní doklady tím zůstávají zachovány, jak vyžaduje zákonná retence účetních záznamů. Anonymizace je nevratná.</p>
+            <p>9.4 Zálohy databáze (denní, uchovávány 14 dní, včetně offsite kopie) slouží výhradně pro obnovu provozu po havárii, nejsou samostatným úložištěm osobních údajů a s běžnou rotací zálohy zanikají. Údaje anonymizované nebo smazané v produkční databázi se z historických záloh nemažou zvlášť — zanikají až uplynutím retenční doby zálohy.</p>
           </Section>
 
           <Section title="Čl. 10 — Trvání a ukončení smlouvy">

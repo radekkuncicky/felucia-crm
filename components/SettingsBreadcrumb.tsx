@@ -8,7 +8,7 @@ const PAGE_LABELS: Record<string, string> = {
   '/settings/users': 'Uživatelé',
   '/settings/company': 'Nastavení firmy',
   '/settings/contract-templates': 'Šablony smluv',
-  '/settings/api': 'API klíče',
+  '/settings/api': 'API a webhooky',
   '/settings/extensions': 'Rozšíření',
   '/settings/audit-log': 'Historie změn',
   '/settings/evidence': 'Vlastní pole',

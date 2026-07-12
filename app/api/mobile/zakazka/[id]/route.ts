@@ -127,6 +127,95 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   })
 }
 
+// PATCH - technik zahájí práci (jediný povolený přechod stavu z mobilu;
+// předání řeší podpis předaváku, fakturační stavy zůstávají desktopu)
+// a/nebo upraví adresu montáže.
+export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+  const session = await getMobileOrWebSession(req)
+  const authErr = requireTechnikOrAdmin(session)
+  if (authErr) return authErr
+
+  if (!(await canAccessZakazka(session!, params.id))) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  const body = await req.json()
+  const data: { stav?: 'V_REALIZACI'; mistoStavby?: string | null } = {}
+
+  if (body.stav !== undefined) {
+    if (body.stav !== 'V_REALIZACI') {
+      return NextResponse.json({ error: 'Nepovolený přechod stavu' }, { status: 422 })
+    }
+    data.stav = 'V_REALIZACI'
+  }
+
+  if (body.mistoStavby !== undefined) {
+    if (body.mistoStavby !== null && typeof body.mistoStavby !== 'string') {
+      return NextResponse.json({ error: 'Neplatná adresa' }, { status: 422 })
+    }
+    const val = (body.mistoStavby ?? '').trim()
+    if (val.length > 500) {
+      return NextResponse.json({ error: 'Adresa je příliš dlouhá' }, { status: 422 })
+    }
+    data.mistoStavby = val || null
+  }
+
+  if (Object.keys(data).length === 0) {
+    return NextResponse.json({ error: 'Nic ke změně' }, { status: 422 })
+  }
+
+  const { orgId } = session!.user
+  const db = orgPrisma(orgId)
+  const zakazka = await db.zakazka.findFirst({
+    where: { id: params.id, orgId },
+    select: { id: true, cislo: true, stav: true, vedouciId: true },
+  })
+  if (!zakazka) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  if (data.stav && zakazka.stav !== 'NOVA' && zakazka.stav !== 'PRIRAZENA') {
+    return NextResponse.json({ error: 'Zakázku nelze zahájit v tomto stavu' }, { status: 422 })
+  }
+
+  if (!data.stav) {
+    // jen adresa — bez notifikace a auditu stavu
+    await db.zakazka.update({ where: { id: zakazka.id }, data })
+    return NextResponse.json({ ok: true })
+  }
+
+  await db.$transaction(async tx => {
+    await tx.zakazka.update({
+      where: { id: zakazka.id },
+      data,
+    })
+
+    if (zakazka.vedouciId && zakazka.vedouciId !== session!.user.id) {
+      await tx.notification.create({
+        data: {
+          orgId,
+          userId: zakazka.vedouciId,
+          typ: 'ZAKAZKA_ZAHAJENA',
+          zprava: `Technik zahájil práci na zakázce ${zakazka.cislo}`,
+          url: `/zakazky/${zakazka.id}`,
+        },
+      })
+    }
+
+    await tx.auditLog.create({
+      data: {
+        orgId,
+        userId: session!.user.id,
+        typAkce: 'UPDATE',
+        typZaznamu: 'Zakazka',
+        zaznamId: zakazka.id,
+        zaznamNazev: zakazka.cislo,
+        zmeny: { stavPred: zakazka.stav, stavPo: 'V_REALIZACI' },
+      },
+    })
+  })
+
+  return NextResponse.json({ ok: true, stav: 'V_REALIZACI' })
+}
+
 export async function OPTIONS() {
   return new NextResponse(null, { status: 204 })
 }

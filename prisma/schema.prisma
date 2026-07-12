@@ -248,6 +248,7 @@ model Organization {
   categories           Category[]
   photos               Photo[]
   apiKeys              ApiKey[]
+  webhookEndpoints     WebhookEndpoint[]
   auditLogs            AuditLog[]
   customFields         CustomField[]
   visibilityNodes      VisibilityNode[]
@@ -359,6 +360,7 @@ model Client {
   dic       String?
   poznamka  String?
   vytvoreno DateTime @default(now())
+  anonymizedAt DateTime?
 
   organization      Organization       @relation(fields: [orgId], references: [id])
   deals             Deal[]
@@ -661,6 +663,41 @@ model ApiKey {
   @@map("api_keys")
 }
 
+// Webhook odběr — org si nechá posílat události (zakazka.created, …) na svou URL.
+// Doručuje worker přes pg-boss frontu webhook-deliver s HMAC-SHA256 podpisem.
+model WebhookEndpoint {
+  id            String    @id @default(cuid())
+  orgId         String
+  nazev         String    @default("Bez názvu")
+  url           String
+  secret        String
+  events        String[]  @default([])
+  aktivni       Boolean   @default(true)
+  lastSuccessAt DateTime?
+  lastErrorAt   DateTime?
+  lastError     String?
+  vytvoreno     DateTime  @default(now())
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@index([orgId, aktivni])
+  @@map("webhook_endpoints")
+}
+
+// Transakční outbox webhooků — plní ho DB triggery (viz migrace
+// webhook_outbox_triggers) při INSERT/UPDATE/DELETE na sledovaných tabulkách,
+// ve stejné transakci jako byznys zápis. Vymetá worker (sweep -> pg-boss).
+model WebhookOutbox {
+  id        BigInt   @id @default(autoincrement())
+  orgId     String
+  event     String
+  payload   Json
+  vytvoreno DateTime @default(now())
+
+  @@index([vytvoreno])
+  @@map("webhook_outbox")
+}
+
 model AuditLog {
   id           String   @id @default(cuid())
   orgId        String
@@ -911,6 +948,9 @@ model ServisniZakazka {
   zaplaceno           Boolean          @default(false)
   zaplacenoDatum      DateTime?
 
+  // Reklamace: nová zakázka odkazuje na původní dokončenou (self-relace).
+  puvodniZakazkaId String?
+
   vytvoreno        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
 
@@ -920,10 +960,13 @@ model ServisniZakazka {
   klient       Client?           @relation(fields: [klientId], references: [id])
   technik      User?             @relation(fields: [technikId], references: [id])
   polozky      ServisniPolozka[]
+  puvodniZakazka ServisniZakazka?  @relation("ReklamaceZakazky", fields: [puvodniZakazkaId], references: [id], onDelete: SetNull)
+  reklamace      ServisniZakazka[] @relation("ReklamaceZakazky")
 
   @@unique([orgId, cislo])
   @@index([orgId, stav])
   @@index([orgId, planovanyTermin])
+  @@index([puvodniZakazkaId])
   @@map("servisni_zakazky")
 }
 

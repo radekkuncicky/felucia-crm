@@ -12,6 +12,40 @@ const MAIN_DOMAINS = [
   'localhost',
 ]
 
+// CSP s per-request nonce místo script-src 'unsafe-inline'. Nonce se předá
+// Nextu přes request header Content-Security-Policy (odtud si ho vezme pro
+// své inline bootstrap skripty) a do layoutu přes x-nonce. 'strict-dynamic'
+// povolí skripty, které nonce'nuté skripty samy vloží (chunky, Stripe.js).
+function buildCsp(nonce: string) {
+  return [
+    "default-src 'self'",
+    `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://js.stripe.com https://fonts.googleapis.com`,
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com",
+    "img-src 'self' data: blob: https:",
+    "connect-src 'self' https://api.anthropic.com https://api.stripe.com https://*.sentry.io wss:",
+    "frame-src 'self' https://js.stripe.com https://hooks.stripe.com",
+  ].join('; ')
+}
+
+function makeNonce() {
+  const bytes = new Uint8Array(16)
+  crypto.getRandomValues(bytes)
+  return btoa(String.fromCharCode(...Array.from(bytes)))
+}
+
+// NextResponse.next() s nonce v request headerech + CSP na odpovědi
+function nextWithCsp(req: NextRequest, extraRequestHeaders?: Headers) {
+  const nonce = makeNonce()
+  const csp = buildCsp(nonce)
+  const requestHeaders = extraRequestHeaders ?? new Headers(req.headers)
+  requestHeaders.set('x-nonce', nonce)
+  requestHeaders.set('Content-Security-Policy', csp)
+  const res = NextResponse.next({ request: { headers: requestHeaders } })
+  res.headers.set('Content-Security-Policy', csp)
+  return res
+}
+
 export async function middleware(req: NextRequest) {
   const hostname = req.headers.get('host') || ''
   const url = req.nextUrl.clone()
@@ -43,9 +77,7 @@ export async function middleware(req: NextRequest) {
       return NextResponse.redirect(url)
     }
 
-    return NextResponse.next({
-      request: { headers: requestHeaders },
-    })
+    return nextWithCsp(req, requestHeaders)
   }
 
   // ── Main domain ───────────────────────────────────────────────────────────
@@ -78,7 +110,7 @@ export async function middleware(req: NextRequest) {
       url.pathname = '/dashboard'
       return NextResponse.redirect(url)
     }
-    return NextResponse.next()
+    return nextWithCsp(req)
   }
 
   const isAuthPage =
@@ -92,7 +124,9 @@ export async function middleware(req: NextRequest) {
     url.pathname === '/' ||
     url.pathname.startsWith('/api/webhooks') ||
     url.pathname.startsWith('/zarizeni') ||
-    url.pathname.startsWith('/demo')
+    url.pathname.startsWith('/demo') ||
+    url.pathname.startsWith('/terms') ||
+    url.pathname.startsWith('/privacy')
 
   const isOnboardingPage = url.pathname.startsWith('/onboarding')
 
@@ -143,7 +177,7 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  return NextResponse.next()
+  return nextWithCsp(req)
 }
 
 export const config = {
