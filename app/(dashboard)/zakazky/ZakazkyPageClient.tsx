@@ -66,6 +66,11 @@ const STAV_NEXT: Partial<Record<ZakazkaStav, ZakazkaStav>> = {
 
 const KANBAN_STEPS = Object.entries(STAV_LABELS) as [ZakazkaStav, string][]
 
+// Aktivní vs. hotové — stejné množiny jako mobilní API (/api/mobile/zakazky),
+// ať web a appka říkají „hotová zakázka" témuž.
+const AKTIVNI_STAVY: ZakazkaStav[] = ['NOVA', 'PRIRAZENA', 'V_REALIZACI']
+const HOTOVE_STAVY: ZakazkaStav[] = ['PREDANA', 'VYUCTOVANA', 'HOTOVO']
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const fmtKc = (n: number) =>
@@ -373,6 +378,7 @@ export default function ZakazkyPageClient({ zakazky, vedouci, role }: Props) {
   // View & filter state
   const [view, setView] = useState<'table' | 'kanban'>('table')
   const [search, setSearch] = useState('')
+  const [pohled, setPohled] = useState<'aktivni' | 'hotove' | 'vse'>('aktivni')
   const [stavFilter, setStavFilter] = useState<ZakazkaStav | ''>('')
   const [vedouciFilter, setVedouciFilter] = useState('')
   const [montazFilter, setMontazFilter] = useState<'' | 'tento_tyden' | 'pristy_tyden' | 'bez_terminu' | 'po_terminu'>('')
@@ -443,6 +449,12 @@ export default function ZakazkyPageClient({ zakazky, vedouci, role }: Props) {
     const nextWeekEnd = new Date(thisWeekEnd); nextWeekEnd.setDate(thisWeekEnd.getDate() + 7)
 
     let result = localZakazky.filter(z => {
+      // Pohled Aktivní/Hotové — jen pro tabulku a mobilní seznam; kanban je
+      // pipeline všech stavů. Explicitní filtr stavu má přednost.
+      if (view !== 'kanban' && !stavFilter) {
+        if (pohled === 'aktivni' && !AKTIVNI_STAVY.includes(z.stav)) return false
+        if (pohled === 'hotove' && !HOTOVE_STAVY.includes(z.stav)) return false
+      }
       if (stavFilter && z.stav !== stavFilter) return false
       if (vedouciFilter && z.vedouciId !== vedouciFilter) return false
       if (search) {
@@ -478,9 +490,10 @@ export default function ZakazkyPageClient({ zakazky, vedouci, role }: Props) {
     }
 
     return result
-  }, [localZakazky, search, stavFilter, vedouciFilter, montazFilter, sortByMontaz])
+  }, [localZakazky, search, pohled, view, stavFilter, vedouciFilter, montazFilter, sortByMontaz])
 
-  const activeCount = localZakazky.filter(z => z.stav !== 'HOTOVO').length
+  const activeCount = localZakazky.filter(z => AKTIVNI_STAVY.includes(z.stav)).length
+  const hotoveCount = localZakazky.filter(z => HOTOVE_STAVY.includes(z.stav)).length
 
   // Active filter chips
   const activeFilters: { key: string; label: string; clear: () => void }[] = []
@@ -560,6 +573,28 @@ export default function ZakazkyPageClient({ zakazky, vedouci, role }: Props) {
 
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
+          {view !== 'kanban' && (
+            <div className="flex gap-2">
+              {([['aktivni', 'Aktivní', activeCount], ['hotove', 'Hotové', hotoveCount], ['vse', 'Vše', null]] as const).map(([key, label, count]) => (
+                <button
+                  key={key}
+                  onClick={() => { setPohled(key); setStavFilter('') }}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    pohled === key && !stavFilter
+                      ? 'bg-green-600 text-white'
+                      : 'bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  {label}
+                  {count !== null && (
+                    <span className={`ml-1.5 text-xs font-semibold ${pohled === key && !stavFilter ? 'text-green-100' : 'text-gray-400 dark:text-slate-500'}`}>
+                      {count}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
           <div className="relative flex-1 min-w-48 max-w-xs">
             <svg className="absolute left-2.5 top-2.5 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />

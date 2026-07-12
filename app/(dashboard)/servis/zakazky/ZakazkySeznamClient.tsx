@@ -58,9 +58,15 @@ const emptyForm = {
   poznamka: '',
 }
 
+// Aktivní = dá se na nich pracovat; Hotové = práce skončila (vč. čekání na
+// platbu/uzavření). ZRUSENA jen ve „Vše". Stejný vzor jako montážní zakázky.
+const AKTIVNI_STAVY = ['NOVA', 'NAPLANOVANA', 'PROBIHA', 'CEKA', 'REKLAMACE']
+const HOTOVE_STAVY = ['DOKONCENA', 'VYUCTOVANA', 'UZAVRENA']
+
 export default function ZakazkySeznamClient({ zakazky, orgUsers, zarizeniList, canCreate }: Props) {
   const router = useRouter()
-  const [fStav, setFStav] = useState<string>('AKTIVNI')
+  const [pohled, setPohled] = useState<'aktivni' | 'hotove' | 'vse'>('aktivni')
+  const [fStav, setFStav] = useState<string>('')
   const [fTechnik, setFTechnik] = useState<string>('')
   const [fTyp, setFTyp] = useState<string>('')
   const [modalOpen, setModalOpen] = useState(false)
@@ -69,16 +75,20 @@ export default function ZakazkySeznamClient({ zakazky, orgUsers, zarizeniList, c
 
   const filtered = useMemo(() => {
     return zakazky.filter(z => {
-      if (fStav === 'AKTIVNI') {
-        if (z.stav === 'UZAVRENA' || z.stav === 'ZRUSENA') return false
-      } else if (fStav && z.stav !== fStav) {
-        return false
+      // Explicitní filtr stavu má přednost před pohledem Aktivní/Hotové.
+      if (fStav) {
+        if (z.stav !== fStav) return false
+      } else {
+        if (pohled === 'aktivni' && !AKTIVNI_STAVY.includes(z.stav)) return false
+        if (pohled === 'hotove' && !HOTOVE_STAVY.includes(z.stav)) return false
       }
       if (fTechnik && z.technik?.id !== fTechnik) return false
       if (fTyp && z.typ !== fTyp) return false
       return true
     })
-  }, [zakazky, fStav, fTechnik, fTyp])
+  }, [zakazky, pohled, fStav, fTechnik, fTyp])
+
+  const hotoveCount = useMemo(() => zakazky.filter(z => HOTOVE_STAVY.includes(z.stav)).length, [zakazky])
 
   const filteredZarizeni = zarizeniList.filter(z =>
     !form.zarizeniSearch || `${z.nazev} ${z.klient.jmeno} ${z.klient.prijmeni}`.toLowerCase().includes(form.zarizeniSearch.toLowerCase())
@@ -119,9 +129,28 @@ export default function ZakazkySeznamClient({ zakazky, orgUsers, zarizeniList, c
     <>
       {/* Filtry + akce */}
       <div className="flex flex-wrap items-center gap-3">
+        <div className="flex gap-2">
+          {([['aktivni', 'Aktivní', null], ['hotove', 'Hotové', hotoveCount], ['vse', 'Vše', null]] as const).map(([key, label, count]) => (
+            <button
+              key={key}
+              onClick={() => { setPohled(key); setFStav('') }}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                pohled === key && !fStav
+                  ? 'bg-green-600 text-white'
+                  : 'bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700'
+              }`}
+            >
+              {label}
+              {count !== null && (
+                <span className={`ml-1.5 text-xs font-semibold ${pohled === key && !fStav ? 'text-green-100' : 'text-gray-400 dark:text-slate-500'}`}>
+                  {count}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
         <select value={fStav} onChange={e => setFStav(e.target.value)} className={selectClass}>
-          <option value="AKTIVNI">Aktivní</option>
-          <option value="">Všechny stavy</option>
+          <option value="">Stav — podle pohledu</option>
           {Object.entries(SERVIS_STAV_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
         <select value={fTechnik} onChange={e => setFTechnik(e.target.value)} className={selectClass}>
