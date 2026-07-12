@@ -35,6 +35,7 @@ interface Props {
 
 const DAYS_CS = ['Po', 'Út', 'St', 'Čt', 'Pá', 'So', 'Ne']
 const MONTHS_CS = ['ledna', 'února', 'března', 'dubna', 'května', 'června', 'července', 'srpna', 'září', 'října', 'listopadu', 'prosince']
+const MONTHS_NOM = ['Leden', 'Únor', 'Březen', 'Duben', 'Květen', 'Červen', 'Červenec', 'Srpen', 'Září', 'Říjen', 'Listopad', 'Prosinec']
 
 // Barvy techniků (stejná logika napříč dispečinkem — index do orgUsers).
 const TECH_COLORS = [
@@ -75,6 +76,20 @@ function getWeekDays(pivot: Date): Date[] {
     d.setDate(monday.getDate() + i)
     return d
   })
+}
+
+// Týdny (Po–Ne) pokrývající celý měsíc pivotu — pro měsíční mřížku.
+function getMonthWeeks(pivot: Date): Date[][] {
+  const posledni = new Date(pivot.getFullYear(), pivot.getMonth() + 1, 0)
+  const weeks: Date[][] = []
+  let cur = getWeekDays(new Date(pivot.getFullYear(), pivot.getMonth(), 1))
+  while (cur[0] <= posledni) {
+    weeks.push(cur)
+    const next = new Date(cur[0])
+    next.setDate(next.getDate() + 7)
+    cur = getWeekDays(next)
+  }
+  return weeks
 }
 
 // Nový termín pro cílový den — zachová čas původního termínu, jinak 9:00.
@@ -192,6 +207,63 @@ function DayColumn({ dayStr, label, dayNum, isToday, isPast, isWeekend, rows, us
   )
 }
 
+// Kompaktní jednořádková karta pro měsíční mřížku (drag i klik jako Card).
+function CardMini({ row, users }: { row: Row; users: OrgUser[] }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: row.id })
+  const style = transform ? { transform: CSS.Translate.toString(transform) } : undefined
+  const col = techColor(row.technikId, users)
+  const prosla = jeProsla(row.stav, row.planovanyTermin)
+  const cas = fmtTime(row.planovanyTermin)
+
+  return (
+    <div ref={setNodeRef} style={style} {...listeners} {...attributes} className="cursor-grab active:cursor-grabbing touch-none">
+      <Link href={`/servis/zakazky/${row.id}`} onClick={e => { if (transform) e.preventDefault() }}>
+        <div
+          title={`${row.cislo ?? ''} ${row.klientNazev ?? ''} — ${stavLabel(row.stav)}${row.predmet ? ` · ${row.predmet}` : ''}`}
+          className={`flex items-center gap-1 rounded px-1 py-0.5 border bg-white dark:bg-slate-800 select-none
+            ${prosla ? 'border-red-300 dark:border-red-800' : 'border-gray-200 dark:border-slate-700'}
+            ${isDragging ? 'opacity-40' : 'hover:border-green-400 dark:hover:border-green-600 transition-colors'}`}
+        >
+          <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${col.dot}`} />
+          {cas && <span className="text-[9px] font-semibold text-gray-500 dark:text-slate-400 flex-shrink-0">{cas}</span>}
+          <span className="text-[10px] text-gray-900 dark:text-white truncate">{row.klientNazev ?? row.cislo ?? '—'}</span>
+        </div>
+      </Link>
+    </div>
+  )
+}
+
+function MonthDayCell({ dayStr, dayNum, isToday, isCurrentMonth, isWeekend, rows, users, isOver }: {
+  dayStr: string
+  dayNum: number
+  isToday: boolean
+  isCurrentMonth: boolean
+  isWeekend: boolean
+  rows: Row[]
+  users: OrgUser[]
+  isOver: boolean
+}) {
+  const { setNodeRef } = useDroppable({ id: `day:${dayStr}` })
+  return (
+    <div
+      ref={setNodeRef}
+      className={`min-h-[96px] rounded-lg border p-1 space-y-0.5 transition-colors
+        ${isOver ? 'bg-green-50 dark:bg-green-950/20 border-green-300 dark:border-green-600'
+          : isCurrentMonth
+            ? (isWeekend ? 'bg-gray-50/60 dark:bg-slate-900/40 border-gray-200 dark:border-slate-700' : 'bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700')
+            : 'bg-gray-50/30 dark:bg-slate-900/60 border-gray-100 dark:border-slate-800'}`}
+    >
+      <div className={`text-[11px] font-bold w-5 h-5 flex items-center justify-center rounded-full
+        ${isToday ? 'bg-green-600 text-white' : isCurrentMonth ? 'text-gray-700 dark:text-slate-300' : 'text-gray-300 dark:text-slate-600'}`}>
+        {dayNum}
+      </div>
+      <div className="space-y-0.5 max-h-32 overflow-y-auto">
+        {rows.map(r => <CardMini key={r.id} row={r} users={users} />)}
+      </div>
+    </div>
+  )
+}
+
 function PoolColumn({ rows, users, isOver, onAssign }: {
   rows: Row[]
   users: OrgUser[]
@@ -229,6 +301,7 @@ export default function DispecinkClient({ rows: initialRows, orgUsers }: Props) 
   const router = useRouter()
   const [rows, setRows] = useState(initialRows)
   const [pivot, setPivot] = useState(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d })
+  const [view, setView] = useState<'tyden' | 'mesic'>('tyden')
   const [filter, setFilter] = useState<string>('all') // 'all' | technikId | 'none'
   const [activeId, setActiveId] = useState<string | null>(null)
   const [overId, setOverId] = useState<string | null>(null)
@@ -239,7 +312,11 @@ export default function DispecinkClient({ rows: initialRows, orgUsers }: Props) 
   const today = new Date()
   const todayStr = toDateStr(today)
   const weekDays = useMemo(() => getWeekDays(pivot), [pivot])
-  const weekKeys = useMemo(() => weekDays.map(toDateStr), [weekDays])
+  const monthWeeks = useMemo(() => getMonthWeeks(pivot), [pivot])
+  const visibleKeys = useMemo(
+    () => (view === 'tyden' ? weekDays.map(toDateStr) : monthWeeks.flat().map(toDateStr)),
+    [view, weekDays, monthWeeks],
+  )
 
   const matchesFilter = (r: Row) =>
     filter === 'all' ? true : filter === 'none' ? !r.technikId : r.technikId === filter
@@ -250,17 +327,27 @@ export default function DispecinkClient({ rows: initialRows, orgUsers }: Props) 
     const m: Record<string, Row[]> = {}
     for (const r of visibleRows) {
       const k = dayKey(r.planovanyTermin)
-      if (k && weekKeys.includes(k)) (m[k] ??= []).push(r)
+      if (k && visibleKeys.includes(k)) (m[k] ??= []).push(r)
     }
     for (const k of Object.keys(m)) m[k].sort((a, b) => (a.planovanyTermin ?? '').localeCompare(b.planovanyTermin ?? ''))
     return m
-  }, [visibleRows, weekKeys])
+  }, [visibleRows, visibleKeys])
 
-  const weekLabel = useMemo(() => {
+  const periodLabel = useMemo(() => {
+    if (view === 'mesic') return `${MONTHS_NOM[pivot.getMonth()]} ${pivot.getFullYear()}`
     const a = weekDays[0], b = weekDays[6]
     if (a.getMonth() === b.getMonth()) return `${a.getDate()}.–${b.getDate()}. ${MONTHS_CS[a.getMonth()]} ${a.getFullYear()}`
     return `${a.getDate()}. ${MONTHS_CS[a.getMonth()]} – ${b.getDate()}. ${MONTHS_CS[b.getMonth()]} ${b.getFullYear()}`
-  }, [weekDays])
+  }, [view, pivot, weekDays])
+
+  function posun(smer: -1 | 1) {
+    setPivot(d => {
+      const n = new Date(d)
+      if (view === 'mesic') n.setMonth(n.getMonth() + smer, 1)
+      else n.setDate(n.getDate() + smer * 7)
+      return n
+    })
+  }
 
   async function patch(rowId: string, body: Record<string, unknown>, optimistic: Partial<Row>) {
     const prev = rows
@@ -326,10 +413,23 @@ export default function DispecinkClient({ rows: initialRows, orgUsers }: Props) 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-1">
-          <button onClick={() => setPivot(d => { const n = new Date(d); n.setDate(n.getDate() - 7); return n })} className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700">←</button>
+          <button onClick={() => posun(-1)} className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700">←</button>
           <button onClick={() => setPivot(() => { const n = new Date(); n.setHours(0, 0, 0, 0); return n })} className="text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200 dark:border-slate-600 text-gray-600 dark:text-slate-400 hover:border-green-400 hover:text-green-600">Dnes</button>
-          <button onClick={() => setPivot(d => { const n = new Date(d); n.setDate(n.getDate() + 7); return n })} className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700">→</button>
-          <span className="ml-2 text-sm font-semibold text-gray-900 dark:text-white">{weekLabel}</span>
+          <button onClick={() => posun(1)} className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700">→</button>
+          <span className="ml-2 text-sm font-semibold text-gray-900 dark:text-white">{periodLabel}</span>
+        </div>
+        <div className="flex rounded-lg border border-gray-200 dark:border-slate-700 overflow-hidden">
+          {(['tyden', 'mesic'] as const).map(v => (
+            <button
+              key={v}
+              onClick={() => setView(v)}
+              className={`text-xs font-medium px-3 py-1.5 transition-colors ${view === v
+                ? 'bg-green-600 text-white'
+                : 'bg-white dark:bg-slate-800 text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700'}`}
+            >
+              {v === 'tyden' ? 'Týden' : 'Měsíc'}
+            </button>
+          ))}
         </div>
         <Link href="/servis/zakazky" className="ml-auto px-4 py-2 rounded-lg text-sm font-semibold bg-green-600 hover:bg-green-700 text-white transition-colors">+ Nová zakázka</Link>
       </div>
@@ -359,24 +459,54 @@ export default function DispecinkClient({ rows: initialRows, orgUsers }: Props) 
       >
         <div className="flex gap-2 overflow-x-auto pb-4 -mx-1 px-1" style={{ cursor: activeId ? 'grabbing' : undefined }}>
           <PoolColumn rows={poolRows} users={orgUsers} isOver={overId === 'pool'} onAssign={assignTechnik} />
-          {weekDays.map((d, i) => {
-            const ds = toDateStr(d)
-            return (
-              <DayColumn
-                key={ds}
-                dayStr={ds}
-                label={DAYS_CS[i]}
-                dayNum={d.getDate()}
-                isToday={ds === todayStr}
-                isPast={ds < todayStr}
-                isWeekend={i >= 5}
-                rows={rowsByDay[ds] ?? []}
-                users={orgUsers}
-                isOver={overId === `day:${ds}`}
-                onAssign={assignTechnik}
-              />
-            )
-          })}
+          {view === 'tyden' ? (
+            weekDays.map((d, i) => {
+              const ds = toDateStr(d)
+              return (
+                <DayColumn
+                  key={ds}
+                  dayStr={ds}
+                  label={DAYS_CS[i]}
+                  dayNum={d.getDate()}
+                  isToday={ds === todayStr}
+                  isPast={ds < todayStr}
+                  isWeekend={i >= 5}
+                  rows={rowsByDay[ds] ?? []}
+                  users={orgUsers}
+                  isOver={overId === `day:${ds}`}
+                  onAssign={assignTechnik}
+                />
+              )
+            })
+          ) : (
+            <div className="flex-1 min-w-[720px] space-y-1">
+              <div className="grid grid-cols-7 gap-1">
+                {DAYS_CS.map((d, i) => (
+                  <div key={d} className={`text-center text-xs font-semibold py-1 ${i >= 5 ? 'text-red-400' : 'text-gray-500 dark:text-slate-400'}`}>{d}</div>
+                ))}
+              </div>
+              {monthWeeks.map((week, wi) => (
+                <div key={wi} className="grid grid-cols-7 gap-1">
+                  {week.map((d, i) => {
+                    const ds = toDateStr(d)
+                    return (
+                      <MonthDayCell
+                        key={ds}
+                        dayStr={ds}
+                        dayNum={d.getDate()}
+                        isToday={ds === todayStr}
+                        isCurrentMonth={d.getMonth() === pivot.getMonth()}
+                        isWeekend={i >= 5}
+                        rows={rowsByDay[ds] ?? []}
+                        users={orgUsers}
+                        isOver={overId === `day:${ds}`}
+                      />
+                    )
+                  })}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
         <DragOverlay dropAnimation={null}>
           {activeRow ? <Card row={activeRow} users={orgUsers} overlay /> : null}
