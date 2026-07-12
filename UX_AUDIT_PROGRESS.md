@@ -7,7 +7,7 @@ Pravidla: před začátkem úkolu označit `[~]` + commit `start: <ID>`; po doko
 
 ## VLNA 1 — Důvěra
 
-- [ ] **K2** — Sdílený `lib/api.ts` s `apiFetch()` (auto `toast.error` při chybě). Nahradit tichá fetch volání (RychlaPoznamka, EtapySection, PipelineBar, FotoTab, MontazDatePicker, InlineStatusBadge, modul servis…). Optimistic UI vždy rollback + toast.
+- [~] **K2** — Sdílený `lib/api.ts` s `apiFetch()` (auto `toast.error` při chybě). Nahradit tichá fetch volání (RychlaPoznamka, EtapySection, PipelineBar, FotoTab, MontazDatePicker, InlineStatusBadge, modul servis…). Optimistic UI vždy rollback + toast.
   - Poznámka:
 - [ ] **S1** — Smazat 6 vlastních Toast implementací (PredavakClient, ProfileClient, UsersManager, DealActions, BillingActions, BillingClient), všude sonner. DealsKanban inline banner → toast.
   - Poznámka:
