@@ -20,8 +20,10 @@ for (const key of ['RLS_DB_USER', 'RLS_DB_PASSWORD'] as const) {
   if (m) process.env[key] = m[1]
 }
 
-// RLS policies na test DB (idempotentní; db push je nevytváří)
+// RLS policies + webhook triggery na test DB (idempotentní; db push je nevytváří)
 import { execFileSync } from 'child_process'
-execFileSync('psql', [testUrl, '-q', '-f', path.resolve(__dirname, '../prisma/rls.sql')], {
-  stdio: ['ignore', 'ignore', 'ignore'],
-})
+for (const file of ['../prisma/rls.sql', '../prisma/webhook-triggers.sql']) {
+  execFileSync('psql', [testUrl, '-q', '-f', path.resolve(__dirname, file)], {
+    stdio: ['ignore', 'ignore', 'ignore'],
+  })
+}

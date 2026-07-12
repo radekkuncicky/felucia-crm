@@ -31,6 +31,7 @@ echo "==> Schéma test DB (prisma db push + RLS)"
 TEST_DB_URL="$(grep '^DATABASE_URL' "$ENVDIR/.env" | cut -d'"' -f2)"
 (cd "$ENVDIR" && npx prisma db push --accept-data-loss --url "$TEST_DB_URL" >/dev/null)
 psql "$TEST_DB_URL" -q -f "$ENVDIR/prisma/rls.sql" 2>/dev/null
+psql "$TEST_DB_URL" -q -f "$ENVDIR/prisma/webhook-triggers.sql" 2>/dev/null
 
 echo "==> Build (izolovaný, s cache)"
 (cd "$ENVDIR" && npm run build > /tmp/e2e-build.log 2>&1) \

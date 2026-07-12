@@ -187,6 +187,18 @@ DROP POLICY IF EXISTS org_rls ON "vyuctovani";
 CREATE POLICY org_rls ON "vyuctovani" FOR ALL TO nanto_app
   USING ("orgId" = current_setting('app.org_id', true)) WITH CHECK ("orgId" = current_setting('app.org_id', true));
 
+-- WebhookEndpoint
+ALTER TABLE "webhook_endpoints" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_rls ON "webhook_endpoints";
+CREATE POLICY org_rls ON "webhook_endpoints" FOR ALL TO nanto_app
+  USING ("orgId" = current_setting('app.org_id', true)) WITH CHECK ("orgId" = current_setting('app.org_id', true));
+
+-- WebhookOutbox
+ALTER TABLE "webhook_outbox" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_rls ON "webhook_outbox";
+CREATE POLICY org_rls ON "webhook_outbox" FOR ALL TO nanto_app
+  USING ("orgId" = current_setting('app.org_id', true)) WITH CHECK ("orgId" = current_setting('app.org_id', true));
+
 -- ZakázkaDokument
 ALTER TABLE "zakazka_dokumenty" ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS org_rls ON "zakazka_dokumenty";

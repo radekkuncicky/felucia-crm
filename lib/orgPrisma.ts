@@ -43,6 +43,8 @@ export const TENANT_MODELS = new Set([
   'Document',
   'Lead',
   'AiUsageLog',
+  'WebhookEndpoint',
+  'WebhookOutbox',
 ])
 
 // where přes AND: pokud volající pošle vlastní orgId, podmínky se sečtou —
