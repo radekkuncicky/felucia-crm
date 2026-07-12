@@ -25,7 +25,7 @@ Pravidla: před začátkem úkolu označit `[~]` + commit `start: <ID>`; po doko
 
 ## VLNA 2 — Konzistence
 
-- [ ] **S3** — `lib/format.ts` (formatKc, formatKcCompact, formatDate, formatDateTime, formatRelative). Nahradit 90+ inline toLocaleString a 3 kopie fmtKc. ESLint zákaz inline toLocaleString.
+- [~] **S3** — `lib/format.ts` (formatKc, formatKcCompact, formatDate, formatDateTime, formatRelative). Nahradit 90+ inline toLocaleString a 3 kopie fmtKc. ESLint zákaz inline toLocaleString.
   - Poznámka:
 - [ ] **S2** — Jeden ikonový systém (rozšířit ui/Icons.tsx nebo lucide-react). Migrovat Sidebar/BottomNav z inline SVG. Nahradit všech ~101 emoji.
   - Poznámka:
