@@ -12,6 +12,7 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { StavDealu, Technologie } from '@prisma/client'
 import { stavLabels, techLabels, techColors } from '@/lib/constants'
+import { formatDate, formatKcCompact } from '@/lib/format'
 
 export interface KanbanDeal {
   id: string
@@ -42,9 +43,7 @@ const COLUMNS: { stav: StavDealu; color: string; header: string; dot: string }[]
 
 function fmtKc(n: number) {
   if (n === 0) return '—'
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace('.', ',')} M Kč`
-  if (n >= 1_000) return `${Math.round(n / 1_000)} tis. Kč`
-  return `${n.toLocaleString('cs-CZ')} Kč`
+  return formatKcCompact(n)
 }
 
 function KanbanCard({ deal, overlay = false }: { deal: KanbanDeal; overlay?: boolean }) {
@@ -103,7 +102,7 @@ function KanbanCard({ deal, overlay = false }: { deal: KanbanDeal; overlay?: boo
 
       {deal.terminRealizace && (
         <p className="text-[10px] text-orange-600 dark:text-orange-400">
-          Realizace: {new Date(deal.terminRealizace).toLocaleDateString('cs-CZ')}
+          Realizace: {formatDate(deal.terminRealizace)}
         </p>
       )}
     </div>

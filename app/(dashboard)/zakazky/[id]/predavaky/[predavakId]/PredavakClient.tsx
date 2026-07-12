@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { PredavakStav } from '@prisma/client'
 import { toast } from 'sonner'
 import { SignatureCanvas } from '@/components/SignatureCanvas'
+import { formatDate } from '@/lib/format'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -496,9 +497,9 @@ export default function PredavakClient({ predavak: initial, currentUserId, role 
                   </span>
                 </div>
                 <p className="text-sm text-gray-600 dark:text-slate-400">
-                  Technik: <strong>{initial.technik.jmeno}</strong> · Vytvořen {new Date(initial.vytvoreno).toLocaleDateString('cs-CZ')}
-                  {initial.podpisano && ` · Podepsán ${new Date(initial.podpisano).toLocaleDateString('cs-CZ')}`}
-                  {initial.schvaleno && ` · Schválen ${new Date(initial.schvaleno).toLocaleDateString('cs-CZ')}`}
+                  Technik: <strong>{initial.technik.jmeno}</strong> · Vytvořen {formatDate(initial.vytvoreno)}
+                  {initial.podpisano && ` · Podepsán ${formatDate(initial.podpisano)}`}
+                  {initial.schvaleno && ` · Schválen ${formatDate(initial.schvaleno)}`}
                 </p>
                 {initial.schvalil && (
                   <p className="text-xs text-gray-500 dark:text-slate-400">Schválil: {initial.schvalil.jmeno}</p>

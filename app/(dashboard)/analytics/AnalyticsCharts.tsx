@@ -5,6 +5,7 @@ import Link from 'next/link'
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
 } from 'recharts'
+import { formatDate, formatCislo } from '@/lib/format'
 
 interface DealRow {
   id: string
@@ -33,7 +34,7 @@ const stavColors: Record<string, string> = {
 }
 
 function fmtKc(v: number) {
-  return (v / 1000).toLocaleString('cs-CZ', { maximumFractionDigits: 0 }) + ' tis Kč'
+  return formatCislo(Math.round(v / 1000)) + ' tis Kč'
 }
 
 const stavBadgeColors: Record<string, string> = {
@@ -86,7 +87,7 @@ function DealsTable({ deals, sortKey }: { deals: DealRow[]; sortKey: 'stav' | 'v
               </td>
               <td className="py-2.5 text-gray-600 dark:text-slate-400">{d.jmeno}</td>
               <td className="py-2.5 text-right font-semibold text-gray-900 dark:text-white">{fmtKc(d.konecnaCena)}</td>
-              <td className="py-2.5 text-right text-gray-500 dark:text-slate-400 text-xs">{new Date(d.vytvoreno).toLocaleDateString('cs-CZ')}</td>
+              <td className="py-2.5 text-right text-gray-500 dark:text-slate-400 text-xs">{formatDate(d.vytvoreno)}</td>
             </tr>
           ))}
         </tbody>

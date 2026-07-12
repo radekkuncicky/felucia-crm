@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { formatDate } from '@/lib/format'
 
 interface Count {
   opBezAktivity: number
@@ -302,7 +303,7 @@ export default function NotificationBell() {
                               </p>
                             </div>
                             <span className="text-xs text-gray-400 dark:text-slate-500 flex-shrink-0 ml-2 mt-0.5">
-                              {new Date(u.datum).toLocaleDateString('cs-CZ')}
+                              {formatDate(u.datum)}
                             </span>
                           </Link>
                         ))}

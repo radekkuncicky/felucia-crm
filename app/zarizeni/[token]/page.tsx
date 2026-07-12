@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma'
 import { jwtVerify } from 'jose'
 import { notFound } from 'next/navigation'
 import { stavLabel, stavColor } from '@/lib/servisStav'
+import { formatDate, formatDateTime } from '@/lib/format'
 
 const TYP_LABELS: Record<string, string> = {
   TEPELNE_CERPADLO: 'Tepelné čerpadlo',
@@ -125,14 +126,14 @@ export default async function PublicZarizeniPage({ params }: { params: { token: 
             {zarizeni.datumInstalace && (
               <div>
                 <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Datum instalace</p>
-                <p className="text-sm font-semibold text-gray-800">{zarizeni.datumInstalace.toLocaleDateString('cs-CZ')}</p>
+                <p className="text-sm font-semibold text-gray-800">{formatDate(zarizeni.datumInstalace)}</p>
               </div>
             )}
             {zarizeni.zarukaDo && (
               <div>
                 <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Záruka do</p>
                 <p className={`text-sm font-semibold ${ws?.cls ?? 'text-gray-800'}`}>
-                  {zarizeni.zarukaDo.toLocaleDateString('cs-CZ')}
+                  {formatDate(zarizeni.zarukaDo)}
                   {ws && <span className="ml-2 text-xs">({ws.label})</span>}
                 </p>
               </div>
@@ -212,7 +213,7 @@ export default async function PublicZarizeniPage({ params }: { params: { token: 
                 {kontrakt.konec && (
                   <div>
                     <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Platí do</p>
-                    <p className="text-sm font-semibold text-gray-800">{new Date(kontrakt.konec).toLocaleDateString('cs-CZ')}</p>
+                    <p className="text-sm font-semibold text-gray-800">{formatDate(kontrakt.konec)}</p>
                   </div>
                 )}
               </div>
@@ -235,7 +236,7 @@ export default async function PublicZarizeniPage({ params }: { params: { token: 
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-wrap items-center gap-2 mb-1">
                         <span className="text-sm font-semibold text-gray-800">
-                          {n.planovanyTermin ? new Date(n.planovanyTermin).toLocaleDateString('cs-CZ') : 'Bez termínu'}
+                          {n.planovanyTermin ? formatDate(n.planovanyTermin) : 'Bez termínu'}
                         </span>
                         <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${stavColor(n.stav) || 'bg-gray-100 text-gray-600'}`}>
                           {stavLabel(n.stav)}
@@ -256,7 +257,7 @@ export default async function PublicZarizeniPage({ params }: { params: { token: 
         {/* Footer */}
         <div className="text-center py-4">
           <p className="text-xs text-gray-400">Powered by <span className="font-semibold" style={{ color: '#00D4C8' }}>Felucia CRM</span></p>
-          <p className="text-xs text-gray-300 mt-1">{now.toLocaleString('cs-CZ')}</p>
+          <p className="text-xs text-gray-300 mt-1">{formatDateTime(now)}</p>
         </div>
 
       </div>

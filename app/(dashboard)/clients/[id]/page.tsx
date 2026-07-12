@@ -9,6 +9,7 @@ import ClientHistory from './ClientHistory'
 import { stavLabels, stavColors, techLabels, techColors } from '@/lib/constants'
 import TabActivator from './TabActivator'
 import { NavigateButton } from '@/components/NavigateButton'
+import { formatKc } from '@/lib/format'
 
 const ZAKAZKA_STAV_LABELS: Record<string, string> = {
   NOVA: 'Nová',
@@ -28,8 +29,7 @@ const ZAKAZKA_STAV_COLORS: Record<string, string> = {
   HOTOVO: 'bg-green-50 text-green-700',
 }
 
-const fmtKc = (n: number) =>
-  n.toLocaleString('cs-CZ', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' Kč'
+const fmtKc = formatKc
 
 export default async function ClientDetailPage({
   params,

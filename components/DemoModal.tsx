@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, createContext, useContext } from 'react'
 import Link from 'next/link'
+import { formatCislo, formatKcPresne } from '@/lib/format'
 
 // ─── Theme ────────────────────────────────────────────────────────────────────
 
@@ -228,7 +229,7 @@ const CLIENT_CONTACTS: Record<string, { phone: string; email: string; address: s
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function fmtPrice(n: number) {
-  return n.toLocaleString('cs-CZ') + ' Kč'
+  return formatCislo(n) + ' Kč'
 }
 
 function getDasaReply(msg: string): string {
@@ -532,7 +533,7 @@ function DealDetailView({ deal, onBack, onStatusChange }: {
                   <span style={{ fontFamily: 'Inter,sans-serif', fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 5, background: '#E8F5E9', color: '#2E7D32' }}>Aktivní</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <span style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 14, fontWeight: 700, color: t.tp }}>{quoteTotal.toLocaleString('cs-CZ')} Kč</span>
+                  <span style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 14, fontWeight: 700, color: t.tp }}>{formatCislo(quoteTotal)} Kč</span>
                   <svg width="14" height="14" fill="none" stroke={t.tf} viewBox="0 0 24 24" style={{ transform: expandedQuote ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/></svg>
                 </div>
               </div>
@@ -550,8 +551,8 @@ function DealDetailView({ deal, onBack, onStatusChange }: {
                     <span style={{ fontFamily: 'Inter,sans-serif', fontSize: 13, color: t.ts }}>{item.name}</span>
                     <span style={{ fontFamily: 'Inter,sans-serif', fontSize: 13, color: t.tm }}>{item.qty}</span>
                     <span style={{ fontFamily: 'Inter,sans-serif', fontSize: 13, color: t.tm }}>{item.unit}</span>
-                    <span style={{ fontFamily: 'Inter,sans-serif', fontSize: 13, color: t.tm }}>{item.unitPrice.toLocaleString('cs-CZ')} Kč</span>
-                    <span style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 13, fontWeight: 600, color: t.tp }}>{(item.qty * item.unitPrice).toLocaleString('cs-CZ')} Kč</span>
+                    <span style={{ fontFamily: 'Inter,sans-serif', fontSize: 13, color: t.tm }}>{formatCislo(item.unitPrice)} Kč</span>
+                    <span style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 13, fontWeight: 600, color: t.tp }}>{formatKcPresne(item.qty * item.unitPrice)}</span>
                   </div>
                 ))}
                 {/* Totals */}
@@ -559,7 +560,7 @@ function DealDetailView({ deal, onBack, onStatusChange }: {
                   <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 32 }}>
                     <div style={{ textAlign: 'right' }}>
                       <p style={{ fontFamily: 'Inter,sans-serif', fontSize: 11, color: t.tf, margin: '0 0 3px' }}>Celkem bez DPH</p>
-                      <p style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 16, fontWeight: 700, color: t.tp, margin: 0 }}>{quoteTotal.toLocaleString('cs-CZ')} Kč</p>
+                      <p style={{ fontFamily: "'Space Grotesk',sans-serif", fontSize: 16, fontWeight: 700, color: t.tp, margin: 0 }}>{formatCislo(quoteTotal)} Kč</p>
                     </div>
                     <div style={{ textAlign: 'right' }}>
                       <p style={{ fontFamily: 'Inter,sans-serif', fontSize: 11, color: t.tf, margin: '0 0 3px' }}>DPH 21 %</p>

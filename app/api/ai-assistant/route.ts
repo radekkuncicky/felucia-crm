@@ -8,6 +8,7 @@ import { generateQuoteKod } from '@/lib/quoteKod'
 import { generateDealKod } from '@/lib/dealKod'
 import { createWithUniqueKod } from '@/lib/uniqueKod'
 import { Technologie, StavDealu, TypAktivity, TypKlienta } from '@prisma/client'
+import { formatDate } from '@/lib/format'
 
 // ─── Tool definitions ────────────────────────────────────────────────────────
 
@@ -238,7 +239,7 @@ async function executeTool(
           klientId: deal.client?.id,
           klient: deal.client ? `${deal.client.jmeno} ${deal.client.prijmeni ?? ''}`.trim() : '?',
           aktivity: deal.activities.map(a => ({
-            typ: a.typ, datum: new Date(a.datum).toLocaleDateString('cs-CZ'), popis: a.popis,
+            typ: a.typ, datum: formatDate(a.datum), popis: a.popis,
           })),
         }
         if (!isTechnik) {
@@ -340,13 +341,13 @@ async function executeTool(
 
         return {
           result: JSON.stringify({
-            datum: `${now.toLocaleDateString('cs-CZ')} (${WEEKDAYS[now.getDay()]})`,
+            datum: `${formatDate(now)} (${WEEKDAYS[now.getDay()]})`,
             ukoly: ukoly.map(u => ({
               deal: u.deal.kod, klient: u.deal.client.jmeno,
-              popis: u.popis, termin: new Date(u.datum).toLocaleDateString('cs-CZ'),
+              popis: u.popis, termin: formatDate(u.datum),
             })),
             aktivityTyden: aktivityTyden.map(a => ({
-              datum: new Date(a.datum).toLocaleDateString('cs-CZ'), typ: a.typ,
+              datum: formatDate(a.datum), typ: a.typ,
               deal: a.deal.kod, klient: a.deal.client?.jmeno ?? '?',
             })),
             opBezAktivity: bezAktivity.slice(0, 6).map(d => ({
@@ -601,7 +602,7 @@ CHARAKTER:
 - Když nevíš → "Tohle nemám." Nikdy neodhaduj data která nemáš
 
 UŽIVATEL: ${currentUser?.jmeno ?? session.user.jmeno}, role: ${role}, org: ${org?.nazev ?? orgId}
-DATUM: ${now.toLocaleDateString('cs-CZ')} (${['neděle','pondělí','úterý','středa','čtvrtek','pátek','sobota'][now.getDay()]})
+DATUM: ${formatDate(now)} (${['neděle','pondělí','úterý','středa','čtvrtek','pátek','sobota'][now.getDay()]})
 STRÁNKA: ${currentPage ?? '?'}${pageHint}
 
 NÁSTROJE — kdy je použít:

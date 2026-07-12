@@ -1,3 +1,4 @@
+import { formatDate } from '@/lib/format'
 const TYP_LABELS: Record<string, string> = {
   TEPELNE_CERPADLO: 'Tepelné čerpadlo',
   KLIMATIZACE: 'Klimatizace',
@@ -35,7 +36,7 @@ function fmt(n: number) {
 
 function fmtDate(d: Date | string | null) {
   if (!d) return '—'
-  return new Date(d).toLocaleDateString('cs-CZ')
+  return formatDate(d)
 }
 
 function fmtDateTime(d: Date | string | null) {

@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
+import { formatDateTime } from '@/lib/format'
 
 export async function GET() {
   const session = await getServerSession(authOptions)
@@ -19,7 +20,7 @@ export async function GET() {
   const header = 'Datum,Uživatel,Typ akce,Typ záznamu,Záznam\n'
   const rows = logs.map(l =>
     [
-      new Date(l.vytvoreno).toLocaleString('cs-CZ'),
+      formatDateTime(l.vytvoreno),
       l.user?.jmeno ?? 'Systém',
       l.typAkce,
       l.typZaznamu,

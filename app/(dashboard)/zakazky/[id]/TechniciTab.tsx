@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import { formatDate } from '@/lib/format'
 
 interface Technik {
   id: string
@@ -122,7 +123,7 @@ export default function TechniciTab({ zakazkaId, technici: initialTechnici, vsic
               </div>
               <div className="flex items-center gap-4">
                 <span className="text-xs text-gray-400 dark:text-slate-500">
-                  Přiřazen {new Date(t.prirazeno).toLocaleDateString('cs-CZ')}
+                  Přiřazen {formatDate(t.prirazeno)}
                 </span>
                 {canEdit && (
                   <button

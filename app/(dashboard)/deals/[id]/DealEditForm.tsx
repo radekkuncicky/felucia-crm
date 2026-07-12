@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { formatCislo } from '@/lib/format'
 
 function roundToThousand(n: number): number {
   return Math.round(n / 1000) * 1000
@@ -167,9 +168,9 @@ export default function DealEditForm({
             </div>
             {pctComputed !== null && aktivniNabidkaCena ? (
               <p className="text-sm text-primary dark:text-primary-light font-medium">
-                = {pctComputed.toLocaleString('cs-CZ')} Kč
+                = {formatCislo(pctComputed)} Kč
                 <span className="text-xs text-gray-400 dark:text-slate-500 font-normal ml-1.5">
-                  (z {Math.round(aktivniNabidkaCena).toLocaleString('cs-CZ')} Kč s DPH, zaokrouhleno na tisíce)
+                  (z {formatCislo(Math.round(aktivniNabidkaCena))} Kč s DPH, zaokrouhleno na tisíce)
                 </span>
               </p>
             ) : null}

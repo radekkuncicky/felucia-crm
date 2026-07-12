@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { formatDateTime } from '@/lib/format'
 
 interface Komentar {
   id: string
@@ -114,7 +115,7 @@ export default function HistorieTab({ zakazkaId, komentare: initialKomentare, cu
                         {k.text}
                       </div>
                       <p className="text-xs text-gray-400 dark:text-slate-500 px-1">
-                        {k.user.jmeno} · {new Date(k.vytvoreno).toLocaleString('cs-CZ', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        {k.user.jmeno} · {formatDateTime(k.vytvoreno)}
                       </p>
                     </div>
                   </div>
@@ -163,7 +164,7 @@ export default function HistorieTab({ zakazkaId, komentare: initialKomentare, cu
                         {a.typZaznamu}: <span className="text-gray-600 dark:text-slate-400">{a.zaznamNazev}</span>
                       </p>
                       <span className="text-xs text-gray-400 dark:text-slate-500 flex-shrink-0">
-                        {new Date(a.vytvoreno).toLocaleString('cs-CZ', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        {formatDateTime(a.vytvoreno)}
                       </span>
                     </div>
                     <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">{formatZmeny(a.zmeny)}</p>

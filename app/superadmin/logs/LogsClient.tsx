@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { formatDateTime } from '@/lib/format'
 
 const ACTION_COLORS: Record<string, string> = {
   CREATE: 'bg-green-900 text-green-300',
@@ -41,7 +42,7 @@ export default function LogsClient({ logs }: { logs: Log[] }) {
   const exportCsv = () => {
     const headers = ['Datum', 'Organizace', 'Uživatel', 'Akce', 'Typ záznamu', 'Záznam']
     const rows = filtered.map(l => [
-      new Date(l.vytvoreno).toLocaleString('cs-CZ'),
+      formatDateTime(l.vytvoreno),
       l.orgNazev,
       l.userJmeno ?? '—',
       l.typAkce,
@@ -124,7 +125,7 @@ export default function LogsClient({ logs }: { logs: Log[] }) {
             {filtered.map(log => (
               <tr key={log.id} className="border-b border-gray-800 hover:bg-gray-800/50 transition-colors">
                 <td className="px-6 py-3 text-gray-400 text-xs whitespace-nowrap">
-                  {new Date(log.vytvoreno).toLocaleString('cs-CZ')}
+                  {formatDateTime(log.vytvoreno)}
                 </td>
                 <td className="px-4 py-3 text-gray-300 text-xs">{log.orgNazev}</td>
                 <td className="px-4 py-3">

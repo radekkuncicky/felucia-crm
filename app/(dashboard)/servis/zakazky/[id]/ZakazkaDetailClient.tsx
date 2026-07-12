@@ -19,6 +19,7 @@ import {
   stavColor,
   typLabel,
 } from '@/lib/servisStav'
+import { formatDate } from '@/lib/format'
 
 interface ZakazkaRef {
   id: string
@@ -657,7 +658,7 @@ export default function ZakazkaDetailClient({ zakazka, orgUsers, canEdit, isAdmi
               <h2 className="font-semibold text-gray-900 dark:text-white">Předání zakázky</h2>
               {zakazka.protokolDokoncen ? (
                 <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300">
-                  Protokol dokončen {new Date(zakazka.protokolDokoncen).toLocaleDateString('cs-CZ')}
+                  Protokol dokončen {formatDate(zakazka.protokolDokoncen)}
                 </span>
               ) : (
                 <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">

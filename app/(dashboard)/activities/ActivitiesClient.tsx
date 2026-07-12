@@ -7,6 +7,7 @@ import { useTableColumns, ColumnDef } from '@/hooks/useTableColumns'
 import ColumnConfigButton from '@/components/ColumnConfigButton'
 import { ResizeHandle } from '@/components/ResizeHandle'
 import ConfirmModal from '@/components/ConfirmModal'
+import { formatDate } from '@/lib/format'
 
 const ACT_DEFS: ColumnDef[] = [
   { id: 'datum', label: 'Datum', defaultVisible: true, defaultWidth: 110 },
@@ -366,7 +367,7 @@ export default function ActivitiesClient({ activities: initActivities, defaultTy
                 </div>
               </div>
               <span className="text-xs text-gray-400 dark:text-slate-500 whitespace-nowrap flex-shrink-0">
-                {new Date(act.datum + 'T00:00:00').toLocaleDateString('cs-CZ')}
+                {formatDate(act.datum + 'T00:00:00')}
               </span>
             </div>
             <p className="text-sm text-gray-800 dark:text-slate-200 line-clamp-2">{act.popis ?? <span className="text-gray-400 italic">bez popisu</span>}</p>
@@ -422,7 +423,7 @@ export default function ActivitiesClient({ activities: initActivities, defaultTy
                       case 'datum':
                         return (
                           <td key={col.id} className="px-4 py-3 text-sm text-gray-700 dark:text-slate-300 whitespace-nowrap overflow-hidden">
-                            {new Date(act.datum + 'T00:00:00').toLocaleDateString('cs-CZ')}
+                            {formatDate(act.datum + 'T00:00:00')}
                           </td>
                         )
                       case 'typ':

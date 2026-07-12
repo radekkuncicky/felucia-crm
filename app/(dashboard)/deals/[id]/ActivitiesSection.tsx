@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import ConfirmModal from '@/components/ConfirmModal'
+import { formatDate } from '@/lib/format'
 
 const typOptions = [
   { value: 'HOVOR',    label: 'Hovor',     icon: '📞' },
@@ -687,7 +688,7 @@ export default function ActivitiesSection({ dealId, activities: initActivities, 
                     <StavDot stav={stav} />
                     <span className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">{t?.label ?? act.typ}</span>
                     <span className="text-xs text-gray-400 dark:text-slate-500">
-                      {new Date(act.datum + 'T00:00:00').toLocaleDateString('cs-CZ')}
+                      {formatDate(act.datum + 'T00:00:00')}
                     </span>
                     {act.cas && (
                       <span className="text-xs font-medium text-primary dark:text-primary-light">

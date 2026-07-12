@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { VyuctovaniStav } from '@prisma/client'
+import { formatCislo, formatKc } from '@/lib/format'
 
 const STAV_LABELS: Record<VyuctovaniStav, string> = {
   NAVRH: 'Návrh',
@@ -48,9 +49,7 @@ interface Props {
   defaultDph?: number
 }
 
-function fmtKc(v: number) {
-  return v.toLocaleString('cs-CZ', { maximumFractionDigits: 0 }) + ' Kč'
-}
+const fmtKc = formatKc
 
 type NewRow = { nazev: string; mnozstvi: string; jednotka: string; prodejniCena: string; nakupniCena: string; dphSazba: number }
 
@@ -242,7 +241,7 @@ export default function VyuctovaniDetailClient({ vyuctovani: initial, role, defa
 
   function EditableCell({ value, polozkaId, field, type = 'text' }: { value: string | number; polozkaId: string; field: string; type?: string }) {
     const [v, setV] = useState(String(value))
-    if (!canEdit) return <span>{type === 'number' ? Number(value).toLocaleString('cs-CZ') : value}</span>
+    if (!canEdit) return <span>{type === 'number' ? formatCislo(Number(value)) : value}</span>
     return (
       <input
         type={type}

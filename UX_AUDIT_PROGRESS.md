@@ -25,8 +25,8 @@ Pravidla: před začátkem úkolu označit `[~]` + commit `start: <ID>`; po doko
 
 ## VLNA 2 — Konzistence
 
-- [~] **S3** — `lib/format.ts` (formatKc, formatKcCompact, formatDate, formatDateTime, formatRelative). Nahradit 90+ inline toLocaleString a 3 kopie fmtKc. ESLint zákaz inline toLocaleString.
-  - Poznámka:
+- [x] **S3** — `lib/format.ts` (formatKc, formatKcCompact, formatDate, formatDateTime, formatRelative). Nahradit 90+ inline toLocaleString a 3 kopie fmtKc. ESLint zákaz inline toLocaleString.
+  - Poznámka: Hotovo. lib/format.ts: formatKc / formatKcPresne (0–2 des.) / formatKcUcetni (vždy 2 des.) / formatKcCompact (M, tis.) / formatCislo / formatDate / formatDateKratke / formatDateTime / formatCas / formatRelative. Zmigrováno 71 souborů skriptem + ruční dočištění (skript 3× vložil import do víceřádkového importu a mangloval `(a*b).toLocaleString` — opraveno, tsc hlídal). Realita horší než audit: fmtKc kopie ne 3, ale 22 — všechny teď delegují do lib. ESLint no-restricted-syntax na toLocale*String je **warn**, ne error: zbývá ~51 specializovaných výskytů (krátké měsíce slovem, 2-digit datetime v PDF šablonách, superadmin) — error by shodil build; zpřísnit až po jejich dořešení. Testy 92/92, lint 0 errorů, tsc OK.
 - [ ] **S2** — Jeden ikonový systém (rozšířit ui/Icons.tsx nebo lucide-react). Migrovat Sidebar/BottomNav z inline SVG. Nahradit všech ~101 emoji.
   - Poznámka:
 - [ ] **S13** — Sjednotit tón (vykání) v mikrocopy. Reálná jména v placeholderech → vzorová („Jan Novák", „Vzorová stavba s.r.o.").

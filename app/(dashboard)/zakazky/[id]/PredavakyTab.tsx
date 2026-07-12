@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { PredavakStav } from '@prisma/client'
+import { formatDate } from '@/lib/format'
 
 const STAV_LABELS: Record<PredavakStav, string> = {
   ROZPRACOVAN: 'Rozpracován',
@@ -230,8 +231,8 @@ function PredavakRow({ p, zakazkaId, canApprove, loading, onSchvalit, onOdmitnou
         <div>
           <p className="font-mono font-bold text-sm text-gray-900 dark:text-white">{p.cislo}</p>
           <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
-            {p.technikJmeno} · {new Date(p.vytvoreno).toLocaleDateString('cs-CZ')}
-            {p.podpisano && ` · Podepsán ${new Date(p.podpisano).toLocaleDateString('cs-CZ')}`}
+            {p.technikJmeno} · {formatDate(p.vytvoreno)}
+            {p.podpisano && ` · Podepsán ${formatDate(p.podpisano)}`}
           </p>
         </div>
         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${STAV_COLORS[p.stav]}`}>

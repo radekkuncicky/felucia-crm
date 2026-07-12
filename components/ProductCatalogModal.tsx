@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { formatCislo } from '@/lib/format'
 
 interface CategoryData {
   id: string
@@ -316,7 +317,7 @@ export default function ProductCatalogModal({ onClose, onAdd }: Props) {
                     <td className="px-3 py-3 text-sm font-medium text-gray-900 dark:text-white">{p.nazev}</td>
                     <td className="px-3 py-3 text-sm text-right whitespace-nowrap">
                       <span className={hasCenikPrice ? 'text-primary dark:text-primary-light font-medium' : 'text-gray-700 dark:text-slate-300'}>
-                        {price.toLocaleString('cs-CZ')} Kč
+                        {formatCislo(price)} Kč
                       </span>
                       {hasCenikPrice && <span className="ml-1 text-xs text-blue-400">(ceník)</span>}
                     </td>

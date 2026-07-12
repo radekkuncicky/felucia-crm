@@ -2,6 +2,7 @@
 
 import { confirmDialog } from '@/components/ui/confirm'
 import { useState, useRef } from 'react'
+import { formatDate } from '@/lib/format'
 
 interface Dokument {
   id: string
@@ -179,7 +180,7 @@ export default function PodkladyTab({ zakazkaId, pokyny: initialPokyny, dokument
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{dok.nazev}</p>
                   <p className="text-xs text-gray-400 dark:text-slate-500">
-                    {dok.nahral.jmeno} · {new Date(dok.vytvoreno).toLocaleDateString('cs-CZ')}
+                    {dok.nahral.jmeno} · {formatDate(dok.vytvoreno)}
                   </p>
                 </div>
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

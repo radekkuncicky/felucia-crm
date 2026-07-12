@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { SkladPohybTyp } from '@prisma/client'
+import { formatDateTime, formatKcPresne, formatCislo } from '@/lib/format'
 
 const TYP_LABELS: Record<SkladPohybTyp, string> = {
   REZERVACE: 'Rezervace',
@@ -161,7 +162,7 @@ export default function SkladPageClient({ pohyby: initialPohyby, zakazky, kpi: i
           {[
             { label: 'Hodnota rezervací', value: `${kpi.rezervaceHodnota.toLocaleString('cs-CZ', { maximumFractionDigits: 0 })} Kč`, color: 'text-primary dark:text-primary-light' },
             { label: 'Vydáno tento měsíc', value: `${kpi.vydejMesicHodnota.toLocaleString('cs-CZ', { maximumFractionDigits: 0 })} Kč`, color: 'text-orange-600 dark:text-orange-400' },
-            { label: 'Pohybů celkem', value: kpi.pocetPohybu.toLocaleString('cs-CZ'), color: 'text-gray-900 dark:text-white' },
+            { label: 'Pohybů celkem', value: formatCislo(kpi.pocetPohybu), color: 'text-gray-900 dark:text-white' },
           ].map(k => (
             <div key={k.label} className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 px-5 py-4">
               <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wide mb-1">{k.label}</p>
@@ -223,7 +224,7 @@ export default function SkladPageClient({ pohyby: initialPohyby, zakazky, kpi: i
                     return (
                       <tr key={p.id} className="hover:bg-gray-50 dark:hover:bg-slate-700/30">
                         <td className="px-4 py-3 text-gray-500 dark:text-slate-400 whitespace-nowrap text-xs">
-                          {new Date(p.vytvoreno).toLocaleString('cs-CZ', { day: 'numeric', month: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          {formatDateTime(p.vytvoreno)}
                         </td>
                         <td className="px-4 py-3">
                           <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${TYP_COLORS[p.typ]}`}>
@@ -243,7 +244,7 @@ export default function SkladPageClient({ pohyby: initialPohyby, zakazky, kpi: i
                         </td>
                         <td className="px-4 py-3 text-right text-gray-700 dark:text-slate-300">{p.mnozstvi}</td>
                         <td className="px-4 py-3 text-right text-gray-600 dark:text-slate-400">
-                          {p.nakupniCena !== null ? `${p.nakupniCena.toLocaleString('cs-CZ')} Kč` : '—'}
+                          {p.nakupniCena !== null ? `${formatKcPresne(p.nakupniCena)}` : '—'}
                         </td>
                         <td className="px-4 py-3 text-right font-medium text-gray-900 dark:text-white">
                           {celkem !== null ? `${celkem.toLocaleString('cs-CZ', { maximumFractionDigits: 0 })} Kč` : '—'}

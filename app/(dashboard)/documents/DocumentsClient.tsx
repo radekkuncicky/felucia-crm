@@ -2,6 +2,7 @@
 
 import { confirmDialog } from '@/components/ui/confirm'
 import { useEffect, useState, useRef, useCallback } from 'react'
+import { formatDate } from '@/lib/format'
 
 interface Doc {
   id: string
@@ -277,7 +278,7 @@ export default function DocumentsClient() {
                     {formatBytes(BigInt(doc.velikost))}
                   </td>
                   <td className="px-4 py-3 text-gray-500 dark:text-slate-400 whitespace-nowrap hidden md:table-cell">
-                    {new Date(doc.vytvoreno).toLocaleDateString('cs-CZ')}
+                    {formatDate(doc.vytvoreno)}
                   </td>
                   <td className="px-4 py-3 text-gray-500 dark:text-slate-400 hidden md:table-cell">
                     {doc.uploadedBy}

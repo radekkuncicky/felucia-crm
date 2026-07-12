@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import Link from 'next/link'
+import { formatDate } from '@/lib/format'
 
 const roleLabels: Record<string, string> = {
   ADMIN: 'Admin', OBCHODNIK: 'Obchodník', TECHNIK: 'Technik',
@@ -244,7 +245,7 @@ export default function UsersManager({ users: initUsers, maxUsers, activeUserCou
                   </button>
                 </td>
                 <td className="px-4 py-3 text-xs text-gray-500 dark:text-slate-400 whitespace-nowrap">
-                  {new Date(user.vytvoreno).toLocaleDateString('cs-CZ')}
+                  {formatDate(user.vytvoreno)}
                 </td>
                 <td className="px-4 py-3 text-right whitespace-nowrap">
                   <div className="flex items-center justify-end gap-3">

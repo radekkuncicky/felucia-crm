@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import ConfirmModal from '@/components/ConfirmModal'
+import { formatDate } from '@/lib/format'
 
 interface ApiKey {
   id: string
@@ -185,13 +186,13 @@ export default function ApiKeysManager() {
                       <code className="font-mono text-xs text-gray-500 dark:text-slate-400">{key.klic}</code>
                       <span className="text-xs text-gray-300 dark:text-slate-600">·</span>
                       <span className="text-xs text-gray-400 dark:text-slate-500">
-                        Vytvořen {new Date(key.vytvoreno).toLocaleDateString('cs-CZ')}
+                        Vytvořen {formatDate(key.vytvoreno)}
                       </span>
                       {key.lastUsedAt && (
                         <>
                           <span className="text-xs text-gray-300 dark:text-slate-600">·</span>
                           <span className="text-xs text-gray-400 dark:text-slate-500">
-                            Naposledy použit {new Date(key.lastUsedAt).toLocaleDateString('cs-CZ')}
+                            Naposledy použit {formatDate(key.lastUsedAt)}
                           </span>
                         </>
                       )}

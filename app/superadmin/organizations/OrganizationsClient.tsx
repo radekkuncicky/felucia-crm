@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import OrgDetailModal from './OrgDetailModal'
 import ConfirmModal from '@/components/ConfirmModal'
+import { formatDate } from '@/lib/format'
 
 const PLAN_COLORS: Record<string, string> = {
   STARTER: 'bg-gray-700 text-gray-200',
@@ -163,7 +164,7 @@ export default function OrganizationsClient({ organizations }: Props) {
                   }
                 </td>
                 <td className="px-4 py-3 text-gray-400 text-xs">
-                  {new Date(org.vytvoreno).toLocaleDateString('cs-CZ')}
+                  {formatDate(org.vytvoreno)}
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2 justify-end">

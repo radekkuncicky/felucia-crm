@@ -1,6 +1,7 @@
 import { prisma } from './prisma'
 import { predmetDilaByTechnologie, kategorieByTechnologie } from './sodHelpers'
 import { orgLogoDataUrl } from './quoteRenderer'
+import { formatDate, formatKc } from '@/lib/format'
 
 export interface SodRenderData {
   cisloSmlouvy: string
@@ -40,8 +41,8 @@ function buildLogoBwHtml(logoBwPath: string | null | undefined): string {
   return '<div class="brand-mark"></div>'
 }
 
-const fmtKc = (n: number) => Math.round(n).toLocaleString('cs-CZ') + ' Kč'
-const fmtKcDecimal = (n: unknown) => n != null ? Math.round(Number(n)).toLocaleString('cs-CZ') + ' Kč' : ''
+const fmtKc = formatKc
+const fmtKcDecimal = (n: unknown) => n != null ? formatKc(Number(n)) : ''
 
 export function buildSodRenderDataFromSodRecord(
   sod: {
@@ -58,7 +59,7 @@ export function buildSodRenderDataFromSodRecord(
 ): SodRenderData {
   return {
     cisloSmlouvy: sod.cislo,
-    datum: new Date(sod.vytvoreno).toLocaleDateString('cs-CZ'),
+    datum: formatDate(sod.vytvoreno),
     klientJmeno: sod.klientJmeno ?? '',
     klientAdresa: sod.klientAdresa ?? '',
     klientEmail: sod.klientEmail ?? '',
@@ -140,12 +141,12 @@ export async function buildSodRenderData(dealId: string, orgId: string, cisloSml
   const klientAdresa = [deal.client.ulice, deal.client.psc, deal.client.mesto].filter(Boolean).join(', ')
   const adresaDila = deal.adresaDila ?? klientAdresa ?? ''
 
-  const fmtKc = (n: number) => Math.round(n).toLocaleString('cs-CZ') + ' Kč'
-  const fmtDate = (d: Date | null | undefined) => d ? new Date(d).toLocaleDateString('cs-CZ') : ''
+  const fmtKc = formatKc
+  const fmtDate = (d: Date | null | undefined) => d ? formatDate(d) : ''
 
   return {
     cisloSmlouvy,
-    datum: new Date().toLocaleDateString('cs-CZ'),
+    datum: formatDate(new Date()),
     klientJmeno,
     klientAdresa,
     klientEmail: deal.client.email ?? '',

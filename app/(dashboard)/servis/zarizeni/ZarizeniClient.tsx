@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { api } from '@/lib/api'
+import { formatDate } from '@/lib/format'
 
 const TYP_LABELS: Record<string, string> = {
   TEPELNE_CERPADLO: 'Tepelné čerpadlo',
@@ -312,10 +313,10 @@ export default function ZarizeniClient({ zarizeni: initial, clients }: Props) {
                       {z.vyrobniCislo && <span className="text-gray-400 dark:text-slate-500"> · SN: {z.vyrobniCislo}</span>}
                     </p>
                     <div className="flex flex-wrap gap-3 mt-1 text-xs text-gray-500 dark:text-slate-400">
-                      {z.datumInstalace && <span>Instalace: {new Date(z.datumInstalace).toLocaleDateString('cs-CZ')}</span>}
-                      {z.zarukaDo && <span>Záruka do: {new Date(z.zarukaDo).toLocaleDateString('cs-CZ')}</span>}
+                      {z.datumInstalace && <span>Instalace: {formatDate(z.datumInstalace)}</span>}
+                      {z.zarukaDo && <span>Záruka do: {formatDate(z.zarukaDo)}</span>}
                       {z.servisniKontrakty.length > 0 && <span className="text-green-600 dark:text-green-400">{z.servisniKontrakty.length} kontrakt{z.servisniKontrakty.length > 1 ? 'y' : ''}</span>}
-                      {nextNavsteva && <span className="text-primary dark:text-primary-light">Příští servis: {new Date(nextNavsteva.planovanyTermin).toLocaleDateString('cs-CZ')}</span>}
+                      {nextNavsteva && <span className="text-primary dark:text-primary-light">Příští servis: {formatDate(nextNavsteva.planovanyTermin)}</span>}
                     </div>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">

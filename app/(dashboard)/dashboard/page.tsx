@@ -11,6 +11,7 @@ import {
   IconPhone, IconMail, IconHandshake, IconNote, IconCheck,
   IconHammer, IconCreditCard, IconSparkles,
 } from '@/components/ui/Icons'
+import { formatKcCompact } from '@/lib/format'
 
 const stavLabels: Record<StavDealu, string> = {
   NOVY: 'Nový', JEDNANI: 'Jednání', NABIDKA: 'Nabídka',
@@ -42,11 +43,7 @@ const actTypIcons: Record<string, React.ReactNode> = {
   UKOL: <IconCheck className="w-4 h-4 text-primary" />,
 }
 
-function fmtKc(n: number) {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace('.', ',')} M Kč`
-  if (n >= 1_000) return `${Math.round(n / 1_000)} tis. Kč`
-  return `${n.toLocaleString('cs-CZ')} Kč`
-}
+const fmtKc = formatKcCompact
 
 function fmtDate(d: Date) {
   const today = new Date()

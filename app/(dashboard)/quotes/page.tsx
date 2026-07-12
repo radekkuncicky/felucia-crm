@@ -3,6 +3,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
 import EmptyState from '@/components/ui/EmptyState'
+import { formatDate, formatCislo } from '@/lib/format'
 
 export default async function QuotesPage() {
   const session = await getServerSession(authOptions)
@@ -72,7 +73,7 @@ export default async function QuotesPage() {
                     {q.deal.client.jmeno} {q.deal.client.prijmeni}
                   </td>
                   <td className="px-6 py-4 text-right text-sm font-semibold text-gray-900 dark:text-white">
-                    {celkem > 0 ? celkem.toLocaleString('cs-CZ') + ' Kč' : '—'}
+                    {celkem > 0 ? formatCislo(celkem) + ' Kč' : '—'}
                   </td>
                   <td className="px-6 py-4 text-center">
                     {q.aktivni ? (
@@ -82,7 +83,7 @@ export default async function QuotesPage() {
                     )}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-500 dark:text-slate-400">
-                    {new Date(q.vytvoreno).toLocaleDateString('cs-CZ')}
+                    {formatDate(q.vytvoreno)}
                   </td>
                   <td className="px-6 py-4 text-right">
                     <Link

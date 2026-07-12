@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import SodTemplateEditor from '@/components/SodTemplateEditor'
+import { formatKc } from '@/lib/format'
 
 interface SodFormData {
   klientJmeno: string
@@ -85,7 +86,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   )
 }
 
-const fmtKc = (n: number) => Math.round(n).toLocaleString('cs-CZ') + ' Kč'
+const fmtKc = formatKc
 
 export default function SodEditClient({ sodId, cislo, hasTemplate, initialText, initialForm, cnInfo, initialAttach }: Props) {
   const router = useRouter()

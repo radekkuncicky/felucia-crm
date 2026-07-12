@@ -1,4 +1,5 @@
 import type { VyuctovaniSouhrn } from './servisVyuctovani'
+import { formatDate, formatKcUcetni } from '@/lib/format'
 
 // Podklad pro fakturaci servisní zakázky (NE daňový doklad). Veškerá
 // tenant data se escapují (injection do PDF), jen data: URL loga projde.
@@ -19,9 +20,7 @@ function esc(s: unknown): string {
     .replace(/'/g, '&#39;')
 }
 
-function fmtKc(n: number) {
-  return n.toLocaleString('cs-CZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' Kč'
-}
+const fmtKc = formatKcUcetni
 
 function fmtNum(n: number) {
   return n.toLocaleString('cs-CZ', { maximumFractionDigits: 2 })
@@ -29,7 +28,7 @@ function fmtNum(n: number) {
 
 function fmtDate(d: Date | string | null) {
   if (!d) return '—'
-  return new Date(d).toLocaleDateString('cs-CZ')
+  return formatDate(d)
 }
 
 function safeImageSrc(src: string | null | undefined): string | null {

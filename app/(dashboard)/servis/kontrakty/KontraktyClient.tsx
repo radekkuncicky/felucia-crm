@@ -10,6 +10,7 @@ import { ResizeHandle } from '@/components/ResizeHandle'
 import ConfirmModal from '@/components/ConfirmModal'
 import { api } from '@/lib/api'
 import { type ServisniZakazkaStav, stavLabel, stavColor, jeProsla, jeAktivni } from '@/lib/servisStav'
+import { formatDate, formatKcPresne, formatCislo } from '@/lib/format'
 
 const KONTR_DEFS: ColumnDef[] = [
   { id: 'cislo', label: 'Číslo', defaultVisible: true, defaultWidth: 110 },
@@ -352,7 +353,7 @@ export default function KontraktyClient({ kontrakty, orgUsers, zarizeniList }: P
                               <td key={col.id} className="px-4 py-3 overflow-hidden">
                                 {pristi ? (
                                   <span className={`text-sm font-medium whitespace-nowrap ${isUrgent ? 'text-red-600 dark:text-red-400' : 'text-gray-700 dark:text-slate-300'}`}>
-                                    {new Date(pristi.planovanyTermin).toLocaleDateString('cs-CZ')}
+                                    {formatDate(pristi.planovanyTermin)}
                                   </span>
                                 ) : <span className="text-gray-400">—</span>}
                               </td>
@@ -360,7 +361,7 @@ export default function KontraktyClient({ kontrakty, orgUsers, zarizeniList }: P
                           case 'cena':
                             return (
                               <td key={col.id} className="px-4 py-3 text-gray-700 dark:text-slate-300 overflow-hidden truncate">
-                                {k.cena ? `${Number(k.cena).toLocaleString('cs-CZ')} Kč` : '—'}
+                                {k.cena ? `${formatKcPresne(Number(k.cena))}` : '—'}
                               </td>
                             )
                           case 'stav':
@@ -430,8 +431,8 @@ export default function KontraktyClient({ kontrakty, orgUsers, zarizeniList }: P
                 {[
                   { label: 'Typ', value: typLabels[selectedKontrakt.typ] },
                   { label: 'Interval', value: selectedKontrakt.intervalMesicu > 0 ? `${selectedKontrakt.intervalMesicu} měs.` : 'Jednorázový' },
-                  { label: 'Začátek', value: new Date(selectedKontrakt.zacatek).toLocaleDateString('cs-CZ') },
-                  { label: 'Cena/rok', value: selectedKontrakt.cena ? `${Number(selectedKontrakt.cena).toLocaleString('cs-CZ')} Kč` : '—' },
+                  { label: 'Začátek', value: formatDate(selectedKontrakt.zacatek) },
+                  { label: 'Cena/rok', value: selectedKontrakt.cena ? `${formatKcPresne(Number(selectedKontrakt.cena))}` : '—' },
                 ].map(({ label, value }) => (
                   <div key={label} className="bg-gray-50 dark:bg-slate-900/50 rounded-lg p-3">
                     <p className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase mb-1">{label}</p>
@@ -466,16 +467,16 @@ export default function KontraktyClient({ kontrakty, orgUsers, zarizeniList }: P
                       <div className="flex gap-4 flex-wrap">
                         <div className="flex-1 min-w-[100px]">
                           <p className="text-xs text-gray-500 dark:text-slate-400">Příjmy (odhadem)</p>
-                          <p className="text-lg font-bold text-green-600 dark:text-green-400">{prijmy.toLocaleString('cs-CZ')} Kč</p>
+                          <p className="text-lg font-bold text-green-600 dark:text-green-400">{formatCislo(prijmy)} Kč</p>
                         </div>
                         <div className="flex-1 min-w-[100px]">
                           <p className="text-xs text-gray-500 dark:text-slate-400">Náklady (výjezdy)</p>
-                          <p className="text-lg font-bold text-red-600 dark:text-red-400">{naklady.toLocaleString('cs-CZ')} Kč</p>
+                          <p className="text-lg font-bold text-red-600 dark:text-red-400">{formatCislo(naklady)} Kč</p>
                         </div>
                         <div className="flex-1 min-w-[100px]">
                           <p className="text-xs text-gray-500 dark:text-slate-400">Marže</p>
                           <p className={`text-lg font-bold ${profit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                            {profit.toLocaleString('cs-CZ')} Kč
+                            {formatCislo(profit)} Kč
                           </p>
                         </div>
                       </div>
@@ -573,7 +574,7 @@ export default function KontraktyClient({ kontrakty, orgUsers, zarizeniList }: P
                               <span className="font-mono text-xs text-gray-400 dark:text-slate-500">{n.cislo}</span>
                             )}
                             <span className="text-sm font-medium text-gray-900 dark:text-white">
-                              {new Date(n.planovanyTermin).toLocaleDateString('cs-CZ')}
+                              {formatDate(n.planovanyTermin)}
                             </span>
                             <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${stavColor(n.stav)}`}>
                               {stavLabel(n.stav)}
@@ -588,12 +589,12 @@ export default function KontraktyClient({ kontrakty, orgUsers, zarizeniList }: P
                           {n.doporuceni && <p className="text-xs text-green-700 dark:text-green-400 mt-0.5">💡 {n.doporuceni}</p>}
                           {(n.nakladyCas || n.nakladyMaterial) && (
                             <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
-                              Náklady: {[(n.nakladyCas ? `čas ${n.nakladyCas.toLocaleString('cs-CZ')} Kč` : null), (n.nakladyMaterial ? `mat. ${n.nakladyMaterial.toLocaleString('cs-CZ')} Kč` : null)].filter(Boolean).join(' + ')}
+                              Náklady: {[(n.nakladyCas ? `čas ${formatKcPresne(n.nakladyCas)}` : null), (n.nakladyMaterial ? `mat. ${formatKcPresne(n.nakladyMaterial)}` : null)].filter(Boolean).join(' + ')}
                             </p>
                           )}
                           {n.skutecnyTermin && (
                             <p className="text-xs text-gray-500 dark:text-slate-500 mt-0.5">
-                              Uskutečněno: {new Date(n.skutecnyTermin).toLocaleDateString('cs-CZ')}
+                              Uskutečněno: {formatDate(n.skutecnyTermin)}
                               {n.trvaniMinut ? ` · ${n.trvaniMinut} min` : ''}
                               {n.podpisKlienta ? ' · ✓ podpis' : ''}
                             </p>

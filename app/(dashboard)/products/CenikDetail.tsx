@@ -1,13 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { formatCislo } from '@/lib/format'
 
 interface ProductCategory { id: string; nazev: string; barva: string }
 interface Product { id: string; kod: string | null; nazev: string; categories: ProductCategory[]; jednotka: string; standardniCena: number }
 interface Category { id: string; nazev: string; barva: string }
 interface Polozka { id: string; cena: number; product: Product }
 
-function fmt(n: number) { return n.toLocaleString('cs-CZ') }
+function fmt(n: number) { return formatCislo(n) }
 
 interface Props {
   cenikId: string

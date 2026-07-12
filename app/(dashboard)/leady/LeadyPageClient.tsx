@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { LeadZdroj, LeadStatus } from '@prisma/client'
+import { formatDate, formatKcPresne } from '@/lib/format'
 
 interface Lead {
   id: string
@@ -205,11 +206,11 @@ export default function LeadyPageClient({ leady, users, novychCount, currentUser
                   </td>
                   <td className="px-4 py-3 text-gray-700 dark:text-slate-200 font-medium hidden xl:table-cell">
                     {lead.odhadovanaHodnota
-                      ? `${lead.odhadovanaHodnota.toLocaleString('cs-CZ')} Kč`
+                      ? `${formatKcPresne(lead.odhadovanaHodnota)}`
                       : <span className="text-gray-400 dark:text-slate-500">—</span>}
                   </td>
                   <td className="px-4 py-3 text-gray-500 dark:text-slate-400 text-xs hidden lg:table-cell">
-                    {new Date(lead.vytvoreno).toLocaleDateString('cs-CZ')}
+                    {formatDate(lead.vytvoreno)}
                   </td>
                 </tr>
               ))

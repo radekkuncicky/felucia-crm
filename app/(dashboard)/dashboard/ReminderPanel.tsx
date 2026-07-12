@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { formatDate } from '@/lib/format'
 
 const techLabels: Record<string, string> = {
   KLIMA: 'Klimatizace', TEPELNE_CERPADLO: 'Tepelné čerpadlo',
@@ -191,7 +192,7 @@ export default function ReminderPanel() {
                     </p>
                   </div>
                   <span className="text-xs text-yellow-600 dark:text-yellow-500 flex-shrink-0 mt-0.5">
-                    {new Date(u.datum).toLocaleDateString('cs-CZ')}
+                    {formatDate(u.datum)}
                   </span>
                 </Link>
               ))}
@@ -243,7 +244,7 @@ export default function ReminderPanel() {
                     <p className="text-xs text-yellow-700 dark:text-yellow-400 truncate">{s.kontrakt?.nazev ?? '—'}</p>
                   </div>
                   <span className="text-xs flex-shrink-0 px-1.5 py-0.5 rounded-full font-medium bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400">
-                    {new Date(s.planovanyTermin).toLocaleDateString('cs-CZ')}
+                    {formatDate(s.planovanyTermin)}
                   </span>
                 </Link>
               ))}
@@ -274,7 +275,7 @@ export default function ReminderPanel() {
                         ? 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400'
                         : 'text-yellow-700 dark:text-yellow-400'
                     }`}>
-                      {new Date(s.planovanyTermin).toLocaleDateString('cs-CZ')}
+                      {formatDate(s.planovanyTermin)}
                     </span>
                   </Link>
                 )

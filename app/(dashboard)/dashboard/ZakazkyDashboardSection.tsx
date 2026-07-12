@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
+import { formatDate } from '@/lib/format'
 
 export default async function ZakazkyDashboardSection({ orgId }: { orgId: string }) {
   const [aktivni, vRealizaci, cekajPP, nevyuctovano, podpisanePP] = await Promise.all([
@@ -79,7 +80,7 @@ export default async function ZakazkyDashboardSection({ orgId }: { orgId: string
                     </td>
                     <td className="py-2.5 pr-4 text-gray-600 dark:text-slate-400">{pp.technik.jmeno}</td>
                     <td className="py-2.5 pr-4 text-gray-400 dark:text-slate-500">
-                      {pp.podpisano ? new Date(pp.podpisano).toLocaleDateString('cs-CZ') : '—'}
+                      {pp.podpisano ? formatDate(pp.podpisano) : '—'}
                     </td>
                     <td className="py-2.5">
                       <Link

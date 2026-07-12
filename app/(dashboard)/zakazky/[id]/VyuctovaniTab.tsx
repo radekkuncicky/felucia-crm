@@ -2,6 +2,7 @@
 
 import { VyuctovaniStav } from '@prisma/client'
 import Link from 'next/link'
+import { formatDate } from '@/lib/format'
 
 const STAV_LABELS: Record<VyuctovaniStav, string> = {
   NAVRH: 'Návrh',
@@ -42,7 +43,7 @@ function VyuRow({ v, zakazkaId }: { v: Vyuctovani; zakazkaId: string }) {
       <div>
         <p className="font-mono font-bold text-sm text-gray-900 dark:text-white">{v.cislo}</p>
         <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
-          {new Date(v.vytvoreno).toLocaleDateString('cs-CZ')}
+          {formatDate(v.vytvoreno)}
         </p>
       </div>
       <div className="flex items-center gap-3">

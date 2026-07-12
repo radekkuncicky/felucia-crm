@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { api } from '@/lib/api'
+import { formatKcUcetni } from '@/lib/format'
 
 const TYP_OPTIONS: [string, string][] = [
   ['PRACE', 'Práce'],
@@ -34,7 +35,7 @@ const num = (v: string, f = 0) => {
   return Number.isFinite(n) ? n : f
 }
 const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100
-const fmtKc = (n: number) => n.toLocaleString('cs-CZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' Kč'
+const fmtKc = formatKcUcetni
 
 function emptyRow(): Row {
   return { typ: 'PRACE', popis: '', mnozstvi: '1', jednotka: 'ks', cenaZaJednotku: '', krytoKontraktem: false, dphSazba: '12' }

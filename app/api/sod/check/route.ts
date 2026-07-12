@@ -3,6 +3,7 @@ import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { buildSodRenderData, sodPlaceholderValues } from '@/lib/sodRender'
+import { formatDate } from '@/lib/format'
 
 // Placeholdery, které se nikdy nevyplňují ručně (auto / nemá smysl je
 // ukazovat jako prázdné pole k doplnění).
@@ -63,7 +64,7 @@ export async function GET(req: Request) {
     usedPlaceholders: Array.from(usedInTemplate),
     seZalohou,
     prefill: {
-      terminPrevzeti: deal.terminPrevzeti ? new Date(deal.terminPrevzeti).toLocaleDateString('cs-CZ') : '',
+      terminPrevzeti: deal.terminPrevzeti ? formatDate(deal.terminPrevzeti) : '',
       pocetDniRealizace: '',
       zmenaTerm: '',
       kontaktniOsoba: values['kontaktni_osoba'] ?? '',

@@ -6,6 +6,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { SodTyp } from '@prisma/client'
 import dynamic from 'next/dynamic'
+import { formatDate } from '@/lib/format'
 
 const GenerateSodModal = dynamic(() => import('@/components/GenerateSodModal'), { ssr: false })
 
@@ -130,7 +131,7 @@ export default function SmlouvyTab({ dealId, role }: Props) {
                   {TYP_LABELS[sod.typ]}
                 </span>
                 <span className="text-xs text-gray-400 dark:text-slate-500 ml-1">
-                  {new Date(sod.vytvoreno).toLocaleDateString('cs-CZ')}
+                  {formatDate(sod.vytvoreno)}
                 </span>
                 <div className="ml-auto flex items-center gap-1.5">
                   <Link

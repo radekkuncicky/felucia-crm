@@ -5,6 +5,7 @@ import { hardenPdfPage } from '@/lib/pdf'
 import fs from 'fs'
 import path from 'path'
 import type { QuoteTemplate, QuoteTemplateConfig, QuoteTemplateHtml } from '@prisma/client'
+import { formatDate } from '@/lib/format'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -218,7 +219,7 @@ function buildBaseHtml(quote: QuoteForRender, config: QuoteTemplateConfig | null
   const { bezDph, dphSazba, dphCastka, sDph } = computeTotals(quote)
 
   const color = '#4CAF50' // BASE — barva pevná
-  const today = new Date().toLocaleDateString('cs-CZ')
+  const today = formatDate(new Date())
   const platnostDo = new Date(Date.now() + 30 * 86400000).toLocaleDateString('cs-CZ')
 
   const klientAdresa = [
@@ -361,7 +362,7 @@ function buildStandardHtml(quote: QuoteForRender, config: QuoteTemplateConfig | 
 
   const primaryColor = config?.primaryColor ?? '#4CAF50'
   const accentColor = config?.accentColor ?? '#1A2E1B'
-  const today = new Date().toLocaleDateString('cs-CZ')
+  const today = formatDate(new Date())
   const platnostDo = new Date(Date.now() + 30 * 86400000).toLocaleDateString('cs-CZ')
 
   const klientAdresa = [
@@ -522,7 +523,7 @@ function buildTenantDefaultHtml(quote: QuoteForRender, primaryColor = '#1a1a2e')
   const user = deal.user
   const { bezDph, dphSazba, dphCastka, sDph } = computeTotals(quote)
 
-  const today = new Date().toLocaleDateString('cs-CZ')
+  const today = formatDate(new Date())
   const platnostDo = new Date(Date.now() + 30 * 86400000).toLocaleDateString('cs-CZ')
 
   const klientAdresa = [
@@ -706,7 +707,7 @@ function buildTemplateData(quote: QuoteForRender) {
   const org = deal.organization
   const user = deal.user
   const { bezDph, dphSazba, dphCastka, sDph } = computeTotals(quote)
-  const today = new Date().toLocaleDateString('cs-CZ')
+  const today = formatDate(new Date())
   const platnostDo = new Date(Date.now() + 30 * 86400000).toLocaleDateString('cs-CZ')
   const klientAdresa = [
     client.ulice,

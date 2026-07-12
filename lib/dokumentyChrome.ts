@@ -3,6 +3,7 @@ import { getOrgSettings } from './orgSettings'
 import { getPlanLimits } from './planLimits'
 import { orgLogoDataUrl } from './quoteRenderer'
 import { sanitizeDocumentHtml } from './sanitizeHtml'
+import { formatDate } from '@/lib/format'
 
 /**
  * Záhlaví/patička PDF dokumentů (puppeteer displayHeaderFooter).
@@ -92,7 +93,7 @@ export async function buildDokumentChrome(
       .replaceAll('{{barva}}', esc(barva))
       .replaceAll('{{strana}}', '<span class="pageNumber"></span>')
       .replaceAll('{{stran_celkem}}', '<span class="totalPages"></span>')
-      .replaceAll('{{datum}}', new Date().toLocaleDateString('cs-CZ')))
+      .replaceAll('{{datum}}', formatDate(new Date())))
     return {
       headerTemplate: `<div style="font-size:9px;width:100%;-webkit-print-color-adjust:exact">${fill(settings.dokumentyHeaderHtml ?? '')}</div>`,
       footerTemplate: `<div style="font-size:9px;width:100%;-webkit-print-color-adjust:exact">${fill(settings.dokumentyFooterHtml ?? '')}</div>`,

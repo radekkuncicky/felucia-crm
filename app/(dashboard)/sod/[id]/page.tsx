@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { SodTyp } from '@prisma/client'
 import SodDeleteButton from './SodDeleteButton'
+import { formatDate, formatKcPresne } from '@/lib/format'
 
 const TYP_LABELS: Record<SodTyp, string> = {
   DPH_12_BEZ_ZALOHY: '12% bez zálohy',
@@ -26,12 +27,12 @@ const TYP_COLORS: Record<SodTyp, string> = {
 
 function fmt(d: Date | null | undefined) {
   if (!d) return '—'
-  return new Date(d).toLocaleDateString('cs-CZ')
+  return formatDate(d)
 }
 
 function fmtKc(n: unknown) {
   if (n == null) return '—'
-  return Number(n).toLocaleString('cs-CZ') + ' Kč'
+  return formatKcPresne(Number(n))
 }
 
 function Row({ label, value }: { label: string; value: React.ReactNode }) {

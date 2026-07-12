@@ -10,6 +10,7 @@ import ColumnConfigButton from '@/components/ColumnConfigButton'
 import InlineStatusBadge from '@/components/InlineStatusBadge'
 import EmptyState from '@/components/ui/EmptyState'
 import { ResizeHandle } from '@/components/ResizeHandle'
+import { formatDate, formatKcPresne } from '@/lib/format'
 
 interface DealRow {
   id: string
@@ -48,9 +49,7 @@ const pravdepodobnostMap: Record<StavDealu, number> = {
   ZNEPLATNENO: 0,
 }
 
-function fmtKc(n: number) {
-  return n.toLocaleString('cs-CZ') + ' Kč'
-}
+const fmtKc = formatKcPresne
 
 function thisYear(dateStr: string) {
   return new Date(dateStr).getFullYear() === new Date().getFullYear()
@@ -470,7 +469,7 @@ export default function DealsTable({ deals, isAdmin = false }: Props) {
                         case 'uzavreno':
                           return (
                             <td key={col.id} className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-slate-400">
-                              {deal.terminRealizace ? new Date(deal.terminRealizace).toLocaleDateString('cs-CZ') : '—'}
+                              {deal.terminRealizace ? formatDate(deal.terminRealizace) : '—'}
                             </td>
                           )
                         case 'vlastnik':

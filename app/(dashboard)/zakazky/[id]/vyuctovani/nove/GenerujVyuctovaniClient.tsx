@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { formatDate } from '@/lib/format'
 
 interface Predavak {
   id: string
@@ -78,7 +79,7 @@ export default function GenerujVyuctovaniClient({ zakazka, etapaId }: { zakazka:
                   <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
                     {pp.technikJmeno}
                     {pp.polozkyCount > 0 && ` · ${pp.polozkyCount} pol.`}
-                    {pp.schvaleno && ` · Schválen ${new Date(pp.schvaleno).toLocaleDateString('cs-CZ')}`}
+                    {pp.schvaleno && ` · Schválen ${formatDate(pp.schvaleno)}`}
                   </p>
                 </div>
                 <button

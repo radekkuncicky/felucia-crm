@@ -2,6 +2,7 @@
 // Used by both PDF and DOCX generation
 
 import { SodTyp } from '@prisma/client'
+import { formatKcPresne } from '@/lib/format'
 
 export interface SodDocData {
   cislo: string
@@ -55,7 +56,7 @@ export function seZalohou(typ: SodTyp) {
 
 function fmtKc(n: number | null | undefined): string {
   if (n == null) return '—'
-  return n.toLocaleString('cs-CZ') + ' Kč'
+  return formatKcPresne(n)
 }
 
 function val(v: string | null | undefined): string {

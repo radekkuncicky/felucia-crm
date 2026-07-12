@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { parseEmailInput } from '@/lib/parseEmail'
 import ConfirmModal from '@/components/ConfirmModal'
+import { formatDate } from '@/lib/format'
 
 function parseFullAddress(text: string): { ulice: string; psc: string; mesto: string } | null {
   const trimmed = text.trim()
@@ -169,7 +170,7 @@ export default function ClientEditForm({ client, isAdmin }: { client: ClientData
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-5 space-y-3">
           <h2 className="font-semibold text-gray-900 dark:text-white">Kontaktní údaje</h2>
           <div className="bg-gray-50 dark:bg-slate-700/50 border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-2.5 text-sm text-gray-600 dark:text-slate-300">
-            Klient anonymizován dne {new Date(client.anonymizedAt).toLocaleDateString('cs-CZ')} — osobní údaje byly odstraněny na žádost
+            Klient anonymizován dne {formatDate(client.anonymizedAt)} — osobní údaje byly odstraněny na žádost
             klienta (GDPR). Vazby na obchodní případy a zakázky zůstávají zachovány.
           </div>
         </div>

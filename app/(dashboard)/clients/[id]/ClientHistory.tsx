@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { formatDate } from '@/lib/format'
 
 interface HistoryItem {
   date: string
@@ -35,7 +36,7 @@ export default function ClientHistory({ history }: { history: HistoryItem[] }) {
               <p className="text-xs text-gray-500 mt-0.5">{item.sub}</p>
             </div>
             <div className="flex-shrink-0 text-xs text-gray-400 whitespace-nowrap mt-0.5">
-              {new Date(item.date).toLocaleDateString('cs-CZ')}
+              {formatDate(item.date)}
             </div>
           </Link>
         ))}

@@ -1,5 +1,6 @@
 import fs from 'fs/promises'
 import path from 'path'
+import { formatDate } from '@/lib/format'
 
 const techToTemplate: Record<string, string> = {
   TEPELNE_CERPADLO: 'cn-tepelne-cerpadlo.html',
@@ -49,7 +50,7 @@ export async function buildQuoteHtml(quote: QuoteWithRelations): Promise<string>
   const zaloha = deal.hodnotaZalohy ? Number(deal.hodnotaZalohy) : Math.round(sDph * 0.7)
 
   const fmt = (n: number) => n.toLocaleString('cs-CZ', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
-  const today = new Date().toLocaleDateString('cs-CZ')
+  const today = formatDate(new Date())
 
   const jmeno = user?.jmeno ?? ''
   const jmenoParts = jmeno.split(' ')
@@ -79,7 +80,7 @@ export async function buildQuoteHtml(quote: QuoteWithRelations): Promise<string>
     '{{hodnota_s_dph}}': fmt(sDph),
     '{{hodnota_zalohy}}': fmt(zaloha),
     '{{splatnost_zalohy}}': deal.splatnostZalohy
-      ? new Date(deal.splatnostZalohy).toLocaleDateString('cs-CZ')
+      ? formatDate(deal.splatnostZalohy)
       : '',
     '{{org_sidlo}}': org.sidlo ?? org.nazev,
     '{{org_email}}': org.email ?? '',

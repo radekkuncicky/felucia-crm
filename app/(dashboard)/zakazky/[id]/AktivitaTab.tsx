@@ -1,4 +1,5 @@
 'use client'
+import { formatDateTime } from '@/lib/format'
 
 interface AuditEntry {
   id: string
@@ -59,7 +60,7 @@ export default function AktivitaTab({ aktivity }: Props) {
                     {a.typZaznamu}: <span className="text-gray-600 dark:text-slate-400">{a.zaznamNazev}</span>
                   </p>
                   <span className="text-xs text-gray-400 dark:text-slate-500 flex-shrink-0">
-                    {new Date(a.vytvoreno).toLocaleString('cs-CZ', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    {formatDateTime(a.vytvoreno)}
                   </span>
                 </div>
                 <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">{formatZmeny(a.zmeny as Record<string, unknown>)}</p>

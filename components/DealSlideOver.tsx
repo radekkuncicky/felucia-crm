@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { StavDealu, Technologie } from '@prisma/client'
 import { techLabels, techColors } from '@/lib/constants'
 import InlineStatusBadge from './InlineStatusBadge'
+import { formatDate, formatKcCompact } from '@/lib/format'
 
 interface DealPreview {
   id: string
@@ -35,11 +36,7 @@ const ACT_ICONS: Record<string, string> = {
   HOVOR: '📞', EMAIL: '✉️', SCHUZKA: '🤝', POZNAMKA: '📝', UKOL: '✅',
 }
 
-function fmtKc(n: number) {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace('.', ',')} M Kč`
-  if (n >= 1_000) return `${Math.round(n / 1_000)} tis. Kč`
-  return `${n.toLocaleString('cs-CZ')} Kč`
-}
+const fmtKc = formatKcCompact
 
 export default function DealSlideOver({ dealId, onClose, onStavChange }: Props) {
   const [data, setData] = useState<DealPreview | null>(null)
@@ -189,14 +186,14 @@ export default function DealSlideOver({ dealId, onClose, onStavChange }: Props) 
 
                   <InfoRow icon="📅" label="Otevřeno">
                     <span className="text-sm text-gray-600 dark:text-slate-400">
-                      {new Date(data.vytvoreno).toLocaleDateString('cs-CZ')}
+                      {formatDate(data.vytvoreno)}
                     </span>
                   </InfoRow>
 
                   {data.terminRealizace && (
                     <InfoRow icon="🔨" label="Realizace">
                       <span className="text-sm text-orange-600 dark:text-orange-400">
-                        {new Date(data.terminRealizace).toLocaleDateString('cs-CZ')}
+                        {formatDate(data.terminRealizace)}
                       </span>
                     </InfoRow>
                   )}
@@ -219,7 +216,7 @@ export default function DealSlideOver({ dealId, onClose, onStavChange }: Props) 
                         <div className="flex-1 min-w-0">
                           <p className="text-sm text-gray-800 dark:text-slate-200 line-clamp-2">{act.popis}</p>
                           <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">
-                            {new Date(act.datum).toLocaleDateString('cs-CZ')}
+                            {formatDate(act.datum)}
                           </p>
                         </div>
                       </div>

@@ -11,6 +11,7 @@ import { renderQuotePdf } from '@/lib/quoteRenderer'
 import { mergePdfs } from '@/lib/mergePdfs'
 import fs from 'fs'
 import path from 'path'
+import { formatDate } from '@/lib/format'
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
@@ -39,7 +40,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   if (sod.textSmlouvy) {
     html = renderSodContractHtml(sod.textSmlouvy)
   } else {
-    const datum = sod.vytvoreno.toLocaleDateString('cs-CZ')
+    const datum = formatDate(sod.vytvoreno)
     html = generateSodHtml({
       cislo: sod.cislo,
       typ: sod.typ,

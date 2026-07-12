@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { formatDate } from '@/lib/format'
 
 const ROLE_COLORS: Record<string, string> = {
   ADMIN: 'bg-purple-900 text-purple-200',
@@ -72,7 +73,7 @@ export default function UsersClient({ users, orgs }: { users: User[]; orgs: Org[
     if (days === 0) return { text: 'Dnes', cls: 'text-green-400' }
     if (days === 1) return { text: 'Včera', cls: 'text-green-400' }
     if (days < 30) return { text: `před ${days} dny`, cls: 'text-green-400' }
-    return { text: d.toLocaleDateString('cs-CZ'), cls: 'text-red-400' }
+    return { text: formatDate(d), cls: 'text-red-400' }
   }
 
   return (

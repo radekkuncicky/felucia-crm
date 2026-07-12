@@ -8,6 +8,7 @@ import MobileSheet from '@/components/MobileSheet'
 import { techLabels, techColors } from '@/lib/constants'
 import { api } from '@/lib/api'
 import { toast } from 'sonner'
+import { formatKc } from '@/lib/format'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -75,8 +76,7 @@ const HOTOVE_STAVY: ZakazkaStav[] = ['PREDANA', 'VYUCTOVANA', 'HOTOVO']
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const fmtKc = (n: number) =>
-  n.toLocaleString('cs-CZ', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' Kč'
+const fmtKc = formatKc
 
 function formatMontaz(od: string | null, doo: string | null): string {
   if (!od) return ''
