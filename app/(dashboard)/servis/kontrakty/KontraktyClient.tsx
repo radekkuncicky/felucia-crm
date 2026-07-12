@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
@@ -124,23 +124,13 @@ function calcProfitability(kontrakt: Kontrakt) {
     ? Math.round((monthsActive / 12) * cenaRocne)
     : 0
 
+  // Náklady ze všech odpracovaných stavů — vyúčtovaná/uzavřená zakázka nesmí
+  // z marže zmizet (dřív se počítala jen DOKONCENA).
   const naklady = kontrakt.servisniZakazky
-    .filter(n => n.stav === 'DOKONCENA')
+    .filter(n => ['DOKONCENA', 'VYUCTOVANA', 'UZAVRENA'].includes(n.stav))
     .reduce((s, n) => s + (n.nakladyCas ?? 0) + (n.nakladyMaterial ?? 0), 0)
 
   return { prijmy, naklady, profit: prijmy - naklady }
-}
-
-const emptyDokoncitForm = {
-  skutecnyTermin: new Date().toISOString().slice(0, 16),
-  trvaniMinut: '',
-  zprava: '',
-  nalezeneZavady: '',
-  doporuceni: '',
-  nakladyCas: '',
-  nakladyMaterial: '',
-  podpisKlienta: false as boolean,
-  technikId: '',
 }
 
 const emptyKontraktForm = {
@@ -160,17 +150,13 @@ export default function KontraktyClient({ kontrakty, orgUsers, zarizeniList }: P
 
   const [filter, setFilter] = useState<'vse' | 'aktivni' | 'neaktivni'>('aktivni')
   const [selectedKontrakt, setSelectedKontrakt] = useState<Kontrakt | null>(null)
-  const [dokoncitNavstevaId, setDokoncitNavstevaId] = useState<string | null>(null)
-  const [dokoncitForm, setDokoncitForm] = useState(emptyDokoncitForm)
   const [saving, setSaving] = useState(false)
   const [addNavsteva, setAddNavsteva] = useState(false)
   const [addForm, setAddForm] = useState({ planovanyTermin: '', typ: 'PLANOVANY_SERVIS' as NavstevaTyp, technikId: '', poznamka: '' })
   const [novyKontraktOpen, setNovyKontraktOpen] = useState(false)
   const [novyForm, setNovyForm] = useState(emptyKontraktForm)
   const [zarizeniSearch, setZarizeniSearch] = useState('')
-  const [uploadingPhotos, setUploadingPhotos] = useState(false)
   const [ukoncitKontraktId, setUkoncitKontraktId] = useState<string | null>(null)
-  const photoInputRef = useRef<HTMLInputElement>(null)
 
   const filtered = kontrakty.filter(k => {
     if (filter === 'aktivni') return k.aktivni
@@ -182,68 +168,13 @@ export default function KontraktyClient({ kontrakty, orgUsers, zarizeniList }: P
     !zarizeniSearch || `${z.nazev} ${z.klient.jmeno} ${z.klient.prijmeni} ${z.vyrobniCislo ?? ''}`.toLowerCase().includes(zarizeniSearch.toLowerCase())
   )
 
-  async function dokoncit() {
-    if (!dokoncitNavstevaId) return
-    setSaving(true)
-    try {
-      await fetch(`/api/servis/navstevy/${dokoncitNavstevaId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          stav: 'DOKONCENA',
-          skutecnyTermin: dokoncitForm.skutecnyTermin || new Date().toISOString(),
-          trvaniMinut: dokoncitForm.trvaniMinut ? Number(dokoncitForm.trvaniMinut) : null,
-          zprava: dokoncitForm.zprava || null,
-          nalezeneZavady: dokoncitForm.nalezeneZavady || null,
-          doporuceni: dokoncitForm.doporuceni || null,
-          nakladyCas: dokoncitForm.nakladyCas ? Number(dokoncitForm.nakladyCas) : null,
-          nakladyMaterial: dokoncitForm.nakladyMaterial ? Number(dokoncitForm.nakladyMaterial) : null,
-          podpisKlienta: dokoncitForm.podpisKlienta,
-          technikId: dokoncitForm.technikId || null,
-        }),
-      })
-      // Auto-plan next visit if kontrakt has interval
-      if (selectedKontrakt && selectedKontrakt.intervalMesicu > 0 && selectedKontrakt.aktivni) {
-        const skutecny = new Date(dokoncitForm.skutecnyTermin || new Date())
-        const pristiTermin = new Date(skutecny)
-        pristiTermin.setMonth(pristiTermin.getMonth() + selectedKontrakt.intervalMesicu)
-        await fetch(`/api/servis/navstevy/${selectedKontrakt.id}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ planovanyTermin: pristiTermin.toISOString(), typ: 'PLANOVANY_SERVIS' }),
-        })
-      }
-      setDokoncitNavstevaId(null)
-      setDokoncitForm(emptyDokoncitForm)
-      router.refresh()
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  async function uploadPhoto(navstevaId: string, file: File) {
-    const fd = new FormData()
-    fd.append('file', file)
-    const res = await fetch(`/api/servis/navstevy/${navstevaId}/fotky`, { method: 'POST', body: fd })
-    return res.ok
-  }
-
-  async function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    if (!dokoncitNavstevaId || !e.target.files) return
-    setUploadingPhotos(true)
-    const files = Array.from(e.target.files).slice(0, 10)
-    for (const file of files) {
-      await uploadPhoto(dokoncitNavstevaId, file)
-    }
-    setUploadingPhotos(false)
-    router.refresh()
-  }
-
+  // Dokončování návštěv se z Kontraktů přesunulo do detailu zakázky
+  // (/servis/zakazky/[id]) — jedno místo pro protokol, fotky i podpis.
   async function addNavstevaSubmit() {
     if (!selectedKontrakt || !addForm.planovanyTermin) return
     setSaving(true)
     try {
-      await fetch(`/api/servis/navstevy/${selectedKontrakt.id}`, {
+      await fetch(`/api/servis/zakazky/${selectedKontrakt.id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -319,10 +250,6 @@ export default function KontraktyClient({ kontrakty, orgUsers, zarizeniList }: P
       setSaving(false)
     }
   }
-
-  const selectedNavsteva = dokoncitNavstevaId
-    ? selectedKontrakt?.servisniZakazky.find(n => n.id === dokoncitNavstevaId) ?? null
-    : null
 
   return (
     <>
@@ -685,17 +612,12 @@ export default function KontraktyClient({ kontrakty, orgUsers, zarizeniList }: P
                             </div>
                           )}
                         </div>
-                        {jeAktivni(n.stav) && (
-                          <button
-                            onClick={() => {
-                              setDokoncitNavstevaId(n.id)
-                              setDokoncitForm({ ...emptyDokoncitForm, technikId: n.technikId ?? '' })
-                            }}
-                            className="flex-shrink-0 text-xs text-green-600 dark:text-green-400 hover:underline font-medium whitespace-nowrap"
-                          >
-                            Dokončit
-                          </button>
-                        )}
+                        <Link
+                          href={`/servis/zakazky/${n.id}`}
+                          className="flex-shrink-0 text-xs text-green-600 dark:text-green-400 hover:underline font-medium whitespace-nowrap"
+                        >
+                          {jeAktivni(n.stav) ? 'Otevřít zakázku →' : 'Detail →'}
+                        </Link>
                       </div>
                     </div>
                   ))}
@@ -728,157 +650,6 @@ export default function KontraktyClient({ kontrakty, orgUsers, zarizeniList }: P
                   + Přidat návštěvu
                 </button>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Dokončení modal */}
-      {dokoncitNavstevaId && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="px-6 py-5 border-b border-gray-200 dark:border-slate-700">
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Dokončit návštěvu</h3>
-              {selectedNavsteva?.cislo && (
-                <p className="text-sm text-gray-500 dark:text-slate-400">{selectedNavsteva.cislo}</p>
-              )}
-            </div>
-            <div className="px-6 py-4 space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 dark:text-slate-400 mb-1">Datum a čas</label>
-                  <input
-                    type="datetime-local"
-                    value={dokoncitForm.skutecnyTermin}
-                    onChange={e => setDokoncitForm(f => ({ ...f, skutecnyTermin: e.target.value }))}
-                    className="w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 dark:text-slate-400 mb-1">Trvání (minuty)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={dokoncitForm.trvaniMinut}
-                    onChange={e => setDokoncitForm(f => ({ ...f, trvaniMinut: e.target.value }))}
-                    placeholder="napr. 90"
-                    className="w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 dark:text-slate-400 mb-1">Technik</label>
-                <select
-                  value={dokoncitForm.technikId}
-                  onChange={e => setDokoncitForm(f => ({ ...f, technikId: e.target.value }))}
-                  className="w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500"
-                >
-                  <option value="">— nepřiřazen —</option>
-                  {orgUsers.map(u => <option key={u.id} value={u.id}>{u.jmeno}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 dark:text-slate-400 mb-1">Co bylo provedeno</label>
-                <textarea
-                  rows={3}
-                  value={dokoncitForm.zprava}
-                  onChange={e => setDokoncitForm(f => ({ ...f, zprava: e.target.value }))}
-                  placeholder="Popis provedených prací..."
-                  className="w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 dark:text-slate-400 mb-1">Nalezené závady</label>
-                <textarea
-                  rows={2}
-                  value={dokoncitForm.nalezeneZavady}
-                  onChange={e => setDokoncitForm(f => ({ ...f, nalezeneZavady: e.target.value }))}
-                  placeholder="Popis závad nebo odchylek..."
-                  className="w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 dark:text-slate-400 mb-1">Doporučení</label>
-                <textarea
-                  rows={2}
-                  value={dokoncitForm.doporuceni}
-                  onChange={e => setDokoncitForm(f => ({ ...f, doporuceni: e.target.value }))}
-                  placeholder="Doporučení pro příští servis..."
-                  className="w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 dark:text-slate-400 mb-1">Náklady čas (Kč)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={dokoncitForm.nakladyCas}
-                    onChange={e => setDokoncitForm(f => ({ ...f, nakladyCas: e.target.value }))}
-                    placeholder="0"
-                    className="w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 dark:text-slate-400 mb-1">Náklady materiál (Kč)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={dokoncitForm.nakladyMaterial}
-                    onChange={e => setDokoncitForm(f => ({ ...f, nakladyMaterial: e.target.value }))}
-                    placeholder="0"
-                    className="w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500"
-                  />
-                </div>
-              </div>
-              {/* Photo upload */}
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 dark:text-slate-400 mb-2">Fotodokumentace (max 10)</label>
-                <input
-                  ref={photoInputRef}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="hidden"
-                  onChange={handlePhotoUpload}
-                />
-                <button
-                  type="button"
-                  onClick={() => photoInputRef.current?.click()}
-                  disabled={uploadingPhotos}
-                  className="px-4 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-lg text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-50"
-                >
-                  {uploadingPhotos ? 'Nahrávám...' : '📷 Přidat fotografie'}
-                </button>
-                {selectedNavsteva && selectedNavsteva.fotky.length > 0 && (
-                  <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">{selectedNavsteva.fotky.length}/10 fotek nahráno</p>
-                )}
-              </div>
-              {/* Signature */}
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={dokoncitForm.podpisKlienta}
-                  onChange={e => setDokoncitForm(f => ({ ...f, podpisKlienta: e.target.checked }))}
-                  className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
-                />
-                <span className="text-sm text-gray-700 dark:text-slate-300">Klient převzal a podepsal protokol</span>
-              </label>
-            </div>
-            <div className="px-6 py-4 border-t border-gray-200 dark:border-slate-700 flex gap-3 justify-end">
-              <button
-                onClick={() => setDokoncitNavstevaId(null)}
-                className="px-4 py-2 text-sm text-gray-600 dark:text-slate-400 border border-gray-300 dark:border-slate-600 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700"
-              >
-                Zrušit
-              </button>
-              <button
-                onClick={dokoncit}
-                disabled={saving}
-                className="px-5 py-2 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg disabled:opacity-50"
-              >
-                {saving ? 'Ukládám…' : 'Potvrdit dokončení'}
-              </button>
             </div>
           </div>
         </div>

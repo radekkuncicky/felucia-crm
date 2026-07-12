@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
+import { nextServisniKontraktCislo } from '@/lib/servisniKontraktCislo'
 
 // Horizont dopředného generování zakázek z kontraktu. Dál se dogeneruje postupně
 // (zabrání zahlcení seznamu u kontraktu bez konce / s krátkým intervalem).
@@ -32,7 +33,6 @@ export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { orgId, plan } = session.user
-  const db = orgPrisma(orgId)
   if (!getPlanLimits(plan).hasServiceModule) return NextResponse.json({ error: 'Vyžadován plán Professional nebo Enterprise' }, { status: 403 })
 
   const body = await req.json()
@@ -42,43 +42,32 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Chybí povinné pole' }, { status: 400 })
   }
 
-  // Auto-number: SK-YY-NNN
-  const year = new Date().getFullYear().toString().slice(2)
-  const count = await db.servisniKontrakt.count({ where: { orgId } })
-  const cisloKontraktu = `SK-${year}-${String(count + 1).padStart(3, '0')}`
+  // Číslo kontraktu i čísla vygenerovaných zakázek v jedné transakci pod
+  // advisory zámky (bezpečné při souběhu, na rozdíl od dřívějšího COUNT+1).
+  const kontrakt = await prisma.$transaction(async (tx) => {
+    const cisloKontraktu = await nextServisniKontraktCislo(tx, orgId)
+    const k = await tx.servisniKontrakt.create({
+      data: {
+        orgId,
+        dealId: dealId || null,
+        zarizeniId: zarizeniId || null,
+        klientId,
+        cisloKontraktu,
+        nazev,
+        typ,
+        intervalMesicu: Number(intervalMesicu),
+        cena: cena ? String(cena) : null,
+        zacatek: new Date(zacatek),
+        konec: konec ? new Date(konec) : null,
+        autoRenewal: autoRenewal ?? false,
+        poznamka: poznamka ?? null,
+      },
+    })
 
-  const kontrakt = await db.servisniKontrakt.create({
-    data: {
-      orgId,
-      dealId: dealId || null,
-      zarizeniId: zarizeniId || null,
-      klientId,
-      cisloKontraktu,
-      nazev,
-      typ,
-      intervalMesicu: Number(intervalMesicu),
-      cena: cena ? String(cena) : null,
-      zacatek: new Date(zacatek),
-      konec: konec ? new Date(konec) : null,
-      autoRenewal: autoRenewal ?? false,
-      poznamka: poznamka ?? null,
-    },
-  })
-
-  // Auto-generate visits
-  const navstevyData = generateNavstevy(
-    kontrakt.id,
-    orgId,
-    kontrakt.zacatek,
-    kontrakt.konec,
-    kontrakt.intervalMesicu,
-  )
-
-  // Čísla SZ-YY-NNNN přidělíme v transakci pod advisory zámkem (bezpečné při souběhu).
-  if (navstevyData.length > 0) {
-    const yy = new Date().getFullYear().toString().slice(2)
-    const prefix = `SZ-${yy}-`
-    await prisma.$transaction(async (tx) => {
+    const navstevyData = generateNavstevy(k.id, orgId, k.zacatek, k.konec, k.intervalMesicu)
+    if (navstevyData.length > 0) {
+      const yy = new Date().getFullYear().toString().slice(2)
+      const prefix = `SZ-${yy}-`
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`szc:${orgId}:${yy}`}))`
       const last = await tx.servisniZakazka.findFirst({
         where: { orgId, cislo: { startsWith: prefix } },
@@ -88,8 +77,10 @@ export async function POST(req: Request) {
       let n = last?.cislo ? parseInt(last.cislo.slice(prefix.length), 10) : 0
       const data = navstevyData.map((v) => ({ ...v, cislo: `${prefix}${String(++n).padStart(4, '0')}` }))
       await tx.servisniZakazka.createMany({ data })
-    })
-  }
+    }
+
+    return k
+  })
 
   return NextResponse.json(kontrakt, { status: 201 })
 }

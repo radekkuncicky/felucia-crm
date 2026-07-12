@@ -948,6 +948,9 @@ model ServisniZakazka {
   zaplaceno           Boolean          @default(false)
   zaplacenoDatum      DateTime?
 
+  // Reklamace: nová zakázka odkazuje na původní dokončenou (self-relace).
+  puvodniZakazkaId String?
+
   vytvoreno        DateTime            @default(now())
   updatedAt        DateTime            @updatedAt
 
@@ -957,10 +960,13 @@ model ServisniZakazka {
   klient       Client?           @relation(fields: [klientId], references: [id])
   technik      User?             @relation(fields: [technikId], references: [id])
   polozky      ServisniPolozka[]
+  puvodniZakazka ServisniZakazka?  @relation("ReklamaceZakazky", fields: [puvodniZakazkaId], references: [id], onDelete: SetNull)
+  reklamace      ServisniZakazka[] @relation("ReklamaceZakazky")
 
   @@unique([orgId, cislo])
   @@index([orgId, stav])
   @@index([orgId, planovanyTermin])
+  @@index([puvodniZakazkaId])
   @@map("servisni_zakazky")
 }
 

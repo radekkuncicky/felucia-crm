@@ -66,6 +66,29 @@ export function typLabel(typ: string): string {
   return TYP_LABELS[typ as NavstevaTyp] ?? typ
 }
 
+// Povolené přechody stavů (jeden zdroj pravdy — vynucuje servisZakazkaService,
+// admin je může obejít force flagem). Vychází ze skutečných toků:
+// dispečink (NOVA/CEKA→NAPLANOVANA, drag do poolu NAPLANOVANA→NOVA), technik
+// (→PROBIHA→CEKA/DOKONCENA), kancelář (VYUCTOVANA→UZAVRENA). DOKONCENA→PROBIHA
+// je záměrné znovuotevření (protokolDokoncen se nemaže). VYUCTOVANA nastavuje
+// výhradně vyuctovat() mimo tento stroj. REKLAMACE je legacy stav — nové
+// reklamace vznikají jako samostatná zakázka (puvodniZakazkaId).
+export const SERVIS_STAV_PRECHODY: Record<ServisniZakazkaStav, ServisniZakazkaStav[]> = {
+  NOVA: ['NAPLANOVANA', 'PROBIHA', 'ZRUSENA'],
+  NAPLANOVANA: ['NOVA', 'PROBIHA', 'CEKA', 'ZRUSENA'],
+  PROBIHA: ['NAPLANOVANA', 'CEKA', 'DOKONCENA', 'ZRUSENA'],
+  CEKA: ['NAPLANOVANA', 'PROBIHA', 'ZRUSENA'],
+  DOKONCENA: ['PROBIHA'],
+  VYUCTOVANA: ['UZAVRENA'],
+  UZAVRENA: [],
+  ZRUSENA: ['NOVA'],
+  REKLAMACE: ['NAPLANOVANA', 'PROBIHA', 'ZRUSENA'],
+}
+
+export function jePovolenyPrechod(z: string, na: string): boolean {
+  return (SERVIS_STAV_PRECHODY[z as ServisniZakazkaStav] as string[] | undefined)?.includes(na) ?? false
+}
+
 // Akční stavy: zakázka ještě není uzavřená, dá se na ní pracovat / dokončit ji.
 export const SERVIS_STAV_AKTIVNI: ServisniZakazkaStav[] = ['NOVA', 'NAPLANOVANA', 'PROBIHA', 'CEKA']
 
