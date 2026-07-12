@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { toast } from 'sonner'
+import { api } from '@/lib/api'
 import {
   DndContext, DragEndEvent, DragOverlay, DragStartEvent,
   PointerSensor, useSensor, useSensors,
@@ -171,7 +173,6 @@ export default function DealsKanban({ deals: initialDeals }: Props) {
   const [deals, setDeals] = useState(initialDeals)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [overId, setOverId] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
@@ -197,24 +198,19 @@ export default function DealsKanban({ deals: initialDeals }: Props) {
 
     const prevDeals = deals
     setDeals(prev => prev.map(d => d.id === dealId ? { ...d, stav: newStav } : d))
-    setError(null)
 
-    const res = await fetch(`/api/deals/${dealId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ stav: newStav }),
-    })
+    const res = await api.patch<{ chybaPovinnaAktivita?: boolean }>(`/api/deals/${dealId}`,
+      { stav: newStav },
+      { errorMessage: 'Změnu stavu se nepodařilo uložit. Zkuste to prosím znovu.' })
 
     if (!res.ok) {
       setDeals(prevDeals)
-      setError('Chyba při ukládání. Zkus to znovu.')
       return
     }
 
-    const data = await res.json()
-    if (data.chybaPovinnaAktivita) {
+    if (res.data?.chybaPovinnaAktivita) {
       setDeals(prevDeals)
-      setError('Pro uzavření OP je vyžadována aktivita typu Hovor nebo Schůzka.')
+      toast.warning('Pro uzavření OP je vyžadována aktivita typu Hovor nebo Schůzka.')
     }
   }
 
@@ -222,12 +218,6 @@ export default function DealsKanban({ deals: initialDeals }: Props) {
 
   return (
     <div>
-      {error && (
-        <div className="mb-3 px-4 py-2.5 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl text-sm text-red-700 dark:text-red-400 flex items-center justify-between">
-          {error}
-          <button onClick={() => setError(null)} className="ml-4 text-red-400 hover:text-red-600">✕</button>
-        </div>
-      )}
       <DndContext
         sensors={sensors}
         onDragStart={handleDragStart}

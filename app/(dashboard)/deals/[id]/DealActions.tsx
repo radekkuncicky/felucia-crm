@@ -3,7 +3,9 @@
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
+import { toast } from 'sonner'
 import ConfirmModal from '@/components/ConfirmModal'
+import { api } from '@/lib/api'
 
 interface Props {
   dealId: string
@@ -18,14 +20,6 @@ interface Props {
   }
 }
 
-function Toast({ message, type }: { message: string; type: 'success' | 'error' }) {
-  return (
-    <div className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-lg shadow-lg text-white text-sm font-medium ${type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}>
-      {message}
-    </div>
-  )
-}
-
 export default function DealActions({ dealId, dealData }: Props) {
   const router = useRouter()
   const { data: session } = useSession()
@@ -35,7 +29,6 @@ export default function DealActions({ dealId, dealData }: Props) {
   const [confirmModal, setConfirmModal] = useState(false)
   const [deleteModal, setDeleteModal] = useState(false)
   const [duplicateModal, setDuplicateModal] = useState(false)
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -48,21 +41,15 @@ export default function DealActions({ dealId, dealData }: Props) {
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  useEffect(() => {
-    if (toast) {
-      const timer = setTimeout(() => setToast(null), 4000)
-      return () => clearTimeout(timer)
-    }
-  }, [toast])
-
   async function handleDuplicate() {
     setDuplicateModal(false)
     setLoading(true)
     try {
-      const res = await fetch(`/api/deals/${dealId}/duplicate`, { method: 'POST' })
-      if (res.ok) {
-        const newDeal = await res.json()
-        router.push(`/deals/${newDeal.id}`)
+      const res = await api.post<{ id: string }>(`/api/deals/${dealId}/duplicate`, undefined,
+        { errorMessage: 'Obchodní případ se nepodařilo duplikovat.' })
+      if (res.ok && res.data) {
+        toast.success('Obchodní případ zduplikován')
+        router.push(`/deals/${res.data.id}`)
       }
     } finally {
       setLoading(false)
@@ -73,14 +60,12 @@ export default function DealActions({ dealId, dealData }: Props) {
     setDeleteModal(false)
     setLoading(true)
     try {
-      const res = await fetch(`/api/deals/${dealId}`, { method: 'DELETE' })
+      const res = await api.delete(`/api/deals/${dealId}`,
+        { errorMessage: 'Obchodní případ se nepodařilo smazat.' })
       if (res.ok) {
+        toast.success('Obchodní případ smazán')
         router.push('/deals')
-      } else {
-        setToast({ message: 'Chyba při mazání obchodního případu.', type: 'error' })
       }
-    } catch {
-      setToast({ message: 'Chyba při mazání obchodního případu.', type: 'error' })
     } finally {
       setLoading(false)
     }
@@ -90,25 +75,16 @@ export default function DealActions({ dealId, dealData }: Props) {
     setConfirmModal(false)
     setLoading(true)
     try {
-      const res = await fetch('/api/zakazky', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          opId: dealId,
-          klientId: dealData?.clientId,
-          nazev: dealData?.predmet ?? dealData?.clientJmeno ?? '',
-          technologie: dealData?.technologie ?? null,
-        }),
-      })
-      if (res.ok) {
-        const zakazka = await res.json()
-        router.push(`/zakazky/${zakazka.id}`)
-      } else {
-        const d = await res.json().catch(() => ({}))
-        setToast({ message: d.error ?? 'Chyba při vytváření zakázky.', type: 'error' })
+      const res = await api.post<{ id: string }>('/api/zakazky', {
+        opId: dealId,
+        klientId: dealData?.clientId,
+        nazev: dealData?.predmet ?? dealData?.clientJmeno ?? '',
+        technologie: dealData?.technologie ?? null,
+      }, { errorMessage: 'Zakázku se nepodařilo vytvořit.' })
+      if (res.ok && res.data) {
+        toast.success('Zakázka vytvořena')
+        router.push(`/zakazky/${res.data.id}`)
       }
-    } catch {
-      setToast({ message: 'Chyba při odesílání požadavku.', type: 'error' })
     } finally {
       setLoading(false)
     }
@@ -116,8 +92,6 @@ export default function DealActions({ dealId, dealData }: Props) {
 
   return (
     <>
-      {toast && <Toast message={toast.message} type={toast.type} />}
-
       <ConfirmModal
         isOpen={duplicateModal}
         title="Duplikovat obchodní případ"
