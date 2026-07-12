@@ -20,7 +20,7 @@ Pravidla: před začátkem úkolu označit `[~]` + commit `start: <ID>`; po doko
   - Poznámka: Hotovo. ZakazkaDetailClient: confirm (dokončit protokol) → confirmDialog, alert (chybí podpis) → toast.warning + scroll, window.prompt (důvod čekání) → nový modal „Pozastavit zakázku" s inputem (Enter potvrdí, autoFocus). KontaktyTab: confirm → confirmDialog. ESLint: no-restricted-globals + no-restricted-properties (confirm/alert/prompt, i window.*) s návodnými hláškami; záměrný fallback v ui/confirm.tsx má disable komentář. Lint 0 errorů, tsc OK.
 - [x] **S4** — `loading.tsx` na chybějící top-level routy (servis, produkty, SOD, sklad, kalendář, aktivity, settings…) z existujících Skeleton komponent.
   - Poznámka: Hotovo — 16 nových loading.tsx (activities, analytics, calendar, documents, leady, predavaky, products, quotes, quote-templates, servis + servis/zakazky|zarizeni|kontrakty|plan, settings, sklad), 4 tvarové varianty (tabulka / karty / přehled s KPI / kalendářní grid). Pozn.: root `(dashboard)/loading.tsx` už generický fallback poskytoval — přínos je tvarová shoda a méně layout shiftu, audit tu byl přísnější než realita. SOD top-level page neexistuje (jen /sod/[id] a /sod/new — pokryto root fallbackem). tsc + lint OK.
-- [ ] **K5** — BottomNav technika: duplicitní tab „Foto" (`/zakazky`). Smazat, nebo zkratka na výběr zakázky s aktivovanou kamerou.
+- [~] **K5** — BottomNav technika: duplicitní tab „Foto" (`/zakazky`). Smazat, nebo zkratka na výběr zakázky s aktivovanou kamerou.
   - Poznámka:
 
 ## VLNA 2 — Konzistence
