@@ -61,6 +61,7 @@ export default function PodpisPanel(props: Props) {
   const router = useRouter()
   const [modalOpen, setModalOpen] = useState(false)
   const [ruse, setRuse] = useState(false)
+  const [stornuji, setStornuji] = useState(false)
 
   const ready = can.plan && can.sms && can.email
   const podepsana = stav === 'PODEPSANO'
@@ -79,6 +80,23 @@ export default function PodpisPanel(props: Props) {
       }
     } finally {
       setRuse(false)
+    }
+  }
+
+  async function stornovat() {
+    if (!(await confirmDialog('Stornovat smlouvu? Aktivní odkaz k podpisu přestane platit. Opětovné odeslání smlouvu zase oživí.', { confirmLabel: 'Stornovat' }))) return
+    setStornuji(true)
+    try {
+      const res = await fetch(`/api/sod/${sodId}/storno`, { method: 'POST' })
+      if (res.ok) {
+        toast.success('Smlouva stornována')
+        router.refresh()
+      } else {
+        const data = await res.json()
+        toast.error(data.error ?? 'Storno se nepodařilo')
+      }
+    } finally {
+      setStornuji(false)
     }
   }
 
@@ -129,6 +147,15 @@ export default function PodpisPanel(props: Props) {
                 className="text-sm font-medium text-red-500 dark:text-red-400 border border-red-200 dark:border-red-800/50 px-3.5 py-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50"
               >
                 {ruse ? 'Ruším…' : 'Zneplatnit odkaz'}
+              </button>
+            )}
+            {stav !== 'STORNO' && (
+              <button
+                onClick={stornovat}
+                disabled={stornuji}
+                className="ml-auto text-xs font-medium text-gray-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 hover:underline disabled:opacity-50"
+              >
+                {stornuji ? 'Stornuji…' : 'Stornovat smlouvu'}
               </button>
             )}
           </div>

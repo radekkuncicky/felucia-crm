@@ -3,6 +3,7 @@ import PgBoss from 'pg-boss'
 import { prisma } from '../lib/prisma'
 import { findDueReminders, processReminder } from './reminders'
 import { sweepWebhookOutbox, deliverWebhook } from './webhooks'
+import { sweepExpirovanePodpisy } from './podpisy'
 import { QUEUE_WEBHOOK_SWEEP, QUEUE_WEBHOOK_DELIVER, type WebhookJob } from '../lib/webhooks'
 
 /**
@@ -68,7 +69,16 @@ async function main() {
     console.log(`[webhook] ${job.data.event} → endpoint ${job.data.endpointId}: ${result}`)
   })
 
-  console.log('[worker] běží — fronty:', QUEUE_SWEEP, QUEUE_REMINDER, QUEUE_WEBHOOK_SWEEP, QUEUE_WEBHOOK_DELIVER)
+  const QUEUE_PODPISY_SWEEP = 'podpisy-sweep'
+  await boss.createQueue(QUEUE_PODPISY_SWEEP)
+  await boss.schedule(QUEUE_PODPISY_SWEEP, '15 * * * *') // 1× za hodinu stačí, odkazy platí 30 dní
+
+  await boss.work(QUEUE_PODPISY_SWEEP, async () => {
+    const n = await sweepExpirovanePodpisy(prisma)
+    if (n > 0) console.log(`[podpisy] expirováno ${n} podpisových odkazů`)
+  })
+
+  console.log('[worker] běží — fronty:', QUEUE_SWEEP, QUEUE_REMINDER, QUEUE_WEBHOOK_SWEEP, QUEUE_WEBHOOK_DELIVER, QUEUE_PODPISY_SWEEP)
 
   const shutdown = async (signal: string) => {
     console.log(`[worker] ${signal}, ukončuji…`)
