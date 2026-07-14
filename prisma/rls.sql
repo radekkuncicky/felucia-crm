@@ -97,6 +97,12 @@ DROP POLICY IF EXISTS org_rls ON "notifications";
 CREATE POLICY org_rls ON "notifications" FOR ALL TO nanto_app
   USING ("orgId" = current_setting('app.org_id', true)) WITH CHECK ("orgId" = current_setting('app.org_id', true));
 
+-- OrgEmailSettings
+ALTER TABLE "org_email_settings" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_rls ON "org_email_settings";
+CREATE POLICY org_rls ON "org_email_settings" FOR ALL TO nanto_app
+  USING ("orgId" = current_setting('app.org_id', true)) WITH CHECK ("orgId" = current_setting('app.org_id', true));
+
 -- OrgSettings
 ALTER TABLE "org_settings" ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS org_rls ON "org_settings";

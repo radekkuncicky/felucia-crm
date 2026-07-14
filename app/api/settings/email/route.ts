@@ -1,0 +1,101 @@
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { orgPrisma } from '@/lib/orgPrisma'
+import { NextResponse } from 'next/server'
+import { encryptSecret } from '@/lib/secretCrypto'
+import { isEmailConfigured } from '@/lib/email'
+
+function publicShape(s: {
+  smtpHost: string; smtpPort: number; smtpSecure: boolean; smtpUser: string
+  fromName: string | null; fromEmail: string; overeno: Date | null
+} | null) {
+  return {
+    configured: !!s,
+    globalFallback: isEmailConfigured(),
+    settings: s
+      ? {
+          smtpHost: s.smtpHost,
+          smtpPort: s.smtpPort,
+          smtpSecure: s.smtpSecure,
+          smtpUser: s.smtpUser,
+          fromName: s.fromName,
+          fromEmail: s.fromEmail,
+          overeno: s.overeno,
+        }
+      : null,
+  }
+}
+
+export async function GET() {
+  const session = await getServerSession(authOptions)
+  if (!session || session.user.role !== 'ADMIN') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+  const db = orgPrisma(session.user.orgId)
+  const s = await db.orgEmailSettings.findUnique({ where: { orgId: session.user.orgId } })
+  return NextResponse.json(publicShape(s))
+}
+
+export async function PUT(req: Request) {
+  const session = await getServerSession(authOptions)
+  if (!session || session.user.role !== 'ADMIN') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+  const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
+
+  const body = await req.json()
+  const smtpHost = String(body.smtpHost ?? '').trim()
+  const smtpPort = Number(body.smtpPort)
+  const smtpSecure = !!body.smtpSecure
+  const smtpUser = String(body.smtpUser ?? '').trim()
+  const smtpPass = typeof body.smtpPass === 'string' ? body.smtpPass : ''
+  const fromName = String(body.fromName ?? '').trim() || null
+  const fromEmail = String(body.fromEmail ?? '').trim()
+
+  if (!smtpHost || !smtpUser || !fromEmail) {
+    return NextResponse.json({ error: 'Vyplňte SMTP server, uživatele a odesílací e-mail' }, { status: 422 })
+  }
+  if (!Number.isInteger(smtpPort) || smtpPort < 1 || smtpPort > 65535) {
+    return NextResponse.json({ error: 'Neplatný port' }, { status: 422 })
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fromEmail)) {
+    return NextResponse.json({ error: 'Neplatný odesílací e-mail' }, { status: 422 })
+  }
+
+  const existing = await db.orgEmailSettings.findUnique({ where: { orgId } })
+  if (!existing && !smtpPass) {
+    return NextResponse.json({ error: 'Zadejte heslo k SMTP účtu' }, { status: 422 })
+  }
+
+  // změna nastavení ruší dřívější ověření; heslo se přepisuje jen když přišlo nové
+  const data = {
+    smtpHost,
+    smtpPort,
+    smtpSecure,
+    smtpUser,
+    fromName,
+    fromEmail,
+    overeno: null,
+    ...(smtpPass ? { smtpPassEnc: encryptSecret(smtpPass) } : {}),
+  }
+
+  const saved = existing
+    ? await db.orgEmailSettings.update({ where: { orgId }, data })
+    : await db.orgEmailSettings.create({
+        data: { ...data, smtpPassEnc: encryptSecret(smtpPass), orgId },
+      })
+
+  return NextResponse.json(publicShape(saved))
+}
+
+export async function DELETE() {
+  const session = await getServerSession(authOptions)
+  if (!session || session.user.role !== 'ADMIN') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+  const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
+  await db.orgEmailSettings.deleteMany({ where: { orgId } })
+  return NextResponse.json(publicShape(null))
+}

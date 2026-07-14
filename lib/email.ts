@@ -1,6 +1,8 @@
 import nodemailer from 'nodemailer'
+import { prisma } from './prisma'
+import { decryptSecret } from './secretCrypto'
 
-/** Bez SMTP_HOST je odesílání emailů vypnuté (stejný princip jako Sentry DSN) */
+/** Bez SMTP_HOST je globální odesílání emailů vypnuté (stejný princip jako Sentry DSN) */
 export function isEmailConfigured() {
   return !!process.env.SMTP_HOST
 }
@@ -22,6 +24,73 @@ export async function sendEmail(to: string, subject: string, html: string) {
     subject,
     html,
   })
+}
+
+// ─── Per-org odesílání (nastavení v /settings/email) ─────────────────────────
+
+export interface OrgSmtpConfig {
+  smtpHost: string
+  smtpPort: number
+  smtpSecure: boolean
+  smtpUser: string
+  smtpPass: string
+  fromName: string | null
+  fromEmail: string
+}
+
+export function orgTransporter(cfg: OrgSmtpConfig) {
+  return nodemailer.createTransport({
+    host: cfg.smtpHost,
+    port: cfg.smtpPort,
+    secure: cfg.smtpSecure,
+    auth: { user: cfg.smtpUser, pass: cfg.smtpPass },
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
+  })
+}
+
+export function orgFromHeader(cfg: OrgSmtpConfig) {
+  return cfg.fromName ? `${cfg.fromName} <${cfg.fromEmail}>` : cfg.fromEmail
+}
+
+// Bare prisma záměrně: volá se i z workeru a lib kódu bez orgPrisma kontextu,
+// orgId sem vždy přichází ze session/serverové logiky, ne od klienta.
+async function getOrgSmtpConfig(orgId: string): Promise<OrgSmtpConfig | null> {
+  const s = await prisma.orgEmailSettings.findUnique({ where: { orgId } })
+  if (!s) return null
+  return {
+    smtpHost: s.smtpHost,
+    smtpPort: s.smtpPort,
+    smtpSecure: s.smtpSecure,
+    smtpUser: s.smtpUser,
+    smtpPass: decryptSecret(s.smtpPassEnc),
+    fromName: s.fromName,
+    fromEmail: s.fromEmail,
+  }
+}
+
+/** Org má vlastní SMTP, nebo existuje globální fallback */
+export async function isOrgEmailConfigured(orgId: string): Promise<boolean> {
+  if (isEmailConfigured()) return true
+  const count = await prisma.orgEmailSettings.count({ where: { orgId } })
+  return count > 0
+}
+
+/**
+ * Odešle e-mail „za firmu": přes SMTP organizace, pokud je nastavené,
+ * jinak fallback na globální SMTP_* z .env. Bez obojího vyhodí chybu —
+ * volající má předem kontrolovat isOrgEmailConfigured().
+ */
+export async function sendOrgEmail(orgId: string, to: string, subject: string, html: string) {
+  const cfg = await getOrgSmtpConfig(orgId)
+  if (cfg) {
+    await orgTransporter(cfg).sendMail({ from: orgFromHeader(cfg), to, subject, html })
+    return
+  }
+  if (!isEmailConfigured()) {
+    throw new Error('Odesílání e-mailů není nastaveno (org SMTP ani globální SMTP_HOST)')
+  }
+  await sendEmail(to, subject, html)
 }
 
 function emailLayout(content: string) {

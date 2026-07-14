@@ -30,6 +30,7 @@ export const TENANT_MODELS = new Set([
   'VisibilityNode',
   'Extension',
   'OrgSettings',
+  'OrgEmailSettings',
   'Zarizeni',
   'ServisniKontrakt',
   'ServisniZakazka',

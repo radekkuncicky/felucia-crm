@@ -259,6 +259,7 @@ model Organization {
   servisniZakazky      ServisniZakazka[]
   servisniPolozky      ServisniPolozka[]
   orgSettings          OrgSettings?
+  orgEmailSettings     OrgEmailSettings?
   orgTemplateMappings  OrgTemplateMapping[]
   notifications        Notification[]
   zakazky              Zakazka[]
@@ -849,6 +850,29 @@ model OrgSettings {
   organization Organization @relation(fields: [orgId], references: [id])
 
   @@map("org_settings")
+}
+
+// Per-org SMTP pro odesílání e-mailů „za firmu" (/settings/email).
+// Heslo šifrované AES-256-GCM (lib/secretCrypto.ts, klíč CREDENTIALS_ENCRYPTION_KEY).
+// Bez záznamu se použije globální SMTP_* z .env (lib/email.ts).
+model OrgEmailSettings {
+  id          String    @id @default(cuid())
+  orgId       String    @unique
+  smtpHost    String
+  smtpPort    Int       @default(587)
+  smtpSecure  Boolean   @default(false)
+  smtpUser    String
+  smtpPassEnc String
+  fromName    String?
+  fromEmail   String
+  // čas posledního úspěšného testovacího e-mailu; null = neověřeno
+  overeno     DateTime?
+  vytvoreno   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@map("org_email_settings")
 }
 
 model Zarizeni {
