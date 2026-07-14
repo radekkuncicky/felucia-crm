@@ -76,21 +76,38 @@ export async function isOrgEmailConfigured(orgId: string): Promise<boolean> {
   return count > 0
 }
 
+export interface EmailAttachment {
+  filename: string
+  content: Buffer
+}
+
 /**
  * Odešle e-mail „za firmu": přes SMTP organizace, pokud je nastavené,
  * jinak fallback na globální SMTP_* z .env. Bez obojího vyhodí chybu —
  * volající má předem kontrolovat isOrgEmailConfigured().
  */
-export async function sendOrgEmail(orgId: string, to: string, subject: string, html: string) {
+export async function sendOrgEmail(
+  orgId: string,
+  to: string,
+  subject: string,
+  html: string,
+  attachments?: EmailAttachment[]
+) {
   const cfg = await getOrgSmtpConfig(orgId)
   if (cfg) {
-    await orgTransporter(cfg).sendMail({ from: orgFromHeader(cfg), to, subject, html })
+    await orgTransporter(cfg).sendMail({ from: orgFromHeader(cfg), to, subject, html, attachments })
     return
   }
   if (!isEmailConfigured()) {
     throw new Error('Odesílání e-mailů není nastaveno (org SMTP ani globální SMTP_HOST)')
   }
-  await sendEmail(to, subject, html)
+  await transporter.sendMail({
+    from: process.env.SMTP_FROM ?? 'FELUCIA CRM <noreply@felucia.io>',
+    to,
+    subject,
+    html,
+    attachments,
+  })
 }
 
 function emailLayout(content: string) {
@@ -233,6 +250,75 @@ export function emailActivityReminder(jmeno: string, aktivita: string, dealLabel
         Otevřít v CRM
       </a>
     </div>
+  `)
+}
+
+// ─── E-maily klientům (branding organizace, ne Felucia) ─────────────────────
+
+function orgEmailLayout(orgNazev: string, primaryColor: string, content: string) {
+  return `<!DOCTYPE html>
+<html lang="cs">
+<head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
+<body style="margin:0;padding:0;background:#f4f6fb;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6fb;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.08);">
+        <tr>
+          <td style="padding:24px 32px;border-bottom:3px solid ${primaryColor};">
+            <span style="color:#1a1a2e;font-size:19px;font-weight:700;">${orgNazev}</span>
+          </td>
+        </tr>
+        <tr><td style="padding:32px;">${content}</td></tr>
+        <tr>
+          <td style="background:#f8f9fc;padding:18px 32px;text-align:center;border-top:1px solid #e8ecf4;">
+            <p style="margin:0;color:#9aa3b2;font-size:12px;">Tento e-mail byl odeslán automaticky. Pokud vám nepatří, ignorujte ho.</p>
+          </td>
+        </tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`
+}
+
+export function emailPodpisSmlouvy(params: {
+  orgNazev: string
+  primaryColor: string
+  klientJmeno: string
+  cisloSmlouvy: string
+  url: string
+  platnostDni: number
+}) {
+  const { orgNazev, primaryColor, klientJmeno, cisloSmlouvy, url, platnostDni } = params
+  return orgEmailLayout(orgNazev, primaryColor, `
+    <h2 style="margin:0 0 8px;color:#1a1a2e;font-size:21px;">Smlouva k podpisu</h2>
+    <p style="color:#6b7280;margin:0 0 24px;">Dobrý den, <strong>${klientJmeno}</strong>.</p>
+    <p style="color:#374151;margin:0 0 8px;">Společnost <strong>${orgNazev}</strong> vám zasílá smlouvu
+    <strong>č. ${cisloSmlouvy}</strong> k elektronickému podpisu.</p>
+    <p style="color:#374151;margin:0 0 24px;">Po kliknutí na tlačítko vám na váš telefon přijde ověřovací kód —
+    po jeho zadání si smlouvu přečtete a podepíšete přímo v telefonu nebo počítači. Zabere to jen pár minut.</p>
+    <div style="text-align:center;margin:32px 0;">
+      <a href="${url}" style="display:inline-block;background:${primaryColor};color:#fff;font-weight:700;font-size:15px;padding:14px 32px;border-radius:10px;text-decoration:none;">
+        Zobrazit a podepsat smlouvu
+      </a>
+    </div>
+    <p style="color:#9aa3b2;font-size:13px;margin:0;">Odkaz je platný <strong>${platnostDni} dní</strong> a je určen jen vám.
+    Máte-li ke smlouvě dotaz nebo výhradu, kontaktujte nás — rádi ji upravíme.</p>
+  `)
+}
+
+export function emailSmlouvaPodepsana(params: {
+  orgNazev: string
+  primaryColor: string
+  jmeno: string
+  cisloSmlouvy: string
+}) {
+  const { orgNazev, primaryColor, jmeno, cisloSmlouvy } = params
+  return orgEmailLayout(orgNazev, primaryColor, `
+    <h2 style="margin:0 0 8px;color:#1a1a2e;font-size:21px;">Smlouva podepsána ✓</h2>
+    <p style="color:#6b7280;margin:0 0 24px;">Dobrý den, <strong>${jmeno}</strong>.</p>
+    <p style="color:#374151;margin:0 0 12px;">Smlouva <strong>č. ${cisloSmlouvy}</strong> byla úspěšně elektronicky podepsána.</p>
+    <p style="color:#374151;margin:0 0 24px;">Podepsané vyhotovení najdete v příloze tohoto e-mailu. Doporučujeme si ho uložit.</p>
   `)
 }
 

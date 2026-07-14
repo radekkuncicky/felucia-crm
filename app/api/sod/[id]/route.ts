@@ -32,6 +32,9 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
   const sod = await db.sod.findFirst({ where: { id: params.id, orgId } })
   if (!sod) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (sod.stav === 'PODEPSANO') {
+    return NextResponse.json({ error: 'Podepsanou smlouvu nelze upravovat — vytvořte novou verzi jako novou smlouvu' }, { status: 422 })
+  }
 
   const body = await req.json()
 

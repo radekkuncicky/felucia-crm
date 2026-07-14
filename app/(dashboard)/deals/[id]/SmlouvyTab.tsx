@@ -32,8 +32,23 @@ interface Sod {
   id: string
   cislo: string
   typ: SodTyp
+  stav: string
   vytvoreno: string
   templateId: string | null
+}
+
+const STAV_LABELS: Record<string, string> = {
+  ODESLANO: 'Odesláno k podpisu',
+  PODEPSANO: 'Podepsáno',
+  EXPIROVANO: 'Expirováno',
+  STORNO: 'Storno',
+}
+
+const STAV_COLORS: Record<string, string> = {
+  ODESLANO: 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+  PODEPSANO: 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300',
+  EXPIROVANO: 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
+  STORNO: 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-300',
 }
 
 interface Template {
@@ -130,6 +145,11 @@ export default function SmlouvyTab({ dealId, role }: Props) {
                 <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${TYP_COLORS[sod.typ]}`}>
                   {TYP_LABELS[sod.typ]}
                 </span>
+                {STAV_LABELS[sod.stav] && (
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${STAV_COLORS[sod.stav]}`}>
+                    {STAV_LABELS[sod.stav]}
+                  </span>
+                )}
                 <span className="text-xs text-gray-400 dark:text-slate-500 ml-1">
                   {formatDate(sod.vytvoreno)}
                 </span>

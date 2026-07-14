@@ -5,7 +5,11 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { SodTyp } from '@prisma/client'
 import SodDeleteButton from './SodDeleteButton'
+import PodpisPanel from './PodpisPanel'
 import { formatDate, formatKcPresne } from '@/lib/format'
+import { getPlanLimits } from '@/lib/planLimits'
+import { isSmsConfigured } from '@/lib/sms'
+import { isOrgEmailConfigured } from '@/lib/email'
 
 const TYP_LABELS: Record<SodTyp, string> = {
   DPH_12_BEZ_ZALOHY: '12% bez zálohy',
@@ -66,10 +70,28 @@ export default async function SodDetailPage({ params }: { params: { id: string }
       deal: {
         select: { id: true, kod: true, predmet: true },
       },
+      udalosti: {
+        orderBy: { vytvoreno: 'desc' },
+        take: 30,
+        select: { id: true, typ: true, vytvoreno: true, meta: true },
+      },
+      podpisRelace: {
+        where: { stav: 'AKTIVNI' },
+        orderBy: { vytvoreno: 'desc' },
+        take: 1,
+        select: { email: true, telefon: true, expirace: true },
+      },
     },
   })
 
   if (!sod) notFound()
+
+  const canPodpis = {
+    plan: getPlanLimits(session.user.plan).hasOnlinePodpis,
+    sms: isSmsConfigured(),
+    email: await isOrgEmailConfigured(orgId),
+  }
+  const aktivniRelace = sod.podpisRelace[0] ?? null
 
   const seZalohou = ['DPH_12_SE_ZALOHOU', 'DPH_21_SE_ZALOHOU', 'PDP_SE_ZALOHOU'].includes(sod.typ)
   const isAdmin = session.user.role === 'ADMIN'
@@ -136,6 +158,27 @@ export default async function SodDetailPage({ params }: { params: { id: string }
           </div>
         </div>
       </div>
+
+      <PodpisPanel
+        sodId={sod.id}
+        stav={sod.stav}
+        klientEmail={sod.klientEmail}
+        klientTelefon={sod.klientTelefon}
+        podepsano={sod.podepsano?.toISOString() ?? null}
+        podepsalJmeno={sod.podepsalJmeno}
+        relace={
+          aktivniRelace
+            ? { email: aktivniRelace.email, telefon: aktivniRelace.telefon, expirace: aktivniRelace.expirace.toISOString() }
+            : null
+        }
+        udalosti={sod.udalosti.map(u => ({
+          id: u.id,
+          typ: u.typ,
+          vytvoreno: u.vytvoreno.toISOString(),
+          meta: (u.meta as { email?: string; telefon?: string; jmeno?: string } | null) ?? null,
+        }))}
+        can={canPodpis}
+      />
 
       <div className="grid grid-cols-1 gap-4">
         <Section title="Klient">
