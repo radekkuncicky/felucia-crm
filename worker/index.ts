@@ -3,7 +3,7 @@ import PgBoss from 'pg-boss'
 import { prisma } from '../lib/prisma'
 import { findDueReminders, processReminder } from './reminders'
 import { sweepWebhookOutbox, deliverWebhook } from './webhooks'
-import { sweepExpirovanePodpisy } from './podpisy'
+import { sweepExpirovanePodpisy, sweepPripominkyPodpisu } from './podpisy'
 import { QUEUE_WEBHOOK_SWEEP, QUEUE_WEBHOOK_DELIVER, type WebhookJob } from '../lib/webhooks'
 
 /**
@@ -76,6 +76,8 @@ async function main() {
   await boss.work(QUEUE_PODPISY_SWEEP, async () => {
     const n = await sweepExpirovanePodpisy(prisma)
     if (n > 0) console.log(`[podpisy] expirováno ${n} podpisových odkazů`)
+    const p = await sweepPripominkyPodpisu(prisma)
+    if (p > 0) console.log(`[podpisy] odesláno ${p} připomínek klientům`)
   })
 
   console.log('[worker] běží — fronty:', QUEUE_SWEEP, QUEUE_REMINDER, QUEUE_WEBHOOK_SWEEP, QUEUE_WEBHOOK_DELIVER, QUEUE_PODPISY_SWEEP)

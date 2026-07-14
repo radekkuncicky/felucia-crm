@@ -32,7 +32,13 @@ export async function GET(req: NextRequest, { params }: { params: { token: strin
   const zaklad = { org, cislo: sod.cislo, klientJmeno: sod.klientJmeno }
 
   if (sod.stav === 'PODEPSANO') {
-    return NextResponse.json({ faze: 'PODEPSANO', ...zaklad, podepsano: sod.podepsano })
+    const pdfCookie = req.cookies.get(podpisCookieName(relace.id))?.value
+    return NextResponse.json({
+      faze: 'PODEPSANO',
+      ...zaklad,
+      podepsano: sod.podepsano,
+      pdfDostupne: relace.stav === 'PODEPSANA' && verifyPodpisCookie(relace.id, pdfCookie),
+    })
   }
   if (relace.stav !== 'AKTIVNI') {
     return NextResponse.json({ faze: 'NEPLATNY', org })

@@ -27,6 +27,7 @@ const UDALOST_LABELS: Record<string, string> = {
   VYTVORENO: 'Smlouva vytvořena',
   REVIZE: 'Nová verze smlouvy',
   ODESLANO: 'Odesláno klientovi k podpisu',
+  PRIPOMINKA: 'Klientovi odeslána připomínka e-mailem',
   ZOBRAZENO: 'Klient zobrazil smlouvu',
   OTP_ODESLAN: 'Klientovi odeslán ověřovací SMS kód',
   OTP_OVERENO: 'Klient ověřil totožnost',

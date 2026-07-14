@@ -307,6 +307,30 @@ export function emailPodpisSmlouvy(params: {
   `)
 }
 
+export function emailPodpisPripominka(params: {
+  orgNazev: string
+  primaryColor: string
+  klientJmeno: string
+  cisloSmlouvy: string
+  url: string
+  platnostDo: string
+}) {
+  const { orgNazev, primaryColor, klientJmeno, cisloSmlouvy, url, platnostDo } = params
+  return orgEmailLayout(orgNazev, primaryColor, `
+    <h2 style="margin:0 0 8px;color:#1a1a2e;font-size:21px;">Smlouva stále čeká na podpis</h2>
+    <p style="color:#6b7280;margin:0 0 24px;">Dobrý den, <strong>${klientJmeno}</strong>.</p>
+    <p style="color:#374151;margin:0 0 24px;">Jen připomínáme, že smlouva <strong>č. ${cisloSmlouvy}</strong>
+    od společnosti <strong>${orgNazev}</strong> čeká na váš elektronický podpis. Zabere to jen pár minut.</p>
+    <div style="text-align:center;margin:32px 0;">
+      <a href="${url}" style="display:inline-block;background:${primaryColor};color:#fff;font-weight:700;font-size:15px;padding:14px 32px;border-radius:10px;text-decoration:none;">
+        Zobrazit a podepsat smlouvu
+      </a>
+    </div>
+    <p style="color:#9aa3b2;font-size:13px;margin:0;">Odkaz platí do <strong>${platnostDo}</strong>.
+    Máte-li ke smlouvě dotaz nebo výhradu, kontaktujte nás — rádi ji upravíme.</p>
+  `)
+}
+
 export function emailSmlouvaPodepsana(params: {
   orgNazev: string
   primaryColor: string

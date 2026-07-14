@@ -12,9 +12,22 @@ vi.mock('@/lib/sodPdf', () => ({
   buildSodContentHtml: vi.fn().mockReturnValue('<html><body>mock</body></html>'),
 }))
 
+// e-maily v testech neodcházejí; mock umožní otestovat připomínkový sweep
+vi.mock('@/lib/email', async (importOriginal) => {
+  const orig = await importOriginal<typeof import('@/lib/email')>()
+  return {
+    ...orig,
+    isOrgEmailConfigured: vi.fn().mockResolvedValue(true),
+    sendOrgEmail: vi.fn().mockResolvedValue(undefined),
+  }
+})
+
 import { GET as publicGet } from '@/app/api/public/podpis/[token]/route'
 import { POST as overitPost } from '@/app/api/public/podpis/[token]/overit/route'
 import { POST as podepsatPost } from '@/app/api/public/podpis/[token]/podepsat/route'
+import { sweepPripominkyPodpisu } from '@/worker/podpisy'
+import { sendOrgEmail } from '@/lib/email'
+import { encryptSecret } from '@/lib/secretCrypto'
 
 const RUN = `podpis-${Date.now()}`
 const PNG = `data:image/png;base64,${Buffer.from('fake-png').toString('base64')}`
@@ -25,6 +38,9 @@ let dealId: string
 beforeAll(async () => {
   if (!process.env.NEXTAUTH_SECRET) {
     process.env.NEXTAUTH_SECRET = crypto.randomBytes(32).toString('hex')
+  }
+  if (!process.env.CREDENTIALS_ENCRYPTION_KEY) {
+    process.env.CREDENTIALS_ENCRYPTION_KEY = crypto.randomBytes(32).toString('hex')
   }
   const org = await prisma.organization.create({ data: { nazev: 'Test Podpis', slug: RUN } })
   orgId = org.id
@@ -191,5 +207,30 @@ describe('veřejný podpisový flow', () => {
     expect(n).toBeGreaterThanOrEqual(1)
     expect((await prisma.sodPodpisRelace.findUnique({ where: { id: relace.id } }))?.stav).toBe('EXPIROVANA')
     expect((await prisma.sod.findUnique({ where: { id: sod.id } }))?.stav).toBe('EXPIROVANO')
+  })
+
+  it('worker pošle připomínku 3 dny po odeslání, ale jen jednou', async () => {
+    const { token, relace } = await vytvorOdeslanouSmlouvu()
+    await prisma.sodPodpisRelace.update({
+      where: { id: relace.id },
+      data: {
+        tokenEnc: encryptSecret(token),
+        vytvoreno: new Date(Date.now() - 4 * 24 * 3600_000),
+      },
+    })
+
+    const n1 = await sweepPripominkyPodpisu(prisma)
+    expect(n1).toBe(1)
+    expect(sendOrgEmail).toHaveBeenCalledWith(
+      orgId,
+      'karel@example.com',
+      expect.stringContaining('Připomínka'),
+      expect.stringContaining(`/podpis/${token}`)
+    )
+    const events = await prisma.sodUdalost.count({ where: { relaceId: relace.id, typ: 'PRIPOMINKA' } })
+    expect(events).toBe(1)
+
+    // druhý běh už nic nepošle
+    expect(await sweepPripominkyPodpisu(prisma)).toBe(0)
   })
 })

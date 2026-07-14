@@ -207,6 +207,7 @@ enum SodUdalostTyp {
   VYTVORENO
   REVIZE
   ODESLANO
+  PRIPOMINKA
   ZOBRAZENO
   OTP_ODESLAN
   OTP_OVERENO
@@ -1486,6 +1487,9 @@ model SodPodpisRelace {
   verzeId     String?
   stav        PodpisRelaceStav @default(AKTIVNI)
   tokenHash   String           @unique
+  // token šifrovaný (lib/secretCrypto) — jen pro připomínkový e-mail se stejným
+  // odkazem; ověřování jde vždy přes tokenHash
+  tokenEnc    String?
   email       String
   telefon     String
   expirace    DateTime

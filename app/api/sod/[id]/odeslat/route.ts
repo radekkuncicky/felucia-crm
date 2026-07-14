@@ -9,6 +9,7 @@ import { getOrgSettings } from '@/lib/orgSettings'
 import {
   generateToken, sha256, logSodUdalost, PODPIS_RELACE_DNI,
 } from '@/lib/sodPodpis'
+import { encryptSecret } from '@/lib/secretCrypto'
 import { buildSodContentHtml } from '@/lib/sodPdf'
 
 // Odeslání smlouvy klientovi k online podpisu: snapshot verze, podpisová
@@ -92,6 +93,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         sodId: sod.id,
         verzeId: verze.id,
         tokenHash: sha256(token),
+        tokenEnc: encryptSecret(token),
         email,
         telefon,
         expirace,

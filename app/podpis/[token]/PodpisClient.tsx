@@ -21,6 +21,7 @@ interface Stav {
   otpZamceno?: boolean
   contractHtml?: string
   podepsano?: string
+  pdfDostupne?: boolean
 }
 
 const FALLBACK_COLOR = '#16a34a'
@@ -59,7 +60,9 @@ export default function PodpisClient({ token }: { token: string }) {
   return (
     <Shell org={stav.org}>
       {stav.faze === 'NEPLATNY' && <NeplatnyScreen org={stav.org} />}
-      {stav.faze === 'PODEPSANO' && <HotovoScreen color={color} cislo={stav.cislo} uzDrive />}
+      {stav.faze === 'PODEPSANO' && (
+        <HotovoScreen color={color} cislo={stav.cislo} uzDrive pdfUrl={stav.pdfDostupne ? `/api/public/podpis/${token}/pdf` : undefined} />
+      )}
       {stav.faze === 'OVERENI' && (
         <OvereniScreen token={token} stav={stav} color={color} onOvereno={load} />
       )}
@@ -284,7 +287,7 @@ function SmlouvaScreen({ token, stav, color, onPodepsano }: {
   const [podpisOpen, setPodpisOpen] = useState(false)
   const [hotovo, setHotovo] = useState(false)
 
-  if (hotovo) return <HotovoScreen color={color} cislo={stav.cislo} />
+  if (hotovo) return <HotovoScreen color={color} cislo={stav.cislo} pdfUrl={`/api/public/podpis/${token}/pdf`} />
 
   return (
     <div className="flex flex-col flex-1 -mx-4 sm:mx-0">
@@ -432,7 +435,9 @@ function PodpisModal({ token, color, klientJmeno, onClose, onSuccess }: {
 
 // ── Hotovo ───────────────────────────────────────────────────────────────────
 
-function HotovoScreen({ color, cislo, uzDrive }: { color: string; cislo?: string; uzDrive?: boolean }) {
+function HotovoScreen({ color, cislo, uzDrive, pdfUrl }: {
+  color: string; cislo?: string; uzDrive?: boolean; pdfUrl?: string
+}) {
   return (
     <div className="my-auto">
       <Card>
@@ -448,8 +453,20 @@ function HotovoScreen({ color, cislo, uzDrive }: { color: string; cislo?: string
           <p className="text-sm text-gray-500 dark:text-slate-400 leading-relaxed">
             {cislo && <>Smlouva <strong className="text-gray-700 dark:text-slate-300">č. {cislo}</strong>{' '}</>}
             byla úspěšně elektronicky podepsána.
-            {!uzDrive && <> Podepsané vyhotovení vám během chvíle přijde e-mailem.</>}
+            {!uzDrive && <> Podepsané vyhotovení vám během chvíle přijde i e-mailem.</>}
           </p>
+          {pdfUrl && (
+            <a
+              href={pdfUrl}
+              className="inline-flex items-center gap-2 rounded-xl text-white font-semibold text-sm px-5 py-3 mt-5 transition-opacity hover:opacity-90"
+              style={{ background: color }}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Stáhnout podepsané PDF
+            </a>
+          )}
         </div>
       </Card>
     </div>
