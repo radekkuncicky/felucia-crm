@@ -10,9 +10,11 @@ import { orgTransporter, orgFromHeader, type OrgSmtpConfig } from '@/lib/email'
 function prelozSmtpChybu(raw: string): string {
   const l = raw.toLowerCase()
   if (l.includes('smtpclientauthentication is disabled')) {
-    return 'Váš Microsoft 365 účet má vypnuté SMTP přihlašování. Správce ho musí povolit: '
-      + 'Microsoft 365 admin centrum → Uživatelé → Aktivní uživatelé → vybrat uživatele → záložka Pošta '
-      + '→ Spravovat e-mailové aplikace → zaškrtnout „Ověřený protokol SMTP". Změna se projeví do ~1 hodiny.'
+    return 'Váš Microsoft 365 tenant má vypnuté SMTP přihlašování (SMTP AUTH) — běžný uživatel ho sám nezapne, '
+      + 'povolit ho musí správce Microsoft 365:\n'
+      + '• Admin centrum → Uživatelé → Aktivní uživatelé → vybrat schránku → Pošta → Spravovat e-mailové aplikace → zaškrtnout „Ověřený protokol SMTP", nebo\n'
+      + '• PowerShell: Set-CASMailbox -Identity <schránka> -SmtpClientAuthenticationDisabled $false\n'
+      + 'Změna se projeví do ~1 hodiny. Pokud účet spravuje externí IT, předejte jim tento text.'
       + `\n\nOdpověď serveru: ${raw}`
   }
   if (l.includes('username and password not accepted') || l.includes('invalid login') || l.includes('535')) {

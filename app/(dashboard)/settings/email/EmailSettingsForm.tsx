@@ -53,7 +53,7 @@ const PRESETS = [
     host: 'smtp.office365.com',
     port: 587,
     secure: false,
-    napoveda: <>Účet musí mít povolené „Authenticated SMTP&ldquo; (správce najde v Microsoft 365 admin centru u uživatele → Pošta).</>,
+    napoveda: <>Pozor: účet musí mít povolené „Authenticated SMTP&ldquo; — zapíná ho <strong>správce Microsoft 365</strong> (admin centrum → Uživatelé → Pošta → Spravovat e-mailové aplikace), běžný uživatel to sám nezapne.</>,
   },
   {
     id: 'custom',
