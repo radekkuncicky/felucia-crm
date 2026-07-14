@@ -1,7 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
-import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import { getPlanLimits } from '@/lib/planLimits'
 import { isSmsConfigured, normalizeTelefon } from '@/lib/sms'
