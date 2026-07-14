@@ -368,7 +368,7 @@ export default function EmailSettingsForm({ initial, globalFallback, userEmail }
       {/* Stavový modal průběhu testu — jasné načítání a až pak výsledek */}
       {prubeh && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white dark:bg-slate-800 w-full max-w-sm rounded-2xl p-6 text-center">
+          <div className={`bg-white dark:bg-slate-800 w-full rounded-2xl p-6 text-center ${prubeh.faze === 'chyba' ? 'max-w-2xl' : 'max-w-sm'}`}>
             {(prubeh.faze === 'ukladam' || prubeh.faze === 'testuji') && (
               <>
                 <div className="w-10 h-10 border-[3px] border-gray-200 dark:border-slate-600 border-t-primary rounded-full animate-spin mx-auto mb-4" />
