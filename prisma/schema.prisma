@@ -193,6 +193,37 @@ enum SodTyp {
   PDP_SE_ZALOHOU
 }
 
+// Životní cyklus smlouvy (online podpis): NÁVRH → ODESLÁNO → PODEPSÁNO;
+// revize po připomínkách = nová SodVerze + návrat do NÁVRH/ODESLÁNO.
+enum SodStav {
+  NAVRH
+  ODESLANO
+  PODEPSANO
+  EXPIROVANO
+  STORNO
+}
+
+enum SodUdalostTyp {
+  VYTVORENO
+  REVIZE
+  ODESLANO
+  ZOBRAZENO
+  OTP_ODESLAN
+  OTP_OVERENO
+  OTP_CHYBA
+  PODEPSANO
+  ZNEPLATNENO
+  EXPIROVANO
+  STORNO
+}
+
+enum PodpisRelaceStav {
+  AKTIVNI
+  PODEPSANA
+  ZNEPLATNENA
+  EXPIROVANA
+}
+
 enum LeadZdroj {
   WEB_FORMULAR
   RUCNE
@@ -268,6 +299,9 @@ model Organization {
   predavaky            Predavak[]
   vyuctovani           Vyuctovani[]
   sod                  Sod[]
+  sodVerze             SodVerze[]
+  sodUdalosti          SodUdalost[]
+  sodPodpisRelace      SodPodpisRelace[]
   documents            Document[]
   leady                Lead[]
   aiUsageLogs          AiUsageLog[]
@@ -1378,6 +1412,16 @@ model Sod {
   prilohaCenik      Boolean  @default(false)
   prilohaNabidka    Boolean  @default(false)
 
+  // Online podpis — stav a výsledný podpis (audit v SodUdalost)
+  stav              SodStav  @default(NAVRH)
+  podpisSvg         String?  @db.Text
+  podepsano         DateTime?
+  podepsalJmeno     String?
+  podpisIp          String?
+  podpisUserAgent   String?
+  // SHA-256 textSmlouvy v okamžiku podpisu — důkaz, co přesně bylo podepsáno
+  podpisTextHash    String?
+
   // Metadata
   poznamky          String?
   vytvoreno         DateTime @default(now())
@@ -1386,9 +1430,78 @@ model Sod {
   organization Organization      @relation(fields: [orgId], references: [id])
   deal         Deal              @relation(fields: [dealId], references: [id])
   template     ContractTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  verze         SodVerze[]
+  udalosti      SodUdalost[]
+  podpisRelace  SodPodpisRelace[]
 
   @@unique([orgId, cislo])
   @@map("sod")
+}
+
+// Snapshot textu smlouvy — vzniká při každém odeslání k podpisu a při revizi
+// po připomínkách klienta (ty chodí telefonem/e-mailem, ne online).
+model SodVerze {
+  id          String   @id @default(cuid())
+  orgId       String
+  sodId       String
+  cislo       Int
+  textSmlouvy String
+  vytvorilId  String?
+  vytvoreno   DateTime @default(now())
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  sod          Sod          @relation(fields: [sodId], references: [id], onDelete: Cascade)
+
+  @@unique([sodId, cislo])
+  @@map("sod_verze")
+}
+
+// Audit trail online podpisu — právní průkaznost (prostý el. podpis)
+model SodUdalost {
+  id        String        @id @default(cuid())
+  orgId     String
+  sodId     String
+  relaceId  String?
+  typ       SodUdalostTyp
+  meta      Json?
+  ip        String?
+  userAgent String?
+  userId    String?
+  vytvoreno DateTime      @default(now())
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  sod          Sod          @relation(fields: [sodId], references: [id], onDelete: Cascade)
+
+  @@index([sodId])
+  @@map("sod_udalosti")
+}
+
+// Podpisová relace = jeden odeslaný odkaz. Token i OTP jen jako SHA-256 hash.
+// Dvoukanálové ověření: odkaz e-mailem, OTP kód SMS (posílá se až na akci
+// klienta na stránce, ne při otevření odkazu).
+model SodPodpisRelace {
+  id          String           @id @default(cuid())
+  orgId       String
+  sodId       String
+  verzeId     String?
+  stav        PodpisRelaceStav @default(AKTIVNI)
+  tokenHash   String           @unique
+  email       String
+  telefon     String
+  expirace    DateTime
+  otpHash     String?
+  otpExpirace DateTime?
+  otpPokusy   Int              @default(0)
+  otpOvereno  DateTime?
+  odeslalId   String?
+  vytvoreno   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  sod          Sod          @relation(fields: [sodId], references: [id], onDelete: Cascade)
+
+  @@index([sodId])
+  @@map("sod_podpis_relace")
 }
 
 model Document {
