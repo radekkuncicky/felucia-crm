@@ -84,8 +84,14 @@ export default function EmailSettingsForm({ initial, globalFallback, userEmail }
   const [fromName, setFromName] = useState(initial?.fromName ?? '')
   const [fromEmail, setFromEmail] = useState(initial?.fromEmail ?? '')
   const [saving, setSaving] = useState(false)
-  const [testing, setTesting] = useState(false)
   const [removing, setRemoving] = useState(false)
+  // stavový modal průběhu „Uložit a odeslat testovací e-mail"
+  const [prubeh, setPrubeh] = useState<
+    | null
+    | { faze: 'ukladam' | 'testuji' }
+    | { faze: 'uspech'; to: string }
+    | { faze: 'chyba'; zprava: string }
+  >(null)
 
   const presetDef = PRESETS.find(p => p.id === preset)!
   const isCustom = preset === 'custom'
@@ -106,7 +112,7 @@ export default function EmailSettingsForm({ initial, globalFallback, userEmail }
     if (!user || user === fromEmail) setUser(email)
   }
 
-  async function save(): Promise<boolean> {
+  async function save(opts: { tichy?: boolean } = {}): Promise<{ ok: boolean; error?: string }> {
     setSaving(true)
     try {
       const res = await fetch('/api/settings/email', {
@@ -124,37 +130,41 @@ export default function EmailSettingsForm({ initial, globalFallback, userEmail }
       })
       const data = await res.json()
       if (!res.ok) {
-        toast.error(data.error ?? 'Uložení se nepodařilo')
-        return false
+        const error = data.error ?? 'Uložení se nepodařilo'
+        if (!opts.tichy) toast.error(error)
+        return { ok: false, error }
       }
       setSaved(data.settings)
       setPass('')
-      toast.success('Nastavení uloženo')
-      return true
+      if (!opts.tichy) toast.success('Nastavení uloženo')
+      return { ok: true }
     } catch {
-      toast.error('Uložení se nepodařilo')
-      return false
+      if (!opts.tichy) toast.error('Uložení se nepodařilo')
+      return { ok: false, error: 'Uložení se nepodařilo' }
     } finally {
       setSaving(false)
     }
   }
 
   async function saveAndTest() {
-    if (!(await save())) return
-    setTesting(true)
+    setPrubeh({ faze: 'ukladam' })
+    const ulozeni = await save({ tichy: true })
+    if (!ulozeni.ok) {
+      setPrubeh({ faze: 'chyba', zprava: ulozeni.error ?? 'Uložení se nepodařilo' })
+      return
+    }
+    setPrubeh({ faze: 'testuji' })
     try {
       const res = await fetch('/api/settings/email/test', { method: 'POST' })
       const data = await res.json()
       if (!res.ok) {
-        toast.error(data.error ?? 'Testovací e-mail se nepodařilo odeslat')
+        setPrubeh({ faze: 'chyba', zprava: data.error ?? 'Testovací e-mail se nepodařilo odeslat' })
         return
       }
       setSaved(prev => (prev ? { ...prev, overeno: data.overeno } : prev))
-      toast.success(`Testovací e-mail odeslán na ${data.to}`)
+      setPrubeh({ faze: 'uspech', to: data.to })
     } catch {
-      toast.error('Testovací e-mail se nepodařilo odeslat')
-    } finally {
-      setTesting(false)
+      setPrubeh({ faze: 'chyba', zprava: 'Testovací e-mail se nepodařilo odeslat — zkuste to znovu' })
     }
   }
 
@@ -327,14 +337,14 @@ export default function EmailSettingsForm({ initial, globalFallback, userEmail }
       <div className="flex flex-wrap items-center gap-3">
         <button
           onClick={saveAndTest}
-          disabled={saving || testing}
+          disabled={saving || !!prubeh}
           className="inline-flex items-center gap-2 rounded-lg bg-primary hover:bg-primary-hover text-white text-sm font-medium px-4 py-2.5 transition-colors disabled:opacity-50"
         >
-          {testing ? 'Odesílám test…' : saving ? 'Ukládám…' : 'Uložit a odeslat testovací e-mail'}
+          Uložit a odeslat testovací e-mail
         </button>
         <button
-          onClick={save}
-          disabled={saving || testing}
+          onClick={() => save()}
+          disabled={saving || !!prubeh}
           className="rounded-lg border border-gray-300 dark:border-slate-600 text-sm font-medium text-gray-700 dark:text-slate-300 px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
         >
           Jen uložit
@@ -354,6 +364,60 @@ export default function EmailSettingsForm({ initial, globalFallback, userEmail }
         Testovací e-mail se odešle na vaši adresu {userEmail || 'účtu'}. Heslo ukládáme šifrovaně
         a nikdy ho nezobrazujeme.
       </p>
+
+      {/* Stavový modal průběhu testu — jasné načítání a až pak výsledek */}
+      {prubeh && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white dark:bg-slate-800 w-full max-w-sm rounded-2xl p-6 text-center">
+            {(prubeh.faze === 'ukladam' || prubeh.faze === 'testuji') && (
+              <>
+                <div className="w-10 h-10 border-[3px] border-gray-200 dark:border-slate-600 border-t-primary rounded-full animate-spin mx-auto mb-4" />
+                <p className="font-semibold text-gray-900 dark:text-white">
+                  {prubeh.faze === 'ukladam' ? 'Ukládám nastavení…' : 'Odesílám testovací e-mail…'}
+                </p>
+                <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
+                  {prubeh.faze === 'testuji' && 'Připojuji se k SMTP serveru, může to chvíli trvat.'}
+                </p>
+              </>
+            )}
+            {prubeh.faze === 'uspech' && (
+              <>
+                <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <p className="font-semibold text-gray-900 dark:text-white">E-mail odeslán ✓</p>
+                <p className="text-sm text-gray-500 dark:text-slate-400 mt-1.5">
+                  Testovací zpráva odešla na <strong className="text-gray-700 dark:text-slate-300">{prubeh.to}</strong>.
+                  Zkontrolujte schránku — odesílání je nastavené správně.
+                </p>
+              </>
+            )}
+            {prubeh.faze === 'chyba' && (
+              <>
+                <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </div>
+                <p className="font-semibold text-gray-900 dark:text-white">Odeslání se nepodařilo</p>
+                <p className="text-sm text-gray-600 dark:text-slate-400 mt-1.5 leading-relaxed whitespace-pre-line text-left bg-red-50 dark:bg-red-900/20 rounded-lg px-3 py-2.5">
+                  {prubeh.zprava}
+                </p>
+              </>
+            )}
+            {(prubeh.faze === 'uspech' || prubeh.faze === 'chyba') && (
+              <button
+                onClick={() => setPrubeh(null)}
+                className="mt-5 w-full rounded-lg bg-gray-900 dark:bg-slate-600 text-white text-sm font-semibold py-2.5 hover:opacity-90"
+              >
+                Zavřít
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
