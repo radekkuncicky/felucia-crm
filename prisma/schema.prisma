@@ -260,6 +260,10 @@ model Organization {
   stripePlanId              String?
   stripeSubscriptionStatus  String?
   stripeCurrentPeriodEnd    DateTime?
+  // Příplatkový modul Online podpis smluv (STANDARD, 99 Kč/licence/měsíc,
+  // limit 100 odeslaných smluv/měsíc) — druhá Stripe subscription vedle plánu
+  modulPodpisy              Boolean   @default(false)
+  stripePodpisySubId        String?
   aiTokensUsed      Int       @default(0)
   aiTokensResetAt   DateTime  @default(now())
   aiCreditsUsed     Int       @default(0)

@@ -28,6 +28,7 @@ import { POST as podepsatPost } from '@/app/api/public/podpis/[token]/podepsat/r
 import { sweepPripominkyPodpisu } from '@/worker/podpisy'
 import { sendOrgEmail } from '@/lib/email'
 import { encryptSecret } from '@/lib/secretCrypto'
+import { getPodpisyAccess, PODPISY_MESICNI_LIMIT } from '@/lib/modulPodpisy'
 
 const RUN = `podpis-${Date.now()}`
 const PNG = `data:image/png;base64,${Buffer.from('fake-png').toString('base64')}`
@@ -232,5 +233,50 @@ describe('veřejný podpisový flow', () => {
 
     // druhý běh už nic nepošle
     expect(await sweepPripominkyPodpisu(prisma)).toBe(0)
+  })
+})
+
+describe('modul podpisy — přístup podle plánu', () => {
+  it('PROFESSIONAL má podpisy v ceně bez limitu', async () => {
+    const p = await getPodpisyAccess(orgId, 'PROFESSIONAL')
+    expect(p).toMatchObject({ allowed: true, zdroj: 'PLAN', limit: null })
+  })
+
+  it('STARTER nemá přístup ani nabídku modulu', async () => {
+    const p = await getPodpisyAccess(orgId, 'STARTER')
+    expect(p).toMatchObject({ allowed: false, zdroj: null, muzeAktivovatModul: false })
+  })
+
+  it('STANDARD bez modulu → nabídka aktivace', async () => {
+    const p = await getPodpisyAccess(orgId, 'STANDARD')
+    expect(p).toMatchObject({ allowed: false, zdroj: null, muzeAktivovatModul: true })
+  })
+
+  it('STANDARD s modulem → povoleno s počítadlem, po limitu stop', async () => {
+    await prisma.organization.update({ where: { id: orgId }, data: { modulPodpisy: true } })
+
+    const pred = await getPodpisyAccess(orgId, 'STANDARD')
+    expect(pred.zdroj).toBe('MODUL')
+    expect(pred.limit).toBe(PODPISY_MESICNI_LIMIT)
+    expect(pred.allowed).toBe(true)
+    expect(pred.vyuzito).toBeGreaterThan(0) // relace z předchozích testů
+
+    // doplnit relace do limitu
+    const sod = await prisma.sod.findFirst({ where: { orgId }, select: { id: true } })
+    const chybi = PODPISY_MESICNI_LIMIT - pred.vyuzito
+    await prisma.sodPodpisRelace.createMany({
+      data: Array.from({ length: chybi }, (_, i) => ({
+        orgId, sodId: sod!.id,
+        tokenHash: `limit-test-${RUN}-${i}`,
+        email: 'x@example.com', telefon: '420777000000',
+        expirace: new Date(Date.now() + 24 * 3600_000),
+      })),
+    })
+
+    const po = await getPodpisyAccess(orgId, 'STANDARD')
+    expect(po.vyuzito).toBe(PODPISY_MESICNI_LIMIT)
+    expect(po.allowed).toBe(false)
+
+    await prisma.organization.update({ where: { id: orgId }, data: { modulPodpisy: false } })
   })
 })

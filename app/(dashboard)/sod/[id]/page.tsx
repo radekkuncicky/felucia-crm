@@ -7,7 +7,7 @@ import { SodTyp } from '@prisma/client'
 import SodDeleteButton from './SodDeleteButton'
 import PodpisPanel from './PodpisPanel'
 import { formatDate, formatKcPresne } from '@/lib/format'
-import { getPlanLimits } from '@/lib/planLimits'
+import { getPodpisyAccess } from '@/lib/modulPodpisy'
 import { isSmsConfigured } from '@/lib/sms'
 import { isOrgEmailConfigured } from '@/lib/email'
 
@@ -87,7 +87,7 @@ export default async function SodDetailPage({ params }: { params: { id: string }
   if (!sod) notFound()
 
   const canPodpis = {
-    plan: getPlanLimits(session.user.plan).hasOnlinePodpis,
+    pristup: await getPodpisyAccess(orgId, session.user.plan),
     sms: isSmsConfigured(),
     email: await isOrgEmailConfigured(orgId),
   }

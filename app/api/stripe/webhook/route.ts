@@ -32,6 +32,20 @@ export async function POST(req: Request) {
         const session = event.data.object as Stripe.Checkout.Session
         const orgId = session.metadata?.orgId
         const plan = session.metadata?.plan
+
+        // Příplatkový modul Online podpis (druhá subscription vedle plánu)
+        if (orgId && session.metadata?.addon === 'PODPISY') {
+          await prisma.organization.update({
+            where: { id: orgId },
+            data: {
+              modulPodpisy: true,
+              stripePodpisySubId: session.subscription as string,
+            },
+          })
+          console.log(`[Stripe] Org ${orgId} aktivoval modul PODPISY`)
+          break
+        }
+
         if (!orgId || !plan) break
 
         // Fetch subscription to get the actual period end
@@ -64,6 +78,18 @@ export async function POST(req: Request) {
         })
         if (!org) break
 
+        // Zákazník může mít dvě subscriptions (plán + modul PODPISY) — update
+        // modulu nesmí přepsat platnost plánu
+        if (org.stripePodpisySubId && sub.id === org.stripePodpisySubId) {
+          const aktivni = sub.status === 'active' || sub.status === 'trialing'
+          await prisma.organization.update({
+            where: { id: org.id },
+            data: { modulPodpisy: aktivni },
+          })
+          console.log(`[Stripe] Org ${org.id} modul PODPISY ${aktivni ? 'aktivní' : 'pozastaven'} (${sub.status})`)
+          break
+        }
+
         // current_period_end is on the first subscription item in Stripe v21+
         const periodEnd = sub.items?.data?.[0]?.current_period_end
         const activeTo = periodEnd ? new Date(periodEnd * 1000) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
@@ -86,6 +112,16 @@ export async function POST(req: Request) {
           where: { stripeCustomerId: sub.customer as string },
         })
         if (!org) break
+
+        // Zrušení modulu PODPISY nesmí shodit celý plán na STARTER
+        if (org.stripePodpisySubId && sub.id === org.stripePodpisySubId) {
+          await prisma.organization.update({
+            where: { id: org.id },
+            data: { modulPodpisy: false, stripePodpisySubId: null },
+          })
+          console.log(`[Stripe] Org ${org.id} zrušil modul PODPISY`)
+          break
+        }
 
         await prisma.organization.update({
           where: { id: org.id },

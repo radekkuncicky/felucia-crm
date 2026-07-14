@@ -2,7 +2,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
-import { getPlanLimits } from '@/lib/planLimits'
+import { getPodpisyAccess, PODPISY_MESICNI_LIMIT } from '@/lib/modulPodpisy'
 import { isSmsConfigured, normalizeTelefon } from '@/lib/sms'
 import { isOrgEmailConfigured, sendOrgEmail, emailPodpisSmlouvy } from '@/lib/email'
 import { getOrgSettings } from '@/lib/orgSettings'
@@ -19,8 +19,20 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (session.user.role === 'TECHNIK') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  if (!getPlanLimits(session.user.plan).hasOnlinePodpis) {
-    return NextResponse.json({ error: 'Online podpis smluv je dostupný v plánu PROFESSIONAL a vyšším' }, { status: 403 })
+  const pristup = await getPodpisyAccess(session.user.orgId, session.user.plan)
+  if (!pristup.allowed) {
+    if (pristup.zdroj === 'MODUL') {
+      return NextResponse.json(
+        { error: `Měsíční limit modulu (${PODPISY_MESICNI_LIMIT} odeslaných smluv) je vyčerpán — obnoví se 1. den dalšího měsíce` },
+        { status: 403 }
+      )
+    }
+    return NextResponse.json(
+      { error: pristup.muzeAktivovatModul
+          ? 'Aktivujte si modul Online podpis ve Fakturaci, nebo přejděte na plán PROFESSIONAL'
+          : 'Online podpis smluv je dostupný v plánu PROFESSIONAL a vyšším' },
+      { status: 403 }
+    )
   }
   if (!isSmsConfigured()) {
     return NextResponse.json({ error: 'SMS brána není nakonfigurována — online podpis zatím nelze použít' }, { status: 422 })

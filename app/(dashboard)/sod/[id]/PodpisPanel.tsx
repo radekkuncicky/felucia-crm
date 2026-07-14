@@ -45,6 +45,14 @@ interface Udalost {
   meta: { email?: string; telefon?: string; jmeno?: string } | null
 }
 
+interface PodpisyPristup {
+  allowed: boolean
+  zdroj: 'PLAN' | 'MODUL' | null
+  limit: number | null
+  vyuzito: number
+  muzeAktivovatModul: boolean
+}
+
 interface Props {
   sodId: string
   stav: string
@@ -54,7 +62,7 @@ interface Props {
   podepsalJmeno: string | null
   relace: { email: string; telefon: string; expirace: string } | null
   udalosti: Udalost[]
-  can: { plan: boolean; sms: boolean; email: boolean }
+  can: { pristup: PodpisyPristup; sms: boolean; email: boolean }
 }
 
 export default function PodpisPanel(props: Props) {
@@ -64,7 +72,8 @@ export default function PodpisPanel(props: Props) {
   const [ruse, setRuse] = useState(false)
   const [stornuji, setStornuji] = useState(false)
 
-  const ready = can.plan && can.sms && can.email
+  const { pristup } = can
+  const ready = pristup.allowed && can.sms && can.email
   const podepsana = stav === 'PODEPSANO'
 
   async function zneplatnit() {
@@ -161,17 +170,30 @@ export default function PodpisPanel(props: Props) {
             )}
           </div>
 
-          {!can.plan && (
+          {pristup.muzeAktivovatModul && (
+            <p className="mt-2 text-xs text-purple-600 dark:text-purple-400">
+              Aktivujte si modul Online podpis za 99 Kč/licence/měsíc (100 smluv měsíčně) ve{' '}
+              <Link href="/settings/billing" className="underline">Fakturaci</Link>, nebo přejděte na PROFESSIONAL.
+            </p>
+          )}
+          {!pristup.allowed && !pristup.muzeAktivovatModul && pristup.zdroj === null && (
             <p className="mt-2 text-xs text-purple-600 dark:text-purple-400">
               Online podpis je dostupný v plánu PROFESSIONAL — <Link href="/settings/billing" className="underline">upgradovat</Link>
             </p>
           )}
-          {can.plan && !can.email && (
+          {pristup.zdroj === 'MODUL' && pristup.limit != null && (
+            <p className={`mt-2 text-xs ${pristup.allowed ? 'text-gray-400 dark:text-slate-500' : 'text-amber-600 dark:text-amber-400'}`}>
+              {pristup.allowed
+                ? `Modul Online podpis: využito ${pristup.vyuzito} ze ${pristup.limit} smluv tento měsíc`
+                : `Měsíční limit ${pristup.limit} smluv je vyčerpán — obnoví se 1. den dalšího měsíce`}
+            </p>
+          )}
+          {pristup.allowed && !can.email && (
             <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
               Nejprve nastavte odesílání e-mailů v <Link href="/settings/email" className="underline">Nastavení → Odesílání e-mailů</Link>
             </p>
           )}
-          {can.plan && can.email && !can.sms && (
+          {pristup.allowed && can.email && !can.sms && (
             <p className="mt-2 text-xs text-gray-400 dark:text-slate-500">
               SMS brána pro ověřovací kódy zatím není aktivní — online podpis bude dostupný po jejím zapojení.
             </p>
