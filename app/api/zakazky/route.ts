@@ -89,7 +89,6 @@ export async function POST(req: Request) {
       vedouciId: body.vedouciId ?? session.user.id,
       opId: body.opId ?? null,
       poznamka: body.poznamka ?? null,
-      typ: body.typ === 'SERVISNI' ? 'SERVISNI' : 'OBCHODNI',
       polozky: polozkyFromQuote.length > 0 ? { create: polozkyFromQuote } : undefined,
     },
   })
