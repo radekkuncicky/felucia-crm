@@ -68,8 +68,15 @@ export default async function DealsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Obchodní případy</h1>
+        <div className="flex items-center gap-2 ml-auto">
+        <Link
+          href="/cenovka"
+          className="border border-green-400 dark:border-green-700 text-green-700 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 font-medium px-4 py-2 rounded-lg text-sm transition-colors"
+        >
+          ⚡ Rychlá cenovka
+        </Link>
         {atLimit ? (
           <button
             disabled
@@ -86,6 +93,7 @@ export default async function DealsPage() {
             + Nový případ
           </Link>
         )}
+        </div>
       </div>
 
       <UpgradeBanner used={dealCount} limit={planLimits.maxDeals} label="obchodních případů" />
