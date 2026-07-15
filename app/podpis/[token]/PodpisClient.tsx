@@ -26,6 +26,52 @@ interface Stav {
 
 const FALLBACK_COLOR = '#16a34a'
 
+// Podpis myší v malém poli je nepohodlný — na desktopu nabídneme QR kód
+// na stejný odkaz, klient ho naskenuje a pokračuje na mobilu (fullscreen
+// podpisové pole). PC nezakazujeme, jen nabízíme pohodlnější alternativu.
+function DesktopQrNudge() {
+  const [open, setOpen] = useState(true)
+  const [svg, setSvg] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!open || svg) return
+    let cancelled = false
+    ;(async () => {
+      const QRCode = (await import('qrcode')).default
+      const markup = await QRCode.toString(window.location.href, { type: 'svg', margin: 1, width: 120 })
+      if (!cancelled) setSvg(markup)
+    })()
+    return () => { cancelled = true }
+  }, [open, svg])
+
+  if (!open) return null
+
+  return (
+    <div className="hidden md:flex items-center gap-4 rounded-2xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-5 py-4 mb-4 max-w-md mx-auto">
+      <div className="w-[76px] h-[76px] shrink-0 rounded-lg overflow-hidden bg-white flex items-center justify-center [&_svg]:w-full [&_svg]:h-full">
+        {svg
+          ? <div dangerouslySetInnerHTML={{ __html: svg }} />
+          : <div className="w-6 h-6 border-2 border-gray-200 border-t-gray-400 rounded-full animate-spin" />}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-gray-900 dark:text-white">Pohodlnější podpis na mobilu</p>
+        <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5 leading-relaxed">
+          Naskenujte kód telefonem — podepíšete prstem přes celou obrazovku. Nebo pokračujte tady na počítači.
+        </p>
+      </div>
+      <button
+        onClick={() => setOpen(false)}
+        aria-label="Zavřít"
+        className="self-start text-gray-300 hover:text-gray-500 dark:text-slate-600 dark:hover:text-slate-400 shrink-0 p-1"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
+    </div>
+  )
+}
+
 export default function PodpisClient({ token }: { token: string }) {
   const [stav, setStav] = useState<Stav | null>(null)
   const [nacitam, setNacitam] = useState(true)
@@ -198,6 +244,7 @@ function OvereniScreen({ token, stav, color, onOvereno }: {
 
   return (
     <div className="my-auto">
+      <DesktopQrNudge />
       <Card>
         <div className="text-center mb-6">
           <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: `${color}1a` }}>
@@ -291,6 +338,9 @@ function SmlouvaScreen({ token, stav, color, onPodepsano }: {
 
   return (
     <div className="flex flex-col flex-1 -mx-4 sm:mx-0">
+      <div className="px-4 sm:px-0">
+        <DesktopQrNudge />
+      </div>
       <div className="flex items-center gap-2 px-4 sm:px-0 mb-3">
         <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: `${color}1a`, color }}>
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
