@@ -116,7 +116,7 @@ export default function ServisTab({ zarizeni, kontrakty, orgUsers }: Props) {
     if (!addForm.planovanyTermin) return
     setSaving(true)
     try {
-      await fetch(`/api/servis/navstevy/${kontraktId}`, {
+      await fetch(`/api/servis/zakazky/${kontraktId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -362,7 +362,7 @@ export default function ServisTab({ zarizeni, kontrakty, orgUsers }: Props) {
                   </div>
                   {n.stav === 'DOKONCENA' && (
                     <a
-                      href={`/api/servis/navstevy/${n.id}/protokol`}
+                      href={`/api/servis/zakazky/${n.id}/protokol`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex-shrink-0 ml-3 text-xs text-green-700 dark:text-green-400 hover:underline font-medium whitespace-nowrap"

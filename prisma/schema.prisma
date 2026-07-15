@@ -64,17 +64,6 @@ enum ServisTyp {
   JEDNOURAZOVY
 }
 
-// DEPRECATED: nahrazeno ServisniZakazkaStav. Ponecháno dočasně kvůli migraci,
-// smaže se až po ověření, že už ho nic nereferencuje.
-enum ServisStav {
-  PLANOVANA
-  POTVRZENA
-  PROBIHA
-  DOKONCENA
-  ZRUSENA
-  PRESLA
-}
-
 // Sjednocený životní cyklus servisní zakázky.
 // Hlavní cesta: NOVA -> NAPLANOVANA -> PROBIHA -> DOKONCENA -> VYUCTOVANA -> UZAVRENA.
 // "Prošlý termín" není stav, počítá se dynamicky (NAPLANOVANA AND planovanyTermin < now).
@@ -154,7 +143,6 @@ enum EtapaStav {
 
 enum ZakazkaTyp {
   OBCHODNI
-  SERVISNI
 }
 
 enum ZakazkaPolozkaStav {

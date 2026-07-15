@@ -4,12 +4,14 @@
  * SMTP/Sentry) a „Odeslat k podpisu" je v UI nedostupné.
  *
  * Aktivace v .env:
- *   SMS_PROVIDER=smsbrana  + SMSBRANA_LOGIN, SMSBRANA_PASSWORD
- *   SMS_PROVIDER=gosms     + GOSMS_CLIENT_ID, GOSMS_CLIENT_SECRET, GOSMS_CHANNEL
+ *   SMS_PROVIDER=smsmanager + SMSMANAGER_APIKEY (volitelně SMSMANAGER_GATEWAY high|economy|lowcost, SMSMANAGER_SENDER)
+ *   SMS_PROVIDER=smsbrana   + SMSBRANA_LOGIN, SMSBRANA_PASSWORD
+ *   SMS_PROVIDER=gosms      + GOSMS_CLIENT_ID, GOSMS_CLIENT_SECRET, GOSMS_CHANNEL
  */
 
 export function isSmsConfigured(): boolean {
   const p = process.env.SMS_PROVIDER
+  if (p === 'smsmanager') return !!process.env.SMSMANAGER_APIKEY
   if (p === 'smsbrana') return !!(process.env.SMSBRANA_LOGIN && process.env.SMSBRANA_PASSWORD)
   if (p === 'gosms') return !!(process.env.GOSMS_CLIENT_ID && process.env.GOSMS_CLIENT_SECRET && process.env.GOSMS_CHANNEL)
   return false
@@ -26,6 +28,27 @@ export function normalizeTelefon(telefon: string): string | null {
 /** 420601123456 → +420 ••• ••• 456 (pro zobrazení na veřejné stránce) */
 export function maskTelefon(normalized: string): string {
   return `+${normalized.slice(0, 3)} ••• ••• ${normalized.slice(-3)}`
+}
+
+async function sendViaSmsmanager(number: string, message: string): Promise<void> {
+  const params = new URLSearchParams({
+    apikey: process.env.SMSMANAGER_APIKEY!,
+    number,
+    message,
+    gateway: process.env.SMSMANAGER_GATEWAY ?? 'high',
+  })
+  if (process.env.SMSMANAGER_SENDER) params.set('sender', process.env.SMSMANAGER_SENDER)
+  const res = await fetch('https://http-api.smsmanager.cz/Send', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: params,
+    signal: AbortSignal.timeout(15_000),
+  })
+  const text = await res.text()
+  // Úspěch = HTTP 200 a tělo "OK|<requestId>|..."; jinak tělo obsahuje kód chyby
+  if (!res.ok || !text.startsWith('OK')) {
+    throw new Error(`SMSmanager: odeslání selhalo (${res.status}: ${text.slice(0, 120)})`)
+  }
 }
 
 async function sendViaSmsbrana(number: string, message: string): Promise<void> {
@@ -83,6 +106,7 @@ async function sendViaGosms(number: string, message: string): Promise<void> {
  */
 export async function sendSms(normalizedNumber: string, message: string): Promise<void> {
   const provider = process.env.SMS_PROVIDER
+  if (provider === 'smsmanager') return sendViaSmsmanager(normalizedNumber, message)
   if (provider === 'smsbrana') return sendViaSmsbrana(normalizedNumber, message)
   if (provider === 'gosms') return sendViaGosms(normalizedNumber, message)
   throw new Error('SMS brána není nakonfigurována (SMS_PROVIDER v .env)')
