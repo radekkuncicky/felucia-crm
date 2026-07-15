@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { IconHome, IconBriefcase, IconClipboard, IconUsers, IconActivity, IconDocument } from '@/components/ui/Icons'
+import { useOrgSettings } from '@/context/OrgSettingsContext'
 
 const homeItem = {
   href: '/dashboard',
@@ -100,6 +101,7 @@ const technikItems = [
 
 export default function BottomNav({ role }: { role?: string }) {
   const pathname = usePathname()
+  const orgSettings = useOrgSettings()
   const [dasaOpen, setDasaOpen] = useState(false)
 
   useEffect(() => {
@@ -138,6 +140,7 @@ export default function BottomNav({ role }: { role?: string }) {
         })}
 
         {/* Dáša button */}
+        {orgSettings.modulDasa && (
         <button
           onClick={openDasa}
           className={`flex-1 flex flex-col items-center justify-center py-2 gap-0.5 text-xs min-h-[56px] transition-colors ${
@@ -152,6 +155,7 @@ export default function BottomNav({ role }: { role?: string }) {
           </div>
           <span className={`text-[10px] font-medium ${dasaOpen ? 'text-green-400' : ''}`}>Dáša</span>
         </button>
+        )}
       </div>
     </nav>
   )
