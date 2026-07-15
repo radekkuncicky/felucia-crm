@@ -364,10 +364,8 @@ export default function Sidebar({ user, orgNazev }: Props) {
             )}
 
             <NavItem href="/calendar" icon={<IconCalendar className="w-5 h-5 flex-shrink-0" />} label="Kalendář" />
-            <div className="hidden md:block space-y-0.5">
-              {orgSettings.modulDokumenty && <NavItem href="/documents" icon={<IconDocument className="w-5 h-5 flex-shrink-0" />} label="Dokumenty" />}
-              {orgSettings.modulAnalytiky && <NavItem href="/analytics" icon={<IconChart className="w-5 h-5 flex-shrink-0" />} label="Analýzy" />}
-            </div>
+            {orgSettings.modulDokumenty && <NavItem href="/documents" icon={<IconDocument className="w-5 h-5 flex-shrink-0" />} label="Dokumenty" />}
+            {orgSettings.modulAnalytiky && <NavItem href="/analytics" icon={<IconChart className="w-5 h-5 flex-shrink-0" />} label="Analýzy" />}
           </>
         )}
       </nav>
@@ -383,14 +381,10 @@ export default function Sidebar({ user, orgNazev }: Props) {
       {/* Bottom */}
       <div className="border-t border-green-900/50 p-2 space-y-0.5">
         {isAdmin && (
-          <div className="hidden md:block">
-            <NavItem href="/settings" icon={<IconCog className="w-5 h-5 flex-shrink-0" />} label="Nastavení" />
-          </div>
+          <NavItem href="/settings" icon={<IconCog className="w-5 h-5 flex-shrink-0" />} label="Nastavení" />
         )}
         {isSuperAdmin && (
-          <div className="hidden md:block">
-            <NavItem href="/superadmin" icon={<IconKey className="w-5 h-5 flex-shrink-0" />} label="Superadmin" />
-          </div>
+          <NavItem href="/superadmin" icon={<IconKey className="w-5 h-5 flex-shrink-0" />} label="Superadmin" />
         )}
 
         <Link
