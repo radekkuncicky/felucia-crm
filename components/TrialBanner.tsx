@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { IconWarning } from '@/components/ui/Icons'
 
 interface Props {
   trialDaysLeft: number | null
@@ -32,7 +33,7 @@ export default function TrialBanner({ trialDaysLeft, trialExpired }: Props) {
   if (trialExpired) {
     return (
       <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-center gap-3 py-2 px-4 text-sm font-medium bg-red-600 text-white">
-        <span>⚠ Zkušební verze vypršela — váš účet je omezen na plán Starter</span>
+        <span className="flex items-center gap-1.5"><IconWarning className="w-4 h-4 flex-shrink-0" /> Zkušební verze vypršela — váš účet je omezen na plán Starter</span>
         <Link href="/settings/billing" className="underline font-bold hover:no-underline">
           Upgradovat →
         </Link>

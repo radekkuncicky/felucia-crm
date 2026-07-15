@@ -154,7 +154,7 @@ export default async function DashboardPage() {
       {/* Header */}
       <div className="flex items-end justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{greeting}, {firstName} 👋</h1>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{greeting}, {firstName}</h1>
           <p className="text-sm text-gray-500 dark:text-slate-400 mt-0.5">
             {new Date().toLocaleDateString('cs-CZ', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
           </p>

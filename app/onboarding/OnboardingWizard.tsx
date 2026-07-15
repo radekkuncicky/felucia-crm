@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
+import { IconImage, IconBox, IconDocument } from '@/components/ui/Icons'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -641,7 +642,7 @@ export default function OnboardingWizard({
                       </div>
                     ) : (
                       <div>
-                        <div style={{ fontSize: 28, marginBottom: 8 }}>🖼️</div>
+                        <IconImage className="" style={{ width: 28, height: 28, margin: '0 auto 8px', color: '#4CAF50' }} />
                         <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: textMuted, margin: 0 }}>
                           Přetáhněte logo sem nebo <span style={{ color: '#4CAF50', fontWeight: 600 }}>klikněte pro výběr</span>
                         </p>
@@ -800,7 +801,7 @@ export default function OnboardingWizard({
                     <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, color: textMuted }}>Analyzuji soubor…</p>
                   ) : importPreview ? (
                     <div>
-                      <div style={{ fontSize: 32, marginBottom: 8 }}>📦</div>
+                      <IconBox className="" style={{ width: 32, height: 32, margin: '0 auto 8px', color: '#4CAF50' }} />
                       <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 15, fontWeight: 600, color: textMain, margin: '0 0 4px' }}>
                         Nalezeno {importPreview.count} produktů v {importPreview.categories} kategoriích
                       </p>
@@ -812,7 +813,7 @@ export default function OnboardingWizard({
                     </div>
                   ) : (
                     <div>
-                      <div style={{ fontSize: 32, marginBottom: 8 }}>📄</div>
+                      <IconDocument className="" style={{ width: 32, height: 32, margin: '0 auto 8px', color: '#4CAF50' }} />
                       <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: textMuted, margin: 0 }}>
                         Přetáhněte Excel soubor sem nebo <span style={{ color: '#4CAF50', fontWeight: 600 }}>klikněte pro výběr</span>
                       </p>

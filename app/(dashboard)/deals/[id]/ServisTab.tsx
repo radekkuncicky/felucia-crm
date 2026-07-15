@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { type ServisniZakazkaStav, stavLabel, stavColor, jeProsla } from '@/lib/servisStav'
 import { formatDate, formatKcPresne } from '@/lib/format'
+import { IconCog, IconClipboard, IconWarning } from '@/components/ui/Icons'
 
 type ServisTyp = 'ROCNI' | 'POLOLETNI' | 'DVOULETNI' | 'JEDNOURAZOVY'
 type NavstevaTyp = 'PLANOVANY_SERVIS' | 'PORUCHA' | 'ZARUCNI_OPRAVA' | 'POZARUCNI_OPRAVA' | 'UVEDENI_DO_PROVOZU' | 'KONTROLA'
@@ -139,7 +140,7 @@ export default function ServisTab({ zarizeni, kontrakty, orgUsers }: Props) {
       {zarizeni.length > 0 && (
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-5">
           <h3 className="font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-            <span className="text-lg">⚙️</span> Zařízení
+            <IconCog className="w-5 h-5 text-gray-500 dark:text-slate-400" /> Zařízení
           </h3>
           <div className="space-y-3">
             {zarizeni.map(z => {
@@ -184,7 +185,7 @@ export default function ServisTab({ zarizeni, kontrakty, orgUsers }: Props) {
           <div className="flex items-start justify-between gap-4 mb-4">
             <div>
               <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                <span className="text-lg">📋</span> Aktivní kontrakt
+                <IconClipboard className="w-5 h-5 text-gray-500 dark:text-slate-400" /> Aktivní kontrakt
               </h3>
               <p className="text-sm text-gray-600 dark:text-slate-400 mt-0.5">{aktivniKontrakt.nazev}</p>
             </div>
@@ -251,7 +252,7 @@ export default function ServisTab({ zarizeni, kontrakty, orgUsers }: Props) {
                     {n.trvaniMinut && <span className="text-xs text-gray-400 dark:text-slate-500">· {n.trvaniMinut} min</span>}
                   </div>
                   {n.zprava && <p className="text-xs text-gray-600 dark:text-slate-400 mt-0.5 line-clamp-2">{n.zprava}</p>}
-                  {n.nalezeneZavady && <p className="text-xs text-orange-700 dark:text-orange-400 mt-0.5">⚠ {n.nalezeneZavady}</p>}
+                  {n.nalezeneZavady && <p className="text-xs text-orange-700 dark:text-orange-400 mt-0.5 flex items-start gap-1"><IconWarning className="w-3.5 h-3.5 flex-shrink-0 mt-px" /> {n.nalezeneZavady}</p>}
                 </div>
               </div>
             ))}
@@ -358,7 +359,7 @@ export default function ServisTab({ zarizeni, kontrakty, orgUsers }: Props) {
                       {n.technik && <span className="text-xs text-gray-500 dark:text-slate-400">· {n.technik.jmeno}</span>}
                     </div>
                     {n.zprava && <p className="text-xs text-gray-600 dark:text-slate-400 mt-1 line-clamp-2">{n.zprava}</p>}
-                    {n.nalezeneZavady && <p className="text-xs text-orange-700 dark:text-orange-400 mt-0.5">⚠ {n.nalezeneZavady}</p>}
+                    {n.nalezeneZavady && <p className="text-xs text-orange-700 dark:text-orange-400 mt-0.5 flex items-start gap-1"><IconWarning className="w-3.5 h-3.5 flex-shrink-0 mt-px" /> {n.nalezeneZavady}</p>}
                   </div>
                   {n.stav === 'DOKONCENA' && (
                     <a
@@ -381,7 +382,7 @@ export default function ServisTab({ zarizeni, kontrakty, orgUsers }: Props) {
       {/* Empty state */}
       {kontrakty.length === 0 && zarizeni.length === 0 && (
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-10 text-center">
-          <p className="text-4xl mb-3">⚙️</p>
+          <IconCog className="w-10 h-10 mx-auto mb-3 text-gray-300 dark:text-slate-600" />
           <p className="text-gray-700 dark:text-slate-300 font-medium mb-1">Zatím žádný servis</p>
           <p className="text-sm text-gray-500 dark:text-slate-400">K tomuto OP není přiřazeno zařízení ani servisní kontrakt.</p>
           <Link href="/servis/kontrakty" className="inline-block mt-4 text-sm text-green-600 dark:text-green-400 hover:underline font-medium">

@@ -95,7 +95,7 @@ export default function ServisOverviewClient({ stats, nezaplanovane, prosle, cek
           items={prosle}
           color="red"
           showDate
-          emptyText="Žádné prošlé termíny 🎉"
+          emptyText="Žádné prošlé termíny"
         />
         <ActionCard
           title="Nezaplánované"
