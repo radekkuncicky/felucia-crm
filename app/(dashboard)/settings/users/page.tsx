@@ -15,7 +15,7 @@ export default async function UsersPage() {
   const [users, org] = await Promise.all([
     prisma.user.findMany({
       where: { orgId },
-      select: { id: true, jmeno: true, email: true, role: true, aktivni: true, vytvoreno: true, serviceAccess: true },
+      select: { id: true, jmeno: true, email: true, role: true, aktivni: true, vytvoreno: true, serviceAccess: true, podepisujeSmlouvy: true },
       orderBy: { vytvoreno: 'asc' },
     }),
     prisma.organization.findUnique({ where: { id: orgId }, select: { plan: true } }),

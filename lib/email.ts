@@ -373,6 +373,32 @@ export function emailSmlouvaPodepsana(params: {
   `)
 }
 
+export function emailPodpisVyzadan(params: {
+  orgNazev: string
+  primaryColor: string
+  zmocnenecJmeno: string
+  zadatelJmeno: string
+  cisloSmlouvy: string
+  klientJmeno: string
+  url: string
+}) {
+  const { orgNazev, primaryColor, zmocnenecJmeno, zadatelJmeno, cisloSmlouvy, klientJmeno, url } = params
+  return orgEmailLayout(orgNazev, primaryColor, `
+    <h2 style="margin:0 0 8px;color:#1a1a2e;font-size:21px;">Smlouva čeká na váš podpis</h2>
+    <p style="color:#6b7280;margin:0 0 24px;">Dobrý den, <strong>${zmocnenecJmeno}</strong>.</p>
+    <p style="color:#374151;margin:0 0 8px;"><strong>${zadatelJmeno}</strong> vás žádá o podpis smlouvy
+    <strong>č. ${cisloSmlouvy}</strong> pro klienta <strong>${klientJmeno}</strong>.</p>
+    <p style="color:#374151;margin:0 0 24px;">Po vašem podpisu se smlouva automaticky odešle klientovi
+    k elektronickému podpisu.</p>
+    <div style="text-align:center;margin:32px 0;">
+      <a href="${url}" style="display:inline-block;background:${primaryColor};color:#fff;font-weight:700;font-size:15px;padding:14px 32px;border-radius:10px;text-decoration:none;">
+        Zobrazit a podepsat v CRM
+      </a>
+    </div>
+    <p style="color:#9aa3b2;font-size:13px;margin:0;">Podepsat můžete i z telefonu — stačí se přihlásit do CRM.</p>
+  `)
+}
+
 export function emailCenovaNabidka(params: {
   orgNazev: string
   primaryColor: string

@@ -16,7 +16,7 @@ export async function GET() {
 
   const users = await db.user.findMany({
     where: { orgId },
-    select: { id: true, jmeno: true, email: true, role: true, aktivni: true, vytvoreno: true },
+    select: { id: true, jmeno: true, email: true, role: true, aktivni: true, vytvoreno: true, serviceAccess: true, podepisujeSmlouvy: true },
     orderBy: { vytvoreno: 'asc' },
   })
   return NextResponse.json(users)
@@ -51,7 +51,7 @@ export async function POST(req: Request) {
   const hesloHash = await bcrypt.hash(heslo, 12)
   const user = await db.user.create({
     data: { orgId, jmeno, email, hesloHash, role: (role as Role) || Role.OBCHODNIK },
-    select: { id: true, jmeno: true, email: true, role: true, aktivni: true, vytvoreno: true },
+    select: { id: true, jmeno: true, email: true, role: true, aktivni: true, vytvoreno: true, serviceAccess: true, podepisujeSmlouvy: true },
   })
 
   await logAction({

@@ -6,9 +6,11 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { confirmDialog } from '@/components/ui/confirm'
 import { formatDateTime, formatDate } from '@/lib/format'
+import { SignatureCanvas } from '@/components/SignatureCanvas'
 
 export const STAV_LABELS: Record<string, string> = {
   NAVRH: 'Návrh',
+  K_INTERNIMU_PODPISU: 'Čeká na podpis za zhotovitele',
   ODESLANO: 'Odesláno k podpisu',
   PODEPSANO: 'Podepsáno',
   EXPIROVANO: 'Expirováno',
@@ -17,6 +19,7 @@ export const STAV_LABELS: Record<string, string> = {
 
 export const STAV_COLORS: Record<string, string> = {
   NAVRH: 'bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-slate-300',
+  K_INTERNIMU_PODPISU: 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300',
   ODESLANO: 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
   PODEPSANO: 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300',
   EXPIROVANO: 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
@@ -26,6 +29,8 @@ export const STAV_COLORS: Record<string, string> = {
 const UDALOST_LABELS: Record<string, string> = {
   VYTVORENO: 'Smlouva vytvořena',
   REVIZE: 'Nová verze smlouvy',
+  PODPIS_VYZADAN: 'Vyžádán podpis za zhotovitele',
+  PODEPSANO_ZHOTOVITELEM: 'Podepsáno za zhotovitele',
   ODESLANO: 'Odesláno klientovi k podpisu',
   PRIPOMINKA: 'Klientovi odeslána připomínka e-mailem',
   ZOBRAZENO: 'Klient zobrazil smlouvu',
@@ -63,18 +68,25 @@ interface Props {
   relace: { email: string; telefon: string; expirace: string } | null
   udalosti: Udalost[]
   can: { pristup: PodpisyPristup; sms: boolean; email: boolean }
+  jeZmocnenec: boolean
+  zmocnenci: string[]
+  zhotovitel: { podepsano: string | null; jmeno: string | null; platny: boolean }
+  zadost: { email: string; telefon: string; jmeno?: string } | null
 }
 
 export default function PodpisPanel(props: Props) {
-  const { sodId, stav, podepsano, podepsalJmeno, relace, udalosti, can } = props
+  const { sodId, stav, podepsano, podepsalJmeno, relace, udalosti, can, jeZmocnenec, zmocnenci, zhotovitel, zadost } = props
   const router = useRouter()
   const [modalOpen, setModalOpen] = useState(false)
+  const [interniOpen, setInterniOpen] = useState(false)
   const [ruse, setRuse] = useState(false)
   const [stornuji, setStornuji] = useState(false)
 
   const { pristup } = can
-  const ready = pristup.allowed && can.sms && can.email
+  const bezZmocnence = zmocnenci.length === 0
+  const ready = pristup.allowed && can.sms && can.email && !bezZmocnence
   const podepsana = stav === 'PODEPSANO'
+  const cekaNaInterni = stav === 'K_INTERNIMU_PODPISU'
 
   async function zneplatnit() {
     if (!(await confirmDialog('Zneplatnit odeslaný odkaz? Klient přes něj smlouvu neotevře ani nepodepíše.', { confirmLabel: 'Zneplatnit' }))) return
@@ -119,6 +131,21 @@ export default function PodpisPanel(props: Props) {
         </span>
       </div>
 
+      {/* Stav interního podpisu za zhotovitele */}
+      {!podepsana && zhotovitel.podepsano && zhotovitel.platny && (
+        <p className="mt-3 flex items-center gap-2 text-sm text-blue-800 dark:text-blue-300">
+          <svg className="w-4 h-4 text-blue-600 shrink-0" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+          </svg>
+          Za zhotovitele podepsal(a) <strong>{zhotovitel.jmeno}</strong> · {formatDateTime(zhotovitel.podepsano)}
+        </p>
+      )}
+      {!podepsana && zhotovitel.podepsano && !zhotovitel.platny && (
+        <p className="mt-3 text-sm text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-lg px-3 py-2">
+          Text smlouvy se od podpisu za zhotovitele změnil — před odesláním klientovi ji zmocněnec podepíše znovu.
+        </p>
+      )}
+
       {podepsana ? (
         <div className="mt-3 flex items-center gap-3 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800/50 px-4 py-3">
           <svg className="w-5 h-5 text-green-600 shrink-0" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
@@ -126,7 +153,8 @@ export default function PodpisPanel(props: Props) {
           </svg>
           <p className="text-sm text-green-800 dark:text-green-300">
             Podepsal(a) <strong>{podepsalJmeno}</strong>{podepsano && <> · {formatDateTime(podepsano)}</>}.
-            Podpis je součástí PDF.
+            {zhotovitel.jmeno && <> Za zhotovitele podepsal(a) <strong>{zhotovitel.jmeno}</strong>.</>}
+            {' '}Podpisy jsou součástí PDF.
           </p>
         </div>
       ) : (
@@ -139,17 +167,40 @@ export default function PodpisPanel(props: Props) {
             </p>
           )}
 
+          {cekaNaInterni && zadost && (
+            <p className="mt-3 text-sm text-indigo-800 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg px-3 py-2">
+              {zadost.jmeno ? <>O podpis požádal(a) <strong>{zadost.jmeno}</strong>. </> : null}
+              Po podpisu zmocněnce ({zmocnenci.join(', ')}) se smlouva automaticky odešle klientovi
+              na <strong>{zadost.email}</strong>.
+            </p>
+          )}
+
           <div className="mt-3 flex items-center gap-2 flex-wrap">
-            <button
-              onClick={() => setModalOpen(true)}
-              disabled={!ready}
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-white bg-primary hover:bg-primary-hover px-3.5 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-              </svg>
-              {stav === 'ODESLANO' ? 'Odeslat znovu' : 'Odeslat k podpisu'}
-            </button>
+            {cekaNaInterni && jeZmocnenec ? (
+              <button
+                onClick={() => setInterniOpen(true)}
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-white bg-primary hover:bg-primary-hover px-3.5 py-2 rounded-lg transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                Podepsat za zhotovitele
+              </button>
+            ) : (
+              <button
+                onClick={() => setModalOpen(true)}
+                disabled={!ready}
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-white bg-primary hover:bg-primary-hover px-3.5 py-2 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
+                {stav === 'ODESLANO' ? 'Odeslat znovu'
+                  : cekaNaInterni ? 'Upravit žádost o podpis'
+                  : jeZmocnenec || zhotovitel.platny ? 'Odeslat k podpisu'
+                  : 'Předat k podpisu'}
+              </button>
+            )}
             {stav === 'ODESLANO' && (
               <button
                 onClick={zneplatnit}
@@ -198,6 +249,12 @@ export default function PodpisPanel(props: Props) {
               SMS brána pro ověřovací kódy zatím není aktivní — online podpis bude dostupný po jejím zapojení.
             </p>
           )}
+          {pristup.allowed && can.email && can.sms && bezZmocnence && (
+            <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
+              Smlouvu zatím nemá kdo podepsat za firmu — v <Link href="/settings/users" className="underline">Nastavení → Uživatelé</Link> určete,
+              kdo podepisuje smlouvy.
+            </p>
+          )}
         </>
       )}
 
@@ -213,6 +270,9 @@ export default function PodpisPanel(props: Props) {
                   {u.typ === 'ODESLANO' && u.meta?.email && (
                     <span className="text-gray-400 dark:text-slate-500"> — {u.meta.email}</span>
                   )}
+                  {u.typ === 'PODEPSANO_ZHOTOVITELEM' && u.meta?.jmeno && (
+                    <span className="text-gray-400 dark:text-slate-500"> — {u.meta.jmeno}</span>
+                  )}
                 </span>
               </li>
             ))}
@@ -223,11 +283,23 @@ export default function PodpisPanel(props: Props) {
       {modalOpen && (
         <OdeslatModal
           sodId={sodId}
-          email={relace?.email ?? props.klientEmail ?? ''}
-          telefon={relace?.telefon ?? props.klientTelefon ?? ''}
+          email={zadost?.email ?? relace?.email ?? props.klientEmail ?? ''}
+          telefon={zadost?.telefon ?? relace?.telefon ?? props.klientTelefon ?? ''}
           znovu={stav === 'ODESLANO'}
+          potrebujePodpis={jeZmocnenec && !zhotovitel.platny}
+          zadatelMode={!jeZmocnenec && !zhotovitel.platny}
+          zmocnenci={zmocnenci}
           onClose={() => setModalOpen(false)}
           onSent={() => { setModalOpen(false); router.refresh() }}
+        />
+      )}
+
+      {interniOpen && zadost && (
+        <InterniPodpisModal
+          sodId={sodId}
+          klientEmail={zadost.email}
+          onClose={() => setInterniOpen(false)}
+          onSigned={() => { setInterniOpen(false); router.refresh() }}
         />
       )}
     </div>
@@ -236,12 +308,16 @@ export default function PodpisPanel(props: Props) {
 
 // Kontrolní obrazovka před odesláním — poslední obrana proti překlepu
 // v kontaktu (odkaz jde e-mailem, ověřovací kód SMS na telefon).
-function OdeslatModal({ sodId, email: initEmail, telefon: initTelefon, znovu, onClose, onSent }: {
+// Zmocněnec bez platného interního podpisu tu smlouvu rovnou podepíše;
+// ne-zmocněnec odešle žádost o podpis a klientovi to odejde až po něm.
+function OdeslatModal({ sodId, email: initEmail, telefon: initTelefon, znovu, potrebujePodpis, zadatelMode, zmocnenci, onClose, onSent }: {
   sodId: string; email: string; telefon: string; znovu: boolean
+  potrebujePodpis: boolean; zadatelMode: boolean; zmocnenci: string[]
   onClose: () => void; onSent: () => void
 }) {
   const [email, setEmail] = useState(initEmail)
   const [telefon, setTelefon] = useState(initTelefon)
+  const [podpis, setPodpis] = useState<string | null>(null)
   const [odesilam, setOdesilam] = useState(false)
   const [chyba, setChyba] = useState<string | null>(null)
 
@@ -252,11 +328,19 @@ function OdeslatModal({ sodId, email: initEmail, telefon: initTelefon, znovu, on
       const res = await fetch(`/api/sod/${sodId}/odeslat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), telefon: telefon.trim() }),
+        body: JSON.stringify({
+          email: email.trim(),
+          telefon: telefon.trim(),
+          ...(potrebujePodpis && podpis ? { podpisSvg: podpis } : {}),
+        }),
       })
       const data = await res.json()
       if (!res.ok) { setChyba(data.error ?? 'Odeslání se nepodařilo'); return }
-      toast.success(`Smlouva odeslána na ${data.email}`)
+      if (data.cekaNaPodpis) {
+        toast.success(`Žádost o podpis odeslána (${(data.zmocnenci ?? zmocnenci).join(', ')}) — klientovi smlouva odejde po podpisu`)
+      } else {
+        toast.success(`Smlouva odeslána na ${data.email}`)
+      }
       onSent()
     } catch {
       setChyba('Odeslání se nepodařilo, zkuste to znovu')
@@ -270,9 +354,9 @@ function OdeslatModal({ sodId, email: initEmail, telefon: initTelefon, znovu, on
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
-      <div className="bg-white dark:bg-slate-800 w-full max-w-md rounded-2xl p-6" onClick={e => e.stopPropagation()}>
+      <div className="bg-white dark:bg-slate-800 w-full max-w-md rounded-2xl p-6 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-1">
-          {znovu ? 'Odeslat smlouvu znovu' : 'Odeslat smlouvu k podpisu'}
+          {znovu ? 'Odeslat smlouvu znovu' : zadatelMode ? 'Předat smlouvu k podpisu' : 'Odeslat smlouvu k podpisu'}
         </h2>
         <p className="text-sm text-gray-500 dark:text-slate-400 mb-5">
           Zkontrolujte oba údaje — na e-mail jde odkaz, na telefon ověřovací kód.
@@ -285,6 +369,23 @@ function OdeslatModal({ sodId, email: initEmail, telefon: initTelefon, znovu, on
         <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Mobil klienta (ověřovací SMS kód)</label>
         <input type="tel" value={telefon} onChange={e => setTelefon(e.target.value)} className={inputCls} placeholder="777 123 456" />
 
+        {potrebujePodpis && (
+          <div className="mt-4">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Váš podpis za zhotovitele</label>
+            <p className="text-xs text-gray-500 dark:text-slate-400 mb-2">
+              Podpis se vloží do smlouvy — klient ji dostane už podepsanou za firmu.
+            </p>
+            <SignatureCanvas onChange={setPodpis} />
+          </div>
+        )}
+
+        {zadatelMode && (
+          <p className="mt-4 text-sm text-indigo-800 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg px-3 py-2">
+            Smlouvu nejdřív podepíše zmocněnec ({zmocnenci.join(', ')}) — dostane žádost e-mailem
+            i notifikací. Po jeho podpisu se smlouva odešle klientovi automaticky.
+          </p>
+        )}
+
         {chyba && (
           <p className="text-sm text-red-600 dark:text-red-400 mt-4 bg-red-50 dark:bg-red-900/20 rounded-lg px-3 py-2">{chyba}</p>
         )}
@@ -292,10 +393,82 @@ function OdeslatModal({ sodId, email: initEmail, telefon: initTelefon, znovu, on
         <div className="flex items-center gap-3 mt-6">
           <button
             onClick={odeslat}
-            disabled={odesilam || !email.trim() || !telefon.trim()}
+            disabled={odesilam || !email.trim() || !telefon.trim() || (potrebujePodpis && !podpis)}
             className="flex-1 rounded-lg bg-primary hover:bg-primary-hover text-white text-sm font-semibold py-2.5 transition-colors disabled:opacity-50"
           >
-            {odesilam ? 'Odesílám…' : 'Zkontrolováno, odeslat'}
+            {odesilam ? 'Odesílám…'
+              : zadatelMode ? 'Odeslat žádost o podpis'
+              : potrebujePodpis ? 'Podepsat a odeslat'
+              : 'Zkontrolováno, odeslat'}
+          </button>
+          <button onClick={onClose} className="text-sm font-medium text-gray-500 dark:text-slate-400 px-3 py-2.5 hover:underline">
+            Zrušit
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Podpis zmocněnce na čekající žádost — po podpisu smlouva sama odejde klientovi
+function InterniPodpisModal({ sodId, klientEmail, onClose, onSigned }: {
+  sodId: string; klientEmail: string
+  onClose: () => void; onSigned: () => void
+}) {
+  const [podpis, setPodpis] = useState<string | null>(null)
+  const [odesilam, setOdesilam] = useState(false)
+  const [chyba, setChyba] = useState<string | null>(null)
+
+  async function podepsat() {
+    if (!podpis) return
+    setOdesilam(true)
+    setChyba(null)
+    try {
+      const res = await fetch(`/api/sod/${sodId}/podepsat-interne`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ podpisSvg: podpis }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setChyba(data.error ?? 'Podpis se nepodařil'); return }
+      if (data.odeslano) {
+        toast.success(`Podepsáno — smlouva odeslána klientovi na ${data.email}`)
+      } else if (data.chybaOdeslani) {
+        toast.warning(data.chybaOdeslani)
+      } else {
+        toast.success('Podepsáno za zhotovitele')
+      }
+      onSigned()
+    } catch {
+      setChyba('Podpis se nepodařil, zkuste to znovu')
+    } finally {
+      setOdesilam(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+      <div className="bg-white dark:bg-slate-800 w-full max-w-md rounded-2xl p-6 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+        <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-1">Podepsat za zhotovitele</h2>
+        <p className="text-sm text-gray-500 dark:text-slate-400 mb-4">
+          Podpis se vloží do smlouvy a ta se hned odešle klientovi
+          na <strong className="text-gray-700 dark:text-slate-200">{klientEmail}</strong>.
+          Před podpisem si smlouvu zkontrolujte (Stáhnout PDF výše).
+        </p>
+
+        <SignatureCanvas onChange={setPodpis} />
+
+        {chyba && (
+          <p className="text-sm text-red-600 dark:text-red-400 mt-4 bg-red-50 dark:bg-red-900/20 rounded-lg px-3 py-2">{chyba}</p>
+        )}
+
+        <div className="flex items-center gap-3 mt-6">
+          <button
+            onClick={podepsat}
+            disabled={odesilam || !podpis}
+            className="flex-1 rounded-lg bg-primary hover:bg-primary-hover text-white text-sm font-semibold py-2.5 transition-colors disabled:opacity-50"
+          >
+            {odesilam ? 'Podepisuji…' : 'Podepsat a odeslat klientovi'}
           </button>
           <button onClick={onClose} className="text-sm font-medium text-gray-500 dark:text-slate-400 px-3 py-2.5 hover:underline">
             Zrušit

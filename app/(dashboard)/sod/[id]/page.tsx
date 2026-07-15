@@ -10,6 +10,7 @@ import { formatDate, formatKcPresne } from '@/lib/format'
 import { getPodpisyAccess } from '@/lib/modulPodpisy'
 import { isSmsConfigured } from '@/lib/sms'
 import { isOrgEmailConfigured } from '@/lib/email'
+import { zhotovitelPodpisPlatny } from '@/lib/sodHtml'
 
 const TYP_LABELS: Record<SodTyp, string> = {
   DPH_12_BEZ_ZALOHY: '12% bez zálohy',
@@ -81,6 +82,9 @@ export default async function SodDetailPage({ params }: { params: { id: string }
         take: 1,
         select: { email: true, telefon: true, expirace: true },
       },
+      organization: {
+        select: { nazev: true, sidlo: true, ico: true, dic: true, email: true, telefon: true },
+      },
     },
   })
 
@@ -92,6 +96,12 @@ export default async function SodDetailPage({ params }: { params: { id: string }
     email: await isOrgEmailConfigured(orgId),
   }
   const aktivniRelace = sod.podpisRelace[0] ?? null
+
+  const zmocnenci = await prisma.user.findMany({
+    where: { orgId, aktivni: true, podepisujeSmlouvy: true },
+    select: { id: true, jmeno: true },
+  })
+  const zadost = sod.podpisZadost as { email: string; telefon: string; jmeno?: string } | null
 
   const seZalohou = ['DPH_12_SE_ZALOHOU', 'DPH_21_SE_ZALOHOU', 'PDP_SE_ZALOHOU'].includes(sod.typ)
   const isAdmin = session.user.role === 'ADMIN'
@@ -178,6 +188,14 @@ export default async function SodDetailPage({ params }: { params: { id: string }
           meta: (u.meta as { email?: string; telefon?: string; jmeno?: string } | null) ?? null,
         }))}
         can={canPodpis}
+        jeZmocnenec={zmocnenci.some(z => z.id === session.user.id)}
+        zmocnenci={zmocnenci.map(z => z.jmeno)}
+        zhotovitel={{
+          podepsano: sod.zhotovitelPodepsano?.toISOString() ?? null,
+          jmeno: sod.zhotovitelPodepsalJmeno,
+          platny: zhotovitelPodpisPlatny(sod),
+        }}
+        zadost={zadost}
       />
 
       <div className="grid grid-cols-1 gap-4">

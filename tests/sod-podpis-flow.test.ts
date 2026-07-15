@@ -22,9 +22,19 @@ vi.mock('@/lib/email', async (importOriginal) => {
   }
 })
 
+// interní podpis: CRM routy vyžadují session a SMS bránu
+vi.mock('next-auth', () => ({ getServerSession: vi.fn() }))
+vi.mock('@/lib/sms', async (importOriginal) => {
+  const orig = await importOriginal<typeof import('@/lib/sms')>()
+  return { ...orig, isSmsConfigured: vi.fn().mockReturnValue(true) }
+})
+
 import { GET as publicGet } from '@/app/api/public/podpis/[token]/route'
 import { POST as overitPost } from '@/app/api/public/podpis/[token]/overit/route'
 import { POST as podepsatPost } from '@/app/api/public/podpis/[token]/podepsat/route'
+import { POST as odeslatPost } from '@/app/api/sod/[id]/odeslat/route'
+import { POST as podepsatInternePost } from '@/app/api/sod/[id]/podepsat-interne/route'
+import { getServerSession } from 'next-auth'
 import { sweepPripominkyPodpisu } from '@/worker/podpisy'
 import { sendOrgEmail } from '@/lib/email'
 import { encryptSecret } from '@/lib/secretCrypto'
@@ -35,6 +45,8 @@ const PNG = `data:image/png;base64,${Buffer.from('fake-png').toString('base64')}
 
 let orgId: string
 let dealId: string
+let zmocnenecId: string
+let obchodnikId: string
 
 beforeAll(async () => {
   if (!process.env.NEXTAUTH_SECRET) {
@@ -50,6 +62,15 @@ beforeAll(async () => {
     data: { orgId, clientId: client.id, predmet: 'TČ', kod: `${RUN}-op`, technologie: 'TEPELNE_CERPADLO' },
   })
   dealId = deal.id
+  // podepisujeSmlouvy se zapíná až v testech interního podpisu
+  const zmocnenec = await prisma.user.create({
+    data: { orgId, jmeno: 'Zdena Zmocněná', email: `${RUN}-zmocnenec@example.com`, hesloHash: 'x' },
+  })
+  zmocnenecId = zmocnenec.id
+  const obchodnik = await prisma.user.create({
+    data: { orgId, jmeno: 'Oto Obchodník', email: `${RUN}-obchodnik@example.com`, hesloHash: 'x' },
+  })
+  obchodnikId = obchodnik.id
 })
 
 afterAll(async () => {
@@ -59,6 +80,8 @@ afterAll(async () => {
   await prisma.sod.deleteMany({ where: { orgId } })
   await prisma.deal.deleteMany({ where: { orgId } })
   await prisma.client.deleteMany({ where: { orgId } })
+  await prisma.notification.deleteMany({ where: { orgId } })
+  await prisma.user.deleteMany({ where: { orgId } })
   await prisma.orgSettings.deleteMany({ where: { orgId } })
   await prisma.organization.delete({ where: { id: orgId } })
   await prisma.$disconnect()
@@ -278,5 +301,144 @@ describe('modul podpisy — přístup podle plánu', () => {
     expect(po.allowed).toBe(false)
 
     await prisma.organization.update({ where: { id: orgId }, data: { modulPodpisy: false } })
+  })
+})
+
+describe('interní podpis za zhotovitele', () => {
+  function mockSession(userId: string) {
+    vi.mocked(getServerSession).mockResolvedValue({
+      user: { id: userId, orgId, role: 'OBCHODNIK', plan: 'PROFESSIONAL' },
+    } as never)
+  }
+
+  function crmReq(body: Record<string, unknown>) {
+    return new Request('http://localhost/api/sod/x', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+  }
+
+  async function vytvorNavrh() {
+    return prisma.sod.create({
+      data: {
+        orgId, dealId, cislo: `SOD-${RUN}-${Math.random().toString(36).slice(2, 8)}`,
+        typ: 'DPH_12_BEZ_ZALOHY', klientJmeno: 'Karel Klient', predmetDila: 'Tepelné čerpadlo',
+        textSmlouvy: '<p>Text smlouvy k internímu podpisu</p>',
+      },
+    })
+  }
+
+  const KONTAKT = { email: 'karel@example.com', telefon: '777123456' }
+
+  it('bez zmocněnce se smlouva neodešle', async () => {
+    const sod = await vytvorNavrh()
+    mockSession(obchodnikId)
+    const res = await odeslatPost(crmReq(KONTAKT), { params: { id: sod.id } })
+    expect(res.status).toBe(422)
+    expect((await res.json()).error).toContain('kdo za firmu podepisuje')
+  })
+
+  it('ne-zmocněnec → žádost o podpis (bell + e-mail zmocněnci), klientovi nic', async () => {
+    await prisma.user.update({ where: { id: zmocnenecId }, data: { podepisujeSmlouvy: true } })
+    vi.mocked(sendOrgEmail).mockClear()
+
+    const sod = await vytvorNavrh()
+    mockSession(obchodnikId)
+    const res = await odeslatPost(crmReq(KONTAKT), { params: { id: sod.id } })
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.cekaNaPodpis).toBe(true)
+    expect(data.zmocnenci).toEqual(['Zdena Zmocněná'])
+
+    const po = await prisma.sod.findUnique({ where: { id: sod.id } })
+    expect(po?.stav).toBe('K_INTERNIMU_PODPISU')
+    expect(po?.podpisZadost).toMatchObject({
+      email: KONTAKT.email, telefon: '420777123456', userId: obchodnikId, jmeno: 'Oto Obchodník',
+    })
+
+    // klientovi neodešlo nic — žádná relace, e-mail šel jen zmocněnci
+    expect(await prisma.sodPodpisRelace.count({ where: { sodId: sod.id } })).toBe(0)
+    expect(sendOrgEmail).toHaveBeenCalledTimes(1)
+    expect(sendOrgEmail).toHaveBeenCalledWith(
+      orgId, `${RUN}-zmocnenec@example.com`,
+      expect.stringContaining('čeká na váš podpis'),
+      expect.stringContaining('Oto Obchodník')
+    )
+    const bell = await prisma.notification.findFirst({ where: { orgId, userId: zmocnenecId, typ: 'SOD_PODPIS_VYZADAN' } })
+    expect(bell?.zprava).toContain(sod.cislo)
+
+    const typy = (await prisma.sodUdalost.findMany({ where: { sodId: sod.id } })).map(u => u.typ)
+    expect(typy).toContain('PODPIS_VYZADAN')
+    expect(typy).not.toContain('ODESLANO')
+  })
+
+  it('podpis zmocněnce vyřídí žádost — smlouva odejde klientovi sama i s podpisovým blokem', async () => {
+    const sod = await vytvorNavrh()
+    mockSession(obchodnikId)
+    await odeslatPost(crmReq(KONTAKT), { params: { id: sod.id } })
+    vi.mocked(sendOrgEmail).mockClear()
+
+    mockSession(zmocnenecId)
+    const res = await podepsatInternePost(crmReq({ podpisSvg: PNG }), { params: { id: sod.id } })
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.odeslano).toBe(true)
+    expect(data.email).toBe(KONTAKT.email)
+
+    const po = await prisma.sod.findUnique({ where: { id: sod.id } })
+    expect(po?.stav).toBe('ODESLANO')
+    expect(po?.zhotovitelPodepsalJmeno).toBe('Zdena Zmocněná')
+    expect(po?.zhotovitelPodepsalId).toBe(zmocnenecId)
+    expect(po?.zhotovitelTextHash).toBeTruthy()
+    expect(po?.podpisZadost).toBeNull()
+
+    // snapshot pro klienta obsahuje interní podpisový blok
+    const verze = await prisma.sodVerze.findFirst({ where: { sodId: sod.id }, orderBy: { cislo: 'desc' } })
+    expect(verze?.textSmlouvy).toContain('za zhotovitele')
+
+    // relace odeslaná jménem žadatele, žadatel dostal bell
+    const relace = await prisma.sodPodpisRelace.findFirst({ where: { sodId: sod.id, stav: 'AKTIVNI' } })
+    expect(relace?.odeslalId).toBe(obchodnikId)
+    const bell = await prisma.notification.findFirst({ where: { orgId, userId: obchodnikId, typ: 'SOD_PODEPSANA_ZHOTOVITELEM' } })
+    expect(bell?.zprava).toContain(sod.cislo)
+
+    const typy = (await prisma.sodUdalost.findMany({ where: { sodId: sod.id } })).map(u => u.typ)
+    expect(typy).toEqual(expect.arrayContaining(['PODPIS_VYZADAN', 'PODEPSANO_ZHOTOVITELEM', 'ODESLANO']))
+  })
+
+  it('ne-zmocněnec nemůže interně podepsat', async () => {
+    const sod = await vytvorNavrh()
+    mockSession(obchodnikId)
+    const res = await podepsatInternePost(crmReq({ podpisSvg: PNG }), { params: { id: sod.id } })
+    expect(res.status).toBe(403)
+  })
+
+  it('zmocněnec podepíše a odešle v jednom kroku; bez podpisu to nejde', async () => {
+    const sod = await vytvorNavrh()
+    mockSession(zmocnenecId)
+
+    const bezPodpisu = await odeslatPost(crmReq(KONTAKT), { params: { id: sod.id } })
+    expect(bezPodpisu.status).toBe(422)
+    expect((await bezPodpisu.json()).error).toContain('Chybí podpis')
+
+    const res = await odeslatPost(crmReq({ ...KONTAKT, podpisSvg: PNG }), { params: { id: sod.id } })
+    expect(res.status).toBe(200)
+
+    const po = await prisma.sod.findUnique({ where: { id: sod.id } })
+    expect(po?.stav).toBe('ODESLANO')
+    expect(po?.zhotovitelPodepsalId).toBe(zmocnenecId)
+  })
+
+  it('editace textu interní podpis zneplatní — nové odeslání chce nový podpis', async () => {
+    const sod = await vytvorNavrh()
+    mockSession(zmocnenecId)
+    await odeslatPost(crmReq({ ...KONTAKT, podpisSvg: PNG }), { params: { id: sod.id } })
+
+    await prisma.sod.update({ where: { id: sod.id }, data: { textSmlouvy: '<p>Upravený text</p>' } })
+
+    const res = await odeslatPost(crmReq(KONTAKT), { params: { id: sod.id } })
+    expect(res.status).toBe(422)
+    expect((await res.json()).error).toContain('Chybí podpis')
   })
 })
