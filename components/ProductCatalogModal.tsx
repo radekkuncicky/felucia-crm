@@ -205,10 +205,9 @@ export default function ProductCatalogModal({ onClose, onAdd }: Props) {
   const selInp = 'border border-gray-300 dark:border-slate-600 rounded px-2 py-1 text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-primary'
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-0 md:p-4">
       <div
-        className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl flex flex-col"
-        style={{ width: 'min(900px, 100%)', height: '80vh' }}
+        className="bg-white dark:bg-slate-800 md:rounded-xl shadow-2xl flex flex-col w-full h-[100dvh] md:h-[80vh] md:max-w-[900px]"
       >
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200 dark:border-slate-700 flex items-center justify-between flex-shrink-0">
@@ -226,6 +225,7 @@ export default function ProductCatalogModal({ onClose, onAdd }: Props) {
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="flex-1 min-w-48 border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400"
+            style={{ fontSize: 16 }}
           />
           <select
             value={catFilter}
@@ -270,22 +270,22 @@ export default function ProductCatalogModal({ onClose, onAdd }: Props) {
                     className="w-4 h-4 text-blue-600 rounded border-gray-300"
                   />
                 </th>
-                <th className={thCls} onClick={() => handleSort('kod')}>KÓD <SortIcon col="kod" /></th>
+                <th className={`${thCls} hidden md:table-cell`} onClick={() => handleSort('kod')}>KÓD <SortIcon col="kod" /></th>
                 <th className={thCls} onClick={() => handleSort('nazev')}>NÁZEV PRODUKTU <SortIcon col="nazev" /></th>
-                <th className={`${thCls} text-right`} onClick={() => handleSort('cena')}>STANDARDNÍ CENA <SortIcon col="cena" /></th>
-                <th className="text-right text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase px-3 py-3">SAZBA DPH</th>
-                <th className="text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase px-3 py-3">PRODUKTOVÁ ŘADA</th>
+                <th className={`${thCls} text-right`} onClick={() => handleSort('cena')}>CENA <SortIcon col="cena" /></th>
+                <th className="hidden md:table-cell text-right text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase px-3 py-3">SAZBA DPH</th>
+                <th className="hidden md:table-cell text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase px-3 py-3">PRODUKTOVÁ ŘADA</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
               {loading && Array.from({ length: 6 }).map((_, i) => (
                 <tr key={i} className="animate-pulse">
                   <td className="px-4 py-3"><div className="w-4 h-4 bg-gray-200 dark:bg-slate-700 rounded" /></td>
-                  <td className="px-3 py-3"><div className="h-4 bg-gray-200 dark:bg-slate-700 rounded w-16" /></td>
+                  <td className="hidden md:table-cell px-3 py-3"><div className="h-4 bg-gray-200 dark:bg-slate-700 rounded w-16" /></td>
                   <td className="px-3 py-3"><div className="h-4 bg-gray-200 dark:bg-slate-700 rounded w-48" /></td>
                   <td className="px-3 py-3"><div className="h-4 bg-gray-200 dark:bg-slate-700 rounded w-20 ml-auto" /></td>
-                  <td className="px-3 py-3"><div className="h-4 bg-gray-200 dark:bg-slate-700 rounded w-12 ml-auto" /></td>
-                  <td className="px-3 py-3"><div className="h-4 bg-gray-200 dark:bg-slate-700 rounded w-24" /></td>
+                  <td className="hidden md:table-cell px-3 py-3"><div className="h-4 bg-gray-200 dark:bg-slate-700 rounded w-12 ml-auto" /></td>
+                  <td className="hidden md:table-cell px-3 py-3"><div className="h-4 bg-gray-200 dark:bg-slate-700 rounded w-24" /></td>
                 </tr>
               ))}
               {!loading && sorted.length === 0 && (
@@ -314,16 +314,19 @@ export default function ProductCatalogModal({ onClose, onAdd }: Props) {
                         className="w-4 h-4 text-blue-600 rounded border-gray-300"
                       />
                     </td>
-                    <td className="px-3 py-3 text-sm font-mono text-gray-500 dark:text-slate-400 whitespace-nowrap">{p.kod ?? '—'}</td>
-                    <td className="px-3 py-3 text-sm font-medium text-gray-900 dark:text-white">{p.nazev}</td>
+                    <td className="hidden md:table-cell px-3 py-3 text-sm font-mono text-gray-500 dark:text-slate-400 whitespace-nowrap">{p.kod ?? '—'}</td>
+                    <td className="px-3 py-3 text-sm font-medium text-gray-900 dark:text-white">
+                      {p.nazev}
+                      {p.kod && <span className="md:hidden block text-xs font-mono font-normal text-gray-400 dark:text-slate-500 mt-0.5">{p.kod}</span>}
+                    </td>
                     <td className="px-3 py-3 text-sm text-right whitespace-nowrap">
                       <span className={hasCenikPrice ? 'text-primary dark:text-primary-light font-medium' : 'text-gray-700 dark:text-slate-300'}>
                         {formatCislo(price)} Kč
                       </span>
                       {hasCenikPrice && <span className="ml-1 text-xs text-blue-400">(ceník)</span>}
                     </td>
-                    <td className="px-3 py-3 text-sm text-right text-gray-500 dark:text-slate-400">{p.dphSazba} %</td>
-                    <td className="px-3 py-3 text-sm text-gray-500 dark:text-slate-400">{p.produktovaRada ?? '—'}</td>
+                    <td className="hidden md:table-cell px-3 py-3 text-sm text-right text-gray-500 dark:text-slate-400">{p.dphSazba} %</td>
+                    <td className="hidden md:table-cell px-3 py-3 text-sm text-gray-500 dark:text-slate-400">{p.produktovaRada ?? '—'}</td>
                   </tr>
                 )
               })}
@@ -370,9 +373,9 @@ export default function ProductCatalogModal({ onClose, onAdd }: Props) {
             </div>
             <div className="divide-y divide-blue-100 dark:divide-blue-900/30">
               {selectedEntries.map(([productId, s]) => (
-                <div key={productId} className="px-6 py-2 flex items-center gap-3">
-                  <span className="flex-1 text-sm text-gray-900 dark:text-white truncate min-w-0">{s.nazev}</span>
-                  <div className="flex items-center gap-2 flex-shrink-0">
+                <div key={productId} className="px-4 md:px-6 py-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <span className="flex-1 basis-full md:basis-auto text-sm text-gray-900 dark:text-white truncate min-w-0">{s.nazev}</span>
+                  <div className="flex items-center gap-2 flex-shrink-0 ml-auto">
                     <label className="text-xs text-gray-500 dark:text-slate-400">Ks:</label>
                     <input
                       type="number"
@@ -403,8 +406,8 @@ export default function ProductCatalogModal({ onClose, onAdd }: Props) {
         )}
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-200 dark:border-slate-700 flex items-center justify-between flex-shrink-0">
-          <p className="text-sm text-gray-500 dark:text-slate-400">
+        <div className="px-4 md:px-6 py-3 md:py-4 pb-safe border-t border-gray-200 dark:border-slate-700 flex items-center justify-between gap-2 flex-shrink-0">
+          <p className="text-sm text-gray-500 dark:text-slate-400 hidden sm:block">
             {selectedCount > 0
               ? <span>Vybráno: <strong className="text-gray-900 dark:text-white">{selectedCount}</strong> produktů</span>
               : 'Klikněte na řádek nebo zaškrtněte produkt'}
