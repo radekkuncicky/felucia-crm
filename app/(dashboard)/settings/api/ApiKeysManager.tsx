@@ -148,7 +148,7 @@ export default function ApiKeysManager() {
                 type="text"
                 value={origins}
                 onChange={e => setOrigins(e.target.value)}
-                placeholder="https://www.nanto.cz, https://eshop.nanto.cz"
+                placeholder="https://www.vasefirma.cz, https://eshop.vasefirma.cz"
                 className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
               />
               <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">Oddělte čárkou. Prázdné = povoleno vše.</p>

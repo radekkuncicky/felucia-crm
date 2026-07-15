@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import ConfirmModal from '@/components/ConfirmModal'
+import { IconTag } from '@/components/ui/Icons'
 
 interface Product {
   id: string
@@ -483,7 +484,7 @@ export default function CategoriesClient({
         {/* Empty state */}
         {categories.length === 0 && !addingNew && (
           <div className="text-center py-16 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700">
-            <div className="text-4xl mb-3">🏷️</div>
+            <IconTag className="w-10 h-10 mx-auto mb-3 text-gray-300 dark:text-slate-600" />
             <p className="text-gray-500 dark:text-slate-400 text-sm">Žádné kategorie. Vytvořte první kategorii.</p>
           </div>
         )}

@@ -117,7 +117,7 @@ function EventCard({ ev }: { ev: CalendarEvent }) {
           <span className={`text-xs font-medium ${isZruseno ? 'text-gray-400' : s.text} opacity-70`}>{s.label}</span>
           {ev.time && (
             <span className="text-xs text-gray-500 dark:text-slate-400">
-              🕐 {ev.time}{ev.trvaniMin ? ` · ${fmtTrvani(ev.trvaniMin)}` : ''}
+              {ev.time}{ev.trvaniMin ? ` · ${fmtTrvani(ev.trvaniMin)}` : ''}
             </span>
           )}
         </div>

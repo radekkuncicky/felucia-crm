@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { IconLightbulb } from '@/components/ui/Icons'
 
 /**
  * Rozbalovací nápověda na stránce šablon smluv — vysvětlí uživateli, jak
@@ -92,7 +93,7 @@ export default function ContractTemplateGuide() {
 
           {/* Tip */}
           <p className="text-xs text-gray-500 dark:text-slate-400 border-t border-blue-100 dark:border-blue-900/30 pt-3">
-            💡 Než šablonu uložíte, klikněte na <strong>&bdquo;Náhled s ukázkovými daty&ldquo;</strong> — uvidíte
+            <IconLightbulb className="w-3.5 h-3.5 inline-block mr-1 -mt-0.5" /> Než šablonu uložíte, klikněte na <strong>&bdquo;Náhled s ukázkovými daty&ldquo;</strong> — uvidíte
             smlouvu vyplněnou vzorovými hodnotami a ověříte, že jsou všechny symboly napsané správně
             (špatně napsaný symbol se v náhledu zobrazí jako <code className="font-mono text-xs">{'{{...}}'}</code>).
           </p>

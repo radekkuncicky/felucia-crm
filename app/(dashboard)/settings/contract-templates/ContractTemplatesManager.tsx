@@ -45,7 +45,7 @@ const SAMPLE: Record<string, string> = {
   '{{cena_s_dph}}': '60 500 Kč',
   '{{dph_sazba}}': '21',
   '{{kod_op}}': 'OP-26-042',
-  '{{organizace}}': 'NANTO s.r.o.',
+  '{{organizace}}': 'Vzorová firma s.r.o.',
   '{{org_sidlo}}': 'Náměstí Míru 1, 602 00 Brno',
   '{{org_ico}}': '98765432',
   '{{org_dic}}': 'CZ98765432',

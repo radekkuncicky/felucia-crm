@@ -329,7 +329,7 @@ export default function ZakazkaDetailClient({ zakazka, orgUsers, canEdit, isAdmi
         title="Uzavřít zakázku"
         message={zakazka.zaplaceno
           ? 'Zakázka je zaplacená. Uzavřením se ukončí její životní cyklus.'
-          : 'Pozor: zakázka zatím není označená jako zaplacená. Uzavřít ji můžeš i tak, ale obvykle se uzavírá až po zaplacení.'}
+          : 'Pozor: zakázka zatím není označená jako zaplacená. Uzavřít ji můžete i tak, ale obvykle se uzavírá až po zaplacení.'}
         confirmLabel="Uzavřít"
         loading={acting}
         onConfirm={async () => { const ok = await changeStav('UZAVRENA'); if (ok) setConfirmAction(null) }}

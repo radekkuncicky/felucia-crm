@@ -10,6 +10,7 @@ import { ResizeHandle } from '@/components/ResizeHandle'
 import ConfirmModal from '@/components/ConfirmModal'
 import { api } from '@/lib/api'
 import { type ServisniZakazkaStav, stavLabel, stavColor, jeProsla, jeAktivni } from '@/lib/servisStav'
+import { IconCog, IconWarning, IconLightbulb } from '@/components/ui/Icons'
 import { formatDate, formatKcPresne, formatCislo } from '@/lib/format'
 
 const KONTR_DEFS: ColumnDef[] = [
@@ -444,7 +445,7 @@ export default function KontraktyClient({ kontrakty, orgUsers, zarizeniList }: P
               {/* Zařízení */}
               {selectedKontrakt.zarizeni && (
                 <div className="bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-900/40 rounded-lg px-4 py-3 flex items-center gap-3">
-                  <span className="text-xl">⚙️</span>
+                  <IconCog className="w-6 h-6 text-green-600 dark:text-green-400" />
                   <div>
                     <p className="font-medium text-gray-900 dark:text-white text-sm">{selectedKontrakt.zarizeni.nazev}</p>
                     {selectedKontrakt.zarizeni.vyrobniCislo && (
@@ -585,8 +586,8 @@ export default function KontraktyClient({ kontrakty, orgUsers, zarizeniList }: P
                             )}
                           </div>
                           {n.zprava && <p className="text-xs text-gray-700 dark:text-slate-300 mt-1">{n.zprava}</p>}
-                          {n.nalezeneZavady && <p className="text-xs text-orange-700 dark:text-orange-400 mt-0.5">⚠ {n.nalezeneZavady}</p>}
-                          {n.doporuceni && <p className="text-xs text-green-700 dark:text-green-400 mt-0.5">💡 {n.doporuceni}</p>}
+                          {n.nalezeneZavady && <p className="text-xs text-orange-700 dark:text-orange-400 mt-0.5 flex items-start gap-1"><IconWarning className="w-3.5 h-3.5 flex-shrink-0 mt-px" /> {n.nalezeneZavady}</p>}
+                          {n.doporuceni && <p className="text-xs text-green-700 dark:text-green-400 mt-0.5 flex items-start gap-1"><IconLightbulb className="w-3.5 h-3.5 flex-shrink-0 mt-px" /> {n.doporuceni}</p>}
                           {(n.nakladyCas || n.nakladyMaterial) && (
                             <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
                               Náklady: {[(n.nakladyCas ? `čas ${formatKcPresne(n.nakladyCas)}` : null), (n.nakladyMaterial ? `mat. ${formatKcPresne(n.nakladyMaterial)}` : null)].filter(Boolean).join(' + ')}

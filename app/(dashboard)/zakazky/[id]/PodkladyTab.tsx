@@ -107,7 +107,7 @@ export default function PodkladyTab({ zakazkaId, pokyny: initialPokyny, dokument
               rows={5}
               value={pokyny}
               onChange={e => setPokyny(e.target.value)}
-              placeholder="Napiš instrukce pro techniky — co mají připravit, na co dávat pozor, poznámky k projektu..."
+              placeholder="Napište instrukce pro techniky — co mají připravit, na co dávat pozor, poznámky k projektu..."
               className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1B5E20]/40 resize-none"
             />
             <div className="flex gap-2 justify-end">

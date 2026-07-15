@@ -1,9 +1,10 @@
 import Link from 'next/link'
+import { IconLock } from '@/components/ui/Icons'
 
 export default function PlatinumGuard() {
   return (
     <div className="flex flex-col items-center justify-center min-h-[400px] text-center p-8">
-      <div className="text-5xl mb-4">🔒</div>
+      <IconLock className="w-12 h-12 mb-4 text-gray-300 dark:text-slate-600" />
       <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
         Servisní modul je součástí plánu Platinum
       </h2>
