@@ -178,7 +178,7 @@ export default function NewClientPage() {
               </div>
               <div>
                 <label className={label}>Název firmy *</label>
-                <input type="text" required value={form.jmeno} onChange={e => set('jmeno', e.target.value)} className={inp} placeholder="DeproStav s.r.o." />
+                <input type="text" required value={form.jmeno} onChange={e => set('jmeno', e.target.value)} className={inp} placeholder="Vzorová stavba s.r.o." />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>

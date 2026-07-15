@@ -504,7 +504,7 @@ function InlineTechEditor({
   if (template.isSystem) {
     return (
       <div className="px-5 py-4 bg-gray-50 dark:bg-slate-800/50 border-t border-[#C8E6C9] dark:border-[#1C3B1C] flex items-center gap-2 text-xs text-gray-500 dark:text-slate-400">
-        <span>SYSTEM šablona — nelze upravovat. Interní šablony NANTO mají dynamické sekce dle technologie zakázky.</span>
+        <span>SYSTEM šablona — nelze upravovat. Systémové šablony mají dynamické sekce dle technologie zakázky.</span>
       </div>
     )
   }
@@ -772,7 +772,7 @@ function TemplateEditor({
                 <p className="font-semibold text-gray-800 dark:text-white text-sm">SYSTEM šablona — nelze upravovat</p>
               </div>
               <p className="text-sm text-gray-500 dark:text-slate-400">
-                Tato šablona je součástí vašeho NANTO nastavení.
+                Tato šablona je systémová — generuje se automaticky a nelze ji upravovat.
               </p>
             </div>
           )}
@@ -1256,7 +1256,7 @@ export default function QuoteTemplatesSettings({
           <div className="px-5 py-3 bg-emerald-50 dark:bg-emerald-900/20 border-b border-[#C8E6C9] dark:border-emerald-800 flex items-start gap-2">
             <span className="text-emerald-600 dark:text-emerald-400 text-sm mt-0.5">ℹ</span>
             <div>
-              <p className="text-xs font-medium text-emerald-800 dark:text-emerald-200">NANTO používá interní SYSTEM šablony s dynamickými sekcemi.</p>
+              <p className="text-xs font-medium text-emerald-800 dark:text-emerald-200">Vaše organizace používá interní SYSTEM šablony s dynamickými sekcemi.</p>
               <p className="text-xs text-emerald-700 dark:text-emerald-300 mt-0.5">Šablony jsou generovány automaticky dle technologie zakázky a nelze je upravovat.</p>
             </div>
           </div>
