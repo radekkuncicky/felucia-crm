@@ -2,22 +2,8 @@ import Link from 'next/link'
 
 export const metadata = {
   title: 'Všeobecné obchodní podmínky | Felucia',
-  description: 'Všeobecné obchodní podmínky služby Felucia CRM provozované společností EFIKU s.r.o.',
+  description: 'Všeobecné obchodní podmínky služby Felucia CRM provozované společností EFIKU SOLUTIONS s.r.o.',
 }
-
-const TODO = ({ children }: { children: React.ReactNode }) => (
-  <span style={{
-    background: 'rgba(255,193,7,0.18)',
-    color: '#FFD54F',
-    border: '1px dashed rgba(255,193,7,0.5)',
-    borderRadius: 4,
-    padding: '1px 6px',
-    fontFamily: 'monospace',
-    fontSize: '0.9em',
-  }}>
-    {children}
-  </span>
-)
 
 export default function TermsPage() {
   return (
@@ -62,17 +48,17 @@ export default function TermsPage() {
             Všeobecné obchodní podmínky
           </h1>
           <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, color: '#6B8F6B' }}>
-            EFIKU s.r.o. | Služba Felucia CRM | felucia.io
+            EFIKU SOLUTIONS s.r.o. | Služba Felucia CRM | felucia.io
           </p>
           <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, color: '#6B8F6B', marginTop: 4 }}>
-            Platné od: <TODO>[DATUM]</TODO>
+            Platné od: 15. 7. 2026
           </p>
         </div>
 
         <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 15, lineHeight: 1.8, color: '#A5D6A7' }}>
 
           <Section title="Čl. 1 — Úvodní ustanovení">
-            <p>1.1 Tyto všeobecné obchodní podmínky (dále jen &bdquo;VOP&ldquo;) upravují práva a povinnosti mezi společností EFIKU s.r.o., IČO: <TODO>[IČO]</TODO>, se sídlem <TODO>[adresa]</TODO> (dále jen &bdquo;Poskytovatel&ldquo;), a fyzickými nebo právnickými osobami, které uzavřely smlouvu o poskytování služby Felucia CRM (dále jen &bdquo;Uživatel&ldquo;).</p>
+            <p>1.1 Tyto všeobecné obchodní podmínky (dále jen &bdquo;VOP&ldquo;) upravují práva a povinnosti mezi společností EFIKU SOLUTIONS s.r.o., IČO: 29703972, se sídlem Výstavní 2224/8, 709 00 Ostrava (dále jen &bdquo;Poskytovatel&ldquo;), a fyzickými nebo právnickými osobami, které uzavřely smlouvu o poskytování služby Felucia CRM (dále jen &bdquo;Uživatel&ldquo;).</p>
             <p>1.2 Služba Felucia CRM je cloudová softwarová aplikace určená pro správu obchodních případů, zakázek a interní agendy (dále jen &bdquo;Služba&ldquo;).</p>
             <p>1.3 Uzavřením smlouvy nebo aktivací uživatelského účtu Uživatel potvrzuje, že se s těmito VOP seznámil a souhlasí s nimi v celém rozsahu.</p>
           </Section>
@@ -179,7 +165,7 @@ export default function TermsPage() {
         {/* Footer */}
         <div style={{ marginTop: 64, paddingTop: 32, borderTop: '1px solid rgba(76,175,80,0.15)', fontFamily: 'Inter, sans-serif', fontSize: 13, color: '#4A6B4A' }}>
           <p>
-            EFIKU s.r.o. | <TODO>[adresa]</TODO> | IČO: <TODO>[IČO]</TODO> | info@efiku.cz | felucia.io
+            EFIKU SOLUTIONS s.r.o. | Výstavní 2224/8, 709 00 Ostrava | IČO: 29703972 | info@efiku.cz | felucia.io
           </p>
           <div style={{ marginTop: 16, display: 'flex', gap: 16 }}>
             <Link href="/privacy" style={{ color: '#6B8F6B', textDecoration: 'none' }}>Zásady ochrany osobních údajů</Link>

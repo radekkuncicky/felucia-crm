@@ -242,20 +242,6 @@ export function emailWelcome(jmeno: string, slug: string, loginUrl: string) {
   `)
 }
 
-// ─── Zakázky email stubs (prepared for future SendGrid/Resend integration) ────
-
-export async function sendPredavakEmail(predavakId: string, recipientEmail: string): Promise<void> {
-  // TODO: integrate with SendGrid/Resend
-  console.log(`[Email připraven k odeslání] Předávací protokol ${predavakId} → ${recipientEmail}`)
-}
-
-export async function sendVyuctovaniEmail(vyuctovaniId: string, recipientEmail: string): Promise<void> {
-  // TODO: integrate with SendGrid/Resend
-  console.log(`[Email připraven k odeslání] Vyúčtování ${vyuctovaniId} → ${recipientEmail}`)
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-
 export function emailActivityReminder(jmeno: string, aktivita: string, dealLabel: string, termin: string, url: string) {
   return emailLayout(`
     <h2 style="margin:0 0 8px;color:#1A2744;font-size:22px;">⏰ Připomínka aktivity</h2>
