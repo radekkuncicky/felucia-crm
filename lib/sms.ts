@@ -4,7 +4,7 @@
  * SMTP/Sentry) a „Odeslat k podpisu" je v UI nedostupné.
  *
  * Aktivace v .env:
- *   SMS_PROVIDER=smsmanager + SMSMANAGER_APIKEY (volitelně SMSMANAGER_GATEWAY high|economy|lowcost, SMSMANAGER_SENDER)
+ *   SMS_PROVIDER=smsmanager + SMSMANAGER_APIKEY (REST API klíč z administrace smsmanager.cz)
  *   SMS_PROVIDER=smsbrana   + SMSBRANA_LOGIN, SMSBRANA_PASSWORD
  *   SMS_PROVIDER=gosms      + GOSMS_CLIENT_ID, GOSMS_CLIENT_SECRET, GOSMS_CHANNEL
  */
@@ -31,23 +31,20 @@ export function maskTelefon(normalized: string): string {
 }
 
 async function sendViaSmsmanager(number: string, message: string): Promise<void> {
-  const params = new URLSearchParams({
-    apikey: process.env.SMSMANAGER_APIKEY!,
-    number,
-    message,
-    gateway: process.env.SMSMANAGER_GATEWAY ?? 'high',
-  })
-  if (process.env.SMSMANAGER_SENDER) params.set('sender', process.env.SMSMANAGER_SENDER)
-  const res = await fetch('https://http-api.smsmanager.cz/Send', {
+  const res = await fetch('https://api.smsmngr.com/v2/message', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: params,
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': process.env.SMSMANAGER_APIKEY!,
+    },
+    body: JSON.stringify({ body: message, to: [{ phone_number: `+${number}` }] }),
     signal: AbortSignal.timeout(15_000),
   })
-  const text = await res.text()
-  // Úspěch = HTTP 200 a tělo "OK|<requestId>|..."; jinak tělo obsahuje kód chyby
-  if (!res.ok || !text.startsWith('OK')) {
-    throw new Error(`SMSmanager: odeslání selhalo (${res.status}: ${text.slice(0, 120)})`)
+  const data = await res.json().catch(() => null)
+  // Úspěch = zpráva přijata bránou: accepted obsahuje záznam, rejected je prázdné
+  const accepted = Array.isArray(data?.accepted) && data.accepted.length > 0
+  if (!res.ok || !accepted) {
+    throw new Error(`SMSmanager: odeslání selhalo (${res.status}: ${JSON.stringify(data)?.slice(0, 160)})`)
   }
 }
 
