@@ -144,6 +144,24 @@ export function sodPodpisBlockHtml(sod: {
 </div>`
 }
 
+export function sodZhotovitelBlockHtml(sod: {
+  zhotovitelPodpisSvg: string | null // PNG data URL ze SignatureCanvas
+  zhotovitelPodepsano: Date | null
+  zhotovitelPodepsalJmeno: string | null
+  zhotovitelTextHash: string | null
+}): string {
+  if (!sod.zhotovitelPodpisSvg || !sod.zhotovitelPodepsano) return ''
+  if (!sod.zhotovitelPodpisSvg.startsWith('data:image/')) return ''
+  return `
+<div style="margin-top:32px;padding:16px 20px;border:1.5px solid #2563eb;border-radius:8px;page-break-inside:avoid;">
+  <p style="margin:0 0 2px;font-size:9pt;font-weight:700;color:#2563eb;text-transform:uppercase;letter-spacing:.06em;">Podepsáno elektronicky za zhotovitele</p>
+  <img src="${sod.zhotovitelPodpisSvg}" alt="podpis zhotovitele" style="height:64px;max-width:260px;display:block;margin:8px 0 4px;" />
+  <p style="margin:0;font-size:10pt;font-weight:700;">${sod.zhotovitelPodepsalJmeno ?? ''}</p>
+  <p style="margin:2px 0 0;font-size:9pt;color:#555;">Datum podpisu: ${formatDate(sod.zhotovitelPodepsano)}</p>
+  ${sod.zhotovitelTextHash ? `<p style="margin:6px 0 0;font-size:7.5pt;color:#999;font-family:monospace;">Otisk dokumentu (SHA-256): ${sod.zhotovitelTextHash}</p>` : ''}
+</div>`
+}
+
 /** Vloží podpisový blok před </body>, případně na konec dokumentu */
 export function appendPodpisBlock(html: string, block: string): string {
   if (!block) return html

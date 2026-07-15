@@ -22,6 +22,7 @@ interface UserRow {
   aktivni: boolean
   vytvoreno: string
   serviceAccess: boolean
+  podepisujeSmlouvy: boolean
 }
 
 function UserAvatar({ jmeno, size = 8 }: { jmeno: string; size?: number }) {
@@ -100,6 +101,16 @@ export default function UsersManager({ users: initUsers, maxUsers, activeUserCou
     if (res.ok) {
       setUsers(prev => prev.map(u => u.id === user.id ? { ...u, serviceAccess: !u.serviceAccess } : u))
       showToast(!user.serviceAccess ? 'Přístup k ser. zakázkám povolen' : 'Přístup k ser. zakázkám odebrán', 'ok')
+    }
+  }
+
+  async function togglePodepisujeSmlouvy(user: UserRow) {
+    const res = await fetch(`/api/settings/users/${user.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ podepisujeSmlouvy: !user.podepisujeSmlouvy }),
+    })
+    if (res.ok) {
+      setUsers(prev => prev.map(u => u.id === user.id ? { ...u, podepisujeSmlouvy: !u.podepisujeSmlouvy } : u))
+      showToast(!user.podepisujeSmlouvy ? 'Uživatel nyní podepisuje smlouvy za firmu' : 'Oprávnění podepisovat smlouvy odebráno', 'ok')
     }
   }
 
@@ -197,6 +208,7 @@ export default function UsersManager({ users: initUsers, maxUsers, activeUserCou
               <th className="text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase px-4 py-3 w-36">Role</th>
               <th className="text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase px-4 py-3 w-24">Stav</th>
               <th className="text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase px-4 py-3 w-28">Ser. zak.</th>
+              <th className="text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase px-4 py-3 w-32" title="Zmocněnec k podpisu smluv o dílo za firmu">Podpis smluv</th>
               <th className="text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase px-4 py-3 w-24">Přidán</th>
               <th className="px-4 py-3 w-48" />
             </tr>
@@ -242,6 +254,15 @@ export default function UsersManager({ users: initUsers, maxUsers, activeUserCou
                     className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${user.serviceAccess ? 'bg-orange-500' : 'bg-gray-200 dark:bg-slate-600'}`}
                   >
                     <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${user.serviceAccess ? 'translate-x-4.5' : 'translate-x-0.5'}`} />
+                  </button>
+                </td>
+                <td className="px-4 py-3">
+                  <button
+                    onClick={() => togglePodepisujeSmlouvy(user)}
+                    title={user.podepisujeSmlouvy ? 'Odebrat oprávnění podepisovat smlouvy za firmu' : 'Zmocnit k podpisu smluv za firmu'}
+                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${user.podepisujeSmlouvy ? 'bg-blue-600' : 'bg-gray-200 dark:bg-slate-600'}`}
+                  >
+                    <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${user.podepisujeSmlouvy ? 'translate-x-4.5' : 'translate-x-0.5'}`} />
                   </button>
                 </td>
                 <td className="px-4 py-3 text-xs text-gray-500 dark:text-slate-400 whitespace-nowrap">

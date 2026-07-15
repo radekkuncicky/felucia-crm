@@ -4,16 +4,19 @@ import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { getPodpisyAccess, PODPISY_MESICNI_LIMIT } from '@/lib/modulPodpisy'
 import { isSmsConfigured, normalizeTelefon } from '@/lib/sms'
-import { isOrgEmailConfigured, sendOrgEmail, emailPodpisSmlouvy } from '@/lib/email'
+import { isOrgEmailConfigured, sendOrgEmail, emailPodpisVyzadan } from '@/lib/email'
 import { getOrgSettings } from '@/lib/orgSettings'
-import {
-  generateToken, sha256, logSodUdalost, PODPIS_RELACE_DNI,
-} from '@/lib/sodPodpis'
-import { encryptSecret } from '@/lib/secretCrypto'
-import { buildSodContentHtml } from '@/lib/sodPdf'
+import { sha256, logSodUdalost } from '@/lib/sodPodpis'
+import { buildSodBaseHtml } from '@/lib/sodHtml'
+import { odeslatSodKlientovi } from '@/lib/sodOdeslani'
+import { createNotification } from '@/lib/createNotification'
 
-// Odeslání smlouvy klientovi k online podpisu: snapshot verze, podpisová
-// relace (token e-mailem, OTP později SMS) a e-mail s odkazem.
+// Odeslání smlouvy k podpisu. Smlouvu musí nejdřív podepsat zmocněnec
+// (User.podepisujeSmlouvy) za zhotovitele, teprve pak jde klientovi:
+//   1. platný interní podpis → rovnou klientovi
+//   2. odesílá zmocněnec → podepíše v jednom kroku (podpisSvg v body) a odešle
+//   3. odesílá kdokoli jiný → žádost o interní podpis (bell + e-mail zmocněncům),
+//      po podpisu se smlouva odešle klientovi automaticky
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -72,80 +75,109 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     return NextResponse.json({ error: 'Neplatné české mobilní číslo — na něj přijde ověřovací kód' }, { status: 422 })
   }
 
-  // Snapshot přesně toho, co klient uvidí a podepíše
-  const contentHtml = buildSodContentHtml(sod)
-
-  const token = generateToken()
-  const puvodniStav = sod.stav
-  const expirace = new Date(Date.now() + PODPIS_RELACE_DNI * 24 * 3600_000)
-
-  const relace = await db.$transaction(async tx => {
-    // starý odkaz přestává platit — vždy je aktivní max. jedna relace
-    await tx.sodPodpisRelace.updateMany({
-      where: { sodId: sod.id, stav: 'AKTIVNI' },
-      data: { stav: 'ZNEPLATNENA' },
-    })
-    const posledni = await tx.sodVerze.findFirst({
-      where: { sodId: sod.id },
-      orderBy: { cislo: 'desc' },
-      select: { cislo: true },
-    })
-    const verze = await tx.sodVerze.create({
-      data: {
-        orgId,
-        sodId: sod.id,
-        cislo: (posledni?.cislo ?? 0) + 1,
-        textSmlouvy: contentHtml,
-        vytvorilId: session.user.id,
-      },
-    })
-    const relace = await tx.sodPodpisRelace.create({
-      data: {
-        orgId,
-        sodId: sod.id,
-        verzeId: verze.id,
-        tokenHash: sha256(token),
-        tokenEnc: encryptSecret(token),
-        email,
-        telefon,
-        expirace,
-        odeslalId: session.user.id,
-      },
-    })
-    await tx.sod.update({ where: { id: sod.id }, data: { stav: 'ODESLANO' } })
-    return relace
+  // Za zhotovitele musí smlouvu podepsat zmocněnec — bez něj se neodesílá
+  const zmocnenci = await db.user.findMany({
+    where: { orgId, aktivni: true, podepisujeSmlouvy: true },
+    select: { id: true, jmeno: true, email: true },
   })
-
-  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'felucia.io'
-  const url = `https://${sod.organization.slug}.${rootDomain}/podpis/${token}`
-  const settings = await getOrgSettings(orgId)
-
-  try {
-    await sendOrgEmail(
-      orgId,
-      email,
-      `Smlouva č. ${sod.cislo} k podpisu — ${sod.organization.nazev}`,
-      emailPodpisSmlouvy({
-        orgNazev: sod.organization.nazev,
-        primaryColor: settings.primaryColor,
-        klientJmeno: sod.klientJmeno,
-        cisloSmlouvy: sod.cislo,
-        url,
-        platnostDni: PODPIS_RELACE_DNI,
-      })
+  if (zmocnenci.length === 0) {
+    return NextResponse.json(
+      { error: 'Nejprve v Nastavení → Uživatelé určete, kdo za firmu podepisuje smlouvy' },
+      { status: 422 }
     )
-  } catch (e) {
-    // e-mail nedorazil → relaci zrušit a vrátit původní stav, ať UI nelže
-    await db.sodPodpisRelace.update({ where: { id: relace.id }, data: { stav: 'ZNEPLATNENA' } })
-    await db.sod.update({ where: { id: sod.id }, data: { stav: puvodniStav } })
-    const msg = e instanceof Error ? e.message : 'neznámá chyba'
-    return NextResponse.json({ error: `E-mail se nepodařilo odeslat: ${msg}` }, { status: 422 })
   }
 
+  const baseHash = sha256(buildSodBaseHtml(sod))
+  const maPlatnyPodpis = !!sod.zhotovitelPodepsano && sod.zhotovitelTextHash === baseHash
+  const jeZmocnenec = zmocnenci.some(z => z.id === session.user.id)
+
+  // 2) odesílá zmocněnec bez platného podpisu → podepíše v jednom kroku
+  if (!maPlatnyPodpis && jeZmocnenec) {
+    const podpisSvg = typeof body.podpisSvg === 'string' ? body.podpisSvg : ''
+    if (!/^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(podpisSvg) || podpisSvg.length > 500_000) {
+      return NextResponse.json({ error: 'Chybí podpis — podepište smlouvu v podpisovém poli' }, { status: 422 })
+    }
+    const ja = zmocnenci.find(z => z.id === session.user.id)!
+    await db.sod.update({
+      where: { id: sod.id },
+      data: {
+        zhotovitelPodpisSvg: podpisSvg,
+        zhotovitelPodepsano: new Date(),
+        zhotovitelPodepsalJmeno: ja.jmeno,
+        zhotovitelPodepsalId: ja.id,
+        zhotovitelTextHash: baseHash,
+      },
+    })
+    sod.zhotovitelPodpisSvg = podpisSvg
+    sod.zhotovitelPodepsano = new Date()
+    sod.zhotovitelPodepsalJmeno = ja.jmeno
+    sod.zhotovitelPodepsalId = ja.id
+    sod.zhotovitelTextHash = baseHash
+    await logSodUdalost({
+      orgId, sodId: sod.id, typ: 'PODEPSANO_ZHOTOVITELEM',
+      userId: ja.id, meta: { jmeno: ja.jmeno, textHash: baseHash }, req,
+    })
+  }
+
+  // 1+2) interní podpis existuje → rovnou klientovi
+  if (maPlatnyPodpis || jeZmocnenec) {
+    const vysledek = await odeslatSodKlientovi({
+      sod, orgId, email, telefon, odeslalId: session.user.id, req,
+    })
+    if (!vysledek.ok) return NextResponse.json({ error: vysledek.error }, { status: 422 })
+    return NextResponse.json({ ok: true, email, telefon, expirace: vysledek.expirace })
+  }
+
+  // 3) odesílá ne-zmocněnec → žádost o interní podpis, klientovi až po něm
+  const zadatel = await db.user.findFirst({
+    where: { id: session.user.id, orgId },
+    select: { jmeno: true },
+  })
+  const zadatelJmeno = zadatel?.jmeno ?? 'Kolega'
+
+  await db.sod.update({
+    where: { id: sod.id },
+    data: {
+      stav: 'K_INTERNIMU_PODPISU',
+      podpisZadost: { email, telefon, userId: session.user.id, jmeno: zadatelJmeno },
+    },
+  })
   await logSodUdalost({
-    orgId, sodId: sod.id, typ: 'ODESLANO', relaceId: relace.id,
-    userId: session.user.id, meta: { email, telefon }, req,
+    orgId, sodId: sod.id, typ: 'PODPIS_VYZADAN',
+    userId: session.user.id,
+    meta: { email, telefon, zmocnenci: zmocnenci.map(z => z.jmeno) }, req,
   })
 
-  return NextResponse.json({ ok: true, email, telefon, expirace })
+  const settings = await getOrgSettings(orgId)
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'felucia.io'
+  const url = `https://${sod.organization.slug}.${rootDomain}/sod/${sod.id}`
+  for (const z of zmocnenci) {
+    await createNotification({
+      orgId,
+      userId: z.id,
+      typ: 'SOD_PODPIS_VYZADAN',
+      zprava: `${zadatelJmeno} žádá o podpis smlouvy ${sod.cislo} za zhotovitele`,
+      dealId: sod.dealId,
+      url: `/sod/${sod.id}`,
+    })
+    await sendOrgEmail(
+      orgId, z.email,
+      `Smlouva č. ${sod.cislo} čeká na váš podpis`,
+      emailPodpisVyzadan({
+        orgNazev: sod.organization.nazev,
+        primaryColor: settings.primaryColor,
+        zmocnenecJmeno: z.jmeno,
+        zadatelJmeno,
+        cisloSmlouvy: sod.cislo,
+        klientJmeno: sod.klientJmeno,
+        url,
+      })
+    ).catch(() => { /* bell notifikace stačí, e-mail je bonus */ })
+  }
+
+  return NextResponse.json({
+    ok: true,
+    cekaNaPodpis: true,
+    zmocnenci: zmocnenci.map(z => z.jmeno),
+  })
 }

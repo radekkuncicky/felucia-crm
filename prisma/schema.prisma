@@ -185,6 +185,7 @@ enum SodTyp {
 // revize po připomínkách = nová SodVerze + návrat do NÁVRH/ODESLÁNO.
 enum SodStav {
   NAVRH
+  K_INTERNIMU_PODPISU
   ODESLANO
   PODEPSANO
   EXPIROVANO
@@ -194,6 +195,8 @@ enum SodStav {
 enum SodUdalostTyp {
   VYTVORENO
   REVIZE
+  PODPIS_VYZADAN
+  PODEPSANO_ZHOTOVITELEM
   ODESLANO
   PRIPOMINKA
   ZOBRAZENO
@@ -312,6 +315,8 @@ model User {
   aktivni      Boolean  @default(true)
   isSuperAdmin  Boolean   @default(false)
   serviceAccess Boolean   @default(false)
+  // zmocněnec k podpisu smluv o dílo za zhotovitele (nastavuje ADMIN)
+  podepisujeSmlouvy Boolean @default(false)
   telefon      String?
   avatar       String?
   pushToken    String?
@@ -1422,6 +1427,16 @@ model Sod {
   podpisUserAgent   String?
   // SHA-256 textSmlouvy v okamžiku podpisu — důkaz, co přesně bylo podepsáno
   podpisTextHash    String?
+
+  // Interní podpis za zhotovitele (zmocněnec, před odesláním klientovi)
+  zhotovitelPodpisSvg      String?   @db.Text
+  zhotovitelPodepsano      DateTime?
+  zhotovitelPodepsalJmeno  String?
+  zhotovitelPodepsalId     String?
+  // SHA-256 těla smlouvy při interním podpisu — pozdější editace podpis zneplatní
+  zhotovitelTextHash       String?
+  // čekající žádost o interní podpis: { email, telefon, userId, jmeno }
+  podpisZadost             Json?
 
   // Metadata
   poznamky          String?

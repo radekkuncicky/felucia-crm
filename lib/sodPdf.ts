@@ -1,17 +1,16 @@
 import { prisma } from './prisma'
 import { orgPrisma } from './orgPrisma'
-import { generateSodHtml } from './sodDocument'
 import { generatePdf } from './pdf'
 import { buildDokumentChrome } from './dokumentyChrome'
-import { renderSodContractHtml } from './sodContractHtml'
 import { renderQuotePdf } from './quoteRenderer'
 import { mergePdfs } from './mergePdfs'
 import { sodPodpisBlockHtml, appendPodpisBlock } from './sodPodpis'
-import { formatDate } from './format'
+import { buildSodContentHtml } from './sodHtml'
 import fs from 'fs'
 import path from 'path'
 
-type SodWithOrg = NonNullable<Awaited<ReturnType<typeof loadSod>>>
+// HTML buildery žijí v lib/sodHtml.ts (bez Puppeteeru); re-export pro stávající importy
+export { buildSodContentHtml, buildSodBaseHtml } from './sodHtml'
 
 async function loadSod(sodId: string, orgId: string) {
   return orgPrisma(orgId).sod.findFirst({
@@ -25,38 +24,6 @@ async function loadSod(sodId: string, orgId: string) {
       },
     },
   })
-}
-
-/** HTML těla smlouvy (textSmlouvy nebo výchozí dokument) vč. podpisového bloku, je-li podepsáno */
-export function buildSodContentHtml(sod: SodWithOrg): string {
-  const html = sod.textSmlouvy
-    ? renderSodContractHtml(sod.textSmlouvy)
-    : generateSodHtml({
-        cislo: sod.cislo,
-        typ: sod.typ,
-        datum: formatDate(sod.vytvoreno),
-        klientJmeno: sod.klientJmeno,
-        klientAdresa: sod.klientAdresa,
-        klientEmail: sod.klientEmail,
-        klientTelefon: sod.klientTelefon,
-        klientIco: sod.klientIco,
-        klientDic: sod.klientDic,
-        kontaktniOsoba: sod.kontaktniOsoba,
-        kontaktniTelefon: sod.kontaktniTelefon,
-        predmetDila: sod.predmetDila,
-        adresaDila: sod.adresaDila,
-        terminPrevzeti: sod.terminPrevzeti,
-        pocetDniRealizace: sod.pocetDniRealizace,
-        zmenaTerm: sod.zmenaTerm,
-        cenaBezDph: sod.cenaBezDph != null ? Number(sod.cenaBezDph) : null,
-        cenaSDph: sod.cenaSDph != null ? Number(sod.cenaSDph) : null,
-        dphSazba: Number(sod.dphSazba),
-        zalohaKc: sod.zalohaKc != null ? Number(sod.zalohaKc) : null,
-        zalohaSplatnost: sod.zalohaSplatnost,
-        zalohaKategorie: sod.zalohaKategorie,
-        org: sod.organization,
-      })
-  return appendPodpisBlock(html, sodPodpisBlockHtml(sod))
 }
 
 /**

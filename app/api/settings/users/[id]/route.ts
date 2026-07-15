@@ -22,8 +22,9 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       aktivni: body.aktivni !== undefined ? body.aktivni : user.aktivni,
       jmeno: body.jmeno ?? user.jmeno,
       serviceAccess: body.serviceAccess !== undefined ? body.serviceAccess : user.serviceAccess,
+      podepisujeSmlouvy: body.podepisujeSmlouvy !== undefined ? body.podepisujeSmlouvy : user.podepisujeSmlouvy,
     },
-    select: { id: true, jmeno: true, email: true, role: true, aktivni: true, serviceAccess: true },
+    select: { id: true, jmeno: true, email: true, role: true, aktivni: true, serviceAccess: true, podepisujeSmlouvy: true },
   })
   return NextResponse.json(updated)
 }
