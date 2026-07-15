@@ -402,6 +402,7 @@ export default async function DealDetailPage({
           }))}
           renderTemplates={renderTemplates}
           userRole={session!.user.role}
+          clientEmail={deal.client.email}
         />
       )}
 

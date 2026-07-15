@@ -346,6 +346,41 @@ export function emailSmlouvaPodepsana(params: {
   `)
 }
 
+export function emailCenovaNabidka(params: {
+  orgNazev: string
+  primaryColor: string
+  klientJmeno: string
+  kod: string | null
+  zprava: string | null
+  url: string | null
+  platnostDni: number
+}) {
+  const { orgNazev, primaryColor, klientJmeno, kod, zprava, url, platnostDni } = params
+  const esc = (s: string) =>
+    s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+  const zpravaHtml = zprava
+    ? `<div style="background:#f9fafb;border-left:3px solid ${primaryColor};border-radius:6px;padding:12px 16px;margin:0 0 24px;color:#374151;white-space:pre-wrap;">${esc(zprava)}</div>`
+    : ''
+  return orgEmailLayout(orgNazev, primaryColor, `
+    <h2 style="margin:0 0 8px;color:#1a1a2e;font-size:21px;">Cenová nabídka${kod ? ` ${kod}` : ''}</h2>
+    <p style="color:#6b7280;margin:0 0 24px;">Dobrý den, <strong>${klientJmeno}</strong>.</p>
+    <p style="color:#374151;margin:0 0 ${zprava ? '12' : '24'}px;">Společnost <strong>${orgNazev}</strong> vám zasílá
+    cenovou nabídku${kod ? ` <strong>${kod}</strong>` : ''}. Najdete ji v příloze tohoto e-mailu.</p>
+    ${zpravaHtml}
+    ${url ? `
+    <div style="text-align:center;margin:32px 0;">
+      <a href="${url}" style="display:inline-block;background:${primaryColor};color:#fff;font-weight:700;font-size:15px;padding:14px 32px;border-radius:10px;text-decoration:none;">
+        Zobrazit nabídku online
+      </a>
+    </div>
+    <p style="color:#9aa3b2;font-size:13px;margin:0;">Odkaz je platný <strong>${platnostDni} dní</strong>.
+    S nabídkou vám rádi poradíme — stačí odpovědět na tento e-mail.</p>
+    ` : `
+    <p style="color:#9aa3b2;font-size:13px;margin:0;">S nabídkou vám rádi poradíme — stačí odpovědět na tento e-mail.</p>
+    `}
+  `)
+}
+
 export function emailPasswordChanged(jmeno: string) {
   return emailLayout(`
     <h2 style="margin:0 0 8px;color:#1A2744;font-size:22px;">Heslo bylo změněno</h2>

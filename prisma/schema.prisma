@@ -529,6 +529,11 @@ model Quote {
   dphSazba    Int      @default(12)
   aktivni     Boolean  @default(false)
   vytvoreno   DateTime @default(now())
+  // Veřejné sdílení PDF: token jen jako SHA-256 hash; šifrovaná kopie
+  // (lib/secretCrypto) pro opakované zobrazení stejného odkazu
+  shareTokenHash String?   @unique
+  shareTokenEnc  String?
+  shareExpiresAt DateTime?
 
   deal     Deal               @relation(fields: [dealId], references: [id], onDelete: Cascade)
   template QuoteTemplate?     @relation(fields: [templateId], references: [id])
