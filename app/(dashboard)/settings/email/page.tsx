@@ -19,6 +19,7 @@ export default async function EmailSettingsPage() {
       initial={
         s
           ? {
+              rezim: s.rezim === 'VLASTNI_SMTP' ? ('VLASTNI_SMTP' as const) : ('FELUCIA' as const),
               smtpHost: s.smtpHost,
               smtpPort: s.smtpPort,
               smtpSecure: s.smtpSecure,

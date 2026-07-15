@@ -53,11 +53,24 @@ export function orgFromHeader(cfg: OrgSmtpConfig) {
   return cfg.fromName ? `${cfg.fromName} <${cfg.fromEmail}>` : cfg.fromEmail
 }
 
+/** Holá adresa z SMTP_FROM („Jméno <adresa>" i samotná adresa) */
+export function systemFromAddress(): string {
+  const raw = process.env.SMTP_FROM ?? 'FELUCIA CRM <noreply@felucia.io>'
+  const m = raw.match(/<([^>]+)>/)
+  return m ? m[1] : raw
+}
+
+/** Identita organizace pro centrální bránu: jméno do From, Reply-To na firemní schránku */
+export interface OrgEmailIdentity {
+  fromName: string | null
+  replyTo: string | null
+}
+
 // Bare prisma záměrně: volá se i z workeru a lib kódu bez orgPrisma kontextu,
 // orgId sem vždy přichází ze session/serverové logiky, ne od klienta.
 async function getOrgSmtpConfig(orgId: string): Promise<OrgSmtpConfig | null> {
   const s = await prisma.orgEmailSettings.findUnique({ where: { orgId } })
-  if (!s) return null
+  if (!s || s.rezim !== 'VLASTNI_SMTP' || !s.smtpHost || !s.smtpUser || !s.smtpPassEnc) return null
   return {
     smtpHost: s.smtpHost,
     smtpPort: s.smtpPort,
@@ -69,11 +82,19 @@ async function getOrgSmtpConfig(orgId: string): Promise<OrgSmtpConfig | null> {
   }
 }
 
-/** Org má vlastní SMTP, nebo existuje globální fallback */
+/** Jméno + Reply-To pro režim FELUCIA; bez nastavení spadne na název organizace */
+export async function getOrgEmailIdentity(orgId: string): Promise<OrgEmailIdentity> {
+  const s = await prisma.orgEmailSettings.findUnique({ where: { orgId } })
+  if (s) return { fromName: s.fromName, replyTo: s.fromEmail || null }
+  const org = await prisma.organization.findUnique({ where: { id: orgId }, select: { nazev: true } })
+  return { fromName: org?.nazev ?? null, replyTo: null }
+}
+
+/** Org má funkční vlastní SMTP, nebo existuje globální brána */
 export async function isOrgEmailConfigured(orgId: string): Promise<boolean> {
   if (isEmailConfigured()) return true
-  const count = await prisma.orgEmailSettings.count({ where: { orgId } })
-  return count > 0
+  const s = await prisma.orgEmailSettings.findUnique({ where: { orgId } })
+  return !!(s && s.rezim === 'VLASTNI_SMTP' && s.smtpHost && s.smtpUser && s.smtpPassEnc)
 }
 
 export interface EmailAttachment {
@@ -82,8 +103,10 @@ export interface EmailAttachment {
 }
 
 /**
- * Odešle e-mail „za firmu": přes SMTP organizace, pokud je nastavené,
- * jinak fallback na globální SMTP_* z .env. Bez obojího vyhodí chybu —
+ * Odešle e-mail „za firmu": přes vlastní SMTP organizace (rezim VLASTNI_SMTP),
+ * jinak přes centrální bránu (SMTP_* z .env) s identitou organizace —
+ * From nese jméno firmy na systémové adrese, Reply-To míří do firemní schránky,
+ * takže odpovědi klientů jdou přímo tenantovi. Bez obojího vyhodí chybu —
  * volající má předem kontrolovat isOrgEmailConfigured().
  */
 export async function sendOrgEmail(
@@ -101,8 +124,12 @@ export async function sendOrgEmail(
   if (!isEmailConfigured()) {
     throw new Error('Odesílání e-mailů není nastaveno (org SMTP ani globální SMTP_HOST)')
   }
+  const identity = await getOrgEmailIdentity(orgId)
   await transporter.sendMail({
-    from: process.env.SMTP_FROM ?? 'FELUCIA CRM <noreply@felucia.io>',
+    from: identity.fromName
+      ? { name: identity.fromName, address: systemFromAddress() }
+      : process.env.SMTP_FROM ?? 'FELUCIA CRM <noreply@felucia.io>',
+    ...(identity.replyTo ? { replyTo: identity.replyTo } : {}),
     to,
     subject,
     html,

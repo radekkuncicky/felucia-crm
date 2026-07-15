@@ -890,11 +890,14 @@ model OrgSettings {
 model OrgEmailSettings {
   id          String    @id @default(cuid())
   orgId       String    @unique
-  smtpHost    String
+  // FELUCIA = centrální brána (jen fromName + fromEmail jako Reply-To),
+  // VLASTNI_SMTP = plné SMTP údaje organizace
+  rezim       String    @default("FELUCIA")
+  smtpHost    String?
   smtpPort    Int       @default(587)
   smtpSecure  Boolean   @default(false)
-  smtpUser    String
-  smtpPassEnc String
+  smtpUser    String?
+  smtpPassEnc String?
   fromName    String?
   fromEmail   String
   // čas posledního úspěšného testovacího e-mailu; null = neověřeno

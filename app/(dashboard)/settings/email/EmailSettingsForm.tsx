@@ -6,11 +6,14 @@ import { toast } from 'sonner'
 import { confirmDialog } from '@/components/ui/confirm'
 import { formatDate } from '@/lib/format'
 
+type Rezim = 'FELUCIA' | 'VLASTNI_SMTP'
+
 interface Saved {
-  smtpHost: string
+  rezim: Rezim
+  smtpHost: string | null
   smtpPort: number
   smtpSecure: boolean
-  smtpUser: string
+  smtpUser: string | null
   fromName: string | null
   fromEmail: string
   overeno: string | null
@@ -68,13 +71,14 @@ const PRESETS = [
 type PresetId = (typeof PRESETS)[number]['id']
 
 function detectPreset(s: Saved | null): PresetId {
-  if (!s) return 'gmail'
+  if (!s?.smtpHost) return 'gmail'
   const p = PRESETS.find(p => p.id !== 'custom' && p.host === s.smtpHost)
   return p?.id ?? 'custom'
 }
 
 export default function EmailSettingsForm({ initial, globalFallback, userEmail }: Props) {
   const [saved, setSaved] = useState<Saved | null>(initial)
+  const [rezim, setRezim] = useState<Rezim>(initial?.rezim ?? 'FELUCIA')
   const [preset, setPreset] = useState<PresetId>(detectPreset(initial))
   const [host, setHost] = useState(initial?.smtpHost ?? PRESETS[0].host)
   const [port, setPort] = useState(String(initial?.smtpPort ?? PRESETS[0].port))
@@ -119,6 +123,7 @@ export default function EmailSettingsForm({ initial, globalFallback, userEmail }
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          rezim,
           smtpHost: host.trim(),
           smtpPort: Number(port),
           smtpSecure: secure,
@@ -169,14 +174,14 @@ export default function EmailSettingsForm({ initial, globalFallback, userEmail }
   }
 
   async function remove() {
-    if (!(await confirmDialog('Odebrat firemní SMTP? E-maily se přestanou odesílat vaší adresou.', { confirmLabel: 'Odebrat' }))) return
+    if (!(await confirmDialog('Odebrat nastavení e-mailu? E-maily se přestanou odesílat pod jménem vaší firmy.', { confirmLabel: 'Odebrat' }))) return
     setRemoving(true)
     try {
       const res = await fetch('/api/settings/email', { method: 'DELETE' })
       if (res.ok) {
         setSaved(null)
         setPass('')
-        toast.success('Firemní SMTP odebráno')
+        toast.success('Nastavení e-mailu odebráno')
       } else {
         toast.error('Odebrání se nepodařilo')
       }
@@ -228,7 +233,45 @@ export default function EmailSettingsForm({ initial, globalFallback, userEmail }
         )}
       </div>
 
-      {/* Poskytovatel */}
+      {/* Způsob odesílání */}
+      <div className="mb-6">
+        <p className={labelCls}>Způsob odesílání</p>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={() => setRezim('FELUCIA')}
+            className={`rounded-xl border px-4 py-3 text-left transition-colors ${
+              rezim === 'FELUCIA'
+                ? 'border-primary bg-primary/5 dark:bg-primary/10'
+                : 'border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600'
+            }`}
+          >
+            <span className="block text-sm font-medium text-gray-900 dark:text-white">Přes Felucii <span className="text-primary">· doporučeno</span></span>
+            <span className="block text-xs text-gray-500 dark:text-slate-400 mt-0.5">Bez nastavování — stačí jméno a e-mail</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setRezim('VLASTNI_SMTP')}
+            className={`rounded-xl border px-4 py-3 text-left transition-colors ${
+              rezim === 'VLASTNI_SMTP'
+                ? 'border-primary bg-primary/5 dark:bg-primary/10'
+                : 'border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600'
+            }`}
+          >
+            <span className="block text-sm font-medium text-gray-900 dark:text-white">Vlastní e-mailový účet</span>
+            <span className="block text-xs text-gray-500 dark:text-slate-400 mt-0.5">Gmail, Microsoft 365, Seznam nebo SMTP</span>
+          </button>
+        </div>
+        {rezim === 'FELUCIA' && (
+          <p className="text-xs text-gray-500 dark:text-slate-400 mt-2 leading-relaxed">
+            E-maily odejdou ze zabezpečené adresy Felucia pod jménem vaší firmy.
+            Když klient odpoví, odpověď dorazí přímo do vaší schránky — nic dalšího nenastavujete.
+          </p>
+        )}
+      </div>
+
+      {/* Poskytovatel (jen vlastní SMTP) */}
+      {rezim === 'VLASTNI_SMTP' && (
       <div className="mb-6">
         <p className={labelCls}>Poskytovatel e-mailu</p>
         <div className="grid grid-cols-2 gap-2">
@@ -249,12 +292,13 @@ export default function EmailSettingsForm({ initial, globalFallback, userEmail }
         </div>
         <p className="text-xs text-gray-500 dark:text-slate-400 mt-2 leading-relaxed">{presetDef.napoveda}</p>
       </div>
+      )}
 
       {/* Formulář */}
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-5 space-y-4 mb-6">
         <div className="grid sm:grid-cols-2 gap-4">
           <div>
-            <label className={labelCls}>Odesílací e-mail</label>
+            <label className={labelCls}>{rezim === 'FELUCIA' ? 'Firemní e-mail (sem chodí odpovědi)' : 'Odesílací e-mail'}</label>
             <input
               type="email"
               value={fromEmail}
@@ -275,6 +319,7 @@ export default function EmailSettingsForm({ initial, globalFallback, userEmail }
           </div>
         </div>
 
+        {rezim === 'VLASTNI_SMTP' && (
         <div className="grid sm:grid-cols-2 gap-4">
           <div>
             <label className={labelCls}>Přihlašovací jméno (SMTP)</label>
@@ -298,8 +343,9 @@ export default function EmailSettingsForm({ initial, globalFallback, userEmail }
             />
           </div>
         </div>
+        )}
 
-        {isCustom && (
+        {rezim === 'VLASTNI_SMTP' && isCustom && (
           <div className="grid sm:grid-cols-3 gap-4 pt-1">
             <div className="sm:col-span-2">
               <label className={labelCls}>SMTP server</label>
@@ -355,14 +401,14 @@ export default function EmailSettingsForm({ initial, globalFallback, userEmail }
             disabled={removing}
             className="ml-auto text-sm font-medium text-red-500 dark:text-red-400 hover:underline disabled:opacity-50"
           >
-            {removing ? 'Odebírám…' : 'Odebrat firemní SMTP'}
+            {removing ? 'Odebírám…' : 'Odebrat nastavení'}
           </button>
         )}
       </div>
 
       <p className="text-xs text-gray-400 dark:text-slate-500 mt-4">
-        Testovací e-mail se odešle na vaši adresu {userEmail || 'účtu'}. Heslo ukládáme šifrovaně
-        a nikdy ho nezobrazujeme.
+        Testovací e-mail se odešle na vaši adresu {userEmail || 'účtu'}.
+        {rezim === 'VLASTNI_SMTP' && ' Heslo ukládáme šifrovaně a nikdy ho nezobrazujeme.'}
       </p>
 
       {/* Stavový modal průběhu testu — jasné načítání a až pak výsledek */}
