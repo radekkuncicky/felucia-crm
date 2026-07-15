@@ -2,8 +2,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
-import { decryptSecret } from '@/lib/secretCrypto'
-import { orgTransporter, orgFromHeader, type OrgSmtpConfig } from '@/lib/email'
+import { sendOrgEmail, isOrgEmailConfigured } from '@/lib/email'
 
 // Známé SMTP chyby přeložené do češtiny s návodem — surová hláška serveru
 // se přidá pod to, ať jde problém dohledat.
@@ -37,7 +36,8 @@ function prelozSmtpChybu(raw: string): string {
   return raw
 }
 
-// Odešle testovací e-mail na adresu přihlášeného admina přes uložené org SMTP.
+// Odešle testovací e-mail na adresu přihlášeného admina stejnou cestou jako
+// ostré maily (sendOrgEmail — vlastní SMTP i centrální brána s Reply-To).
 // Úspěch nastaví `overeno`; chybu vracíme v textu, ať jde nastavení odladit.
 export async function POST() {
   const session = await getServerSession(authOptions)
@@ -49,31 +49,29 @@ export async function POST() {
 
   const s = await db.orgEmailSettings.findUnique({ where: { orgId } })
   if (!s) {
-    return NextResponse.json({ error: 'Nejprve uložte SMTP nastavení' }, { status: 422 })
+    return NextResponse.json({ error: 'Nejprve uložte nastavení e-mailu' }, { status: 422 })
   }
   const to = session.user.email
   if (!to) {
     return NextResponse.json({ error: 'Váš účet nemá e-mailovou adresu' }, { status: 422 })
   }
-
-  const cfg: OrgSmtpConfig = {
-    smtpHost: s.smtpHost,
-    smtpPort: s.smtpPort,
-    smtpSecure: s.smtpSecure,
-    smtpUser: s.smtpUser,
-    smtpPass: decryptSecret(s.smtpPassEnc),
-    fromName: s.fromName,
-    fromEmail: s.fromEmail,
+  if (!(await isOrgEmailConfigured(orgId))) {
+    return NextResponse.json(
+      { error: 'Odesílání přes Felucii zatím není na serveru aktivované — kontaktujte podporu, nebo nastavte vlastní SMTP.' },
+      { status: 422 }
+    )
   }
 
+  const pres = s.rezim === 'VLASTNI_SMTP' ? s.smtpHost : 'centrální bránu Felucia'
   try {
-    await orgTransporter(cfg).sendMail({
-      from: orgFromHeader(cfg),
+    await sendOrgEmail(
+      orgId,
       to,
-      subject: 'Testovací e-mail — FELUCIA CRM',
-      html: `<p>Toto je testovací e-mail z FELUCIA CRM.</p>
-<p>Odesílání e-mailů přes <strong>${cfg.smtpHost}</strong> je nastaveno správně.</p>`,
-    })
+      'Testovací e-mail — FELUCIA CRM',
+      `<p>Toto je testovací e-mail z FELUCIA CRM.</p>
+<p>Odesílání e-mailů přes <strong>${pres}</strong> je nastaveno správně.</p>
+${s.rezim === 'FELUCIA' ? `<p>Odpověď na tento e-mail dorazí na <strong>${s.fromEmail}</strong> (Reply-To).</p>` : ''}`
+    )
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Odeslání selhalo'
     return NextResponse.json({ error: prelozSmtpChybu(msg) }, { status: 422 })
