@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import { toast } from 'sonner'
 import { signOut } from 'next-auth/react'
 import AvatarCropModal from '@/components/AvatarCropModal'
 
@@ -19,17 +20,8 @@ interface UserData {
   organization: { nazev: string }
 }
 
-function Toast({ msg, type }: { msg: string; type: 'ok' | 'err' }) {
-  return (
-    <div className={`fixed bottom-6 right-6 z-50 px-5 py-3 rounded-xl shadow-lg text-sm font-medium text-white transition-all ${type === 'ok' ? 'bg-green-600' : 'bg-red-600'}`}>
-      {msg}
-    </div>
-  )
-}
-
 export default function ProfileClient({ user: init }: { user: UserData }) {
   const [user, setUser] = useState(init)
-  const [toast, setToast] = useState<{ msg: string; type: 'ok' | 'err' } | null>(null)
 
   // Profile form
   const [jmeno, setJmeno] = useState(init.jmeno)
@@ -50,8 +42,8 @@ export default function ProfileClient({ user: init }: { user: UserData }) {
   const [avatarVersion, setAvatarVersion] = useState(Date.now())
 
   function showToast(msg: string, type: 'ok' | 'err') {
-    setToast({ msg, type })
-    setTimeout(() => setToast(null), 3500)
+    if (type === 'ok') toast.success(msg)
+    else toast.error(msg)
   }
 
   async function saveProfile(e: React.FormEvent) {
@@ -111,7 +103,6 @@ export default function ProfileClient({ user: init }: { user: UserData }) {
 
   return (
     <>
-      {toast && <Toast msg={toast.msg} type={toast.type} />}
       {cropFile && (
         <AvatarCropModal
           file={cropFile}

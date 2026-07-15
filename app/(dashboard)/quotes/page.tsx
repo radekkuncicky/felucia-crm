@@ -3,6 +3,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
 import EmptyState from '@/components/ui/EmptyState'
+import { formatDate, formatCislo } from '@/lib/format'
 
 export default async function QuotesPage() {
   const session = await getServerSession(authOptions)
@@ -21,9 +22,17 @@ export default async function QuotesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2 flex-wrap">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Cenové nabídky</h1>
-        <p className="text-sm text-gray-500 dark:text-slate-400">{quotes.length} nabídek celkem</p>
+        <div className="flex items-center gap-3 ml-auto">
+          <p className="text-sm text-gray-500 dark:text-slate-400">{quotes.length} nabídek celkem</p>
+          <Link
+            href="/cenovka"
+            className="border border-green-400 dark:border-green-700 text-green-700 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 font-medium px-4 py-2 rounded-lg text-sm transition-colors"
+          >
+            ⚡ Rychlá cenovka
+          </Link>
+        </div>
       </div>
 
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">
@@ -72,7 +81,7 @@ export default async function QuotesPage() {
                     {q.deal.client.jmeno} {q.deal.client.prijmeni}
                   </td>
                   <td className="px-6 py-4 text-right text-sm font-semibold text-gray-900 dark:text-white">
-                    {celkem > 0 ? celkem.toLocaleString('cs-CZ') + ' Kč' : '—'}
+                    {celkem > 0 ? formatCislo(celkem) + ' Kč' : '—'}
                   </td>
                   <td className="px-6 py-4 text-center">
                     {q.aktivni ? (
@@ -82,7 +91,7 @@ export default async function QuotesPage() {
                     )}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-500 dark:text-slate-400">
-                    {new Date(q.vytvoreno).toLocaleDateString('cs-CZ')}
+                    {formatDate(q.vytvoreno)}
                   </td>
                   <td className="px-6 py-4 text-right">
                     <Link

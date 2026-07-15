@@ -1,7 +1,9 @@
 'use client'
 
 import { useState } from 'react'
+import { toast } from 'sonner'
 import Link from 'next/link'
+import { formatDate } from '@/lib/format'
 
 const roleLabels: Record<string, string> = {
   ADMIN: 'Admin', OBCHODNIK: 'Obchodník', TECHNIK: 'Technik',
@@ -22,14 +24,6 @@ interface UserRow {
   serviceAccess: boolean
 }
 
-function Toast({ msg, type }: { msg: string; type: 'ok' | 'err' }) {
-  return (
-    <div className={`fixed bottom-6 right-6 z-50 px-5 py-3 rounded-xl shadow-lg text-sm font-medium text-white ${type === 'ok' ? 'bg-green-600' : 'bg-red-600'}`}>
-      {msg}
-    </div>
-  )
-}
-
 function UserAvatar({ jmeno, size = 8 }: { jmeno: string; size?: number }) {
   const initials = jmeno.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
   return (
@@ -44,7 +38,6 @@ export default function UsersManager({ users: initUsers, maxUsers, activeUserCou
   const [activeCount, setActiveCount] = useState(initActiveCount)
   const [adding, setAdding] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [toast, setToast] = useState<{ msg: string; type: 'ok' | 'err' } | null>(null)
   const [addForm, setAddForm] = useState({ jmeno: '', email: '', heslo: '', role: 'OBCHODNIK' })
   const [addError, setAddError] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -52,8 +45,8 @@ export default function UsersManager({ users: initUsers, maxUsers, activeUserCou
   const [resetLoading, setResetLoading] = useState<string | null>(null)
 
   function showToast(msg: string, type: 'ok' | 'err') {
-    setToast({ msg, type })
-    setTimeout(() => setToast(null), 3500)
+    if (type === 'ok') toast.success(msg)
+    else toast.error(msg)
   }
 
   async function handleAdd() {
@@ -129,8 +122,6 @@ export default function UsersManager({ users: initUsers, maxUsers, activeUserCou
 
   return (
     <div className="space-y-4">
-      {toast && <Toast msg={toast.msg} type={toast.type} />}
-
       {showUserWarning && (
         <div className={`flex items-center justify-between rounded-lg border px-4 py-3 text-sm ${atUserLimit ? 'bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700 text-red-800 dark:text-red-300' : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-300 dark:border-yellow-700 text-yellow-800 dark:text-yellow-300'}`}>
           <span>
@@ -254,7 +245,7 @@ export default function UsersManager({ users: initUsers, maxUsers, activeUserCou
                   </button>
                 </td>
                 <td className="px-4 py-3 text-xs text-gray-500 dark:text-slate-400 whitespace-nowrap">
-                  {new Date(user.vytvoreno).toLocaleDateString('cs-CZ')}
+                  {formatDate(user.vytvoreno)}
                 </td>
                 <td className="px-4 py-3 text-right whitespace-nowrap">
                   <div className="flex items-center justify-end gap-3">

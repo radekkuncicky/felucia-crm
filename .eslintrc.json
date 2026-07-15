@@ -1,3 +1,48 @@
 {
-  "extends": ["next/core-web-vitals", "next/typescript"]
+  "extends": [
+    "next/core-web-vitals",
+    "next/typescript"
+  ],
+  "rules": {
+    "no-restricted-globals": [
+      "error",
+      {
+        "name": "confirm",
+        "message": "Použij confirmDialog() z @/components/ui/confirm místo nativního confirm()."
+      },
+      {
+        "name": "alert",
+        "message": "Použij toast z 'sonner' místo nativního alert()."
+      },
+      {
+        "name": "prompt",
+        "message": "Použij vlastní modal s inputem místo nativního prompt()."
+      }
+    ],
+    "no-restricted-properties": [
+      "error",
+      {
+        "object": "window",
+        "property": "confirm",
+        "message": "Použij confirmDialog() z @/components/ui/confirm."
+      },
+      {
+        "object": "window",
+        "property": "alert",
+        "message": "Použij toast z 'sonner'."
+      },
+      {
+        "object": "window",
+        "property": "prompt",
+        "message": "Použij vlastní modal s inputem."
+      }
+    ],
+    "no-restricted-syntax": [
+      "warn",
+      {
+        "selector": "CallExpression[callee.property.name=/^toLocale(Date|Time)?String$/]",
+        "message": "Použij formatDate/formatDateTime/formatKc/formatCislo z @/lib/format — jednotné formátování v celé aplikaci."
+      }
+    ]
+  }
 }

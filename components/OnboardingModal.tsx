@@ -3,22 +3,23 @@
 import { useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { IconBox, IconUser, IconClipboard, IconSparkles } from '@/components/ui/Icons'
 
 const STEPS = [
   {
     label: 'Importovat produktový katalog',
     href: '/settings/import-products',
-    icon: '📦',
+    icon: <IconBox className="w-6 h-6" />,
   },
   {
     label: 'Přidat prvního technika',
     href: '/settings/users',
-    icon: '👤',
+    icon: <IconUser className="w-6 h-6" />,
   },
   {
     label: 'Vytvořit první obchodní případ',
     href: '/deals/new',
-    icon: '📋',
+    icon: <IconClipboard className="w-6 h-6" />,
   },
 ]
 
@@ -49,7 +50,7 @@ export default function OnboardingModal() {
 
         {/* Header */}
         <div className="text-center mb-6">
-          <div className="text-4xl mb-3">🎉</div>
+          <div className="flex justify-center mb-3"><IconSparkles className="w-10 h-10 text-primary" /></div>
           <h2 className="text-2xl font-bold text-[#111] dark:text-white" style={{ fontFamily: 'var(--font-montserrat, sans-serif)' }}>
             Vítejte v FELUCIA CRM!
           </h2>

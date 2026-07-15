@@ -6,7 +6,10 @@ import { prismaApp, rlsActive } from './prisma'
  * test spadne, dokud ho nepřidáš sem.
  *
  * Dětské tabulky bez orgId (QuoteItem, ZakazkaPolozka, …) jsou scopované
- * přes rodiče a extension je nefiltruje — přistupuj k nim přes rodiče.
+ * přes rodiče a extension jejich where/data nefiltruje — přistupuj k nim
+ * přes rodiče (např. `deal: { orgId }`). App.org_id se pro ně přesto
+ * nastavuje stejně jako pro tenantní modely, jinak by RLS na rodičovské
+ * tabulce takový vztahový filtr tiše zablokovala.
  */
 export const TENANT_MODELS = new Set([
   'User',
@@ -27,6 +30,7 @@ export const TENANT_MODELS = new Set([
   'VisibilityNode',
   'Extension',
   'OrgSettings',
+  'OrgEmailSettings',
   'Zarizeni',
   'ServisniKontrakt',
   'ServisniZakazka',
@@ -40,6 +44,9 @@ export const TENANT_MODELS = new Set([
   'Predavak',
   'Vyuctovani',
   'Sod',
+  'SodVerze',
+  'SodUdalost',
+  'SodPodpisRelace',
   'Document',
   'Lead',
   'AiUsageLog',
@@ -106,48 +113,53 @@ export function orgPrisma(orgId: string) {
       $allModels: {
         async $allOperations(params) {
           const { model, operation, args, query } = params
-          if (!TENANT_MODELS.has(model)) return query(args)
-
           const a = args as Record<string, unknown>
 
-          switch (operation) {
-            case 'findMany':
-            case 'findFirst':
-            case 'findFirstOrThrow':
-            case 'count':
-            case 'aggregate':
-            case 'groupBy':
-            case 'updateMany':
-            case 'updateManyAndReturn':
-            case 'deleteMany':
-              a.where = scopeWhere(a.where, orgId)
-              break
+          // Dětské tabulky bez orgId (QuoteItem, …) tady where/data nedostávají
+          // (nemají sloupec orgId) — scopují se ručně v route přes vztah na
+          // rodiče (např. `deal: { orgId }`). I tak ale musí mít nastavený
+          // app.org_id níž, jinak RLS na rodičovské (tenantní) tabulce ten
+          // vztah tiše zablokuje a dotaz nikdy nic nevrátí (fail-closed).
+          if (TENANT_MODELS.has(model)) {
+            switch (operation) {
+              case 'findMany':
+              case 'findFirst':
+              case 'findFirstOrThrow':
+              case 'count':
+              case 'aggregate':
+              case 'groupBy':
+              case 'updateMany':
+              case 'updateManyAndReturn':
+              case 'deleteMany':
+                a.where = scopeWhere(a.where, orgId)
+                break
 
-            // unique dotazy: orgId jako dodatečný filtr vedle unique klíče
-            case 'findUnique':
-            case 'findUniqueOrThrow':
-            case 'update':
-            case 'delete':
-              a.where = { ...(a.where as object), orgId }
-              break
+              // unique dotazy: orgId jako dodatečný filtr vedle unique klíče
+              case 'findUnique':
+              case 'findUniqueOrThrow':
+              case 'update':
+              case 'delete':
+                a.where = { ...(a.where as object), orgId }
+                break
 
-            case 'create':
-              a.data = scopeData(a.data, orgId, model)
-              break
+              case 'create':
+                a.data = scopeData(a.data, orgId, model)
+                break
 
-            case 'createMany':
-            case 'createManyAndReturn': {
-              const data = a.data
-              a.data = Array.isArray(data)
-                ? data.map((d) => scopeData(d, orgId, model))
-                : scopeData(data, orgId, model)
-              break
+              case 'createMany':
+              case 'createManyAndReturn': {
+                const data = a.data
+                a.data = Array.isArray(data)
+                  ? data.map((d) => scopeData(d, orgId, model))
+                  : scopeData(data, orgId, model)
+                break
+              }
+
+              case 'upsert':
+                a.where = { ...(a.where as object), orgId }
+                a.create = scopeData(a.create, orgId, model)
+                break
             }
-
-            case 'upsert':
-              a.where = { ...(a.where as object), orgId }
-              a.create = scopeData(a.create, orgId, model)
-              break
           }
 
           // RLS kontext: operace už běžící v transakci ho dostala od

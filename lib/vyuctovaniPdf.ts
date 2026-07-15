@@ -1,11 +1,10 @@
+import { formatDate, formatKc } from '@/lib/format'
 function fmt(d: Date | string | null) {
   if (!d) return '—'
-  return new Date(d).toLocaleDateString('cs-CZ')
+  return formatDate(d)
 }
 
-function fmtKc(n: number) {
-  return n.toLocaleString('cs-CZ', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' Kč'
-}
+const fmtKc = formatKc
 
 export type VyuctovaniPdfData = {
   id: string

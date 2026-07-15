@@ -3,7 +3,9 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { PredavakStav } from '@prisma/client'
+import { toast } from 'sonner'
 import { SignatureCanvas } from '@/components/SignatureCanvas'
+import { formatDate } from '@/lib/format'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -71,14 +73,6 @@ const STAV_COLORS: Record<PredavakStav, string> = {
   ODMITNUTO: 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300',
 }
 
-function Toast({ msg, type }: { msg: string; type: 'ok' | 'err' }) {
-  return (
-    <div className={`fixed bottom-24 right-4 z-50 px-4 py-3 rounded-xl shadow-xl text-white text-sm font-medium max-w-xs ${type === 'ok' ? 'bg-green-600' : 'bg-red-600'}`}>
-      {msg}
-    </div>
-  )
-}
-
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function PredavakClient({ predavak: initial, currentUserId, role }: Props) {
@@ -96,7 +90,6 @@ export default function PredavakClient({ predavak: initial, currentUserId, role 
   const [podpisSvg, setPodpisSvg] = useState<string | null>(initial.podpisSvg)
   const [saving, setSaving] = useState(false)
   const [uploading, setUploading] = useState(false)
-  const [toast, setToast] = useState<{ msg: string; type: 'ok' | 'err' } | null>(null)
   const [confirmPodpsat, setConfirmPodpsat] = useState(false)
   const [confirmSchvalit, setConfirmSchvalit] = useState(false)
   const [confirmReopen, setConfirmReopen] = useState(false)
@@ -108,15 +101,9 @@ export default function PredavakClient({ predavak: initial, currentUserId, role 
   const fileRef = useRef<HTMLInputElement>(null)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  useEffect(() => {
-    if (toast) {
-      const t = setTimeout(() => setToast(null), 3500)
-      return () => clearTimeout(t)
-    }
-  }, [toast])
-
   function showToast(msg: string, type: 'ok' | 'err') {
-    setToast({ msg, type })
+    if (type === 'ok') toast.success(msg)
+    else toast.error(msg)
   }
 
   // Auto-save poznamka
@@ -394,8 +381,6 @@ export default function PredavakClient({ predavak: initial, currentUserId, role 
 
   return (
     <>
-      {toast && <Toast msg={toast.msg} type={toast.type} />}
-
       {/* Confirm podepsat */}
       {confirmPodpsat && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -512,9 +497,9 @@ export default function PredavakClient({ predavak: initial, currentUserId, role 
                   </span>
                 </div>
                 <p className="text-sm text-gray-600 dark:text-slate-400">
-                  Technik: <strong>{initial.technik.jmeno}</strong> · Vytvořen {new Date(initial.vytvoreno).toLocaleDateString('cs-CZ')}
-                  {initial.podpisano && ` · Podepsán ${new Date(initial.podpisano).toLocaleDateString('cs-CZ')}`}
-                  {initial.schvaleno && ` · Schválen ${new Date(initial.schvaleno).toLocaleDateString('cs-CZ')}`}
+                  Technik: <strong>{initial.technik.jmeno}</strong> · Vytvořen {formatDate(initial.vytvoreno)}
+                  {initial.podpisano && ` · Podepsán ${formatDate(initial.podpisano)}`}
+                  {initial.schvaleno && ` · Schválen ${formatDate(initial.schvaleno)}`}
                 </p>
                 {initial.schvalil && (
                   <p className="text-xs text-gray-500 dark:text-slate-400">Schválil: {initial.schvalil.jmeno}</p>

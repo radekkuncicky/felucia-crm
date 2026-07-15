@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
+import { toast } from 'sonner'
 
 const PLANS = [
   {
@@ -113,35 +114,6 @@ function ProgressBar({ used, limit }: { used: number; limit: number }) {
   )
 }
 
-function Toast({
-  msg,
-  type,
-  onClose,
-}: {
-  msg: string
-  type: 'ok' | 'err' | 'info'
-  onClose: () => void
-}) {
-  useEffect(() => {
-    const t = setTimeout(onClose, 5000)
-    return () => clearTimeout(t)
-  }, [onClose])
-
-  const bg =
-    type === 'ok' ? 'bg-green-600' : type === 'err' ? 'bg-red-600' : 'bg-gray-600'
-
-  return (
-    <div
-      className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3.5 rounded-xl shadow-lg text-sm font-medium text-white ${bg}`}
-    >
-      {msg}
-      <button onClick={onClose} className="opacity-70 hover:opacity-100 ml-1 text-lg leading-none">
-        ×
-      </button>
-    </div>
-  )
-}
-
 export interface BillingClientProps {
   currentPlan: string
   userCount: number
@@ -176,16 +148,15 @@ export default function BillingClient({
   orgSlug,
 }: BillingClientProps) {
   const [loading, setLoading] = useState<string | null>(null)
-  const [toast, setToast] = useState<{ msg: string; type: 'ok' | 'err' | 'info' } | null>(null)
   const [cancelOpen, setCancelOpen] = useState(false)
   const searchParams = useSearchParams()
 
   useEffect(() => {
     if (searchParams.get('success') === 'true') {
-      setToast({ msg: 'Předplatné bylo úspěšně aktivováno!', type: 'ok' })
+      toast.success('Předplatné bylo úspěšně aktivováno!')
       window.history.replaceState({}, '', '/settings/billing')
     } else if (searchParams.get('canceled') === 'true') {
-      setToast({ msg: 'Platba byla zrušena.', type: 'info' })
+      toast.info('Platba byla zrušena.')
       window.history.replaceState({}, '', '/settings/billing')
     }
   }, [searchParams])
@@ -205,12 +176,12 @@ export default function BillingClient({
       })
       const data = await res.json()
       if (!res.ok || !data.url) {
-        setToast({ msg: data.error ?? 'Chyba při vytváření platby.', type: 'err' })
+        toast.error(data.error ?? 'Platbu se nepodařilo vytvořit.')
         return
       }
       window.location.href = data.url
     } catch {
-      setToast({ msg: 'Nepodařilo se připojit k platební bráně.', type: 'err' })
+      toast.error('Nepodařilo se připojit k platební bráně.')
     } finally {
       setLoading(null)
     }
@@ -222,12 +193,12 @@ export default function BillingClient({
       const res = await fetch('/api/stripe/create-portal', { method: 'POST' })
       const data = await res.json()
       if (!res.ok || !data.url) {
-        setToast({ msg: data.error ?? 'Chyba při otevírání portálu.', type: 'err' })
+        toast.error(data.error ?? 'Zákaznický portál se nepodařilo otevřít.')
         return
       }
       window.location.href = data.url
     } catch {
-      setToast({ msg: 'Nepodařilo se otevřít portál.', type: 'err' })
+      toast.error('Zákaznický portál se nepodařilo otevřít.')
     } finally {
       setLoading(null)
     }
@@ -273,10 +244,6 @@ export default function BillingClient({
           Správa předplatného vaší organizace
         </p>
       </div>
-
-      {toast && (
-        <Toast msg={toast.msg} type={toast.type} onClose={() => setToast(null)} />
-      )}
 
       {/* Section 1: Current plan */}
       <div className="rounded-xl border-2 border-[#4CAF50] bg-[rgba(76,175,80,0.04)] dark:bg-[rgba(76,175,80,0.08)] p-6">

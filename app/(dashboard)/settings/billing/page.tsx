@@ -4,6 +4,9 @@ import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
 import { getPlanLimits } from '@/lib/planLimits'
 import BillingClient from '@/components/BillingClient'
+import ModulPodpisyCard from '@/components/ModulPodpisyCard'
+import { PODPISY_MESICNI_LIMIT, PODPISY_CENA_LICENCE } from '@/lib/modulPodpisy'
+import { STRIPE_PODPISY_PRICE_ID } from '@/lib/stripe'
 import { Suspense } from 'react'
 
 export default async function BillingPage() {
@@ -24,6 +27,7 @@ export default async function BillingPage() {
         stripeCurrentPeriodEnd: true,
         trialEndsAt: true,
         slug: true,
+        modulPodpisy: true,
       },
     }),
     prisma.user.count({ where: { orgId, aktivni: true } }),
@@ -31,6 +35,17 @@ export default async function BillingPage() {
   ])
 
   const currentPlan = org?.plan ?? 'STARTER'
+
+  // Modul Online podpis — karta jen pro STANDARD (vyšší plány v ceně)
+  let podpisyVyuzito = 0
+  if (org?.modulPodpisy) {
+    const zacatekMesice = new Date()
+    zacatekMesice.setDate(1)
+    zacatekMesice.setHours(0, 0, 0, 0)
+    podpisyVyuzito = await prisma.sodPodpisRelace.count({
+      where: { orgId, vytvoreno: { gte: zacatekMesice } },
+    })
+  }
   const planLimits = getPlanLimits(currentPlan)
   const now = new Date()
   const trialActive = !!(org?.trialEndsAt && org.trialEndsAt > now && !org?.stripePlanId)
@@ -63,6 +78,17 @@ export default async function BillingPage() {
         trialDaysLeft={trialDaysLeft}
         orgSlug={org?.slug ?? ''}
       />
+      {currentPlan === 'STANDARD' && (
+        <ModulPodpisyCard
+          aktivni={org?.modulPodpisy ?? false}
+          licence={userCount}
+          vyuzito={podpisyVyuzito}
+          limit={PODPISY_MESICNI_LIMIT}
+          cenaLicence={PODPISY_CENA_LICENCE}
+          vProdeji={!!STRIPE_PODPISY_PRICE_ID}
+          maPortal={!!org?.stripeCustomerId}
+        />
+      )}
     </Suspense>
   )
 }

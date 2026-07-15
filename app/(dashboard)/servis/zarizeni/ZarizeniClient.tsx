@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { api } from '@/lib/api'
+import { formatDate } from '@/lib/format'
 
 const TYP_LABELS: Record<string, string> = {
   TEPELNE_CERPADLO: 'Tepelné čerpadlo',
@@ -74,9 +76,10 @@ function QrModal({ zarizeni, onClose }: { zarizeni: Zarizeni; onClose: () => voi
       try {
         let token = zarizeni.qrToken
         if (!token) {
-          const res = await fetch(`/api/servis/zarizeni/${zarizeni.id}/qr-token`)
-          const data = await res.json()
-          token = data.qrToken
+          const res = await api.get<{ qrToken: string }>(`/api/servis/zarizeni/${zarizeni.id}/qr-token`,
+            { errorMessage: 'QR kód se nepodařilo vygenerovat.' })
+          if (!res.ok || !res.data) return
+          token = res.data.qrToken
         }
         const url = `https://felucia.io/zarizeni/${token}`
         setQrUrl(url)
@@ -174,14 +177,14 @@ function QrModal({ zarizeni, onClose }: { zarizeni: Zarizeni; onClose: () => voi
               disabled={!qrSvg}
               className="w-full py-2 text-sm font-medium bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 text-gray-800 dark:text-white rounded-lg disabled:opacity-40 transition-colors"
             >
-              🖨 Tisknout
+              Tisknout
             </button>
             <button
               onClick={copyUrl}
               disabled={!qrUrl}
               className="w-full py-2 text-sm font-medium border border-gray-300 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-300 rounded-lg disabled:opacity-40 transition-colors"
             >
-              {copied ? '✓ Zkopírováno!' : '📋 Kopírovat URL'}
+              {copied ? '✓ Zkopírováno!' : 'Kopírovat URL'}
             </button>
           </div>
         </div>
@@ -223,19 +226,15 @@ export default function ZarizeniClient({ zarizeni: initial, clients }: Props) {
     if (!form.klientId || !form.nazev) return
     setSaving(true)
     try {
-      const res = await fetch('/api/servis/zarizeni', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          klientId: form.klientId,
-          nazev: form.nazev,
-          typ: form.typ,
-          vyrobniCislo: form.vyrobniCislo || null,
-          datumInstalace: form.datumInstalace || null,
-          zarukaDo: form.zarukaDo || null,
-          poznamka: form.poznamka || null,
-        }),
-      })
+      const res = await api.post('/api/servis/zarizeni', {
+        klientId: form.klientId,
+        nazev: form.nazev,
+        typ: form.typ,
+        vyrobniCislo: form.vyrobniCislo || null,
+        datumInstalace: form.datumInstalace || null,
+        zarukaDo: form.zarukaDo || null,
+        poznamka: form.poznamka || null,
+      }, { errorMessage: 'Zařízení se nepodařilo přidat.' })
       if (res.ok) {
         setShowAdd(false)
         setForm({ klientId: '', nazev: '', typ: 'JINE', vyrobniCislo: '', datumInstalace: '', zarukaDo: '', poznamka: '' })
@@ -314,10 +313,10 @@ export default function ZarizeniClient({ zarizeni: initial, clients }: Props) {
                       {z.vyrobniCislo && <span className="text-gray-400 dark:text-slate-500"> · SN: {z.vyrobniCislo}</span>}
                     </p>
                     <div className="flex flex-wrap gap-3 mt-1 text-xs text-gray-500 dark:text-slate-400">
-                      {z.datumInstalace && <span>Instalace: {new Date(z.datumInstalace).toLocaleDateString('cs-CZ')}</span>}
-                      {z.zarukaDo && <span>Záruka do: {new Date(z.zarukaDo).toLocaleDateString('cs-CZ')}</span>}
+                      {z.datumInstalace && <span>Instalace: {formatDate(z.datumInstalace)}</span>}
+                      {z.zarukaDo && <span>Záruka do: {formatDate(z.zarukaDo)}</span>}
                       {z.servisniKontrakty.length > 0 && <span className="text-green-600 dark:text-green-400">{z.servisniKontrakty.length} kontrakt{z.servisniKontrakty.length > 1 ? 'y' : ''}</span>}
-                      {nextNavsteva && <span className="text-primary dark:text-primary-light">Příští servis: {new Date(nextNavsteva.planovanyTermin).toLocaleDateString('cs-CZ')}</span>}
+                      {nextNavsteva && <span className="text-primary dark:text-primary-light">Příští servis: {formatDate(nextNavsteva.planovanyTermin)}</span>}
                     </div>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">

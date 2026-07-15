@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Technologie } from '@prisma/client'
 import DeleteTemplateButton from './DeleteTemplateButton'
 import DuplicateTemplateButton from './DuplicateTemplateButton'
+import { formatKcPresne } from '@/lib/format'
 
 const techLabels: Record<Technologie, string> = {
   KLIMA: 'Klimatizace', TEPELNE_CERPADLO: 'Tepelné čerpadlo', REKUPERACE: 'Rekuperace',
@@ -72,7 +73,7 @@ export default async function QuoteTemplatesPage() {
                             <span className="text-gray-800">{p.nazev ?? '—'}</span>
                             <span className="text-gray-400 text-xs whitespace-nowrap">
                               {p.mnozstvi != null ? `${p.mnozstvi} ×` : ''}{' '}
-                              {p.cena_za_kus != null ? `${Number(p.cena_za_kus).toLocaleString('cs-CZ')} Kč` : ''}
+                              {p.cena_za_kus != null ? `${formatKcPresne(Number(p.cena_za_kus))}` : ''}
                             </span>
                           </li>
                         ))}

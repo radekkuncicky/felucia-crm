@@ -9,6 +9,7 @@ import { useTableColumns, ColumnDef } from '@/hooks/useTableColumns'
 import ColumnConfigButton from '@/components/ColumnConfigButton'
 import CenikDetail from './CenikDetail'
 import { ResizeHandle } from '@/components/ResizeHandle'
+import { formatDate, formatCislo } from '@/lib/format'
 
 const PROD_DEFS: ColumnDef[] = [
   { id: 'kod', label: 'Kód', defaultVisible: true, defaultWidth: 100 },
@@ -34,7 +35,7 @@ interface Cenik { id: string; kod: string; nazev: string; popis: string | null; 
 
 interface Props { products: Product[]; categories: Category[]; ceniky: Cenik[]; isAdmin: boolean; showNakladoveCeny?: boolean }
 
-function fmt(n: number) { return n.toLocaleString('cs-CZ') }
+function fmt(n: number) { return formatCislo(n) }
 
 function marze(nak: number | null, std: number): number | null {
   if (!nak || nak <= 0 || std <= 0) return null
@@ -474,7 +475,7 @@ function CenikyTab({ ceniky, products, categories, isAdmin }: { ceniky: Cenik[];
             <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-slate-400">
               <span className="font-medium text-gray-900 dark:text-white">{c._count.polozky}</span> položek
               <span>·</span>
-              {new Date(c.vytvoreno).toLocaleDateString('cs-CZ')}
+              {formatDate(c.vytvoreno)}
             </div>
             <div className="flex items-center gap-2 pt-1 border-t border-gray-100 dark:border-slate-700">
               <button onClick={() => setSelectedCenik(c.id)} className="flex-1 text-xs font-medium text-primary dark:text-primary-light hover:underline text-center py-1">

@@ -7,6 +7,7 @@ import { useSession } from 'next-auth/react'
 import { StavDealu } from '@prisma/client'
 import { stavLabels } from '@/lib/constants'
 import ConfirmModal from '@/components/ConfirmModal'
+import { api } from '@/lib/api'
 
 const STAV_STYLE: Record<StavDealu, { bg: string; text: string; dot: string }> = {
   NOVY:           { bg: '#E8F5E9', text: '#2E7D32', dot: '#4CAF50' },
@@ -53,14 +54,11 @@ export default function InlineStatusBadge({ dealId, stav: initialStav, onChange 
     setOpen(false)
     setSaving(true)
     try {
-      const res = await fetch(`/api/deals/${dealId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ stav: newStav }),
-      })
+      const res = await api.patch<{ chybaPovinnaAktivita?: boolean }>(`/api/deals/${dealId}`,
+        { stav: newStav },
+        { errorMessage: 'Změnu stavu se nepodařilo uložit.' })
       if (res.ok) {
-        const data = await res.json()
-        if (data.chybaPovinnaAktivita) {
+        if (res.data?.chybaPovinnaAktivita) {
           setStav(prev)
           toast.warning('Pro uzavření OP je vyžadována aktivita (Hovor nebo Schůzka).')
         } else {
@@ -69,8 +67,6 @@ export default function InlineStatusBadge({ dealId, stav: initialStav, onChange 
       } else {
         setStav(prev)
       }
-    } catch {
-      setStav(prev)
     } finally {
       setSaving(false)
     }
@@ -80,8 +76,10 @@ export default function InlineStatusBadge({ dealId, stav: initialStav, onChange 
     setConfirmDelete(false)
     setDeleting(true)
     try {
-      const res = await fetch(`/api/deals/${dealId}`, { method: 'DELETE' })
+      const res = await api.delete(`/api/deals/${dealId}`,
+        { errorMessage: 'Obchodní případ se nepodařilo smazat.' })
       if (res.ok) {
+        toast.success('Obchodní případ smazán')
         router.refresh()
       }
     } finally {

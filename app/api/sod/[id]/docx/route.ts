@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server'
 import { generateSodDocx } from '@/lib/sodDocx'
 import { renderSodContractHtml } from '@/lib/sodContractHtml'
 import htmlToDocx from 'html-to-docx'
+import { formatDate } from '@/lib/format'
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
@@ -41,7 +42,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     })
   }
 
-  const datum = sod.vytvoreno.toLocaleDateString('cs-CZ')
+  const datum = formatDate(sod.vytvoreno)
 
   const docx = await generateSodDocx({
     cislo: sod.cislo,

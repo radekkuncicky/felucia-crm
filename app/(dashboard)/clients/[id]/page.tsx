@@ -9,6 +9,7 @@ import ClientHistory from './ClientHistory'
 import { stavLabels, stavColors, techLabels, techColors } from '@/lib/constants'
 import TabActivator from './TabActivator'
 import { NavigateButton } from '@/components/NavigateButton'
+import { formatKc } from '@/lib/format'
 
 const ZAKAZKA_STAV_LABELS: Record<string, string> = {
   NOVA: 'Nová',
@@ -28,8 +29,7 @@ const ZAKAZKA_STAV_COLORS: Record<string, string> = {
   HOTOVO: 'bg-green-50 text-green-700',
 }
 
-const fmtKc = (n: number) =>
-  n.toLocaleString('cs-CZ', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' Kč'
+const fmtKc = formatKc
 
 export default async function ClientDetailPage({
   params,
@@ -113,17 +113,16 @@ export default async function ClientDetailPage({
       label: deal.predmet ?? 'Nový obchodní případ',
       sub: `${deal.kod ?? ''} · Vytvořen · ${stavLabels[deal.stav]}`,
       href: `/deals/${deal.id}`,
-      icon: '📋',
+      icon: 'DEAL',
     })
     for (const act of deal.activities) {
-      const typIcons: Record<string, string> = { HOVOR: '📞', EMAIL: '✉️', SCHUZKA: '🤝', POZNAMKA: '📝', UKOL: '✅' }
       history.push({
         date: act.datum,
         type: 'activity',
         label: act.popis ?? act.typ,
         sub: `${deal.predmet ?? deal.kod ?? 'OP'} · ${act.typ}`,
         href: `/deals/${deal.id}?tab=aktivity`,
-        icon: typIcons[act.typ] ?? '•',
+        icon: act.typ,
       })
     }
   }

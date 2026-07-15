@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ZakazkaStav, EtapaStav } from '@prisma/client'
+import { api } from '@/lib/api'
 
 const STEPS: { stav: ZakazkaStav; label: string }[] = [
   { stav: 'NOVA', label: 'Nová' },
@@ -38,11 +39,8 @@ export default function PipelineBar({ zakazkaId, currentStav, canChange, etapy =
     setConfirm(null)
     setLoading(true)
     try {
-      const res = await fetch(`/api/zakazky/${zakazkaId}/stav`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ stav }),
-      })
+      const res = await api.patch(`/api/zakazky/${zakazkaId}/stav`, { stav },
+        { errorMessage: 'Změnu stavu se nepodařilo uložit.' })
       if (res.ok) {
         router.refresh()
       }

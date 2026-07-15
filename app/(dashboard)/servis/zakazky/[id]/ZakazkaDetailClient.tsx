@@ -7,6 +7,9 @@ import { NavigateButton } from '@/components/NavigateButton'
 import { SignatureCanvas } from '@/components/SignatureCanvas'
 import VyuctovaniSekce from '@/components/servis/VyuctovaniSekce'
 import ConfirmModal from '@/components/ConfirmModal'
+import { apiFetch, api } from '@/lib/api'
+import { toast } from 'sonner'
+import { confirmDialog } from '@/components/ui/confirm'
 import {
   type NavstevaTyp,
   type ServisniZakazkaStav,
@@ -16,6 +19,7 @@ import {
   stavColor,
   typLabel,
 } from '@/lib/servisStav'
+import { formatDate } from '@/lib/format'
 
 interface ZakazkaRef {
   id: string
@@ -90,6 +94,8 @@ export default function ZakazkaDetailClient({ zakazka, orgUsers, canEdit, isAdmi
   const [podpis, setPodpis] = useState<string | null>(zakazka.podpisKlienta)
   const [confirmAction, setConfirmAction] = useState<'zrusit' | 'uzavrit' | null>(null)
   const [reklamaceOpen, setReklamaceOpen] = useState(false)
+  const [cekaOpen, setCekaOpen] = useState(false)
+  const [cekaDuvodDraft, setCekaDuvodDraft] = useState('')
   const [reklamacePoznamka, setReklamacePoznamka] = useState('')
   const [manualStavOpen, setManualStavOpen] = useState(false)
   const [manualStav, setManualStav] = useState(zakazka.stav)
@@ -116,7 +122,7 @@ export default function ZakazkaDetailClient({ zakazka, orgUsers, canEdit, isAdmi
 
   // Uloží formulář; stav se NEposílá — mění se výhradně akcemi (override).
   async function patch(override: Record<string, unknown> = {}) {
-    return fetch(`/api/servis/zakazky/${zakazka.id}`, {
+    return apiFetch(`/api/servis/zakazky/${zakazka.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -156,8 +162,6 @@ export default function ZakazkaDetailClient({ zakazka, orgUsers, canEdit, isAdmi
         router.refresh()
         return true
       }
-      const data = await res.json().catch(() => ({}))
-      alert(data.error ?? 'Změna stavu se nezdařila.')
       return false
     } finally {
       setActing(false)
@@ -165,39 +169,42 @@ export default function ZakazkaDetailClient({ zakazka, orgUsers, canEdit, isAdmi
   }
 
   function pozastavit() {
-    const duvod = window.prompt('Důvod čekání (např. čeká na díly):', form.cekaDuvod)
-    if (duvod === null) return
-    set('cekaDuvod', duvod)
-    changeStav('CEKA', { cekaDuvod: duvod || 'Bez udání důvodu' })
+    setCekaDuvodDraft(form.cekaDuvod)
+    setCekaOpen(true)
+  }
+
+  async function pozastavitPotvrdit() {
+    set('cekaDuvod', cekaDuvodDraft)
+    const ok = await changeStav('CEKA', { cekaDuvod: cekaDuvodDraft || 'Bez udání důvodu' })
+    if (ok) setCekaOpen(false)
   }
 
   // Handoff: dokončení protokolu = přechod do DOKONCENA, což nastaví
   // protokolDokoncen (brána do vyúčtování). Vyžaduje podpis klienta.
   async function dokoncitProtokol() {
     if (!podpis) {
-      alert('Pro dokončení protokolu je potřeba podpis klienta (sekce Předání zakázky).')
+      toast.warning('Pro dokončení protokolu je potřeba podpis klienta (sekce Předání zakázky).')
       document.getElementById('predani-sekce')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
       return
     }
-    if (!confirm('Dokončit protokol a předat zakázku? Po dokončení ji bude možné vyúčtovat.')) return
+    const ok = await confirmDialog('Dokončit protokol a předat zakázku? Po dokončení ji bude možné vyúčtovat.', {
+      title: 'Předání zakázky',
+      confirmLabel: 'Dokončit a předat',
+      danger: false,
+    })
+    if (!ok) return
     await changeStav('DOKONCENA')
   }
 
   async function vytvoritReklamaci() {
     setActing(true)
     try {
-      const res = await fetch(`/api/servis/zakazky/${zakazka.id}/reklamace`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ poznamka: reklamacePoznamka || null }),
-      })
-      const data = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        alert(data.error ?? 'Reklamaci se nepodařilo založit.')
-        return
-      }
+      const res = await api.post<{ id: string }>(`/api/servis/zakazky/${zakazka.id}/reklamace`,
+        { poznamka: reklamacePoznamka || null },
+      )
+      if (!res.ok || !res.data) return
       setReklamaceOpen(false)
-      router.push(`/servis/zakazky/${data.id}`)
+      router.push(`/servis/zakazky/${res.data.id}`)
     } finally {
       setActing(false)
     }
@@ -219,11 +226,10 @@ export default function ZakazkaDetailClient({ zakazka, orgUsers, canEdit, isAdmi
     try {
       const fd = new FormData()
       fd.append('file', file)
-      const res = await fetch(`/api/servis/zakazky/${zakazka.id}/fotky`, { method: 'POST', body: fd })
-      if (res.ok) {
-        const data = await res.json()
-        setFotky(data.fotky)
-      }
+      const res = await apiFetch<{ fotky: string[] }>(`/api/servis/zakazky/${zakazka.id}/fotky`,
+        { method: 'POST', body: fd },
+        { errorMessage: 'Fotku se nepodařilo nahrát.' })
+      if (res.ok && res.data) setFotky(res.data.fotky)
     } finally {
       setUploading(false)
       if (fileRef.current) fileRef.current.value = ''
@@ -231,15 +237,12 @@ export default function ZakazkaDetailClient({ zakazka, orgUsers, canEdit, isAdmi
   }
 
   async function deleteFoto(index: number) {
-    const res = await fetch(`/api/servis/zakazky/${zakazka.id}/fotky`, {
+    const res = await apiFetch<{ fotky: string[] }>(`/api/servis/zakazky/${zakazka.id}/fotky`, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ index }),
-    })
-    if (res.ok) {
-      const data = await res.json()
-      setFotky(data.fotky)
-    }
+    }, { errorMessage: 'Fotku se nepodařilo smazat.' })
+    if (res.ok && res.data) setFotky(res.data.fotky)
   }
 
   const inputClass = 'w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500'
@@ -332,6 +335,38 @@ export default function ZakazkaDetailClient({ zakazka, orgUsers, canEdit, isAdmi
         onConfirm={async () => { const ok = await changeStav('UZAVRENA'); if (ok) setConfirmAction(null) }}
         onCancel={() => setConfirmAction(null)}
       />
+
+      {/* Pozastavení — důvod čekání */}
+      {cekaOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="px-6 py-5 border-b border-gray-200 dark:border-slate-700">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Pozastavit zakázku</h3>
+              <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
+                Zakázka přejde do stavu Čeká. Důvod uvidí dispečink i technik.
+              </p>
+            </div>
+            <div className="px-6 py-4">
+              <label className={labelClass}>Důvod čekání</label>
+              <input
+                type="text"
+                value={cekaDuvodDraft}
+                onChange={e => setCekaDuvodDraft(e.target.value)}
+                placeholder="Např. čeká na díly"
+                autoFocus
+                className={inputClass}
+                onKeyDown={e => { if (e.key === 'Enter') pozastavitPotvrdit() }}
+              />
+            </div>
+            <div className="px-6 py-4 border-t border-gray-200 dark:border-slate-700 flex gap-3 justify-end">
+              <button onClick={() => setCekaOpen(false)} className={ghostBtn}>Zpět</button>
+              <button onClick={pozastavitPotvrdit} disabled={acting} className={primaryBtn}>
+                {acting ? 'Ukládám…' : 'Pozastavit'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Reklamace modal */}
       {reklamaceOpen && (
@@ -623,7 +658,7 @@ export default function ZakazkaDetailClient({ zakazka, orgUsers, canEdit, isAdmi
               <h2 className="font-semibold text-gray-900 dark:text-white">Předání zakázky</h2>
               {zakazka.protokolDokoncen ? (
                 <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300">
-                  Protokol dokončen {new Date(zakazka.protokolDokoncen).toLocaleDateString('cs-CZ')}
+                  Protokol dokončen {formatDate(zakazka.protokolDokoncen)}
                 </span>
               ) : (
                 <span className="text-xs px-2 py-0.5 rounded-full font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">

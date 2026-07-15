@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
+import { formatDate, formatKcPresne } from '@/lib/format'
 
 export async function GET(req: Request, { params }: { params: { id: string; quoteId: string } }) {
   const session = await getServerSession(authOptions)
@@ -35,8 +36,8 @@ export async function GET(req: Request, { params }: { params: { id: string; quot
       <td style="padding:10px 14px;border-bottom:1px solid #eee">${idx + 1}</td>
       <td style="padding:10px 14px;border-bottom:1px solid #eee">${item.nazev}${item.poznamky ? `<br><small style="color:#888">${item.poznamky}</small>` : ''}</td>
       <td style="padding:10px 14px;border-bottom:1px solid #eee;text-align:center">${Number(item.mnozstvi)}</td>
-      <td style="padding:10px 14px;border-bottom:1px solid #eee;text-align:right">${Number(item.cenaZaKus).toLocaleString('cs-CZ')} Kč</td>
-      <td style="padding:10px 14px;border-bottom:1px solid #eee;text-align:right;font-weight:500">${(Number(item.mnozstvi) * Number(item.cenaZaKus)).toLocaleString('cs-CZ')} Kč</td>
+      <td style="padding:10px 14px;border-bottom:1px solid #eee;text-align:right">${formatKcPresne(Number(item.cenaZaKus))}</td>
+      <td style="padding:10px 14px;border-bottom:1px solid #eee;text-align:right;font-weight:500">${formatKcPresne((Number(item.mnozstvi) * Number(item.cenaZaKus)))}</td>
     </tr>
   `).join('')
 
@@ -85,7 +86,7 @@ export async function GET(req: Request, { params }: { params: { id: string; quot
     <div class="header-top">
       <div>
         <div class="doc-type">CENOVÁ NABÍDKA</div>
-        <div class="info-bar">Datum: ${new Date().toLocaleDateString('cs-CZ')} &nbsp;|&nbsp; Platnost: 30 dní &nbsp;|&nbsp; ${quote.nazev}</div>
+        <div class="info-bar">Datum: ${formatDate(new Date())} &nbsp;|&nbsp; Platnost: 30 dní &nbsp;|&nbsp; ${quote.nazev}</div>
       </div>
       <div class="doc-meta">
         <div class="kod">${deal.kod ?? ''}</div>
@@ -131,9 +132,9 @@ export async function GET(req: Request, { params }: { params: { id: string; quot
   </table>
 
   <div class="total-section">
-    <div class="total-row"><span>Celkem bez DPH</span><span>${celkem.toLocaleString('cs-CZ')} Kč</span></div>
-    <div class="total-row"><span>DPH ${quote.dphSazba}%</span><span>${dph.toLocaleString('cs-CZ')} Kč</span></div>
-    <div class="total-final"><span>Cena celkem s DPH</span><span>${celkemSDph.toLocaleString('cs-CZ')} Kč</span></div>
+    <div class="total-row"><span>Celkem bez DPH</span><span>${formatKcPresne(celkem)}</span></div>
+    <div class="total-row"><span>DPH ${quote.dphSazba}%</span><span>${formatKcPresne(dph)}</span></div>
+    <div class="total-final"><span>Cena celkem s DPH</span><span>${formatKcPresne(celkemSDph)}</span></div>
   </div>
 
   ${quote.popis ? `<div style="margin-top:24px;padding:16px;background:#fff8f8;border:1px solid #fcc;border-radius:4px"><p style="font-size:11px;font-weight:700;color:#E8340A;text-transform:uppercase;margin-bottom:6px">Poznámky</p><p style="font-size:13px">${quote.popis}</p></div>` : ''}

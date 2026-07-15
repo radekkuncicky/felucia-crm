@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { SOD_PLACEHOLDER_LABELS } from '@/lib/sodPlaceholders'
+import { formatKc } from '@/lib/format'
 
 // Placeholdery, které mají v modalu vlastní pole (níže). Zbytek prázdných
 // se vypíše dynamicky jako „Doplnit do smlouvy".
@@ -37,7 +38,7 @@ interface Props {
   onClose: () => void
 }
 
-const fmtKc = (n: number) => Math.round(n).toLocaleString('cs-CZ') + ' Kč'
+const fmtKc = formatKc
 
 const inputCls = 'w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary'
 const inputEmptyCls = 'w-full border border-red-300 dark:border-red-700 rounded-lg px-3 py-2 text-sm bg-red-50 dark:bg-red-900/10 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-400/40'

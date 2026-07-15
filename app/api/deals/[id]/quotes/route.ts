@@ -3,6 +3,7 @@ import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { generateQuoteKod } from '@/lib/quoteKod'
+import { createWithUniqueKod } from '@/lib/uniqueKod'
 import { logAction } from '@/lib/auditLog'
 import { createNotification } from '@/lib/createNotification'
 
@@ -53,9 +54,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   const count = await db.quote.count({ where: { dealId: params.id } })
   const quoteName = nazev || `Nabídka ${count + 1}`
-  const kod = await generateQuoteKod(orgId)
-
-  const quote = await db.quote.create({
+  const quote = await createWithUniqueKod(() => generateQuoteKod(orgId), kod => db.quote.create({
     data: {
       orgId,
       dealId: params.id,
@@ -82,7 +81,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       } : {}),
     },
     include: { items: { include: { product: true } } },
-  })
+  }))
 
   if (deal.userId && deal.userId !== session.user.id) {
     await createNotification({

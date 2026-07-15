@@ -1,4 +1,5 @@
 'use client'
+import { formatDate, formatKcPresne } from '@/lib/format'
 
 const PLAN_COLORS: Record<string, string> = {
   STARTER: 'bg-gray-600',
@@ -52,7 +53,7 @@ export default function SuperAdminDashboard({ stats, planDistribution, recentOrg
         />
         <StatCard
           label="MRR (odhadované)"
-          value={`${stats.mrr.toLocaleString('cs-CZ')} Kč`}
+          value={`${formatKcPresne(stats.mrr)}`}
           sub="měsíční příjmy"
           color="text-yellow-400"
         />
@@ -98,7 +99,7 @@ export default function SuperAdminDashboard({ stats, planDistribution, recentOrg
                     {org.aktivni ? 'Aktivní' : 'Neaktivní'}
                   </span>
                   <span className="text-xs text-gray-500">
-                    {new Date(org.vytvoreno).toLocaleDateString('cs-CZ')}
+                    {formatDate(org.vytvoreno)}
                   </span>
                 </div>
               </div>

@@ -10,6 +10,7 @@ import {
 } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import { stavLabel, stavColor, typLabel, jeProsla } from '@/lib/servisStav'
+import { api } from '@/lib/api'
 
 interface Row {
   id: string
@@ -305,7 +306,6 @@ export default function DispecinkClient({ rows: initialRows, orgUsers }: Props) 
   const [filter, setFilter] = useState<string>('all') // 'all' | technikId | 'none'
   const [activeId, setActiveId] = useState<string | null>(null)
   const [overId, setOverId] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
@@ -352,19 +352,13 @@ export default function DispecinkClient({ rows: initialRows, orgUsers }: Props) 
   async function patch(rowId: string, body: Record<string, unknown>, optimistic: Partial<Row>) {
     const prev = rows
     setRows(p => p.map(r => r.id === rowId ? { ...r, ...optimistic } : r))
-    setError(null)
-    try {
-      const res = await fetch(`/api/servis/zakazky/${rowId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      })
-      if (!res.ok) { setRows(prev); setError('Chyba při ukládání. Zkus to znovu.'); return }
-      router.refresh()
-    } catch {
+    const res = await api.patch(`/api/servis/zakazky/${rowId}`, body,
+      { errorMessage: 'Změnu se nepodařilo uložit. Zkuste to prosím znovu.' })
+    if (!res.ok) {
       setRows(prev)
-      setError('Chyba při ukládání. Zkus to znovu.')
+      return
     }
+    router.refresh()
   }
 
   function handleDragEnd(event: DragEndEvent) {
@@ -403,13 +397,6 @@ export default function DispecinkClient({ rows: initialRows, orgUsers }: Props) 
 
   return (
     <div className="space-y-3">
-      {error && (
-        <div className="px-4 py-2.5 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl text-sm text-red-700 dark:text-red-400 flex items-center justify-between">
-          {error}
-          <button onClick={() => setError(null)} className="ml-4 text-red-400 hover:text-red-600">✕</button>
-        </div>
-      )}
-
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-1">

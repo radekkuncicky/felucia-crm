@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { formatDateTime } from '@/lib/format'
+import { IconClipboard, IconBox, IconNote } from '@/components/ui/Icons'
 
 interface Komentar {
   id: string
@@ -114,7 +116,7 @@ export default function HistorieTab({ zakazkaId, komentare: initialKomentare, cu
                         {k.text}
                       </div>
                       <p className="text-xs text-gray-400 dark:text-slate-500 px-1">
-                        {k.user.jmeno} · {new Date(k.vytvoreno).toLocaleString('cs-CZ', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        {k.user.jmeno} · {formatDateTime(k.vytvoreno)}
                       </p>
                     </div>
                   </div>
@@ -153,7 +155,7 @@ export default function HistorieTab({ zakazkaId, komentare: initialKomentare, cu
                 <div key={a.id} className="flex gap-3">
                   <div className="flex flex-col items-center">
                     <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-slate-700 flex items-center justify-center text-sm flex-shrink-0">
-                      {a.typZaznamu === 'Zakazka' ? '📋' : a.typZaznamu === 'ZakazkaPolozka' ? '📦' : '📝'}
+                      {a.typZaznamu === 'Zakazka' ? <IconClipboard className="w-4 h-4" /> : a.typZaznamu === 'ZakazkaPolozka' ? <IconBox className="w-4 h-4" /> : <IconNote className="w-4 h-4" />}
                     </div>
                     {i < aktivity.length - 1 && <div className="w-0.5 flex-1 bg-gray-100 dark:bg-slate-700 mt-2" />}
                   </div>
@@ -163,7 +165,7 @@ export default function HistorieTab({ zakazkaId, komentare: initialKomentare, cu
                         {a.typZaznamu}: <span className="text-gray-600 dark:text-slate-400">{a.zaznamNazev}</span>
                       </p>
                       <span className="text-xs text-gray-400 dark:text-slate-500 flex-shrink-0">
-                        {new Date(a.vytvoreno).toLocaleString('cs-CZ', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        {formatDateTime(a.vytvoreno)}
                       </span>
                     </div>
                     <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">{formatZmeny(a.zmeny)}</p>

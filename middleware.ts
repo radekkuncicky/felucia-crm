@@ -124,6 +124,8 @@ export async function middleware(req: NextRequest) {
     url.pathname === '/' ||
     url.pathname.startsWith('/api/webhooks') ||
     url.pathname.startsWith('/zarizeni') ||
+    url.pathname.startsWith('/podpis') ||
+    url.pathname.startsWith('/nabidka') ||
     url.pathname.startsWith('/demo') ||
     url.pathname.startsWith('/terms') ||
     url.pathname.startsWith('/privacy')

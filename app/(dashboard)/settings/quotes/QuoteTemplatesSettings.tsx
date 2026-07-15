@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { useState, useTransition, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import ConfirmModal from '@/components/ConfirmModal'
+import { IconFlame, IconSnowflake, IconWind, IconHeat, IconFan, IconCog } from '@/components/ui/Icons'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -64,13 +65,13 @@ const TYP_COLORS: Record<string, string> = {
 }
 
 const TECHNOLOGIES = [
-  { value: 'TEPELNE_CERPADLO', label: 'Tepelné čerpadlo', icon: '🔥' },
-  { value: 'KLIMA', label: 'Klimatizace', icon: '❄️' },
-  { value: 'REKUPERACE', label: 'Rekuperace', icon: '🌀' },
-  { value: 'PODLAHOVE_TOPENI', label: 'Podlahové vytápění', icon: '🏠' },
-  { value: 'VZDUCHOTECHNIKA', label: 'Vzduchotechnika', icon: '💨' },
-  { value: 'OHREV_TUV', label: 'Ohřev TUV', icon: '💧' },
-  { value: 'JINE', label: 'Jiné', icon: '⚙️' },
+  { value: 'TEPELNE_CERPADLO', label: 'Tepelné čerpadlo', icon: <IconFlame className="w-4 h-4 text-orange-500" /> },
+  { value: 'KLIMA', label: 'Klimatizace', icon: <IconSnowflake className="w-4 h-4 text-sky-500" /> },
+  { value: 'REKUPERACE', label: 'Rekuperace', icon: <IconWind className="w-4 h-4 text-teal-500" /> },
+  { value: 'PODLAHOVE_TOPENI', label: 'Podlahové vytápění', icon: <IconHeat className="w-4 h-4 text-red-400" /> },
+  { value: 'VZDUCHOTECHNIKA', label: 'Vzduchotechnika', icon: <IconFan className="w-4 h-4 text-indigo-400" /> },
+  { value: 'OHREV_TUV', label: 'Ohřev TUV', icon: <IconHeat className="w-4 h-4 text-blue-400" /> },
+  { value: 'JINE', label: 'Jiné', icon: <IconCog className="w-4 h-4 text-gray-400" /> },
 ]
 
 const PLACEHOLDER_GROUPS = [
@@ -503,7 +504,6 @@ function InlineTechEditor({
   if (template.isSystem) {
     return (
       <div className="px-5 py-4 bg-gray-50 dark:bg-slate-800/50 border-t border-[#C8E6C9] dark:border-[#1C3B1C] flex items-center gap-2 text-xs text-gray-500 dark:text-slate-400">
-        <span>🔒</span>
         <span>SYSTEM šablona — nelze upravovat. Interní šablony NANTO mají dynamické sekce dle technologie zakázky.</span>
       </div>
     )
@@ -769,7 +769,6 @@ function TemplateEditor({
           {template.isSystem && (
             <div className="bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-5 space-y-3">
               <div className="flex items-center gap-2">
-                <span className="text-base">🔒</span>
                 <p className="font-semibold text-gray-800 dark:text-white text-sm">SYSTEM šablona — nelze upravovat</p>
               </div>
               <p className="text-sm text-gray-500 dark:text-slate-400">
@@ -1356,7 +1355,7 @@ export default function QuoteTemplatesSettings({
                   >
                     {/* Icon + name */}
                     <div className="w-44 flex items-center gap-2 flex-shrink-0">
-                      <span className="text-base">{tech.icon}</span>
+                      <span className="flex-shrink-0">{tech.icon}</span>
                       <span className="text-sm font-medium text-gray-800 dark:text-slate-200">{tech.label}</span>
                     </div>
 

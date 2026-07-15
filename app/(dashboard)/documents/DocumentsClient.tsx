@@ -2,6 +2,8 @@
 
 import { confirmDialog } from '@/components/ui/confirm'
 import { useEffect, useState, useRef, useCallback } from 'react'
+import { formatDate } from '@/lib/format'
+import { IconDocument, IconChart, IconNote, IconBox, IconWarning, IconCamera } from '@/components/ui/Icons'
 
 interface Doc {
   id: string
@@ -28,14 +30,15 @@ function formatBytes(bytes: bigint): string {
   return `${(n / (1024 * 1024 * 1024)).toFixed(2)} GB`
 }
 
-function mimeIcon(mimeType: string): string {
-  if (mimeType === 'application/pdf') return '📄'
-  if (mimeType.startsWith('image/')) return '🖼️'
-  if (mimeType.startsWith('video/')) return '🎬'
-  if (mimeType.includes('spreadsheet') || mimeType.includes('excel')) return '📊'
-  if (mimeType.includes('word') || mimeType.includes('document')) return '📝'
-  if (mimeType.includes('zip') || mimeType.includes('compressed')) return '🗜️'
-  return '📎'
+function MimeIcon({ mimeType }: { mimeType: string }) {
+  const cls = 'w-5 h-5'
+  if (mimeType === 'application/pdf') return <IconDocument className={`${cls} text-red-500`} />
+  if (mimeType.startsWith('image/')) return <IconCamera className={`${cls} text-sky-500`} />
+  if (mimeType.startsWith('video/')) return <IconCamera className={`${cls} text-violet-500`} />
+  if (mimeType.includes('spreadsheet') || mimeType.includes('excel')) return <IconChart className={`${cls} text-green-600`} />
+  if (mimeType.includes('word') || mimeType.includes('document')) return <IconNote className={`${cls} text-blue-500`} />
+  if (mimeType.includes('zip') || mimeType.includes('compressed')) return <IconBox className={`${cls} text-amber-600`} />
+  return <IconDocument className={`${cls} text-gray-400`} />
 }
 
 export default function DocumentsClient() {
@@ -142,7 +145,7 @@ export default function DocumentsClient() {
       {/* Storage banner (upsell) */}
       {storageExceeded && (
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl px-5 py-4 flex items-start gap-3">
-          <span className="text-red-500 text-xl mt-0.5">⚠️</span>
+          <IconWarning className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
           <div>
             <p className="font-semibold text-red-700 dark:text-red-400 text-sm">Úložiště je plné</p>
             <p className="text-xs text-red-600 dark:text-red-500 mt-0.5">
@@ -259,7 +262,7 @@ export default function DocumentsClient() {
                 <tr key={doc.id} className="hover:bg-gray-50 dark:hover:bg-slate-700/30 transition-colors">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
-                      <span className="text-lg">{mimeIcon(doc.mimeType)}</span>
+                      <MimeIcon mimeType={doc.mimeType} />
                       <div className="min-w-0">
                         <a
                           href={doc.cesta}
@@ -277,7 +280,7 @@ export default function DocumentsClient() {
                     {formatBytes(BigInt(doc.velikost))}
                   </td>
                   <td className="px-4 py-3 text-gray-500 dark:text-slate-400 whitespace-nowrap hidden md:table-cell">
-                    {new Date(doc.vytvoreno).toLocaleDateString('cs-CZ')}
+                    {formatDate(doc.vytvoreno)}
                   </td>
                   <td className="px-4 py-3 text-gray-500 dark:text-slate-400 hidden md:table-cell">
                     {doc.uploadedBy}

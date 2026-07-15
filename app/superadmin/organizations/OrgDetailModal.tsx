@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { formatDate } from '@/lib/format'
 
 const PLANS = ['STARTER', 'STANDARD', 'PROFESSIONAL', 'ENTERPRISE']
 
@@ -72,8 +73,8 @@ export default function OrgDetailModal({ org, onClose, onUpdate, onDelete, onImp
           <div className="space-y-2 text-sm">
             <InfoRow label="ID" value={org.id} />
             <InfoRow label="Slug" value={org.slug} />
-            <InfoRow label="Registrace" value={new Date(org.vytvoreno).toLocaleDateString('cs-CZ')} />
-            <InfoRow label="Platnost plánu" value={org.planActiveTo ? new Date(org.planActiveTo).toLocaleDateString('cs-CZ') : 'Neurčeno'} />
+            <InfoRow label="Registrace" value={formatDate(org.vytvoreno)} />
+            <InfoRow label="Platnost plánu" value={org.planActiveTo ? formatDate(org.planActiveTo) : 'Neurčeno'} />
             <InfoRow label="Stripe Customer ID" value={org.stripeCustomerId ?? '—'} />
             <InfoRow label="Stav" value={org.aktivni ? 'Aktivní' : 'Neaktivní'} />
           </div>

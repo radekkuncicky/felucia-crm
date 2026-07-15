@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import ConfirmModal from '@/components/ConfirmModal'
 import { WEBHOOK_EVENTS } from '@/lib/webhooks'
+import { formatDate, formatDateTime } from '@/lib/format'
 
 interface Webhook {
   id: string
@@ -230,15 +231,15 @@ export default function WebhooksManager() {
                     <code className="font-mono text-xs text-gray-500 dark:text-slate-400 break-all">{hook.url}</code>
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
                       <span className="text-xs text-gray-400 dark:text-slate-500">
-                        {hook.events.length} událostí · vytvořen {new Date(hook.vytvoreno).toLocaleDateString('cs-CZ')}
+                        {hook.events.length} událostí · vytvořen {formatDate(hook.vytvoreno)}
                       </span>
                       {hook.lastSuccessAt && (
                         <span className="text-xs text-green-600 dark:text-green-400">
-                          · doručeno {new Date(hook.lastSuccessAt).toLocaleString('cs-CZ')}
+                          · doručeno {formatDateTime(hook.lastSuccessAt)}
                         </span>
                       )}
                       {hook.lastError && (
-                        <span className="text-xs text-red-500 dark:text-red-400" title={hook.lastErrorAt ? new Date(hook.lastErrorAt).toLocaleString('cs-CZ') : undefined}>
+                        <span className="text-xs text-red-500 dark:text-red-400" title={hook.lastErrorAt ? formatDateTime(hook.lastErrorAt) : undefined}>
                           · chyba: {hook.lastError}
                         </span>
                       )}

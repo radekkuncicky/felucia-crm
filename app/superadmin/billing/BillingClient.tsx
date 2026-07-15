@@ -1,4 +1,5 @@
 'use client'
+import { formatDate, formatCislo } from '@/lib/format'
 
 const PLAN_COLORS: Record<string, string> = {
   STARTER: 'bg-gray-700 text-gray-200',
@@ -40,12 +41,12 @@ export default function BillingClient({ mrr, planDistribution, orgs }: Props) {
       {/* Revenue stats */}
       <div className="grid grid-cols-3 gap-6 mb-8">
         <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
-          <p className="text-2xl font-bold text-yellow-400">{mrr.toLocaleString('cs-CZ')} Kč</p>
+          <p className="text-2xl font-bold text-yellow-400">{formatCislo(mrr)} Kč</p>
           <p className="text-sm text-gray-300 mt-1">MRR (odhadované)</p>
           <p className="text-xs text-gray-500 mt-0.5">Monthly Recurring Revenue</p>
         </div>
         <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
-          <p className="text-2xl font-bold text-green-400">{arr.toLocaleString('cs-CZ')} Kč</p>
+          <p className="text-2xl font-bold text-green-400">{formatCislo(arr)} Kč</p>
           <p className="text-sm text-gray-300 mt-1">ARR (odhadované)</p>
           <p className="text-xs text-gray-500 mt-0.5">Annual Recurring Revenue</p>
         </div>
@@ -100,9 +101,9 @@ export default function BillingClient({ mrr, planDistribution, orgs }: Props) {
                     {org.plan}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-gray-300">{org.price.toLocaleString('cs-CZ')} Kč</td>
+                <td className="px-4 py-3 text-gray-300">{formatCislo(org.price)} Kč</td>
                 <td className="px-4 py-3 text-gray-400 text-xs">
-                  {org.planActiveTo ? new Date(org.planActiveTo).toLocaleDateString('cs-CZ') : '—'}
+                  {org.planActiveTo ? formatDate(org.planActiveTo) : '—'}
                 </td>
                 <td className="px-4 py-3 text-gray-500 font-mono text-xs">
                   {org.stripeCustomerId ?? '—'}

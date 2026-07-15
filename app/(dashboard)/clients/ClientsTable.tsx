@@ -6,6 +6,7 @@ import { useTableColumns, ColumnDef } from '@/hooks/useTableColumns'
 import ColumnConfigButton from '@/components/ColumnConfigButton'
 import { ResizeHandle } from '@/components/ResizeHandle'
 import EmptyState from '@/components/ui/EmptyState'
+import { formatDate } from '@/lib/format'
 
 interface ClientRow {
   id: string
@@ -122,7 +123,7 @@ export default function ClientsTable({ clients }: Props) {
                 {client.mesto && (
                   <p className="text-xs text-gray-400 dark:text-slate-500">{client.mesto}</p>
                 )}
-                <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">{new Date(client.vytvoreno).toLocaleDateString('cs-CZ')}</p>
+                <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">{formatDate(client.vytvoreno)}</p>
               </div>
               <div className="flex flex-col items-end gap-2 flex-shrink-0">
                 <span className="bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-xs font-medium px-2 py-1 rounded-full whitespace-nowrap">
@@ -213,7 +214,7 @@ export default function ClientsTable({ clients }: Props) {
                           </td>
                         )
                       case 'vytvoreno':
-                        return <td key={col.id} className="px-6 py-4 text-sm text-gray-500 dark:text-slate-400 whitespace-nowrap">{new Date(client.vytvoreno).toLocaleDateString('cs-CZ')}</td>
+                        return <td key={col.id} className="px-6 py-4 text-sm text-gray-500 dark:text-slate-400 whitespace-nowrap">{formatDate(client.vytvoreno)}</td>
                       default:
                         return <td key={col.id} />
                     }

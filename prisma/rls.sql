@@ -97,6 +97,12 @@ DROP POLICY IF EXISTS org_rls ON "notifications";
 CREATE POLICY org_rls ON "notifications" FOR ALL TO nanto_app
   USING ("orgId" = current_setting('app.org_id', true)) WITH CHECK ("orgId" = current_setting('app.org_id', true));
 
+-- OrgEmailSettings
+ALTER TABLE "org_email_settings" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_rls ON "org_email_settings";
+CREATE POLICY org_rls ON "org_email_settings" FOR ALL TO nanto_app
+  USING ("orgId" = current_setting('app.org_id', true)) WITH CHECK ("orgId" = current_setting('app.org_id', true));
+
 -- OrgSettings
 ALTER TABLE "org_settings" ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS org_rls ON "org_settings";
@@ -167,6 +173,24 @@ CREATE POLICY org_rls ON "sklad_pohyby" FOR ALL TO nanto_app
 ALTER TABLE "sod" ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS org_rls ON "sod";
 CREATE POLICY org_rls ON "sod" FOR ALL TO nanto_app
+  USING ("orgId" = current_setting('app.org_id', true)) WITH CHECK ("orgId" = current_setting('app.org_id', true));
+
+-- SodPodpisRelace
+ALTER TABLE "sod_podpis_relace" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_rls ON "sod_podpis_relace";
+CREATE POLICY org_rls ON "sod_podpis_relace" FOR ALL TO nanto_app
+  USING ("orgId" = current_setting('app.org_id', true)) WITH CHECK ("orgId" = current_setting('app.org_id', true));
+
+-- SodUdalost
+ALTER TABLE "sod_udalosti" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_rls ON "sod_udalosti";
+CREATE POLICY org_rls ON "sod_udalosti" FOR ALL TO nanto_app
+  USING ("orgId" = current_setting('app.org_id', true)) WITH CHECK ("orgId" = current_setting('app.org_id', true));
+
+-- SodVerze
+ALTER TABLE "sod_verze" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_rls ON "sod_verze";
+CREATE POLICY org_rls ON "sod_verze" FOR ALL TO nanto_app
   USING ("orgId" = current_setting('app.org_id', true)) WITH CHECK ("orgId" = current_setting('app.org_id', true));
 
 -- User

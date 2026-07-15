@@ -3,6 +3,7 @@ import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { generateQuoteKod } from '@/lib/quoteKod'
+import { createWithUniqueKod } from '@/lib/uniqueKod'
 
 export async function POST(req: Request, { params }: { params: { id: string; quoteId: string } }) {
   const session = await getServerSession(authOptions)
@@ -16,8 +17,7 @@ export async function POST(req: Request, { params }: { params: { id: string; quo
   })
   if (!quote) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const kod = await generateQuoteKod(orgId)
-  const newQuote = await db.quote.create({
+  const newQuote = await createWithUniqueKod(() => generateQuoteKod(orgId), kod => db.quote.create({
     data: {
       orgId,
       dealId: params.id,
@@ -44,7 +44,7 @@ export async function POST(req: Request, { params }: { params: { id: string; quo
       },
     },
     include: { items: { include: { product: true }, orderBy: { poradi: 'asc' } } },
-  })
+  }))
 
   return NextResponse.json(newQuote, { status: 201 })
 }

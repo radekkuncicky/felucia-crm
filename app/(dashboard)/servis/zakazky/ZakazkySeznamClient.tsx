@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { api } from '@/lib/api'
 import {
   type NavstevaTyp,
   SERVIS_STAV_LABELS,
@@ -98,22 +99,17 @@ export default function ZakazkySeznamClient({ zakazky, orgUsers, zarizeniList, c
     setSaving(true)
     try {
       const planovanyTermin = form.planovanyTermin ? `${form.planovanyTermin}T${form.cas}:00` : null
-      const res = await fetch('/api/servis/zakazky', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          typ: form.typ,
-          planovanyTermin,
-          technikId: form.technikId || null,
-          poznamka: form.poznamka || null,
-          zarizeniId: form.zarizeniId || null,
-          klientId: form.klientId || null,
-          kontraktId: form.kontraktId || null,
-        }),
-      })
-      if (res.ok) {
-        const z = await res.json()
-        router.push(`/servis/zakazky/${z.id}`)
+      const res = await api.post<{ id: string }>('/api/servis/zakazky', {
+        typ: form.typ,
+        planovanyTermin,
+        technikId: form.technikId || null,
+        poznamka: form.poznamka || null,
+        zarizeniId: form.zarizeniId || null,
+        klientId: form.klientId || null,
+        kontraktId: form.kontraktId || null,
+      }, { errorMessage: 'Servisní zakázku se nepodařilo vytvořit.' })
+      if (res.ok && res.data) {
+        router.push(`/servis/zakazky/${res.data.id}`)
       } else {
         setSaving(false)
       }

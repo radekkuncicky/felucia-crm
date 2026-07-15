@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { type ServisniZakazkaStav, stavLabel, stavColor, jeProsla } from '@/lib/servisStav'
+import { formatDate, formatKcPresne } from '@/lib/format'
 
 type ServisTyp = 'ROCNI' | 'POLOLETNI' | 'DVOULETNI' | 'JEDNOURAZOVY'
 type NavstevaTyp = 'PLANOVANY_SERVIS' | 'PORUCHA' | 'ZARUCNI_OPRAVA' | 'POZARUCNI_OPRAVA' | 'UVEDENI_DO_PROVOZU' | 'KONTROLA'
@@ -91,8 +92,8 @@ function warrantyStatus(zarukaDo: string | null) {
   const now = new Date()
   const diff = (d.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
   if (diff < 0) return { label: 'Záruka expirovala', cls: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300' }
-  if (diff < 90) return { label: `Záruka do ${d.toLocaleDateString('cs-CZ')}`, cls: 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300' }
-  return { label: `Záruka do ${d.toLocaleDateString('cs-CZ')}`, cls: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' }
+  if (diff < 90) return { label: `Záruka do ${formatDate(d)}`, cls: 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300' }
+  return { label: `Záruka do ${formatDate(d)}`, cls: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' }
 }
 
 export default function ServisTab({ zarizeni, kontrakty, orgUsers }: Props) {
@@ -154,7 +155,7 @@ export default function ServisTab({ zarizeni, kontrakty, orgUsers }: Props) {
                       )}
                       {z.datumInstalace && (
                         <span className="text-xs text-gray-500 dark:text-slate-400">
-                          Instalace: {new Date(z.datumInstalace).toLocaleDateString('cs-CZ')}
+                          Instalace: {formatDate(z.datumInstalace)}
                         </span>
                       )}
                     </div>
@@ -198,8 +199,8 @@ export default function ServisTab({ zarizeni, kontrakty, orgUsers }: Props) {
             {[
               { label: 'Typ', value: typLabels[aktivniKontrakt.typ] },
               { label: 'Interval', value: aktivniKontrakt.intervalMesicu > 0 ? `${aktivniKontrakt.intervalMesicu} měs.` : 'Jednorázový' },
-              { label: 'Cena/rok', value: aktivniKontrakt.cena ? `${Number(aktivniKontrakt.cena).toLocaleString('cs-CZ')} Kč` : '—' },
-              { label: 'Platí od', value: new Date(aktivniKontrakt.zacatek).toLocaleDateString('cs-CZ') },
+              { label: 'Cena/rok', value: aktivniKontrakt.cena ? `${formatKcPresne(Number(aktivniKontrakt.cena))}` : '—' },
+              { label: 'Platí od', value: formatDate(aktivniKontrakt.zacatek) },
             ].map(({ label, value }) => (
               <div key={label} className="bg-gray-50 dark:bg-slate-900/50 rounded-lg p-2.5">
                 <p className="text-xs text-gray-500 dark:text-slate-400">{label}</p>
@@ -243,7 +244,7 @@ export default function ServisTab({ zarizeni, kontrakty, orgUsers }: Props) {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-sm font-medium text-gray-900 dark:text-white">
-                      {new Date(n.planovanyTermin).toLocaleDateString('cs-CZ')}
+                      {formatDate(n.planovanyTermin)}
                     </span>
                     <span className="text-xs text-gray-500 dark:text-slate-400">{navstevaTypLabels[n.typ]}</span>
                     {n.technik && <span className="text-xs text-gray-500 dark:text-slate-400">· {n.technik.jmeno}</span>}
@@ -266,7 +267,7 @@ export default function ServisTab({ zarizeni, kontrakty, orgUsers }: Props) {
               <h3 className="font-semibold text-gray-900 dark:text-white">{k.nazev}</h3>
               <p className="text-sm text-gray-500 dark:text-slate-400">
                 {typLabels[k.typ]} · {k.intervalMesicu > 0 ? `každých ${k.intervalMesicu} měsíců` : 'jednorázový'}
-                {k.cena ? ` · ${Number(k.cena).toLocaleString('cs-CZ')} Kč/rok` : ''}
+                {k.cena ? ` · ${formatKcPresne(Number(k.cena))}/rok` : ''}
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -348,7 +349,7 @@ export default function ServisTab({ zarizeni, kontrakty, orgUsers }: Props) {
                     <div className="flex items-center gap-2 flex-wrap">
                       {n.cislo && <span className="font-mono text-xs text-gray-400 dark:text-slate-500">{n.cislo}</span>}
                       <span className="text-sm font-medium text-gray-900 dark:text-white">
-                        {new Date(n.planovanyTermin).toLocaleDateString('cs-CZ')}
+                        {formatDate(n.planovanyTermin)}
                       </span>
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${stavColor(n.stav)}`}>
                         {stavLabel(n.stav)}

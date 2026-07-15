@@ -1,6 +1,7 @@
 'use client'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { formatDateTime } from '@/lib/format'
 
 interface LogRow {
   id: string
@@ -90,7 +91,7 @@ export default function AuditLogTable({ logs, total, page, pageSize, users }: Pr
                 return (
                   <tr key={log.id} className="hover:bg-gray-50 dark:hover:bg-slate-700">
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600 dark:text-slate-400">
-                      {new Date(log.vytvoreno).toLocaleString('cs-CZ')}
+                      {formatDateTime(log.vytvoreno)}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{log.userJmeno}</td>
                     <td className="px-4 py-3 whitespace-nowrap">

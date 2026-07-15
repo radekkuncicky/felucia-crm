@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { PROFESE_PRESETY } from '@/lib/zakazkaKontakt'
+import { confirmDialog } from '@/components/ui/confirm'
 
 interface Kontakt {
   id: string
@@ -94,7 +95,7 @@ export default function KontaktyTab({ zakazkaId, kontakty: initial, canEdit }: P
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Opravdu smazat kontakt?')) return
+    if (!await confirmDialog('Opravdu smazat kontakt?', { title: 'Smazat kontakt', confirmLabel: 'Smazat' })) return
     setDeleting(id)
     try {
       const res = await fetch(`/api/zakazky/${zakazkaId}/kontakty/${id}`, { method: 'DELETE' })

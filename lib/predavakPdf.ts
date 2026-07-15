@@ -1,6 +1,7 @@
+import { formatDate } from '@/lib/format'
 function fmt(d: Date | string | null) {
   if (!d) return '—'
-  return new Date(d).toLocaleDateString('cs-CZ')
+  return formatDate(d)
 }
 
 const TECH_LABELS: Record<string, string> = {

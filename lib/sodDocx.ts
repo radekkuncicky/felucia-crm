@@ -2,6 +2,7 @@
 // Builds the Word XML template in memory, then fills {{placeholders}} via docxtemplater
 
 import { SodDocData, isPdp, seZalohou } from './sodDocument'
+import { formatCislo } from '@/lib/format'
 
 // XML character escaping (for static text only — not for {{placeholders}})
 function x(s: string | null | undefined): string {
@@ -237,7 +238,7 @@ export async function generateSodDocx(d: SodDocData): Promise<Buffer> {
   })
 
   const fmtKc = (n: number | null | undefined) =>
-    n != null ? n.toLocaleString('cs-CZ') : '—'
+    n != null ? formatCislo(n) : '—'
 
   doc.render({
     cislo_sod: d.cislo,

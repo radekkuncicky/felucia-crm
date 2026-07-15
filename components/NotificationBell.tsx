@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { formatDate } from '@/lib/format'
+import { IconClipboard, IconDocument, IconWrench, IconCheck, IconActivity } from '@/components/ui/Icons'
 
 interface Count {
   opBezAktivity: number
@@ -51,13 +53,13 @@ function relativeTime(dateStr: string): string {
   return `před ${days} dny`
 }
 
-function typIcon(typ: string): string {
-  if (typ.includes('OP') || typ.includes('DEAL')) return '📋'
-  if (typ.includes('NABIDKA') || typ.includes('QUOTE')) return '📄'
-  if (typ.includes('SERVIS')) return '🔧'
-  if (typ.includes('UKOL') || typ.includes('TASK')) return '✅'
-  if (typ.includes('PRIPOMINKA')) return '⏰'
-  return '🔔'
+function TypIcon({ typ }: { typ: string }) {
+  const cls = 'w-4 h-4 text-gray-400 dark:text-slate-500'
+  if (typ.includes('OP') || typ.includes('DEAL')) return <IconClipboard className={cls} />
+  if (typ.includes('NABIDKA') || typ.includes('QUOTE')) return <IconDocument className={cls} />
+  if (typ.includes('SERVIS')) return <IconWrench className={cls} />
+  if (typ.includes('UKOL') || typ.includes('TASK')) return <IconCheck className={cls} />
+  return <IconActivity className={cls} />
 }
 
 export default function NotificationBell() {
@@ -232,7 +234,7 @@ export default function NotificationBell() {
                             <div className="flex items-start gap-2 min-w-0">
                               <span className="flex-shrink-0 mt-1">
                                 {n.precteno
-                                  ? <span className="text-sm">{typIcon(n.typ)}</span>
+                                  ? <TypIcon typ={n.typ} />
                                   : <span className="inline-block w-2 h-2 rounded-full bg-[#4CAF50]" />
                                 }
                               </span>
@@ -302,7 +304,7 @@ export default function NotificationBell() {
                               </p>
                             </div>
                             <span className="text-xs text-gray-400 dark:text-slate-500 flex-shrink-0 ml-2 mt-0.5">
-                              {new Date(u.datum).toLocaleDateString('cs-CZ')}
+                              {formatDate(u.datum)}
                             </span>
                           </Link>
                         ))}

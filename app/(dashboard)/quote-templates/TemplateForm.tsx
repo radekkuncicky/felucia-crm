@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import ProductCatalogModal from '@/components/ProductCatalogModal'
+import { formatKcPresne } from '@/lib/format'
 
 const techOptions = [
   { value: '', label: '— Všechny —' },
@@ -187,7 +188,7 @@ export default function TemplateForm({ template }: Props) {
                     <input type="number" min="0" step="0.01" value={item.cena_za_kus} onChange={(e) => updateItem(idx, 'cena_za_kus', Number(e.target.value))} className={`${inpSm} w-24 text-right`} />
                   </td>
                   <td className="px-6 py-3 text-right text-sm font-semibold text-gray-900">
-                    {(item.mnozstvi * item.cena_za_kus).toLocaleString('cs-CZ')} Kč
+                    {formatKcPresne(item.mnozstvi * item.cena_za_kus)}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <button type="button" onClick={() => removeItem(idx)} className="text-xs text-red-500 hover:text-red-700">Odebrat</button>

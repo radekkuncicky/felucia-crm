@@ -193,6 +193,38 @@ enum SodTyp {
   PDP_SE_ZALOHOU
 }
 
+// Životní cyklus smlouvy (online podpis): NÁVRH → ODESLÁNO → PODEPSÁNO;
+// revize po připomínkách = nová SodVerze + návrat do NÁVRH/ODESLÁNO.
+enum SodStav {
+  NAVRH
+  ODESLANO
+  PODEPSANO
+  EXPIROVANO
+  STORNO
+}
+
+enum SodUdalostTyp {
+  VYTVORENO
+  REVIZE
+  ODESLANO
+  PRIPOMINKA
+  ZOBRAZENO
+  OTP_ODESLAN
+  OTP_OVERENO
+  OTP_CHYBA
+  PODEPSANO
+  ZNEPLATNENO
+  EXPIROVANO
+  STORNO
+}
+
+enum PodpisRelaceStav {
+  AKTIVNI
+  PODEPSANA
+  ZNEPLATNENA
+  EXPIROVANA
+}
+
 enum LeadZdroj {
   WEB_FORMULAR
   RUCNE
@@ -228,6 +260,10 @@ model Organization {
   stripePlanId              String?
   stripeSubscriptionStatus  String?
   stripeCurrentPeriodEnd    DateTime?
+  // Příplatkový modul Online podpis smluv (STANDARD, 99 Kč/licence/měsíc,
+  // limit 100 odeslaných smluv/měsíc) — druhá Stripe subscription vedle plánu
+  modulPodpisy              Boolean   @default(false)
+  stripePodpisySubId        String?
   aiTokensUsed      Int       @default(0)
   aiTokensResetAt   DateTime  @default(now())
   aiCreditsUsed     Int       @default(0)
@@ -259,6 +295,7 @@ model Organization {
   servisniZakazky      ServisniZakazka[]
   servisniPolozky      ServisniPolozka[]
   orgSettings          OrgSettings?
+  orgEmailSettings     OrgEmailSettings?
   orgTemplateMappings  OrgTemplateMapping[]
   notifications        Notification[]
   zakazky              Zakazka[]
@@ -267,6 +304,9 @@ model Organization {
   predavaky            Predavak[]
   vyuctovani           Vyuctovani[]
   sod                  Sod[]
+  sodVerze             SodVerze[]
+  sodUdalosti          SodUdalost[]
+  sodPodpisRelace      SodPodpisRelace[]
   documents            Document[]
   leady                Lead[]
   aiUsageLogs          AiUsageLog[]
@@ -420,6 +460,7 @@ model Deal {
   sod               Sod[]
   lead              Lead?
 
+  @@unique([orgId, kod])
   @@map("deals")
 }
 
@@ -488,11 +529,17 @@ model Quote {
   dphSazba    Int      @default(12)
   aktivni     Boolean  @default(false)
   vytvoreno   DateTime @default(now())
+  // Veřejné sdílení PDF: token jen jako SHA-256 hash; šifrovaná kopie
+  // (lib/secretCrypto) pro opakované zobrazení stejného odkazu
+  shareTokenHash String?   @unique
+  shareTokenEnc  String?
+  shareExpiresAt DateTime?
 
   deal     Deal               @relation(fields: [dealId], references: [id], onDelete: Cascade)
   template QuoteTemplate?     @relation(fields: [templateId], references: [id])
   items    QuoteItem[]
 
+  @@unique([orgId, kod])
   @@map("quotes")
 }
 
@@ -849,6 +896,29 @@ model OrgSettings {
   @@map("org_settings")
 }
 
+// Per-org SMTP pro odesílání e-mailů „za firmu" (/settings/email).
+// Heslo šifrované AES-256-GCM (lib/secretCrypto.ts, klíč CREDENTIALS_ENCRYPTION_KEY).
+// Bez záznamu se použije globální SMTP_* z .env (lib/email.ts).
+model OrgEmailSettings {
+  id          String    @id @default(cuid())
+  orgId       String    @unique
+  smtpHost    String
+  smtpPort    Int       @default(587)
+  smtpSecure  Boolean   @default(false)
+  smtpUser    String
+  smtpPassEnc String
+  fromName    String?
+  fromEmail   String
+  // čas posledního úspěšného testovacího e-mailu; null = neověřeno
+  overeno     DateTime?
+  vytvoreno   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@map("org_email_settings")
+}
+
 model Zarizeni {
   id              String      @id @default(cuid())
   orgId           String
@@ -897,6 +967,7 @@ model ServisniKontrakt {
   klient           Client             @relation(fields: [klientId], references: [id])
   servisniZakazky  ServisniZakazka[]
 
+  @@unique([orgId, cisloKontraktu])
   @@map("servisni_kontrakty")
 }
 
@@ -1351,6 +1422,16 @@ model Sod {
   prilohaCenik      Boolean  @default(false)
   prilohaNabidka    Boolean  @default(false)
 
+  // Online podpis — stav a výsledný podpis (audit v SodUdalost)
+  stav              SodStav  @default(NAVRH)
+  podpisSvg         String?  @db.Text
+  podepsano         DateTime?
+  podepsalJmeno     String?
+  podpisIp          String?
+  podpisUserAgent   String?
+  // SHA-256 textSmlouvy v okamžiku podpisu — důkaz, co přesně bylo podepsáno
+  podpisTextHash    String?
+
   // Metadata
   poznamky          String?
   vytvoreno         DateTime @default(now())
@@ -1359,9 +1440,81 @@ model Sod {
   organization Organization      @relation(fields: [orgId], references: [id])
   deal         Deal              @relation(fields: [dealId], references: [id])
   template     ContractTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  verze         SodVerze[]
+  udalosti      SodUdalost[]
+  podpisRelace  SodPodpisRelace[]
 
   @@unique([orgId, cislo])
   @@map("sod")
+}
+
+// Snapshot textu smlouvy — vzniká při každém odeslání k podpisu a při revizi
+// po připomínkách klienta (ty chodí telefonem/e-mailem, ne online).
+model SodVerze {
+  id          String   @id @default(cuid())
+  orgId       String
+  sodId       String
+  cislo       Int
+  textSmlouvy String
+  vytvorilId  String?
+  vytvoreno   DateTime @default(now())
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  sod          Sod          @relation(fields: [sodId], references: [id], onDelete: Cascade)
+
+  @@unique([sodId, cislo])
+  @@map("sod_verze")
+}
+
+// Audit trail online podpisu — právní průkaznost (prostý el. podpis)
+model SodUdalost {
+  id        String        @id @default(cuid())
+  orgId     String
+  sodId     String
+  relaceId  String?
+  typ       SodUdalostTyp
+  meta      Json?
+  ip        String?
+  userAgent String?
+  userId    String?
+  vytvoreno DateTime      @default(now())
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  sod          Sod          @relation(fields: [sodId], references: [id], onDelete: Cascade)
+
+  @@index([sodId])
+  @@map("sod_udalosti")
+}
+
+// Podpisová relace = jeden odeslaný odkaz. Token i OTP jen jako SHA-256 hash.
+// Dvoukanálové ověření: odkaz e-mailem, OTP kód SMS (posílá se až na akci
+// klienta na stránce, ne při otevření odkazu).
+model SodPodpisRelace {
+  id          String           @id @default(cuid())
+  orgId       String
+  sodId       String
+  verzeId     String?
+  stav        PodpisRelaceStav @default(AKTIVNI)
+  tokenHash   String           @unique
+  // token šifrovaný (lib/secretCrypto) — jen pro připomínkový e-mail se stejným
+  // odkazem; ověřování jde vždy přes tokenHash
+  tokenEnc    String?
+  email       String
+  telefon     String
+  expirace    DateTime
+  otpHash     String?
+  otpExpirace DateTime?
+  otpPokusy   Int              @default(0)
+  otpOvereno  DateTime?
+  odeslalId   String?
+  vytvoreno   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  sod          Sod          @relation(fields: [sodId], references: [id], onDelete: Cascade)
+
+  @@index([sodId])
+  @@map("sod_podpis_relace")
 }
 
 model Document {

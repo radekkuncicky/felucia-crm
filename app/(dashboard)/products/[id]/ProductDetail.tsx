@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { formatDate } from '@/lib/format'
 
 interface CenikPolozka {
   id: string
@@ -201,7 +202,7 @@ export default function ProductDetail({ product, allCategories, usage }: Product
               </span>
             </div>
             <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">
-              Přidáno {new Date(product.vytvoreno).toLocaleDateString('cs-CZ')}
+              Přidáno {formatDate(product.vytvoreno)}
             </p>
           </div>
         </div>

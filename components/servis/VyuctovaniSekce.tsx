@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { api } from '@/lib/api'
+import { formatKcUcetni } from '@/lib/format'
 
 const TYP_OPTIONS: [string, string][] = [
   ['PRACE', 'Práce'],
@@ -33,7 +35,7 @@ const num = (v: string, f = 0) => {
   return Number.isFinite(n) ? n : f
 }
 const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100
-const fmtKc = (n: number) => n.toLocaleString('cs-CZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' Kč'
+const fmtKc = formatKcUcetni
 
 function emptyRow(): Row {
   return { typ: 'PRACE', popis: '', mnozstvi: '1', jednotka: 'ks', cenaZaJednotku: '', krytoKontraktem: false, dphSazba: '12' }
@@ -45,7 +47,6 @@ export default function VyuctovaniSekce({ zakazkaId, protokolDokoncen, vyfakturo
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [acting, setActing] = useState(false)
-  const [err, setErr] = useState<string | null>(null)
   const [vyfakturovano, setVyfakturovano] = useState(vyfInit)
   const [zaplaceno, setZaplaceno] = useState(zapInit)
 
@@ -85,35 +86,27 @@ export default function VyuctovaniSekce({ zakazkaId, protokolDokoncen, vyfakturo
   const celkem = round2(zaklad + dph)
 
   async function save() {
-    setSaving(true); setErr(null)
+    setSaving(true)
     try {
-      const res = await fetch(`/api/servis/zakazky/${zakazkaId}/polozky`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ polozky: rows }),
-      })
-      if (!res.ok) { const d = await res.json().catch(() => null); setErr(d?.error ?? 'Uložení selhalo') }
+      await api.put(`/api/servis/zakazky/${zakazkaId}/polozky`, { polozky: rows },
+        { errorMessage: 'Položky se nepodařilo uložit.' })
     } finally { setSaving(false) }
   }
 
   async function vyuctovat() {
-    setActing(true); setErr(null)
+    setActing(true)
     try {
-      const res = await fetch(`/api/servis/zakazky/${zakazkaId}/vyuctovat`, { method: 'POST' })
-      const d = await res.json().catch(() => null)
+      const res = await api.post(`/api/servis/zakazky/${zakazkaId}/vyuctovat`, undefined,
+        { errorMessage: 'Vyúčtování se nepodařilo dokončit.' })
       if (res.ok) { setVyfakturovano(true); router.refresh() }
-      else setErr(d?.error ?? 'Vyúčtování selhalo')
     } finally { setActing(false) }
   }
 
   async function toggleZaplaceno() {
     const next = !zaplaceno
     setZaplaceno(next)
-    const res = await fetch(`/api/servis/zakazky/${zakazkaId}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ zaplaceno: next }),
-    })
+    const res = await api.patch(`/api/servis/zakazky/${zakazkaId}`, { zaplaceno: next },
+      { errorMessage: 'Změnu se nepodařilo uložit.' })
     if (!res.ok) setZaplaceno(!next)
     else router.refresh()
   }
@@ -188,8 +181,6 @@ export default function VyuctovaniSekce({ zakazkaId, protokolDokoncen, vyfakturo
             <div className="flex justify-between text-gray-600 dark:text-slate-300"><span>DPH</span><span>{fmtKc(dph)}</span></div>
             <div className="flex justify-between font-bold text-gray-900 dark:text-white border-t border-gray-200 dark:border-slate-600 pt-1 mt-1"><span>Celkem</span><span>{fmtKc(celkem)}</span></div>
           </div>
-
-          {err && <p className="mt-3 text-sm text-red-600 dark:text-red-400">{err}</p>}
 
           <div className="mt-4 flex flex-wrap items-center gap-2">
             {canEdit && (

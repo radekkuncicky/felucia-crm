@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
+import { toast } from 'sonner'
 
 interface Props {
   currentPlan: string
@@ -9,31 +10,16 @@ interface Props {
   orgSlug: string
 }
 
-function Toast({ msg, type, onClose }: { msg: string; type: 'ok' | 'info'; onClose: () => void }) {
-  useEffect(() => {
-    const t = setTimeout(onClose, 5000)
-    return () => clearTimeout(t)
-  }, [onClose])
-
-  return (
-    <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3.5 rounded-xl shadow-lg text-sm font-medium text-white ${type === 'ok' ? 'bg-green-600' : 'bg-gray-500'}`}>
-      <span>{msg}</span>
-      <button onClick={onClose} className="opacity-70 hover:opacity-100 ml-1">×</button>
-    </div>
-  )
-}
-
 export default function BillingActions({ currentPlan, hasStripeCustomer, orgSlug }: Props) {
   const [loading, setLoading] = useState<string | null>(null)
-  const [toast, setToast] = useState<{ msg: string; type: 'ok' | 'info' } | null>(null)
   const searchParams = useSearchParams()
 
   useEffect(() => {
     if (searchParams.get('success') === 'true') {
-      setToast({ msg: 'Předplatné bylo úspěšně aktivováno!', type: 'ok' })
+      toast.success('Předplatné bylo úspěšně aktivováno!')
       window.history.replaceState({}, '', '/settings/billing')
     } else if (searchParams.get('canceled') === 'true') {
-      setToast({ msg: 'Platba byla zrušena.', type: 'info' })
+      toast.info('Platba byla zrušena.')
       window.history.replaceState({}, '', '/settings/billing')
     }
   }, [searchParams])
@@ -57,12 +43,12 @@ export default function BillingActions({ currentPlan, hasStripeCustomer, orgSlug
       })
       const data = await res.json()
       if (!res.ok || !data.url) {
-        setToast({ msg: data.error ?? 'Chyba při vytváření platby.', type: 'info' })
+        toast.error(data.error ?? 'Platbu se nepodařilo vytvořit.')
         return
       }
       window.location.href = data.url
     } catch {
-      setToast({ msg: 'Nepodařilo se připojit k platební bráně.', type: 'info' })
+      toast.error('Nepodařilo se připojit k platební bráně.')
     } finally {
       setLoading(null)
     }
@@ -74,12 +60,12 @@ export default function BillingActions({ currentPlan, hasStripeCustomer, orgSlug
       const res = await fetch('/api/stripe/create-portal', { method: 'POST' })
       const data = await res.json()
       if (!res.ok || !data.url) {
-        setToast({ msg: data.error ?? 'Chyba při otevírání portálu.', type: 'info' })
+        toast.error(data.error ?? 'Zákaznický portál se nepodařilo otevřít.')
         return
       }
       window.location.href = data.url
     } catch {
-      setToast({ msg: 'Nepodařilo se otevřít portál.', type: 'info' })
+      toast.error('Zákaznický portál se nepodařilo otevřít.')
     } finally {
       setLoading(null)
     }
@@ -99,10 +85,6 @@ export default function BillingActions({ currentPlan, hasStripeCustomer, orgSlug
 
   return (
     <>
-      {toast && (
-        <Toast msg={toast.msg} type={toast.type} onClose={() => setToast(null)} />
-      )}
-
       {isPaid && hasStripeCustomer ? (
         <button
           onClick={handleManageSubscription}

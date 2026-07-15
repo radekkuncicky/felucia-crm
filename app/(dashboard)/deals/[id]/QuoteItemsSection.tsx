@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import ConfirmModal from '@/components/ConfirmModal'
+import { formatCislo, formatKcPresne } from '@/lib/format'
 
 interface QuoteItem {
   id: string
@@ -222,7 +223,7 @@ export default function QuoteItemsSection({ dealId, items: initItems, products, 
                     <input type="number" min="0" step="0.01" value={editForm.cenaZaKus} onChange={(e) => setEditForm(f => ({ ...f, cenaZaKus: e.target.value }))} className={`${inp} w-24 text-right`} />
                   </td>
                   <td className="px-6 py-3 text-right text-sm font-semibold">
-                    {(Number(editForm.mnozstvi) * Number(editForm.cenaZaKus)).toLocaleString('cs-CZ')} Kč
+                    {formatKcPresne(Number(editForm.mnozstvi) * Number(editForm.cenaZaKus))}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <button onClick={() => handleSaveEdit(item.id)} disabled={saving} className="text-xs text-green-600 hover:text-green-800 mr-2">Uložit</button>
@@ -236,9 +237,9 @@ export default function QuoteItemsSection({ dealId, items: initItems, products, 
                     {item.poznamky && <p className="text-xs text-gray-500">{item.poznamky}</p>}
                   </td>
                   <td className="px-4 py-3 text-right text-sm text-gray-600">{item.mnozstvi}</td>
-                  <td className="px-4 py-3 text-right text-sm text-gray-600">{item.cenaZaKus.toLocaleString('cs-CZ')} Kč</td>
+                  <td className="px-4 py-3 text-right text-sm text-gray-600">{formatCislo(item.cenaZaKus)} Kč</td>
                   <td className="px-6 py-3 text-right text-sm font-semibold text-gray-900">
-                    {(item.mnozstvi * item.cenaZaKus).toLocaleString('cs-CZ')} Kč
+                    {formatKcPresne(item.mnozstvi * item.cenaZaKus)}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <button onClick={() => startEdit(item)} className="text-xs text-blue-600 hover:text-blue-800 mr-2">Upravit</button>
@@ -266,7 +267,7 @@ export default function QuoteItemsSection({ dealId, items: initItems, products, 
                 <input type="number" min="0" step="0.01" placeholder="Cena" value={addForm.cenaZaKus} onChange={(e) => setAddForm(f => ({ ...f, cenaZaKus: e.target.value }))} className={`${inp} w-24 text-right`} />
               </td>
               <td className="px-6 py-3 text-right text-sm font-semibold text-gray-500">
-                {(Number(addForm.mnozstvi) * Number(addForm.cenaZaKus)).toLocaleString('cs-CZ')} Kč
+                {formatKcPresne(Number(addForm.mnozstvi) * Number(addForm.cenaZaKus))}
               </td>
               <td className="px-4 py-3 text-right">
                 <button onClick={handleAdd} disabled={saving || !addForm.nazev} className="text-xs text-green-600 hover:text-green-800 mr-2 disabled:opacity-50">Přidat</button>
@@ -278,7 +279,7 @@ export default function QuoteItemsSection({ dealId, items: initItems, products, 
         <tfoot className="border-t-2 border-gray-200 bg-gray-50">
           <tr>
             <td colSpan={3} className="px-6 py-3 text-sm font-semibold text-gray-700 text-right">Celková cena nabídky:</td>
-            <td className="px-6 py-3 text-right text-lg font-bold text-gray-900">{total.toLocaleString('cs-CZ')} Kč</td>
+            <td className="px-6 py-3 text-right text-lg font-bold text-gray-900">{formatCislo(total)} Kč</td>
             <td />
           </tr>
         </tfoot>

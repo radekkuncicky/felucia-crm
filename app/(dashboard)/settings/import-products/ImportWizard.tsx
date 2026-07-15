@@ -2,6 +2,7 @@
 
 import { toast } from 'sonner'
 import { useState, useRef } from 'react'
+import { formatCislo } from '@/lib/format'
 
 // Fixed product columns in FELUCIA XLSX template
 const FELUCIA_FIXED_COLS = ['KÓD', 'NÁZEV', 'PRODUKTOVÁ ŘADA', 'KATEGORIE', 'JEDNOTKA', 'POPIS', 'DPH (%)', 'NÁKLADOVÁ CENA', 'STANDARDNÍ CENA', 'OBJEDNACÍ KÓD', 'DODAVATEL', 'DODACÍ LHŮTA']
@@ -417,8 +418,8 @@ export default function ImportWizard() {
                         <td className="px-3 py-2 text-gray-600 dark:text-slate-400">{r.kategorie || '—'}</td>
                         <td className="px-3 py-2 text-gray-600 dark:text-slate-400">{r.jednotka}</td>
                         <td className="px-3 py-2 text-gray-600 dark:text-slate-400">{r.dphSazba} %</td>
-                        <td className="px-3 py-2 text-gray-900 dark:text-white">{r.standardniCena.toLocaleString('cs-CZ')} Kč</td>
-                        <td className="px-3 py-2 text-gray-600 dark:text-slate-400">{r.nakladovaCena !== null ? r.nakladovaCena.toLocaleString('cs-CZ') + ' Kč' : '—'}</td>
+                        <td className="px-3 py-2 text-gray-900 dark:text-white">{formatCislo(r.standardniCena)} Kč</td>
+                        <td className="px-3 py-2 text-gray-600 dark:text-slate-400">{r.nakladovaCena !== null ? formatCislo(r.nakladovaCena) + ' Kč' : '—'}</td>
                         {cenikCols.slice(0, 3).map(c => (
                           <td key={c.kod} className="px-3 py-2 text-gray-600 dark:text-slate-400">
                             {c.kod in r.cenikyCeny ? r.cenikyCeny[c.kod].toLocaleString('cs-CZ') + ' Kč' : '—'}

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { SodTyp } from '@prisma/client'
 import DatePickerInput from '@/components/DatePickerInput'
+import { formatKcPresne } from '@/lib/format'
 
 const SE_ZALOHOU: SodTyp[] = ['DPH_12_SE_ZALOHOU', 'DPH_21_SE_ZALOHOU', 'PDP_SE_ZALOHOU']
 
@@ -109,7 +110,7 @@ export default function SodNewClient({ dealId }: Props) {
 
   function fmtKc(n: number | null) {
     if (n == null) return '—'
-    return n.toLocaleString('cs-CZ') + ' Kč'
+    return formatKcPresne(n)
   }
 
   async function handleSubmit(e: React.FormEvent) {

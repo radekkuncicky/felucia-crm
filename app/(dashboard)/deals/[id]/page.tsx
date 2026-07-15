@@ -19,6 +19,7 @@ import { getPlanLimits } from '@/lib/planLimits'
 import { NavigateButton } from '@/components/NavigateButton'
 import { CollapsibleEdit } from './CollapsibleEdit'
 import { DealNotesCard } from './DealNotesCard'
+import { formatDate, formatCislo } from '@/lib/format'
 
 function fmt(d: Date | null) {
   if (!d) return ''
@@ -212,8 +213,8 @@ export default async function DealDetailPage({
           <div className="flex flex-row sm:flex-col items-start sm:items-end justify-between sm:justify-start gap-3 sm:flex-shrink-0">
             {konecnaCena > 0 ? (
               <div className="text-right">
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{konecnaCena.toLocaleString('cs-CZ')} Kč</p>
-                <p className="text-sm text-primary dark:text-primary-light">{cenaSDph.toLocaleString('cs-CZ')} Kč s DPH</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{formatCislo(konecnaCena)} Kč</p>
+                <p className="text-sm text-primary dark:text-primary-light">{formatCislo(cenaSDph)} Kč s DPH</p>
               </div>
             ) : (
               <div className="text-right">
@@ -289,7 +290,7 @@ export default async function DealDetailPage({
               </div>
               <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4">
                 <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase mb-1">Vytvořen</p>
-                <p className="font-medium text-gray-900 dark:text-white">{new Date(deal.vytvoreno).toLocaleDateString('cs-CZ')}</p>
+                <p className="font-medium text-gray-900 dark:text-white">{formatDate(deal.vytvoreno)}</p>
               </div>
               <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4">
                 <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase mb-1">Obchodník</p>
@@ -401,6 +402,7 @@ export default async function DealDetailPage({
           }))}
           renderTemplates={renderTemplates}
           userRole={session!.user.role}
+          clientEmail={deal.client.email}
         />
       )}
 

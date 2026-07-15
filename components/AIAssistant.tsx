@@ -345,7 +345,7 @@ export default function AIAssistant() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '8px' }}>
                   {[
                     { icon: '📋', label: 'Obchodní případy', hint: 'Vytvoř, změň stav, přidej aktivitu' },
-                    { icon: '💰', label: 'Nabídky', hint: 'Sestav CN s položkami' },
+                    { icon: '💰', label: 'Rychlá cenovka', hint: 'Ze vzorové nabídky + katalogu' },
                     { icon: '🔍', label: 'Vyhledávání', hint: 'Klienti, OP, nabídky, katalog' },
                   ].map(({ icon, label, hint }) => (
                     <div key={label} style={{ background: c.hintBoxBg, border: `1px solid ${c.hintBoxBorder}`, borderRadius: '10px', padding: '9px 12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -358,7 +358,7 @@ export default function AIAssistant() {
                   ))}
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '4px' }}>
-                  {['Co mám dnes?', 'Nový OP', 'Sestav nabídku'].map(chip => (
+                  {['Co mám dnes?', 'Nový OP', 'Rychlá cenovka'].map(chip => (
                     <button key={chip} onClick={() => sendMessage(chip)} style={{ background: c.chipBg, border: '1px solid #4CAF50', borderRadius: '20px', padding: '5px 12px', fontSize: '12.5px', color: '#2E7D32', cursor: 'pointer', fontWeight: 500 }}>{chip}</button>
                   ))}
                 </div>

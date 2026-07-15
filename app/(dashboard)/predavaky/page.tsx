@@ -3,6 +3,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import { formatDate } from '@/lib/format'
 
 const STAV_LABELS: Record<string, string> = {
   ROZPRACOVAN: 'Rozpracován',
@@ -84,11 +85,11 @@ export default async function PredavakyPage() {
                 </div>
                 <div className="text-right flex-shrink-0">
                   <p className="text-xs text-gray-400 dark:text-slate-500">
-                    {new Date(p.updatedAt).toLocaleDateString('cs-CZ')}
+                    {formatDate(p.updatedAt)}
                   </p>
                   {p.podpisano && (
                     <p className="text-xs text-primary dark:text-primary-light mt-0.5">
-                      Podepsán {new Date(p.podpisano).toLocaleDateString('cs-CZ')}
+                      Podepsán {formatDate(p.podpisano)}
                     </p>
                   )}
                 </div>

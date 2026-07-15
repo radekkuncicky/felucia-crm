@@ -21,6 +21,25 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import ProductCatalogModal from '@/components/ProductCatalogModal'
 import ConfirmModal from '@/components/ConfirmModal'
+import ShareQuoteModal from '@/components/ShareQuoteModal'
+
+const SHEET_ICON_PATHS: Record<string, string> = {
+  save: 'M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4',
+  eye: 'M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z',
+  download: 'M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4',
+  copy: 'M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z',
+  check: 'M5 13l4 4L19 7',
+  share: 'M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z',
+}
+
+function SheetIcon({ name }: { name: string }) {
+  return (
+    <svg className="w-5 h-5 text-green-200/80 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+      <path d={SHEET_ICON_PATHS[name] ?? SHEET_ICON_PATHS.check} />
+    </svg>
+  )
+}
+
 
 interface QuoteItemData {
   id: string
@@ -92,6 +111,7 @@ interface Props {
   renderTemplates: RenderTemplate[]
   dphSazba: number
   userRole: string
+  clientEmail?: string | null
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -468,7 +488,7 @@ function DuplicateToModal({
                     </span>
                   </div>
                   <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5 truncate">
-                    👤 {d.client.jmeno} {d.client.prijmeni}
+                    {d.client.jmeno} {d.client.prijmeni}
                   </p>
                 </div>
                 {isSelected && (
@@ -516,6 +536,7 @@ export default function NabidkyTab({
   renderTemplates,
   dphSazba: dealDph,
   userRole,
+  clientEmail,
 }: Props) {
   const [quotes, setQuotes] = useState(() =>
     initQuotes.map(q => ({
@@ -531,6 +552,7 @@ export default function NabidkyTab({
   const [saving, setSaving] = useState(false)
   const [showProductModal, setShowProductModal] = useState(false)
   const [showDuplicateToModal, setShowDuplicateToModal] = useState(false)
+  const [showShareModal, setShowShareModal] = useState(false)
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [renameVal, setRenameVal] = useState('')
   const [editingNameId, setEditingNameId] = useState<string | null>(null)
@@ -1129,6 +1151,16 @@ export default function NabidkyTab({
         />
       )}
 
+      {showShareModal && selectedQuote && (
+        <ShareQuoteModal
+          quoteId={selectedQuote.id}
+          quoteKod={selectedQuote.kod}
+          quoteNazev={selectedQuote.nazev}
+          clientEmail={clientEmail ?? null}
+          onClose={() => setShowShareModal(false)}
+        />
+      )}
+
       {showDuplicateToModal && selectedQuote && (
         <DuplicateToModal
           dealId={dealId}
@@ -1375,6 +1407,12 @@ export default function NabidkyTab({
               >
                 Náhled
               </a>
+              <button
+                onClick={() => setShowShareModal(true)}
+                className="text-xs text-green-700 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300 border border-green-300 dark:border-green-700 px-2.5 py-1 rounded-lg"
+              >
+                Poslat klientovi
+              </button>
               <button
                 onClick={() => handleExportPdf(selectedQuote.id)}
                 disabled={pdfLoading}
@@ -1782,7 +1820,7 @@ export default function NabidkyTab({
               onClick={() => setShowProductModal(true)}
               className="flex-1 bg-green-500 text-white rounded-xl py-3 text-sm font-medium flex items-center justify-center gap-2"
             >
-              <span>📦</span> Katalog
+              Katalog
             </button>
             <button
               onClick={() => setMoreOpen(true)}
@@ -1802,18 +1840,19 @@ export default function NabidkyTab({
             <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-4" />
             <div className="space-y-1">
               {([
-                { label: 'Uložit', icon: '💾', action: () => { doSave(); setMoreOpen(false) } },
-                { label: 'Náhled PDF', icon: '👁', action: () => { window.open(`/api/quotes/${selectedQuote.id}/preview`, '_blank'); setMoreOpen(false) } },
-                { label: 'Stáhnout PDF', icon: '⬇️', action: () => { handleExportPdf(selectedQuote.id); setMoreOpen(false) } },
-                { label: 'Duplikovat nabídku', icon: '📋', action: () => { duplicateQuote(selectedQuote.id); setMoreOpen(false) } },
-                ...(!selectedQuote.aktivni ? [{ label: 'Nastavit jako aktivní', icon: '✓', action: () => { setActive(selectedQuote.id); setMoreOpen(false) } }] : []),
+                { label: 'Uložit', icon: 'save', action: () => { doSave(); setMoreOpen(false) } },
+                { label: 'Poslat klientovi', icon: 'share', action: () => { setShowShareModal(true); setMoreOpen(false) } },
+                { label: 'Náhled PDF', icon: 'eye', action: () => { window.open(`/api/quotes/${selectedQuote.id}/preview`, '_blank'); setMoreOpen(false) } },
+                { label: 'Stáhnout PDF', icon: 'download', action: () => { handleExportPdf(selectedQuote.id); setMoreOpen(false) } },
+                { label: 'Duplikovat nabídku', icon: 'copy', action: () => { duplicateQuote(selectedQuote.id); setMoreOpen(false) } },
+                ...(!selectedQuote.aktivni ? [{ label: 'Nastavit jako aktivní', icon: 'check', action: () => { setActive(selectedQuote.id); setMoreOpen(false) } }] : []),
               ] as { label: string; icon: string; action: () => void }[]).map(item => (
                 <button
                   key={item.label}
                   onClick={item.action}
                   className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 text-left transition-colors"
                 >
-                  <span className="text-lg">{item.icon}</span>
+                  <SheetIcon name={item.icon} />
                   <span className="text-white text-sm font-medium">{item.label}</span>
                 </button>
               ))}

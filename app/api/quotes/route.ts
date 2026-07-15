@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { generateQuoteKod } from '@/lib/quoteKod'
+import { createWithUniqueKod } from '@/lib/uniqueKod'
 import { NextResponse } from 'next/server'
 
 export async function GET(req: Request) {
@@ -47,9 +48,6 @@ export async function POST(req: Request) {
   const deal = await db.deal.findFirst({ where: { id: dealId, orgId } })
   if (!deal) return NextResponse.json({ error: 'Deal not found' }, { status: 404 })
 
-  // Kód nabídky per org s rokem (NAB-YY-NNNN) — sjednoceno s /api/deals/[id]/quotes
-  const kod = await generateQuoteKod(orgId)
-
   // Fetch products for items missing jednotka — use product's jednotka as fallback
   const missingUnitProductIds = Array.from(new Set<string>(
     items
@@ -66,7 +64,8 @@ export async function POST(req: Request) {
     prods.forEach(p => { productJednotkaMapa[p.id] = p.jednotka })
   }
 
-  const quote = await db.quote.create({
+  // Kód nabídky per org s rokem (NAB-YY-NNNN) — při kolizi (souběh) se přegeneruje
+  const quote = await createWithUniqueKod(() => generateQuoteKod(orgId), kod => db.quote.create({
     data: {
       dealId,
       orgId,
@@ -97,7 +96,7 @@ export async function POST(req: Request) {
       }
     },
     include: { items: true }
-  })
+  }))
 
   return NextResponse.json(quote)
 }

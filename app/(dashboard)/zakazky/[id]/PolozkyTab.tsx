@@ -4,6 +4,7 @@ import { confirmDialog } from '@/components/ui/confirm'
 import { toast } from 'sonner'
 import { useState } from 'react'
 import { ZakazkaPolozkaStav } from '@prisma/client'
+import { formatKcPresne } from '@/lib/format'
 
 const STAV_LABELS: Record<ZakazkaPolozkaStav, string> = {
   CEKA: 'Čeká',
@@ -98,7 +99,7 @@ function NaskladnitModal({ polozka, zakazkaId, onClose, onDone }: {
     }
   }
 
-  const fmtKc = (n: number) => n.toLocaleString('cs-CZ', { minimumFractionDigits: 0, maximumFractionDigits: 2 }) + ' Kč'
+  const fmtKc = formatKcPresne
   const inputCls = 'w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary'
 
   return (
@@ -453,7 +454,7 @@ export default function PolozkyTab({ zakazkaId, polozky: initialPolozky, isTechn
                     <span>{Number(p.mnozstvi)} {p.jednotka}</span>
                     {!isTechnik && p.prodejniCena !== null && (
                       <span className="font-medium text-gray-900 dark:text-white">
-                        {(Number(p.mnozstvi) * Number(p.prodejniCena)).toLocaleString('cs-CZ')} Kč
+                        {formatKcPresne(Number(p.mnozstvi) * Number(p.prodejniCena))}
                       </span>
                     )}
                   </div>
@@ -582,14 +583,14 @@ export default function PolozkyTab({ zakazkaId, polozky: initialPolozky, isTechn
                       {!isTechnik && (
                         <>
                           <td className="px-4 py-3 text-right text-gray-600 dark:text-slate-400">
-                            {p.nakupniCena !== null ? `${Number(p.nakupniCena).toLocaleString('cs-CZ')} Kč` : '—'}
+                            {p.nakupniCena !== null ? `${formatKcPresne(Number(p.nakupniCena))}` : '—'}
                           </td>
                           <td className="px-4 py-3 text-right text-gray-600 dark:text-slate-400">
-                            {p.prodejniCena !== null ? `${Number(p.prodejniCena).toLocaleString('cs-CZ')} Kč` : '—'}
+                            {p.prodejniCena !== null ? `${formatKcPresne(Number(p.prodejniCena))}` : '—'}
                           </td>
                           <td className="px-4 py-3 text-right font-medium text-gray-900 dark:text-white">
                             {p.prodejniCena !== null
-                              ? `${(Number(p.mnozstvi) * Number(p.prodejniCena)).toLocaleString('cs-CZ')} Kč`
+                              ? `${formatKcPresne((Number(p.mnozstvi) * Number(p.prodejniCena)))}`
                               : '—'}
                           </td>
                         </>

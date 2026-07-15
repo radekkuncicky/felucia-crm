@@ -18,6 +18,7 @@ const PAGE_LABELS: Record<string, string> = {
   '/settings/categories': 'Kategorie produktů',
   '/settings/visibility-tree': 'Viditelnost dat',
   '/settings/quotes': 'Šablony nabídek',
+  '/settings/email': 'Odesílání e-mailů',
 }
 
 export default function SettingsBreadcrumb() {

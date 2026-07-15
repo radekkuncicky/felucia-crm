@@ -7,6 +7,8 @@ import { Technologie, StavDealu } from '@prisma/client'
 import { checkDealLimit } from '@/lib/checkPlanLimit'
 import { logAction } from '@/lib/auditLog'
 import { createNotification } from '@/lib/createNotification'
+import { createWithUniqueKod } from '@/lib/uniqueKod'
+import { generateDealKod } from '@/lib/dealKod'
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions) ?? await getMobileSession(req)
@@ -55,19 +57,6 @@ export async function GET(req: Request) {
   return NextResponse.json(deals)
 }
 
-async function generateKod(orgId: string): Promise<string> {
-  const yr = new Date().getFullYear()
-  const yrShort = yr % 100
-  const prefix = `OP-${yrShort.toString().padStart(2, '0')}-`
-  const last = await orgPrisma(orgId).deal.findFirst({
-    where: { orgId, kod: { startsWith: prefix } },
-    orderBy: { kod: 'desc' },
-    select: { kod: true },
-  })
-  const lastNum = last?.kod ? parseInt(last.kod.replace(prefix, ''), 10) : 0
-  return `${prefix}${(lastNum + 1).toString().padStart(3, '0')}`
-}
-
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions) ?? await getMobileSession(req)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -91,19 +80,20 @@ export async function POST(req: Request) {
     }, { status: 403 })
   }
 
-  const kod = await generateKod(orgId)
-
-  const deal = await db.deal.create({
-    data: {
-      orgId,
-      clientId,
-      userId,
-      kod,
-      technologie: technologie as Technologie,
-      stav: StavDealu.NOVY,
-      predmet: predmet || null,
-    },
-  })
+  const deal = await createWithUniqueKod(
+    () => generateDealKod(orgId),
+    kod => db.deal.create({
+      data: {
+        orgId,
+        clientId,
+        userId,
+        kod,
+        technologie: technologie as Technologie,
+        stav: StavDealu.NOVY,
+        predmet: predmet || null,
+      },
+    }),
+  )
 
   if (deal.userId && deal.userId !== userId) {
     const client = await db.client.findFirst({ where: { id: clientId }, select: { jmeno: true } })

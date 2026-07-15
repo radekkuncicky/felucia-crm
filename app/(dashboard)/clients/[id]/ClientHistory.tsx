@@ -1,6 +1,9 @@
 'use client'
 
 import Link from 'next/link'
+import { formatDate } from '@/lib/format'
+import { ActivityTypeIcon } from '@/components/ui/ActivityTypeIcon'
+import { IconClipboard } from '@/components/ui/Icons'
 
 interface HistoryItem {
   date: string
@@ -29,13 +32,15 @@ export default function ClientHistory({ history }: { history: HistoryItem[] }) {
             href={item.href}
             className="flex items-start gap-4 px-6 py-4 hover:bg-blue-50 transition-colors group"
           >
-            <div className="text-xl flex-shrink-0 mt-0.5 w-8 text-center">{item.icon}</div>
+            <div className="flex-shrink-0 mt-0.5 w-8 flex justify-center">
+              {item.icon === 'DEAL' ? <IconClipboard className="w-5 h-5 text-gray-400" /> : <ActivityTypeIcon typ={item.icon} className="w-5 h-5" />}
+            </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-gray-900 group-hover:text-blue-700 line-clamp-2">{item.label}</p>
               <p className="text-xs text-gray-500 mt-0.5">{item.sub}</p>
             </div>
             <div className="flex-shrink-0 text-xs text-gray-400 whitespace-nowrap mt-0.5">
-              {new Date(item.date).toLocaleDateString('cs-CZ')}
+              {formatDate(item.date)}
             </div>
           </Link>
         ))}

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { LeadZdroj, LeadStatus, Technologie } from '@prisma/client'
+import { formatDate, formatKcPresne } from '@/lib/format'
 
 interface LeadNote {
   id: string
@@ -307,7 +308,7 @@ export default function LeadDetailClient({ lead: initialLead, users, role }: Pro
                     {lead.prevedenNaOp.kod} — {lead.prevedenNaOp.predmet || lead.prevedenNaOp.client.jmeno + ' ' + lead.prevedenNaOp.client.prijmeni}
                   </p>
                   <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
-                    {new Date(lead.prevedenNaOp.vytvoreno).toLocaleDateString('cs-CZ')}
+                    {formatDate(lead.prevedenNaOp.vytvoreno)}
                   </p>
                 </div>
                 <svg className="w-4 h-4 text-gray-400 dark:text-slate-500 group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -350,7 +351,7 @@ export default function LeadDetailClient({ lead: initialLead, users, role }: Pro
               />
             ) : (
               <p className="text-sm font-semibold text-gray-800 dark:text-slate-200">
-                {lead.odhadovanaHodnota ? `${lead.odhadovanaHodnota.toLocaleString('cs-CZ')} Kč` : <span className="font-normal text-gray-400 dark:text-slate-500">—</span>}
+                {lead.odhadovanaHodnota ? `${formatKcPresne(lead.odhadovanaHodnota)}` : <span className="font-normal text-gray-400 dark:text-slate-500">—</span>}
               </p>
             )}
           </div>
@@ -395,11 +396,11 @@ export default function LeadDetailClient({ lead: initialLead, users, role }: Pro
             <div className="space-y-2 text-xs divide-y divide-gray-100 dark:divide-slate-700">
               <div className="flex justify-between py-1 first:pt-0">
                 <span className="text-gray-500 dark:text-slate-400">Vytvořen</span>
-                <span className="text-gray-800 dark:text-slate-200 font-medium">{new Date(lead.vytvoreno).toLocaleDateString('cs-CZ')}</span>
+                <span className="text-gray-800 dark:text-slate-200 font-medium">{formatDate(lead.vytvoreno)}</span>
               </div>
               <div className="flex justify-between py-1">
                 <span className="text-gray-500 dark:text-slate-400">Aktualizován</span>
-                <span className="text-gray-800 dark:text-slate-200 font-medium">{new Date(lead.updatedAt).toLocaleDateString('cs-CZ')}</span>
+                <span className="text-gray-800 dark:text-slate-200 font-medium">{formatDate(lead.updatedAt)}</span>
               </div>
               <div className="flex justify-between py-1">
                 <span className="text-gray-500 dark:text-slate-400">Zdroj</span>
