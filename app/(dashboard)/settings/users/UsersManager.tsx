@@ -50,8 +50,10 @@ export default function UsersManager({ users: initUsers, maxUsers, activeUserCou
     else toast.error(msg)
   }
 
+  const addIsTechnik = addForm.role === 'TECHNIK'
+
   async function handleAdd() {
-    if (!addForm.jmeno || !addForm.email || !addForm.heslo) return
+    if (!addForm.jmeno || !addForm.email || (!addIsTechnik && !addForm.heslo)) return
     setSaving(true)
     setAddError('')
     try {
@@ -64,7 +66,7 @@ export default function UsersManager({ users: initUsers, maxUsers, activeUserCou
       setActiveCount(c => c + 1)
       setAdding(false)
       setAddForm({ jmeno: '', email: '', heslo: '', role: 'OBCHODNIK' })
-      showToast('Uživatel přidán', 'ok')
+      showToast(addIsTechnik ? 'Technik přidán, pozvánka odeslána e-mailem' : 'Uživatel přidán', 'ok')
     } finally { setSaving(false) }
   }
 
@@ -308,10 +310,16 @@ export default function UsersManager({ users: initUsers, maxUsers, activeUserCou
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Email *</label>
               <input type="email" value={addForm.email} onChange={e => setAddForm(f => ({ ...f, email: e.target.value }))} className={inp} />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Heslo *</label>
-              <input type="password" value={addForm.heslo} onChange={e => setAddForm(f => ({ ...f, heslo: e.target.value }))} className={inp} placeholder="min. 8 znaků" />
-            </div>
+            {addIsTechnik ? (
+              <div className="col-span-2 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 text-sm px-3 py-2 rounded-lg">
+                Heslo se nezadává — technik dostane e-mailem odkaz, kterým si ho sám nastaví.
+              </div>
+            ) : (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Heslo *</label>
+                <input type="password" value={addForm.heslo} onChange={e => setAddForm(f => ({ ...f, heslo: e.target.value }))} className={inp} placeholder="min. 8 znaků" />
+              </div>
+            )}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Role</label>
               <select value={addForm.role} onChange={e => setAddForm(f => ({ ...f, role: e.target.value }))} className={inp}>
@@ -322,7 +330,7 @@ export default function UsersManager({ users: initUsers, maxUsers, activeUserCou
             </div>
           </div>
           <div className="flex gap-3">
-            <button onClick={handleAdd} disabled={saving || !addForm.jmeno || !addForm.email || !addForm.heslo} className="bg-primary hover:bg-primary-hover disabled:opacity-50 text-white font-medium px-4 py-2 rounded-lg text-sm">
+            <button onClick={handleAdd} disabled={saving || !addForm.jmeno || !addForm.email || (!addIsTechnik && !addForm.heslo)} className="bg-primary hover:bg-primary-hover disabled:opacity-50 text-white font-medium px-4 py-2 rounded-lg text-sm">
               {saving ? 'Ukládám…' : 'Přidat uživatele'}
             </button>
             <button onClick={() => { setAdding(false); setAddError('') }} className="text-sm text-gray-600 dark:text-slate-400 hover:text-gray-900 px-4 py-2">Zrušit</button>

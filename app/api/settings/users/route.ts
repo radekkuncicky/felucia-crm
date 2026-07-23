@@ -3,9 +3,11 @@ import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
+import crypto from 'crypto'
 import { Role } from '@prisma/client'
 import { checkUserLimit } from '@/lib/checkPlanLimit'
 import { logAction } from '@/lib/auditLog'
+import { sendEmail, emailTechnikInvite, isEmailConfigured } from '@/lib/email'
 
 export async function GET() {
   const session = await getServerSession(authOptions)
@@ -30,7 +32,14 @@ export async function POST(req: Request) {
   const db = orgPrisma(orgId)
 
   const body = await req.json()
-  const { jmeno, email, heslo, role } = body
+  const { jmeno, email, role } = body
+  let { heslo } = body
+  const isTechnik = role === 'TECHNIK'
+
+  // Technik si heslo nastavuje sám přes pozvánkový email (viz níže) — admin ho vymýšlet nemusí
+  if (isTechnik && !heslo) {
+    heslo = crypto.randomBytes(16).toString('hex')
+  }
 
   if (!jmeno || !email || !heslo) {
     return NextResponse.json({ error: 'Jméno, email a heslo jsou povinné' }, { status: 400 })
@@ -63,6 +72,22 @@ export async function POST(req: Request) {
     zaznamNazev: `${user.jmeno} (${user.email})`,
     zmeny: { jmeno, email, role: user.role },
   })
+
+  if (isTechnik && isEmailConfigured()) {
+    try {
+      const token = crypto.randomBytes(32).toString('hex')
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+      await db.passwordResetToken.create({ data: { userId: user.id, token, expiresAt } })
+
+      const baseUrl = process.env.NEXTAUTH_URL ?? 'https://crm.workspace-felucia.io'
+      const setPasswordUrl = `${baseUrl}/auth/reset-password?token=${token}`
+      const appDownloadUrl = process.env.FELUCIA_TECH_APP_URL
+
+      await sendEmail(user.email, 'Přístup do aplikace Felucia Tech', emailTechnikInvite(user.jmeno, setPasswordUrl, appDownloadUrl))
+    } catch (err) {
+      console.error('Technik invite email error:', err)
+    }
+  }
 
   return NextResponse.json(user, { status: 201 })
 }

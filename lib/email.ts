@@ -196,6 +196,30 @@ export function emailResetPassword(jmeno: string, url: string) {
   `)
 }
 
+export function emailTechnikInvite(jmeno: string, setPasswordUrl: string, appDownloadUrl?: string) {
+  return emailLayout(`
+    <h2 style="margin:0 0 8px;color:#1A2744;font-size:22px;">Vítejte ve FELUCIA — appka pro techniky</h2>
+    <p style="color:#6b7280;margin:0 0 24px;">Dobrý den, <strong>${jmeno}</strong>.</p>
+    <p style="color:#374151;margin:0 0 24px;">Byl vám založen přístup do mobilní aplikace <strong>Felucia Tech</strong> pro techniky v terénu. Nejdřív si nastavte heslo:</p>
+    <div style="text-align:center;margin:32px 0;">
+      <a href="${setPasswordUrl}" style="display:inline-block;background:#FFC93C;color:#1A2744;font-weight:700;font-size:15px;padding:14px 32px;border-radius:10px;text-decoration:none;">
+        Nastavit heslo
+      </a>
+    </div>
+    <p style="color:#9aa3b2;font-size:13px;margin:0 0 24px;">Odkaz je platný <strong>7 dní</strong>.</p>
+    ${appDownloadUrl ? `
+    <p style="color:#374151;margin:0 0 16px;">Poté si stáhněte aplikaci a přihlaste se e-mailem a heslem, které jste si právě nastavili:</p>
+    <div style="text-align:center;margin:0 0 24px;">
+      <a href="${appDownloadUrl}" style="display:inline-block;background:#1A2744;color:#fff;font-weight:700;font-size:15px;padding:14px 32px;border-radius:10px;text-decoration:none;">
+        Stáhnout aplikaci Felucia Tech
+      </a>
+    </div>
+    ` : `
+    <p style="color:#374151;margin:0 0 24px;">Odkaz na stažení aplikace Felucia Tech vám zašleme samostatně.</p>
+    `}
+  `)
+}
+
 export function emailMagicLink(jmeno: string, url: string) {
   return emailLayout(`
     <h2 style="margin:0 0 8px;color:#1A2744;font-size:22px;">Přihlásit se do FELUCIA CRM</h2>
