@@ -28,6 +28,7 @@ export default async function PredavakPage({
       },
       polozky: { orderBy: { id: 'asc' } },
       fotky: { orderBy: { vytvoreno: 'asc' } },
+      vyuctovani: { select: { id: true, cislo: true } },
     },
   })
 
@@ -77,6 +78,7 @@ export default async function PredavakPage({
           popis: f.popis ?? '',
           vytvoreno: f.vytvoreno.toISOString(),
         })),
+        vyuctovani: predavak.vyuctovani,
       }}
       currentUserId={session.user.id}
       role={role}

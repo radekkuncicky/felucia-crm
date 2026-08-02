@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { VyuctovaniStav } from '@prisma/client'
-import { formatCislo, formatKc } from '@/lib/format'
+import { formatCislo, formatKc, formatDate } from '@/lib/format'
 
 const STAV_LABELS: Record<VyuctovaniStav, string> = {
   NAVRH: 'Návrh',
@@ -35,6 +35,14 @@ interface VyuctovaniData {
   vytvoreno: string
   schvaleno: string | null
   schvalil: { jmeno: string } | null
+  predavak: {
+    id: string
+    cislo: string
+    technikJmeno: string
+    podpisano: string | null
+    klientPritomen: boolean
+    fotekCount: number
+  } | null
   zakazka: {
     id: string; cislo: string; nazev: string
     klient: { jmeno: string; prijmeni: string }
@@ -56,6 +64,7 @@ type NewRow = { nazev: string; mnozstvi: string; jednotka: string; prodejniCena:
 export default function VyuctovaniDetailClient({ vyuctovani: initial, role, defaultDph }: Props) {
   const router = useRouter()
   const isAdmin = role === 'ADMIN'
+  const isManager = role === 'ADMIN' || role === 'OBCHODNIK'
 
   const [stav, setStav] = useState<VyuctovaniStav>(initial.stav)
   const canEdit = stav !== 'SCHVALENO'
@@ -165,6 +174,14 @@ export default function VyuctovaniDetailClient({ vyuctovani: initial, role, defa
     setConfirmSchvalit(false)
     setLoading(true)
     try {
+      // Při schvalování rovnou z návrhu nejdřív ulož rozepsanou poznámku
+      if (stav === 'NAVRH') {
+        await fetch(`/api/vyuctovani/${initial.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ poznamka }),
+        })
+      }
       const res = await fetch(`/api/vyuctovani/${initial.id}/schvalit`, { method: 'POST' })
       if (res.ok) {
         const data = await res.json()
@@ -200,7 +217,7 @@ export default function VyuctovaniDetailClient({ vyuctovani: initial, role, defa
     } finally { setLoading(false) }
   }
 
-  async function handleVratit() {
+  async function vratDoNavrhu(hlaska: string) {
     setLoading(true)
     try {
       const res = await fetch(`/api/vyuctovani/${initial.id}`, {
@@ -208,21 +225,22 @@ export default function VyuctovaniDetailClient({ vyuctovani: initial, role, defa
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ stav: 'NAVRH' }),
       })
-      if (res.ok) { setStav('NAVRH'); setToast('Vráceno k úpravám') }
+      if (res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setStav('NAVRH')
+        setToast(data.zakazkaNovyStav === 'PREDANA'
+          ? `${hlaska} — zakázka je zpět ve stavu Předána`
+          : hlaska)
+        router.refresh()
+      } else {
+        const err = await res.json().catch(() => ({}))
+        setToast(err.error ?? 'Chyba při vracení')
+      }
     } finally { setLoading(false) }
   }
 
-  async function handleReopenSchvaleno() {
-    setLoading(true)
-    try {
-      const res = await fetch(`/api/vyuctovani/${initial.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ stav: 'NAVRH' }),
-      })
-      if (res.ok) { setStav('NAVRH'); setToast('Vyúčtování vráceno k úpravám') }
-    } finally { setLoading(false) }
-  }
+  const handleVratit = () => vratDoNavrhu('Vráceno k úpravám')
+  const handleReopenSchvaleno = () => vratDoNavrhu('Vyúčtování vráceno k úpravám')
 
   async function handleDelete() {
     setConfirmDelete(false)
@@ -268,7 +286,9 @@ export default function VyuctovaniDetailClient({ vyuctovani: initial, role, defa
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-xl max-w-sm w-full">
             <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Schválit vyúčtování?</h3>
-            <p className="text-sm text-gray-600 dark:text-slate-400 mb-5">Schválením bude stav zakázky změněn na <strong>Vyúčtována</strong>.</p>
+            <p className="text-sm text-gray-600 dark:text-slate-400 mb-5">
+              Vyúčtování <strong>{initial.cislo}</strong> na <strong>{fmtKc(celkemSDph)}</strong> s DPH bude uzamčeno proti úpravám a stav zakázky se změní na <strong>Vyúčtována</strong>.
+            </p>
             <div className="flex gap-3 justify-end">
               <button onClick={() => setConfirmSchvalit(false)} className="px-4 py-2 text-sm text-gray-600 dark:text-slate-400 border border-gray-300 dark:border-slate-600 rounded-lg">Zrušit</button>
               <button onClick={handleSchvalit} disabled={loading} className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg disabled:opacity-50">Schválit</button>
@@ -319,12 +339,17 @@ export default function VyuctovaniDetailClient({ vyuctovani: initial, role, defa
                     <button onClick={() => setConfirmDelete(true)} disabled={loading} className="text-sm font-medium text-red-600 dark:text-red-400 border border-red-300 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20 px-3 py-2 rounded-lg disabled:opacity-50">Smazat</button>
                   )}
                   <button onClick={() => { fetch(`/api/vyuctovani/${initial.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ poznamka }) }); setToast('Uloženo') }} disabled={loading} className="text-sm font-medium text-gray-700 dark:text-slate-300 border border-gray-300 dark:border-slate-600 px-3 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-50">Uložit</button>
-                  <button onClick={handleKeSchvaleni} disabled={loading} className="text-sm font-medium text-white bg-[#1B5E20] hover:bg-green-800 px-3 py-2 rounded-lg disabled:opacity-50">{loading ? '…' : 'Odeslat ke schválení'}</button>
+                  <button onClick={handleKeSchvaleni} disabled={loading} className="text-sm font-medium text-gray-700 dark:text-slate-300 border border-gray-300 dark:border-slate-600 px-3 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-50">{loading ? '…' : 'Odeslat ke schválení'}</button>
+                  {isManager && (
+                    <button onClick={() => setConfirmSchvalit(true)} disabled={loading} className="text-sm font-medium text-white bg-green-600 hover:bg-green-700 px-3 py-2 rounded-lg disabled:opacity-50">Schválit</button>
+                  )}
                 </>
               )}
-              {stav === 'KE_SCHVALENI' && isAdmin && (
+              {stav === 'KE_SCHVALENI' && isManager && (
                 <>
-                  <button onClick={() => setConfirmDelete(true)} disabled={loading} className="text-sm font-medium text-red-600 dark:text-red-400 border border-red-300 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20 px-3 py-2 rounded-lg disabled:opacity-50">Smazat</button>
+                  {isAdmin && (
+                    <button onClick={() => setConfirmDelete(true)} disabled={loading} className="text-sm font-medium text-red-600 dark:text-red-400 border border-red-300 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20 px-3 py-2 rounded-lg disabled:opacity-50">Smazat</button>
+                  )}
                   <button onClick={handleVratit} disabled={loading} className="text-sm font-medium text-gray-700 dark:text-slate-300 border border-gray-300 dark:border-slate-600 px-3 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-50">Vrátit k úpravám</button>
                   <button onClick={() => setConfirmSchvalit(true)} disabled={loading} className="text-sm font-medium text-white bg-green-600 hover:bg-green-700 px-3 py-2 rounded-lg disabled:opacity-50">Schválit</button>
                 </>
@@ -353,6 +378,28 @@ export default function VyuctovaniDetailClient({ vyuctovani: initial, role, defa
             </div>
           </div>
         </div>
+
+        {/* Zdrojový protokol — kontext pro kontrolu cen */}
+        {initial.predavak && (
+          <a
+            href={`/zakazky/${initial.zakazka.id}/predavaky/${initial.predavak.id}`}
+            className="flex items-center justify-between gap-4 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 px-5 py-4 hover:border-green-300 dark:hover:border-green-800 transition-colors"
+          >
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-1">Podklad — předávací protokol</p>
+              <p className="font-mono font-bold text-sm text-gray-900 dark:text-white">{initial.predavak.cislo}</p>
+              <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+                {initial.predavak.technikJmeno}
+                {initial.predavak.podpisano && ` · Podepsán ${formatDate(initial.predavak.podpisano)}`}
+                {initial.predavak.klientPritomen ? ' · Klient přítomen' : ' · Klient nepřítomen'}
+                {initial.predavak.fotekCount > 0 && ` · ${initial.predavak.fotekCount} fotek`}
+              </p>
+            </div>
+            <svg className="w-5 h-5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </a>
+        )}
 
         {/* Polozky — desktop table */}
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700">
@@ -620,7 +667,7 @@ export default function VyuctovaniDetailClient({ vyuctovani: initial, role, defa
       {stav === 'NAVRH' && (
         <div className="fixed left-0 right-0 z-40 bg-[#0D1A0E] border-t border-green-900/50 md:hidden"
           style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom, 0px))', padding: '10px 16px' }}>
-          <div className="flex gap-3">
+          <div className="flex gap-2">
             <button
               onClick={() => { fetch(`/api/vyuctovani/${initial.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ poznamka }) }); setToast('Uloženo') }}
               disabled={loading}
@@ -629,13 +676,19 @@ export default function VyuctovaniDetailClient({ vyuctovani: initial, role, defa
               Uložit
             </button>
             <button onClick={handleKeSchvaleni} disabled={loading}
-              className="flex-1 bg-[#1B5E20] hover:bg-green-800 text-white rounded-xl py-3.5 font-medium text-sm disabled:opacity-50 min-h-[52px]">
-              {loading ? '…' : 'Odeslat ke schválení'}
+              className="flex-1 bg-white/10 text-white rounded-xl py-3.5 font-medium text-sm disabled:opacity-50 min-h-[52px]">
+              {loading ? '…' : 'Odeslat'}
             </button>
+            {isManager && (
+              <button onClick={() => setConfirmSchvalit(true)} disabled={loading}
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white rounded-xl py-3.5 font-medium text-sm disabled:opacity-50 min-h-[52px]">
+                Schválit
+              </button>
+            )}
           </div>
         </div>
       )}
-      {stav === 'KE_SCHVALENI' && isAdmin && (
+      {stav === 'KE_SCHVALENI' && isManager && (
         <div className="fixed left-0 right-0 z-40 bg-[#0D1A0E] border-t border-green-900/50 md:hidden"
           style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom, 0px))', padding: '10px 16px' }}>
           <div className="flex gap-3">

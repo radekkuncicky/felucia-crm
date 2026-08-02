@@ -24,17 +24,27 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   if (!predavak) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   // Idempotent: už schválený protokol → úspěch bez no-op (poražený v souběhu dvou kliků sem spadne)
   if (predavak.stav === 'SCHVALEN') {
-    return NextResponse.json({ ok: true, alreadyApproved: true })
+    const existujici = await db.vyuctovani.findUnique({
+      where: { predavakId: predavak.id },
+      select: { id: true, cislo: true },
+    })
+    return NextResponse.json({
+      ok: true,
+      alreadyApproved: true,
+      vyuctovaniId: existujici?.id ?? null,
+      vyuctovaniCislo: existujici?.cislo ?? null,
+    })
   }
   if (predavak.stav !== 'PODPISAN') {
     return NextResponse.json({ error: 'Protokol musí být podepsán před schválením' }, { status: 422 })
   }
 
   const zahrnutePolozky = predavak.polozky.filter(p => p.zahrnuto)
-  const vyuctovaniCislo = await generateVyuctovaniCislo(orgId)
+  const noveCislo = await generateVyuctovaniCislo(orgId)
 
   let raced = false
   let vyuctovaniId: string | null = null
+  let vyuctovaniCislo: string | null = null
 
   await db.$transaction(async tx => {
     // Concurrency guard: jen request, který skutečně překlopí PODPISAN→SCHVALEN, pokračuje.
@@ -82,13 +92,19 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       }
     }
 
-    // Create Vyuctovani with items
-    const vyuctovani: { id: string } = await tx.vyuctovani.create({
+    // Vyúčtování z tohoto protokolu už může existovat (schválení po „Vrátit k úpravám") — nezakládat duplicitu
+    const existujici = await tx.vyuctovani.findUnique({
+      where: { predavakId: predavak.id },
+      select: { id: true, cislo: true },
+    })
+    const vyuctovani = existujici ?? await tx.vyuctovani.create({
       data: {
         orgId,
         zakazkaId: predavak.zakazkaId,
-        cislo: vyuctovaniCislo,
+        cislo: noveCislo,
         stav: 'NAVRH',
+        etapaId: predavak.etapaId ?? null,
+        predavakId: predavak.id,
         polozky: {
           create: zahrnutePolozky.map((p, idx) => ({
             nazev: p.nazev,
@@ -101,9 +117,11 @@ export async function POST(req: Request, { params }: { params: { id: string } })
           })),
         },
       },
+      select: { id: true, cislo: true },
     })
 
     vyuctovaniId = vyuctovani.id
+    vyuctovaniCislo = vyuctovani.cislo
 
     // Audit log — záznam o akci, zůstává awaitovaný v transakci
     await tx.auditLog.create({
@@ -124,10 +142,11 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     return NextResponse.json({ ok: true, alreadyApproved: true })
   }
 
-  // Notifikace fire-and-forget — response se vrátí hned po commitu, ztráta notifikace neshodí schválení
+  // Notifikace fire-and-forget — response se vrátí hned po commitu, ztráta notifikace neshodí schválení.
+  // Aktérovi akce se notifikace neposílá (schvaluje-li vedoucí vlastní protokol, nemá si co oznamovat).
   void (async () => {
     const vedouciId = predavak.zakazka.vedouciId
-    if (vedouciId) {
+    if (vedouciId && vedouciId !== session.user.id) {
       await db.notification.create({
         data: {
           orgId,
@@ -138,16 +157,18 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         },
       })
     }
-    await db.notification.create({
-      data: {
-        orgId,
-        userId: predavak.technikId,
-        typ: 'PREDAVAK_SCHVALEN',
-        zprava: `Protokol ${predavak.cislo} byl schválen`,
-        url: `/zakazky/${predavak.zakazkaId}/predavaky/${predavak.id}`,
-      },
-    })
+    if (predavak.technikId !== session.user.id) {
+      await db.notification.create({
+        data: {
+          orgId,
+          userId: predavak.technikId,
+          typ: 'PREDAVAK_SCHVALEN',
+          zprava: `Protokol ${predavak.cislo} byl schválen`,
+          url: `/zakazky/${predavak.zakazkaId}/predavaky/${predavak.id}`,
+        },
+      })
+    }
   })().catch(() => {})
 
-  return NextResponse.json({ ok: true, vyuctovaniId })
+  return NextResponse.json({ ok: true, vyuctovaniId, vyuctovaniCislo })
 }

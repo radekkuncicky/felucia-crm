@@ -2,13 +2,110 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
+import { Predavak, ZakazkaStav } from '@prisma/client'
+import { vratZakazkuZPredane } from '@/lib/zakazkaStavFlow'
+
+type Db = ReturnType<typeof orgPrisma>
 
 async function canAccess(userId: string, role: string, predavakId: string, orgId: string) {
   if (role === 'ADMIN') return true
   const p = await orgPrisma(orgId).predavak.findFirst({ where: { id: predavakId } })
   if (!p) return false
   if (role === 'TECHNIK') return p.technikId === userId
-  return true // OBCHODNIK, MANAZER (ADMIN handled above)
+  return true // OBCHODNIK (ADMIN handled above)
+}
+
+/**
+ * Vrátí protokol do stavu Rozpracován a odčiní všechno, co schválení způsobilo:
+ * skladové výdeje protipohybem STORNO, automaticky vzniklé vyúčtování a posun zakázky.
+ * Vyúčtování, které už postoupilo dál než do návrhu, reopen blokuje — nejdřív ho musí
+ * manažer vrátit k úpravám, ať se nemažou čísla, se kterými se už někde pracovalo.
+ */
+async function reopenPredavak(db: Db, orgId: string, userId: string, predavak: Predavak) {
+  const bylSchvalen = predavak.stav === 'SCHVALEN'
+
+  const vyuctovani = bylSchvalen
+    ? await db.vyuctovani.findUnique({
+        where: { predavakId: predavak.id },
+        select: { id: true, cislo: true, stav: true },
+      })
+    : null
+
+  if (vyuctovani && vyuctovani.stav !== 'NAVRH') {
+    return NextResponse.json({
+      error: `Protokol nelze vrátit — vyúčtování ${vyuctovani.cislo} už čeká na schválení nebo je schválené. Nejdřív ho vraťte k úpravám.`,
+    }, { status: 422 })
+  }
+
+  let zakazkaNovyStav: ZakazkaStav | null = null
+
+  await db.$transaction(async tx => {
+    await tx.predavak.update({
+      where: { id: predavak.id },
+      data: {
+        stav: 'ROZPRACOVAN',
+        schvaleno: null,
+        schvalenoId: null,
+        podpisano: null,
+        upravenoPodpisano: false,
+      },
+    })
+
+    if (bylSchvalen) {
+      // Schválení vydalo položky ze skladu — vrať je protipohybem, aby zůstala stopa v pohybech
+      const polozky = await tx.predavakPolozka.findMany({
+        where: { predavakId: predavak.id, zahrnuto: true, zakazkaPolozkaId: { not: null } },
+        include: { zakazkaPolozka: true },
+      })
+      for (const p of polozky) {
+        if (!p.zakazkaPolozkaId || p.zakazkaPolozka?.stav !== 'VYDANO') continue
+        await tx.zakazkaPolozka.update({
+          where: { id: p.zakazkaPolozkaId },
+          data: { stav: 'NASKLADNENO' },
+        })
+        await tx.skladPohyb.create({
+          data: {
+            orgId,
+            zakazkaId: predavak.zakazkaId,
+            polozkaId: p.zakazkaPolozkaId,
+            typ: 'STORNO',
+            nazev: p.nazev,
+            mnozstvi: p.mnozstviPouzito,
+            nakupniCena: p.zakazkaPolozka?.nakupniCena ?? undefined,
+            duvod: `Vrácení protokolu ${predavak.cislo} k úpravám`,
+            vytvorilId: userId,
+          },
+        })
+      }
+
+      // Návrh vyúčtování vznikl schválením — po znovuschválení se založí s aktuálními položkami
+      if (vyuctovani) {
+        await tx.vyuctovani.delete({ where: { id: vyuctovani.id } })
+      }
+    }
+
+    zakazkaNovyStav = await vratZakazkuZPredane(tx, predavak.zakazkaId, predavak.id)
+
+    await tx.auditLog.create({
+      data: {
+        orgId,
+        userId,
+        typAkce: 'UPDATE',
+        typZaznamu: 'Predavak',
+        zaznamId: predavak.id,
+        zaznamNazev: predavak.cislo,
+        zmeny: {
+          stavPred: predavak.stav,
+          stavPo: 'ROZPRACOVAN',
+          smazanoVyuctovani: vyuctovani?.cislo ?? null,
+          zakazkaNovyStav,
+        },
+      },
+    })
+  })
+
+  const updated = await db.predavak.findFirst({ where: { id: predavak.id } })
+  return NextResponse.json({ ...updated, zakazkaNovyStav })
 }
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
@@ -59,13 +156,10 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
   const body = await req.json()
 
-  // Admin/manager can reopen an approved protocol
-  if (body.reopen && isManager) {
-    const updated = await db.predavak.update({
-      where: { id: params.id },
-      data: { stav: 'ROZPRACOVAN', schvaleno: null, schvalenoId: null, podpisano: null },
-    })
-    return NextResponse.json(updated)
+  // Vrácení protokolu k úpravám (manažer) — kompletní rollback schválení, ne jen přepnutí stavu
+  if (body.reopen) {
+    if (!isManager) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    return reopenPredavak(db, orgId, session.user.id, predavak)
   }
 
   if (predavak.stav === 'SCHVALEN') {
@@ -121,7 +215,31 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
   const predavak = await db.predavak.findFirst({ where: { id: params.id, orgId } })
   if (!predavak) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  await db.predavak.delete({ where: { id: params.id } })
+  // Schválený protokol drží skladové výdeje a vyúčtování — smazáním by po nich zůstaly sirotci
+  if (predavak.stav === 'SCHVALEN') {
+    return NextResponse.json({
+      error: 'Schválený protokol nelze smazat. Nejdřív ho vraťte k úpravám.',
+    }, { status: 422 })
+  }
+
+  await db.$transaction(async tx => {
+    await tx.predavak.delete({ where: { id: params.id } })
+
+    // Podpis mohl zakázku posunout na PREDANA — po smazání ji nemá co držet
+    const zakazkaNovyStav = await vratZakazkuZPredane(tx, predavak.zakazkaId, predavak.id)
+
+    await tx.auditLog.create({
+      data: {
+        orgId,
+        userId: session.user.id,
+        typAkce: 'DELETE',
+        typZaznamu: 'Predavak',
+        zaznamId: params.id,
+        zaznamNazev: predavak.cislo,
+        zmeny: { stavPred: predavak.stav, zakazkaNovyStav },
+      },
+    })
+  })
 
   return NextResponse.json({ ok: true })
 }

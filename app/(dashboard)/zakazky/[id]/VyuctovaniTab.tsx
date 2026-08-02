@@ -22,6 +22,7 @@ interface Vyuctovani {
   stav: VyuctovaniStav
   vytvoreno: string
   etapaId: string | null
+  predavakCislo?: string | null
 }
 
 interface EtapaInfo {
@@ -44,6 +45,7 @@ function VyuRow({ v, zakazkaId }: { v: Vyuctovani; zakazkaId: string }) {
         <p className="font-mono font-bold text-sm text-gray-900 dark:text-white">{v.cislo}</p>
         <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
           {formatDate(v.vytvoreno)}
+          {v.predavakCislo && ` · z protokolu ${v.predavakCislo}`}
         </p>
       </div>
       <div className="flex items-center gap-3">

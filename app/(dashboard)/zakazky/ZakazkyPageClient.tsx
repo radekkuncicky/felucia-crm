@@ -9,6 +9,8 @@ import { techLabels, techColors } from '@/lib/constants'
 import { api } from '@/lib/api'
 import { toast } from 'sonner'
 import { formatKc } from '@/lib/format'
+import FilterDropdown from '@/components/ui/FilterDropdown'
+import KeSchvaleniBar, { type KeSchvaleniPolozka } from './KeSchvaleniBar'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -37,6 +39,7 @@ interface Props {
   zakazky: ZakazkaRow[]
   vedouci: { id: string; jmeno: string }[]
   role: string
+  keSchvaleni?: KeSchvaleniPolozka[]
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -368,7 +371,7 @@ function NovaZakazkaModal({ open, onClose }: { open: boolean; onClose: () => voi
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function ZakazkyPageClient({ zakazky, vedouci, role }: Props) {
+export default function ZakazkyPageClient({ zakazky, vedouci, role, keSchvaleni = [] }: Props) {
   const router = useRouter()
   const isTechnik = role === 'TECHNIK'
   const canCreate = role === 'ADMIN'
@@ -511,7 +514,24 @@ export default function ZakazkyPageClient({ zakazky, vedouci, role }: Props) {
   const selectedSet = new Set(selectedIds)
   const allFilteredSelected = filtered.length > 0 && filtered.every(z => selectedSet.has(z.id))
 
-  const selectCls = 'border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary'
+  const stavOptions = [
+    { value: '', label: 'Všechny stavy' },
+    ...(Object.entries(STAV_LABELS) as [ZakazkaStav, string][]).map(([k, v]) => ({
+      value: k,
+      label: `${v} (${localZakazky.filter(z => z.stav === k).length})`,
+    })),
+  ]
+  const vedouciOptions = [
+    { value: '', label: 'Všichni vedoucí' },
+    ...vedouci.map(v => ({ value: v.id, label: v.jmeno })),
+  ]
+  const montazOptions = [
+    { value: '', label: 'Montáž — vše' },
+    { value: 'tento_tyden', label: 'Tento týden' },
+    { value: 'pristy_tyden', label: 'Příští týden' },
+    { value: 'po_terminu', label: 'Po termínu' },
+    { value: 'bez_terminu', label: 'Bez termínu' },
+  ]
 
   return (
     <>
@@ -571,6 +591,8 @@ export default function ZakazkyPageClient({ zakazky, vedouci, role }: Props) {
           </div>
         </div>
 
+        {!isTechnik && <KeSchvaleniBar polozky={keSchvaleni} />}
+
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
           {view !== 'kanban' && (
@@ -603,25 +625,11 @@ export default function ZakazkyPageClient({ zakazky, vedouci, role }: Props) {
               placeholder="Hledat zakázku…"
               className="w-full pl-9 pr-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary" />
           </div>
-          <select value={stavFilter} onChange={e => setStavFilter(e.target.value as ZakazkaStav | '')} className={selectCls}>
-            <option value="">Všechny stavy</option>
-            {(Object.entries(STAV_LABELS) as [ZakazkaStav, string][]).map(([k, v]) => (
-              <option key={k} value={k}>{v} ({localZakazky.filter(z => z.stav === k).length})</option>
-            ))}
-          </select>
+          <FilterDropdown value={stavFilter} onChange={v => setStavFilter(v as ZakazkaStav | '')} options={stavOptions} />
           {!isTechnik && vedouci.length > 0 && (
-            <select value={vedouciFilter} onChange={e => setVedouciFilter(e.target.value)} className={selectCls}>
-              <option value="">Všichni vedoucí</option>
-              {vedouci.map(v => <option key={v.id} value={v.id}>{v.jmeno}</option>)}
-            </select>
+            <FilterDropdown value={vedouciFilter} onChange={setVedouciFilter} options={vedouciOptions} />
           )}
-          <select value={montazFilter} onChange={e => setMontazFilter(e.target.value as typeof montazFilter)} className={selectCls}>
-            <option value="">Montáž — vše</option>
-            <option value="tento_tyden">Tento týden</option>
-            <option value="pristy_tyden">Příští týden</option>
-            <option value="po_terminu">Po termínu</option>
-            <option value="bez_terminu">Bez termínu</option>
-          </select>
+          <FilterDropdown value={montazFilter} onChange={v => setMontazFilter(v as typeof montazFilter)} options={montazOptions} />
         </div>
 
         {/* Filter chips + count */}

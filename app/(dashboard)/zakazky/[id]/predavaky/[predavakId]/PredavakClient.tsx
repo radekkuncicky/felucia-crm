@@ -49,6 +49,7 @@ interface PredavakData {
   }
   polozky: PolozkaData[]
   fotky: FotoData[]
+  vyuctovani: { id: string; cislo: string } | null
 }
 
 interface Props {
@@ -212,9 +213,15 @@ export default function PredavakClient({ predavak: initial, currentUserId, role 
     try {
       const res = await fetch(`/api/predavaky/${initial.id}/schvalit`, { method: 'POST' })
       if (res.ok) {
+        const data = await res.json().catch(() => ({}))
         setStav('SCHVALEN')
-        showToast('Protokol schválen, vyúčtování vytvořeno', 'ok')
-        router.refresh()
+        if (data.vyuctovaniId) {
+          showToast(`Protokol schválen — vyúčtování ${data.vyuctovaniCislo ?? ''} připraveno`, 'ok')
+          router.push(`/zakazky/${initial.zakazka.id}/vyuctovani/${data.vyuctovaniId}`)
+        } else {
+          showToast('Protokol schválen', 'ok')
+          router.refresh()
+        }
         return
       }
       // Chyba — ověř skutečný stav (souběžný request mohl protokol mezitím schválit)
@@ -254,11 +261,17 @@ export default function PredavakClient({ predavak: initial, currentUserId, role 
         body: JSON.stringify({ reopen: true }),
       })
       if (res.ok) {
+        const data = await res.json().catch(() => ({}))
         setStav('ROZPRACOVAN')
-        showToast('Protokol vrácen k úpravám', 'ok')
+        showToast(
+          data.zakazkaNovyStav === 'V_REALIZACI'
+            ? 'Protokol vrácen k úpravám — zakázka je zpět v realizaci'
+            : 'Protokol vrácen k úpravám',
+          'ok'
+        )
         router.refresh()
       } else {
-        const err = await res.json()
+        const err = await res.json().catch(() => ({}))
         showToast(err.error ?? 'Chyba', 'err')
       }
     } finally {
@@ -422,9 +435,15 @@ export default function PredavakClient({ predavak: initial, currentUserId, role 
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-xl max-w-sm w-full">
             <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Vrátit protokol k úpravám?</h3>
-            <p className="text-sm text-gray-600 dark:text-slate-400 mb-5">
-              Protokol <strong>{initial.cislo}</strong> bude vrácen do stavu <strong>Rozpracován</strong>. Schválení bude zrušeno.
-            </p>
+            <div className="text-sm text-gray-600 dark:text-slate-400 mb-5 space-y-2">
+              <p>Protokol <strong>{initial.cislo}</strong> se vrátí do stavu <strong>Rozpracován</strong> a technik ho bude muset znovu podepsat.</p>
+              {stav === 'SCHVALEN' && (
+                <p>
+                  Zároveň se zruší schválení: vydané položky se vrátí na sklad
+                  {initial.vyuctovani && <> a smaže se návrh vyúčtování <strong>{initial.vyuctovani.cislo}</strong></>}.
+                </p>
+              )}
+            </div>
             <div className="flex gap-3 justify-end">
               <button onClick={() => setConfirmReopen(false)} className="px-4 py-2 text-sm text-gray-600 dark:text-slate-400 border border-gray-300 dark:border-slate-600 rounded-lg">Zrušit</button>
               <button onClick={handleReopen} disabled={saving} className="px-4 py-2 text-sm font-medium text-white bg-orange-600 hover:bg-orange-700 rounded-lg disabled:opacity-50">
@@ -510,6 +529,8 @@ export default function PredavakClient({ predavak: initial, currentUserId, role 
               <div className="hidden md:flex items-center gap-2 flex-shrink-0">
                 <HeaderActions
                   predavakId={initial.id}
+                  zakazkaId={initial.zakazka.id}
+                  vyuctovani={initial.vyuctovani}
                   stav={stav}
                   canEdit={canEdit}
                   isTechnik={isTechnik}
@@ -1060,10 +1081,12 @@ export default function PredavakClient({ predavak: initial, currentUserId, role 
 // ─── HeaderActions ────────────────────────────────────────────────────────────
 
 function HeaderActions({
-  predavakId, stav, canEdit, isTechnik, isManager, isOwnTechnik, saving, canSubmit, submitBlockReason,
+  predavakId, zakazkaId, vyuctovani, stav, canEdit, isTechnik, isManager, isOwnTechnik, saving, canSubmit, submitBlockReason,
   onSave, onPodepsat, onSchvalit, onOdmitnout, onReopen, onDelete,
 }: {
   predavakId: string
+  zakazkaId: string
+  vyuctovani: { id: string; cislo: string } | null
   stav: PredavakStav
   canEdit: boolean
   isTechnik: boolean
@@ -1081,9 +1104,41 @@ function HeaderActions({
 }) {
   const showPdf = stav === 'SCHVALEN' && (!isTechnik || isOwnTechnik)
 
-  if (canEdit && stav === 'PODPISAN' && !isTechnik) {
-    // Manager editing a submitted protocol — keep approve/reject as primary actions
-    return null
+  if (isManager && stav === 'PODPISAN') {
+    return (
+      <>
+        <button
+          onClick={onDelete}
+          disabled={saving}
+          className="text-sm font-medium text-red-600 dark:text-red-400 border border-red-300 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20 px-4 py-2 rounded-lg disabled:opacity-50"
+        >
+          Smazat
+        </button>
+        {canEdit && (
+          <button
+            onClick={onSave}
+            disabled={saving}
+            className="text-sm font-medium text-gray-700 dark:text-slate-300 border border-gray-300 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700 px-4 py-2 rounded-lg disabled:opacity-50"
+          >
+            {saving ? 'Ukládám…' : 'Uložit změny'}
+          </button>
+        )}
+        <button
+          onClick={onOdmitnout}
+          disabled={saving}
+          className="text-sm font-medium text-white bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg disabled:opacity-50"
+        >
+          Odmítnout
+        </button>
+        <button
+          onClick={onSchvalit}
+          disabled={saving}
+          className="text-sm font-medium text-white bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg disabled:opacity-50"
+        >
+          Schválit
+        </button>
+      </>
+    )
   }
 
   if (canEdit && stav === 'PODPISAN') {
@@ -1132,52 +1187,29 @@ function HeaderActions({
     )
   }
 
-  if (isManager && stav === 'PODPISAN') {
-    return (
-      <>
-        <button
-          onClick={onDelete}
-          disabled={saving}
-          className="text-sm font-medium text-red-600 dark:text-red-400 border border-red-300 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20 px-4 py-2 rounded-lg disabled:opacity-50"
-        >
-          Smazat
-        </button>
-        <button
-          onClick={onOdmitnout}
-          className="text-sm font-medium text-white bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg"
-        >
-          Odmítnout
-        </button>
-        <button
-          onClick={onSchvalit}
-          className="text-sm font-medium text-white bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg"
-        >
-          Schválit
-        </button>
-      </>
-    )
-  }
-
   if (showPdf) {
     return (
       <>
+        {/* Schválený protokol drží skladové výdeje a vyúčtování — mazat se smí až po vrácení k úpravám */}
         {isManager && (
-          <>
-            <button
-              onClick={onDelete}
-              disabled={saving}
-              className="text-sm font-medium text-red-600 dark:text-red-400 border border-red-300 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20 px-4 py-2 rounded-lg disabled:opacity-50"
-            >
-              Smazat
-            </button>
-            <button
-              onClick={onReopen}
-              disabled={saving}
-              className="text-sm font-medium text-orange-700 dark:text-orange-400 border border-orange-300 dark:border-orange-800 hover:bg-orange-50 dark:hover:bg-orange-900/20 px-4 py-2 rounded-lg disabled:opacity-50"
-            >
-              Vrátit k úpravám
-            </button>
-          </>
+          <button
+            onClick={onReopen}
+            disabled={saving}
+            className="text-sm font-medium text-orange-700 dark:text-orange-400 border border-orange-300 dark:border-orange-800 hover:bg-orange-50 dark:hover:bg-orange-900/20 px-4 py-2 rounded-lg disabled:opacity-50"
+          >
+            Vrátit k úpravám
+          </button>
+        )}
+        {!isTechnik && vyuctovani && (
+          <a
+            href={`/zakazky/${zakazkaId}/vyuctovani/${vyuctovani.id}`}
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-white bg-[#1B5E20] hover:bg-green-800 px-4 py-2 rounded-lg transition-colors"
+          >
+            Vyúčtování {vyuctovani.cislo}
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </a>
         )}
         <a
           href={`/api/predavaky/${predavakId}/pdf`}

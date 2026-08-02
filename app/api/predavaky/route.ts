@@ -17,11 +17,8 @@ export async function POST(req: Request) {
 
   if (!zakazkaId) return NextResponse.json({ error: 'Chybí zakazkaId' }, { status: 400 })
 
-  // Check access
+  // Check access — OBCHODNIK je v modulu zakázek manažer (schvaluje protokoly), smí je i zakládat
   if (role === 'TECHNIK' && !(await canTechnikAccessZakazka(session.user.id, zakazkaId, session.user.orgId))) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
-  if (role === 'OBCHODNIK') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 

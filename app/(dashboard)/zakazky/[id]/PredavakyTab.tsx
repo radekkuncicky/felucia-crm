@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { PredavakStav } from '@prisma/client'
+import { toast } from 'sonner'
 import { formatDate } from '@/lib/format'
 
 const STAV_LABELS: Record<PredavakStav, string> = {
@@ -104,7 +105,22 @@ export default function PredavakyTab({ zakazkaId, predavaky: initialPredavaky, c
     try {
       const res = await fetch(`/api/predavaky/${predavakId}/schvalit`, { method: 'POST' })
       if (res.ok) {
+        const data = await res.json().catch(() => ({}))
         markSchvalen(predavakId)
+        if (data.vyuctovaniId) {
+          toast.success(
+            <span>
+              Protokol schválen —{' '}
+              <Link href={`/zakazky/${zakazkaId}/vyuctovani/${data.vyuctovaniId}`} className="underline font-semibold">
+                vyúčtování {data.vyuctovaniCislo ?? ''}
+              </Link>{' '}
+              je připraveno ke kontrole
+            </span>,
+            { duration: 8000 }
+          )
+        } else {
+          toast.success('Protokol schválen')
+        }
         return
       }
       // Chyba — ověř skutečný stav (souběžný request mohl protokol mezitím schválit)

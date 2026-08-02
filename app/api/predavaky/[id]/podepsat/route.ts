@@ -62,9 +62,9 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       zakazkaNovyStav = 'PREDANA'
     }
 
-    // Notify vedouci
+    // Notify vedouci (ne když protokol odesílá sám vedoucí)
     const vedouciId = predavak.zakazka.vedouciId
-    if (vedouciId) {
+    if (vedouciId && vedouciId !== session.user.id) {
       await tx.notification.create({
         data: {
           orgId,
