@@ -9,6 +9,7 @@ import { ResizeHandle } from '@/components/ResizeHandle'
 import ConfirmModal from '@/components/ConfirmModal'
 import { formatDate } from '@/lib/format'
 import { ActivityTypeIcon } from '@/components/ui/ActivityTypeIcon'
+import FilterDropdown from '@/components/ui/FilterDropdown'
 
 const ACT_DEFS: ColumnDef[] = [
   { id: 'datum', label: 'Datum', defaultVisible: true, defaultWidth: 110 },
@@ -32,6 +33,13 @@ const typOptions = [
 const typLabels: Record<string, string> = {
   HOVOR: 'Hovor', EMAIL: 'Email', SCHUZKA: 'Schůzka', POZNAMKA: 'Poznámka', UKOL: 'Úkol',
 }
+
+const stavFilterOptions = [
+  { value: '', label: 'Všechny stavy' },
+  { value: 'PLANOVANA', label: 'Plánovaná' },
+  { value: 'DOKONCENA', label: 'Dokončena' },
+  { value: 'ZRUSENA', label: 'Zrušena' },
+]
 
 const stavConfig = {
   PLANOVANA: { label: 'Plánovaná', dot: 'bg-gray-400', btn: 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300 ring-gray-400' },
@@ -302,9 +310,7 @@ export default function ActivitiesClient({ activities: initActivities, defaultTy
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
           <div>
             <label className="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">Typ</label>
-            <select value={typ} onChange={e => setTyp(e.target.value)} className={inp}>
-              {typOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-            </select>
+            <FilterDropdown value={typ} onChange={setTyp} options={typOptions} />
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">Datum od</label>
@@ -316,12 +322,7 @@ export default function ActivitiesClient({ activities: initActivities, defaultTy
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">Stav</label>
-            <select value={stavFilter} onChange={e => setStavFilter(e.target.value)} className={inp}>
-              <option value="">Všechny stavy</option>
-              <option value="PLANOVANA">Plánovaná</option>
-              <option value="DOKONCENA">Dokončena</option>
-              <option value="ZRUSENA">Zrušena</option>
-            </select>
+            <FilterDropdown value={stavFilter} onChange={setStavFilter} options={stavFilterOptions} />
           </div>
         </div>
         <div className="flex items-center justify-between mt-3">

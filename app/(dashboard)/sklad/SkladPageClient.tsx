@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { SkladPohybTyp } from '@prisma/client'
 import { formatDateTime, formatKcPresne, formatCislo } from '@/lib/format'
+import FilterDropdown from '@/components/ui/FilterDropdown'
 
 const TYP_LABELS: Record<SkladPohybTyp, string> = {
   REZERVACE: 'Rezervace',
@@ -119,6 +120,15 @@ export default function SkladPageClient({ pohyby: initialPohyby, zakazky, kpi: i
   const [datumDo, setDatumDo] = useState('')
   const [showPrijem, setShowPrijem] = useState(false)
 
+  const typFilterOptions = [
+    { value: '', label: 'Všechny typy' },
+    ...(Object.keys(TYP_LABELS) as SkladPohybTyp[]).map(t => ({ value: t, label: TYP_LABELS[t] })),
+  ]
+  const zakazkaFilterOptions = [
+    { value: '', label: 'Všechny zakázky' },
+    ...zakazky.map(z => ({ value: z.id, label: `${z.cislo} — ${z.nazev}` })),
+  ]
+
   const filtered = useMemo(() => {
     return pohyby.filter(p => {
       if (typFilter && p.typ !== typFilter) return false
@@ -185,16 +195,8 @@ export default function SkladPageClient({ pohyby: initialPohyby, zakazky, kpi: i
               className="pl-9 pr-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
-          <select value={typFilter} onChange={e => setTypFilter(e.target.value as SkladPohybTyp | '')} className="border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary">
-            <option value="">Všechny typy</option>
-            {(Object.keys(TYP_LABELS) as SkladPohybTyp[]).map(t => (
-              <option key={t} value={t}>{TYP_LABELS[t]}</option>
-            ))}
-          </select>
-          <select value={zakazkaFilter} onChange={e => setZakazkaFilter(e.target.value)} className="border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary max-w-[200px]">
-            <option value="">Všechny zakázky</option>
-            {zakazky.map(z => <option key={z.id} value={z.id}>{z.cislo} — {z.nazev}</option>)}
-          </select>
+          <FilterDropdown value={typFilter} onChange={v => setTypFilter(v as SkladPohybTyp | '')} options={typFilterOptions} />
+          <FilterDropdown value={zakazkaFilter} onChange={setZakazkaFilter} options={zakazkaFilterOptions} className="max-w-[200px]" />
           <input type="date" value={datumOd} onChange={e => setDatumOd(e.target.value)} className="border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary" />
           <input type="date" value={datumDo} onChange={e => setDatumDo(e.target.value)} className="border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary" />
         </div>

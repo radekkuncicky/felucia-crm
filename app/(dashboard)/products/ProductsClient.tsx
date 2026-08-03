@@ -10,6 +10,7 @@ import ColumnConfigButton from '@/components/ColumnConfigButton'
 import CenikDetail from './CenikDetail'
 import { ResizeHandle } from '@/components/ResizeHandle'
 import { formatDate, formatCislo } from '@/lib/format'
+import FilterDropdown from '@/components/ui/FilterDropdown'
 
 const PROD_DEFS: ColumnDef[] = [
   { id: 'kod', label: 'Kód', defaultVisible: true, defaultWidth: 100 },
@@ -85,6 +86,10 @@ function ProductsTab({ products, categories, showNakladoveCeny = true, userId }:
   })
 
   const inp = 'border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary'
+  const catFilterOptions = [
+    { value: '', label: 'Všechny kategorie' },
+    ...categories.map(c => ({ value: c.id, label: c.nazev })),
+  ]
 
   function getPrice(p: Product) {
     const local = localPrices[p.id]
@@ -173,10 +178,7 @@ function ProductsTab({ products, categories, showNakladoveCeny = true, userId }:
       <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-3">
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Hledat (název, kód, řada)…" className={`${inp} w-full sm:w-72`} />
         <div className="flex flex-wrap gap-3 items-center w-full sm:w-auto">
-          <select value={catFilter} onChange={e => setCatFilter(e.target.value)} className={`${inp} flex-1 sm:flex-none`}>
-            <option value="">Všechny kategorie</option>
-            {categories.map(c => <option key={c.id} value={c.id}>{c.nazev}</option>)}
-          </select>
+          <FilterDropdown value={catFilter} onChange={setCatFilter} options={catFilterOptions} className="flex-1 sm:flex-none" />
           <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-400 cursor-pointer whitespace-nowrap">
             <input type="checkbox" checked={showInactive} onChange={e => setShowInactive(e.target.checked)} className="rounded" />
             Zobrazit neaktivní

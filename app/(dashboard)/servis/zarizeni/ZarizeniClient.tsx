@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { api } from '@/lib/api'
 import { formatDate } from '@/lib/format'
+import FilterDropdown from '@/components/ui/FilterDropdown'
 
 const TYP_LABELS: Record<string, string> = {
   TEPELNE_CERPADLO: 'Tepelné čerpadlo',
@@ -198,6 +199,10 @@ export default function ZarizeniClient({ zarizeni: initial, clients }: Props) {
   const [zarizeni] = useState(initial)
   const [search, setSearch] = useState('')
   const [typFilter, setTypFilter] = useState('')
+  const typFilterOptions = [
+    { value: '', label: 'Všechny typy' },
+    ...Object.entries(TYP_LABELS).map(([k, v]) => ({ value: k, label: v })),
+  ]
   const [showAdd, setShowAdd] = useState(false)
   const [saving, setSaving] = useState(false)
   const [qrZarizeni, setQrZarizeni] = useState<Zarizeni | null>(null)
@@ -267,14 +272,7 @@ export default function ZarizeniClient({ zarizeni: initial, clients }: Props) {
           placeholder="Hledat zařízení nebo klienta…"
           className="flex-1 min-w-48 bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
         />
-        <select
-          value={typFilter}
-          onChange={e => setTypFilter(e.target.value)}
-          className="bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-1.5 text-sm focus:outline-none"
-        >
-          <option value="">Všechny typy</option>
-          {Object.entries(TYP_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-        </select>
+        <FilterDropdown value={typFilter} onChange={setTypFilter} options={typFilterOptions} />
         <button
           onClick={() => setShowAdd(true)}
           className="ml-auto bg-primary hover:bg-primary-hover text-white text-sm px-4 py-1.5 rounded-lg font-medium"

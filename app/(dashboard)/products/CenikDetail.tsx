@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { formatCislo } from '@/lib/format'
+import FilterDropdown from '@/components/ui/FilterDropdown'
 
 interface ProductCategory { id: string; nazev: string; barva: string }
 interface Product { id: string; kod: string | null; nazev: string; categories: ProductCategory[]; jednotka: string; standardniCena: number }
@@ -91,6 +92,14 @@ export default function CenikDetail({ cenikId, cenikNazev, cenikKod, products, c
   }
 
   const inp = 'border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary'
+  const catFilterOptions = [
+    { value: '', label: 'Všechny kategorie' },
+    ...categories.map(c => ({ value: c.id, label: c.nazev })),
+  ]
+  const addCatFilterOptions = [
+    { value: '', label: 'Všechny kat.' },
+    ...categories.map(c => ({ value: c.id, label: c.nazev })),
+  ]
 
   return (
     <div className="space-y-4">
@@ -111,10 +120,7 @@ export default function CenikDetail({ cenikId, cenikNazev, cenikKod, products, c
           <h3 className="font-semibold text-gray-900 dark:text-white text-sm">Přidat produkt do ceníku</h3>
           <div className="flex gap-2">
             <input value={addSearch} onChange={e => setAddSearch(e.target.value)} placeholder="Hledat produkt…" className={`${inp} flex-1`} />
-            <select value={addCatFilter} onChange={e => setAddCatFilter(e.target.value)} className={inp}>
-              <option value="">Všechny kat.</option>
-              {categories.map(c => <option key={c.id} value={c.id}>{c.nazev}</option>)}
-            </select>
+            <FilterDropdown value={addCatFilter} onChange={setAddCatFilter} options={addCatFilterOptions} />
           </div>
           <div className="max-h-48 overflow-y-auto border border-gray-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 divide-y divide-gray-100 dark:divide-slate-700">
             {availableProducts.slice(0, 30).map(p => (
@@ -145,10 +151,7 @@ export default function CenikDetail({ cenikId, cenikNazev, cenikKod, products, c
       {/* Filters */}
       <div className="flex gap-3">
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Hledat…" className={`${inp} w-64`} />
-        <select value={catFilter} onChange={e => setCatFilter(e.target.value)} className={inp}>
-          <option value="">Všechny kategorie</option>
-          {categories.map(c => <option key={c.id} value={c.id}>{c.nazev}</option>)}
-        </select>
+        <FilterDropdown value={catFilter} onChange={setCatFilter} options={catFilterOptions} />
       </div>
 
       {/* Table */}

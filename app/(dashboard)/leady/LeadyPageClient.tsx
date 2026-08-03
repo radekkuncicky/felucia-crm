@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { LeadZdroj, LeadStatus } from '@prisma/client'
 import { formatDate, formatKcPresne } from '@/lib/format'
+import FilterDropdown from '@/components/ui/FilterDropdown'
 
 interface Lead {
   id: string
@@ -69,6 +70,20 @@ export default function LeadyPageClient({ leady, users, novychCount, currentUser
   const [filterAssigned, setFilterAssigned] = useState<string>('all')
   const [showModal, setShowModal] = useState(false)
 
+  const statusOptions = [
+    { value: 'all', label: 'Všechny statusy' },
+    ...Object.entries(STATUS_LABELS).map(([k, v]) => ({ value: k, label: v })),
+  ]
+  const zdrojOptions = [
+    { value: 'all', label: 'Všechny zdroje' },
+    ...Object.entries(ZDROJ_LABELS).map(([k, v]) => ({ value: k, label: v })),
+  ]
+  const assignedOptions = [
+    { value: 'all', label: 'Všichni obchodníci' },
+    { value: 'me', label: 'Moje leady' },
+    ...users.map(u => ({ value: u.id, label: u.jmeno })),
+  ]
+
   const filtered = useMemo(() => {
     return leady.filter(l => {
       if (filterStatus !== 'all' && l.status !== filterStatus) return false
@@ -122,37 +137,9 @@ export default function LeadyPageClient({ leady, users, novychCount, currentUser
           onChange={e => setSearch(e.target.value)}
           className="px-3 py-1.5 bg-[#1e2638] border border-white/20 rounded-lg text-sm text-white placeholder-white/50 focus:outline-none focus:border-[#4CAF50]/60 w-56"
         />
-        <select
-          value={filterStatus}
-          onChange={e => setFilterStatus(e.target.value)}
-          className="px-3 py-1.5 bg-[#1e2638] border border-white/20 rounded-lg text-sm text-white focus:outline-none focus:border-[#4CAF50]/60"
-        >
-          <option value="all">Všechny statusy</option>
-          {Object.entries(STATUS_LABELS).map(([k, v]) => (
-            <option key={k} value={k}>{v}</option>
-          ))}
-        </select>
-        <select
-          value={filterZdroj}
-          onChange={e => setFilterZdroj(e.target.value)}
-          className="px-3 py-1.5 bg-[#1e2638] border border-white/20 rounded-lg text-sm text-white focus:outline-none focus:border-[#4CAF50]/60"
-        >
-          <option value="all">Všechny zdroje</option>
-          {Object.entries(ZDROJ_LABELS).map(([k, v]) => (
-            <option key={k} value={k}>{v}</option>
-          ))}
-        </select>
-        <select
-          value={filterAssigned}
-          onChange={e => setFilterAssigned(e.target.value)}
-          className="px-3 py-1.5 bg-[#1e2638] border border-white/20 rounded-lg text-sm text-white focus:outline-none focus:border-[#4CAF50]/60"
-        >
-          <option value="all">Všichni obchodníci</option>
-          <option value="me">Moje leady</option>
-          {users.map(u => (
-            <option key={u.id} value={u.id}>{u.jmeno}</option>
-          ))}
-        </select>
+        <FilterDropdown variant="dark" value={filterStatus} onChange={setFilterStatus} options={statusOptions} />
+        <FilterDropdown variant="dark" value={filterZdroj} onChange={setFilterZdroj} options={zdrojOptions} />
+        <FilterDropdown variant="dark" value={filterAssigned} onChange={setFilterAssigned} options={assignedOptions} />
       </div>
 
       {/* Table */}

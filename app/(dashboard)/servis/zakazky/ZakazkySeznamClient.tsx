@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { api } from '@/lib/api'
+import FilterDropdown from '@/components/ui/FilterDropdown'
 import {
   type NavstevaTyp,
   SERVIS_STAV_LABELS,
@@ -118,8 +119,20 @@ export default function ZakazkySeznamClient({ zakazky, orgUsers, zarizeniList, c
     }
   }
 
-  const selectClass = 'border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500'
   const inputClass = 'w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500'
+
+  const stavFilterOptions = [
+    { value: '', label: 'Stav — podle pohledu' },
+    ...Object.entries(SERVIS_STAV_LABELS).map(([k, v]) => ({ value: k, label: v })),
+  ]
+  const technikFilterOptions = [
+    { value: '', label: 'Všichni technici' },
+    ...orgUsers.map(u => ({ value: u.id, label: u.jmeno })),
+  ]
+  const typFilterOptions = [
+    { value: '', label: 'Všechny typy' },
+    ...Object.entries(TYP_LABELS).map(([k, v]) => ({ value: k, label: v })),
+  ]
 
   return (
     <>
@@ -145,18 +158,9 @@ export default function ZakazkySeznamClient({ zakazky, orgUsers, zarizeniList, c
             </button>
           ))}
         </div>
-        <select value={fStav} onChange={e => setFStav(e.target.value)} className={selectClass}>
-          <option value="">Stav — podle pohledu</option>
-          {Object.entries(SERVIS_STAV_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-        </select>
-        <select value={fTechnik} onChange={e => setFTechnik(e.target.value)} className={selectClass}>
-          <option value="">Všichni technici</option>
-          {orgUsers.map(u => <option key={u.id} value={u.id}>{u.jmeno}</option>)}
-        </select>
-        <select value={fTyp} onChange={e => setFTyp(e.target.value)} className={selectClass}>
-          <option value="">Všechny typy</option>
-          {Object.entries(TYP_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-        </select>
+        <FilterDropdown value={fStav} onChange={setFStav} options={stavFilterOptions} />
+        <FilterDropdown value={fTechnik} onChange={setFTechnik} options={technikFilterOptions} />
+        <FilterDropdown value={fTyp} onChange={setFTyp} options={typFilterOptions} />
         {canCreate && (
           <button
             onClick={() => { setForm(emptyForm); setModalOpen(true) }}

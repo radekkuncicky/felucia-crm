@@ -2,6 +2,7 @@
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { formatDateTime } from '@/lib/format'
+import FilterDropdown from '@/components/ui/FilterDropdown'
 
 interface LogRow {
   id: string
@@ -45,28 +46,31 @@ export default function AuditLogTable({ logs, total, page, pageSize, users }: Pr
   }
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize))
-  const sel = 'border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none'
+
+  const userOptions = [
+    { value: '', label: 'Všichni uživatelé' },
+    ...users.map(u => ({ value: u.id, label: u.jmeno })),
+  ]
+  const akceOptions = [
+    { value: '', label: 'Všechny akce' },
+    { value: 'CREATE', label: 'Vytvoření' },
+    { value: 'UPDATE', label: 'Úprava' },
+    { value: 'DELETE', label: 'Smazání' },
+  ]
+  const zaznamOptions = [
+    { value: '', label: 'Všechny záznamy' },
+    { value: 'Deal', label: 'Obchodní případ' },
+    { value: 'Client', label: 'Klient' },
+    { value: 'Quote', label: 'Nabídka' },
+    { value: 'Activity', label: 'Aktivita' },
+  ]
 
   return (
     <div className="space-y-4">
       <div className="flex gap-2 flex-wrap">
-        <select defaultValue={sp.get('user') ?? ''} onChange={e => filter('user', e.target.value)} className={sel}>
-          <option value="">Všichni uživatelé</option>
-          {users.map(u => <option key={u.id} value={u.id}>{u.jmeno}</option>)}
-        </select>
-        <select defaultValue={sp.get('akce') ?? ''} onChange={e => filter('akce', e.target.value)} className={sel}>
-          <option value="">Všechny akce</option>
-          <option value="CREATE">Vytvoření</option>
-          <option value="UPDATE">Úprava</option>
-          <option value="DELETE">Smazání</option>
-        </select>
-        <select defaultValue={sp.get('zaznam') ?? ''} onChange={e => filter('zaznam', e.target.value)} className={sel}>
-          <option value="">Všechny záznamy</option>
-          <option value="Deal">Obchodní případ</option>
-          <option value="Client">Klient</option>
-          <option value="Quote">Nabídka</option>
-          <option value="Activity">Aktivita</option>
-        </select>
+        <FilterDropdown value={sp.get('user') ?? ''} onChange={v => filter('user', v)} options={userOptions} />
+        <FilterDropdown value={sp.get('akce') ?? ''} onChange={v => filter('akce', v)} options={akceOptions} />
+        <FilterDropdown value={sp.get('zaznam') ?? ''} onChange={v => filter('zaznam', v)} options={zaznamOptions} />
       </div>
 
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">
