@@ -43,7 +43,10 @@ export default async function ZakazkaDetailPage({
           orderBy: { vytvoreno: 'desc' },
           include: { technik: { select: { id: true, jmeno: true } } },
         },
-        vyuctovani: { orderBy: { vytvoreno: 'desc' } },
+        vyuctovani: {
+          orderBy: { vytvoreno: 'desc' },
+          include: { predavak: { select: { cislo: true } } },
+        },
         etapy: { orderBy: { cislo: 'asc' as const }, select: { id: true, cislo: true, nazev: true, stav: true } },
         fotky: {
           orderBy: { vytvoreno: 'desc' },
@@ -151,6 +154,7 @@ export default async function ZakazkaDetailPage({
             stav: v.stav,
             vytvoreno: v.vytvoreno.toISOString(),
             etapaId: v.etapaId ?? null,
+            predavakCislo: v.predavak?.cislo ?? null,
           }))}
           canCreate={canEdit}
           etapy={zakazka.etapy ?? []}

@@ -3,6 +3,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
 import ZakazkyPageClient from './ZakazkyPageClient'
+import type { KeSchvaleniPolozka } from './KeSchvaleniBar'
 
 export default async function ZakazkyPage() {
   const session = await getServerSession(authOptions)
@@ -17,7 +18,7 @@ export default async function ZakazkyPage() {
     where.techniciRel = { some: { technikId: session.user.id } }
   }
 
-  const [zakazky, vedouci] = await Promise.all([
+  const [zakazky, vedouci, cekaPredavaky, cekaVyuctovani] = await Promise.all([
     prisma.zakazka.findMany({
       where,
       include: {
@@ -51,7 +52,51 @@ export default async function ZakazkyPage() {
           select: { id: true, jmeno: true },
           orderBy: { jmeno: 'asc' },
         }),
+    isTechnik
+      ? Promise.resolve([])
+      : prisma.predavak.findMany({
+          where: { orgId, stav: 'PODPISAN' },
+          select: {
+            id: true, cislo: true, podpisano: true, zakazkaId: true,
+            zakazka: { select: { cislo: true } },
+            technik: { select: { jmeno: true } },
+          },
+          orderBy: { podpisano: 'asc' },
+        }),
+    isTechnik
+      ? Promise.resolve([])
+      : prisma.vyuctovani.findMany({
+          where: { orgId, stav: 'KE_SCHVALENI' },
+          select: {
+            id: true, cislo: true, vytvoreno: true, zakazkaId: true,
+            zakazka: { select: { cislo: true, nazev: true } },
+          },
+          orderBy: { vytvoreno: 'asc' },
+        }),
   ])
+
+  const keSchvaleni: KeSchvaleniPolozka[] = [
+    ...cekaPredavaky.map(p => ({
+      id: p.id,
+      cislo: p.cislo,
+      zakazkaId: p.zakazkaId,
+      zakazkaCislo: p.zakazka.cislo,
+      popis: p.technik.jmeno,
+      datum: p.podpisano?.toISOString() ?? null,
+      href: `/zakazky/${p.zakazkaId}/predavaky/${p.id}`,
+      typ: 'PREDAVAK' as const,
+    })),
+    ...cekaVyuctovani.map(v => ({
+      id: v.id,
+      cislo: v.cislo,
+      zakazkaId: v.zakazkaId,
+      zakazkaCislo: v.zakazka.cislo,
+      popis: v.zakazka.nazev,
+      datum: v.vytvoreno.toISOString(),
+      href: `/zakazky/${v.zakazkaId}/vyuctovani/${v.id}`,
+      typ: 'VYUCTOVANI' as const,
+    })),
+  ]
 
   const rows = zakazky.map(z => {
     const activeQuote = z.op?.quotes[0] ?? null
@@ -94,6 +139,7 @@ export default async function ZakazkyPage() {
       zakazky={rows}
       vedouci={vedouci}
       role={role}
+      keSchvaleni={keSchvaleni}
     />
   )
 }

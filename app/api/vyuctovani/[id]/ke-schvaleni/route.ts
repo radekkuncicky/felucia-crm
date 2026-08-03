@@ -19,7 +19,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   await db.$transaction([
     db.vyuctovani.update({ where: { id: params.id }, data: { stav: 'KE_SCHVALENI' } }),
-    ...(v.zakazka.vedouciId ? [
+    ...(v.zakazka.vedouciId && v.zakazka.vedouciId !== session.user.id ? [
       db.notification.create({
         data: {
           orgId,

@@ -26,6 +26,7 @@ export default async function GenerujVyuctovaniPage({
         include: {
           technik: { select: { jmeno: true } },
           polozky: { where: { zahrnuto: true } },
+          vyuctovani: { select: { id: true, cislo: true } },
         },
         orderBy: { schvaleno: 'desc' },
       },
@@ -48,6 +49,7 @@ export default async function GenerujVyuctovaniPage({
           technikJmeno: pp.technik.jmeno,
           schvaleno: pp.schvaleno?.toISOString() ?? null,
           polozkyCount: pp.polozky.length,
+          vyuctovani: pp.vyuctovani,
         })),
       }}
     />

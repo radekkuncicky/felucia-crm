@@ -165,7 +165,7 @@ export default function DealActions({ dealId, dealData }: Props) {
             </svg>
           </button>
           {dropdownOpen && (
-            <div className="absolute right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg shadow-xl z-20 min-w-[180px]">
+            <div className="absolute right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg shadow-xl z-30 min-w-[180px]">
               <button
                 onClick={() => { setDropdownOpen(false); setConfirmModal(true) }}
                 className="w-full text-left px-4 py-3 text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 flex items-center gap-2"

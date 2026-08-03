@@ -28,6 +28,13 @@ export default async function VyuctovaniDetailPage({
         },
       },
       schvalil: { select: { jmeno: true } },
+      predavak: {
+        select: {
+          id: true, cislo: true, podpisano: true, klientPritomen: true,
+          technik: { select: { jmeno: true } },
+          _count: { select: { fotky: true } },
+        },
+      },
     },
   })
   if (!v) notFound()
@@ -47,6 +54,14 @@ export default async function VyuctovaniDetailPage({
         vytvoreno: v.vytvoreno.toISOString(),
         schvaleno: v.schvaleno?.toISOString() ?? null,
         schvalil: v.schvalil,
+        predavak: v.predavak ? {
+          id: v.predavak.id,
+          cislo: v.predavak.cislo,
+          technikJmeno: v.predavak.technik.jmeno,
+          podpisano: v.predavak.podpisano?.toISOString() ?? null,
+          klientPritomen: v.predavak.klientPritomen,
+          fotekCount: v.predavak._count.fotky,
+        } : null,
         zakazka: {
           id: v.zakazka.id,
           cislo: v.zakazka.cislo,

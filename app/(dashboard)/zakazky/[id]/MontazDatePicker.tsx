@@ -63,7 +63,7 @@ function TerminEditor({
   const [saving, setSaving] = useState(false)
 
   return (
-    <div className="flex flex-wrap items-center gap-2 mt-2">
+    <div className="flex flex-wrap items-center gap-2">
       {label && <span className="text-xs text-gray-500 dark:text-slate-400 font-medium">{label}:</span>}
       <div className="flex items-center gap-1.5">
         <svg className="w-4 h-4 text-red-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -101,12 +101,12 @@ function TerminEditor({
 // Single display chip for a termín
 function TerminChip({ label, termin, canEdit, onEdit }: { label?: string; termin: string; canEdit: boolean; onEdit: () => void }) {
   return (
-    <div className="flex items-center gap-2 mt-1.5">
-      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-2.5 py-1 rounded-lg">
-        <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div className="flex items-center gap-2">
+      <span className="inline-flex items-center gap-1.5 text-sm font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-2.5 py-1 rounded-lg">
+        <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
         </svg>
-        {label ? `${label}: ` : 'Montáž: '}{termin}
+        {label ? `${label}: ` : ''}{termin}
       </span>
       {canEdit && (
         <button onClick={onEdit} className="text-xs text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 underline">
@@ -184,7 +184,7 @@ export default function MontazDatePicker({ zakazkaId, montazOd, montazDo, canEdi
     if (!canEdit) return null
 
     return (
-      <div className="mt-2">
+      <div>
         <button onClick={() => setEditingMain(true)}
           className="inline-flex items-center gap-1.5 text-xs text-gray-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 transition-colors">
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -198,7 +198,7 @@ export default function MontazDatePicker({ zakazkaId, montazOd, montazDo, canEdi
 
   // ── Multiple etapy: show per-etapa termíny ────────────────────────────────
   return (
-    <div className="mt-2 space-y-0.5">
+    <div className="space-y-1.5">
       {etapy.map(e => {
         const etapaLabel = e.nazev ? `Etapa ${e.cislo} — ${e.nazev}` : `Etapa ${e.cislo}`
         const termin = fmtMontaz(e.montazOd, e.montazDo)

@@ -916,7 +916,7 @@ function Footer({ isDark }: { isDark: boolean }) {
           {[
             { title: 'Produkt', links: [['#funkce','Funkce'],['#ceny','Ceny'],['#faq','FAQ']] },
             { title: 'Účet', links: [['#beta','Beta přístup'],['/auth/signin','Přihlásit se']] },
-            { title: 'Společnost', links: [['/terms','Podmínky'],['/privacy','Soukromí']] },
+            { title: 'Společnost', links: [['/terms','Podmínky'],['/privacy','Soukromí'],['/support','Podpora']] },
           ].map(col => (
             <div key={col.title}>
               <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#4A6B4A', marginBottom: 16 }}>{col.title}</p>

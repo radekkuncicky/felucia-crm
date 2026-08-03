@@ -17,7 +17,10 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   if (!v) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   // Idempotent: už schválené vyúčtování → úspěch (poražený v souběhu dvou kliků sem spadne)
   if (v.stav === 'SCHVALENO') return NextResponse.json({ ok: true, alreadyApproved: true, zakazkaNovyStav: null })
-  if (v.stav !== 'KE_SCHVALENI') return NextResponse.json({ error: 'Lze schválit pouze vyúčtování ke schválení' }, { status: 422 })
+  // Manažer smí schválit i rovnou z návrhu (mezistav KE_SCHVALENI má smysl jen při předávce mezi lidmi)
+  if (v.stav !== 'KE_SCHVALENI' && v.stav !== 'NAVRH') {
+    return NextResponse.json({ error: 'Vyúčtování nelze v tomto stavu schválit' }, { status: 422 })
+  }
 
   const stavOrder = ['NOVA', 'PRIRAZENA', 'V_REALIZACI', 'PREDANA', 'VYUCTOVANA', 'HOTOVO']
   const currentIdx = stavOrder.indexOf(v.zakazka.stav)
@@ -27,9 +30,9 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   let raced = false
 
   await db.$transaction(async tx => {
-    // Concurrency guard: jen request, který překlopí KE_SCHVALENI→SCHVALENO, pokračuje
+    // Concurrency guard: jen request, který překlopí NAVRH/KE_SCHVALENI→SCHVALENO, pokračuje
     const flip = await tx.vyuctovani.updateMany({
-      where: { id: params.id, stav: 'KE_SCHVALENI' },
+      where: { id: params.id, stav: { in: ['NAVRH', 'KE_SCHVALENI'] } },
       data: { stav: 'SCHVALENO', schvaleno: new Date(), schvalenoId: session.user.id },
     })
     if (flip.count !== 1) {
@@ -53,15 +56,15 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         typZaznamu: 'Vyuctovani',
         zaznamId: params.id,
         zaznamNazev: v.cislo,
-        zmeny: { stavPred: 'KE_SCHVALENI', stavPo: 'SCHVALENO' },
+        zmeny: { stavPred: v.stav, stavPo: 'SCHVALENO' },
       },
     })
   })
 
   if (raced) return NextResponse.json({ ok: true, alreadyApproved: true, zakazkaNovyStav: null })
 
-  // Notifikace fire-and-forget — response hned po commitu
-  if (v.zakazka.vedouciId) {
+  // Notifikace fire-and-forget — response hned po commitu (aktérovi akce se neposílá)
+  if (v.zakazka.vedouciId && v.zakazka.vedouciId !== session.user.id) {
     void db.notification.create({
       data: {
         orgId,

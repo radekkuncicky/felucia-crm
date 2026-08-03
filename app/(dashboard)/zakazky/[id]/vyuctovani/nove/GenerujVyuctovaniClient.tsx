@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { formatDate } from '@/lib/format'
 
 interface Predavak {
@@ -10,6 +11,7 @@ interface Predavak {
   technikJmeno: string
   schvaleno: string | null
   polozkyCount: number
+  vyuctovani: { id: string; cislo: string } | null
 }
 
 interface Zakazka {
@@ -82,13 +84,22 @@ export default function GenerujVyuctovaniClient({ zakazka, etapaId }: { zakazka:
                     {pp.schvaleno && ` · Schválen ${formatDate(pp.schvaleno)}`}
                   </p>
                 </div>
-                <button
-                  onClick={() => generovat(pp.id)}
-                  disabled={!!loading}
-                  className="text-sm font-medium text-white bg-primary hover:bg-primary-hover px-3 py-2 rounded-lg disabled:opacity-50 transition-colors"
-                >
-                  {loading === pp.id ? 'Generuji…' : 'Generovat'}
-                </button>
+                {pp.vyuctovani ? (
+                  <Link
+                    href={`/zakazky/${zakazka.id}/vyuctovani/${pp.vyuctovani.id}`}
+                    className="text-sm font-medium text-primary dark:text-primary-light hover:underline flex-shrink-0"
+                  >
+                    Vyúčtování {pp.vyuctovani.cislo} →
+                  </Link>
+                ) : (
+                  <button
+                    onClick={() => generovat(pp.id)}
+                    disabled={!!loading}
+                    className="text-sm font-medium text-white bg-primary hover:bg-primary-hover px-3 py-2 rounded-lg disabled:opacity-50 transition-colors"
+                  >
+                    {loading === pp.id ? 'Generuji…' : 'Generovat'}
+                  </button>
+                )}
               </div>
             ))}
           </div>

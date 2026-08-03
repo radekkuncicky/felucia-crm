@@ -37,6 +37,10 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     })
     if (!predavak) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
+    // Z jednoho protokolu max. jedno vyúčtování — existuje-li, vrať ho místo duplicity
+    const existujici = await db.vyuctovani.findUnique({ where: { predavakId: predavak.id } })
+    if (existujici) return NextResponse.json(existujici)
+
     const sortedPolozky = [...predavak.polozky].sort(
       (a, b) => (a.zakazkaPolozka?.poradi ?? 999) - (b.zakazkaPolozka?.poradi ?? 999)
     )
@@ -48,6 +52,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         cislo,
         stav: 'NAVRH',
         etapaId: etapaId ?? predavak.etapaId ?? null,
+        predavakId: predavak.id,
         polozky: {
           create: sortedPolozky.map((p, idx) => ({
             nazev: p.nazev,

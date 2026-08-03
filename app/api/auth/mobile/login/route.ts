@@ -36,17 +36,24 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Neplatné přihlašovací údaje' }, { status: 401 })
   }
 
-  const user = await prisma.user.findFirst({
+  // Email je unikátní jen per firma (@@unique([orgId, email])), ne globálně —
+  // appka posílá jen email+heslo bez kódu organizace, takže při shodě e-mailu
+  // napříč firmami musí heslo rozhodnout, ke kterému účtu se přihlašujeme.
+  const candidates = await prisma.user.findMany({
     where: { email, aktivni: true },
     include: { organization: { select: { aktivni: true, slug: true, plan: true } } },
   })
 
-  if (!user || !user.organization.aktivni) {
-    return NextResponse.json({ error: 'Neplatné přihlašovací údaje' }, { status: 401 })
+  let user: (typeof candidates)[number] | null = null
+  for (const candidate of candidates) {
+    if (!candidate.organization.aktivni) continue
+    if (await bcrypt.compare(password, candidate.hesloHash)) {
+      user = candidate
+      break
+    }
   }
 
-  const passwordMatch = await bcrypt.compare(password, user.hesloHash)
-  if (!passwordMatch) {
+  if (!user) {
     return NextResponse.json({ error: 'Neplatné přihlašovací údaje' }, { status: 401 })
   }
 

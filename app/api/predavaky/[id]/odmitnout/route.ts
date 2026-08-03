@@ -2,6 +2,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
+import { vratZakazkuZPredane } from '@/lib/zakazkaStavFlow'
+import { ZakazkaStav } from '@prisma/client'
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
@@ -21,12 +23,18 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     return NextResponse.json({ error: 'Lze odmítnout pouze podepsaný protokol' }, { status: 422 })
   }
 
-  await db.$transaction([
-    db.predavak.update({
+  let zakazkaNovyStav: ZakazkaStav | null = null
+
+  await db.$transaction(async tx => {
+    await tx.predavak.update({
       where: { id: params.id },
       data: { stav: 'ODMITNUTO', odmitnutoDuvod: duvod },
-    }),
-    db.notification.create({
+    })
+
+    // Podpis protokolu zakázku posunul na PREDANA — odmítnutím ji vrať zpět do realizace
+    zakazkaNovyStav = await vratZakazkuZPredane(tx, predavak.zakazkaId, params.id)
+
+    await tx.notification.create({
       data: {
         orgId,
         userId: predavak.technikId,
@@ -34,8 +42,9 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         zprava: `Protokol ${predavak.cislo} byl odmítnut: ${duvod}`,
         url: `/zakazky/${predavak.zakazkaId}/predavaky/${predavak.id}`,
       },
-    }),
-    db.auditLog.create({
+    })
+
+    await tx.auditLog.create({
       data: {
         orgId,
         userId: session.user.id,
@@ -43,10 +52,10 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         typZaznamu: 'Predavak',
         zaznamId: params.id,
         zaznamNazev: predavak.cislo,
-        zmeny: { stavPred: 'PODPISAN', stavPo: 'ODMITNUTO', duvod },
+        zmeny: { stavPred: 'PODPISAN', stavPo: 'ODMITNUTO', duvod, zakazkaNovyStav },
       },
-    }),
-  ])
+    })
+  })
 
-  return NextResponse.json({ ok: true })
+  return NextResponse.json({ ok: true, zakazkaNovyStav })
 }

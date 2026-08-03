@@ -1268,6 +1268,7 @@ model Predavak {
   etapa           ZakazkaEtapa? @relation(fields: [etapaId], references: [id])
   polozky         PredavakPolozka[]
   fotky           PredavakFoto[]
+  vyuctovani      Vyuctovani?
 
   @@unique([orgId, cislo])
   @@map("predavaky")
@@ -1325,6 +1326,7 @@ model Vyuctovani {
   poznamka    String?
   schvalenoId String?
   etapaId     String?
+  predavakId  String?         @unique
   vytvoreno   DateTime        @default(now())
   schvaleno   DateTime?
   updatedAt   DateTime        @updatedAt
@@ -1333,6 +1335,7 @@ model Vyuctovani {
   zakazka     Zakazka         @relation(fields: [zakazkaId], references: [id])
   schvalil    User?           @relation("VyuctovaniSchvalil", fields: [schvalenoId], references: [id])
   etapa       ZakazkaEtapa?   @relation(fields: [etapaId], references: [id])
+  predavak    Predavak?       @relation(fields: [predavakId], references: [id], onDelete: SetNull)
   polozky     VyuctovaniPolozka[]
 
   @@unique([orgId, cislo])
@@ -1559,6 +1562,7 @@ model Lead {
   prevedenNaOpId       String?    @unique
   prevedenNaKlientId   String?
   apiKeyId             String?
+  submittedAt          DateTime?
   vytvoreno            DateTime   @default(now())
   updatedAt            DateTime   @updatedAt
 
@@ -1569,6 +1573,7 @@ model Lead {
 
   @@index([orgId, status])
   @@index([orgId, vytvoreno])
+  @@index([orgId, email, submittedAt])
   @@map("leady")
 }
 

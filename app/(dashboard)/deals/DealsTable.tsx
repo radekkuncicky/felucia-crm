@@ -9,6 +9,7 @@ import { useTableColumns, ColumnDef } from '@/hooks/useTableColumns'
 import ColumnConfigButton from '@/components/ColumnConfigButton'
 import InlineStatusBadge from '@/components/InlineStatusBadge'
 import EmptyState from '@/components/ui/EmptyState'
+import FilterDropdown from '@/components/ui/FilterDropdown'
 import { ResizeHandle } from '@/components/ResizeHandle'
 import { formatDate, formatKcPresne } from '@/lib/format'
 
@@ -189,6 +190,19 @@ export default function DealsTable({ deals, isAdmin = false }: Props) {
 
   const uniqueUsers = Array.from(new Set(deals.map(d => d.userJmeno).filter(Boolean))) as string[]
 
+  const stavFilterOptions = [
+    { value: '', label: 'Stav' },
+    ...stavOptions.filter(s => s !== 'ZNEPLATNENO' || isAdmin).map(s => ({ value: s, label: stavLabels[s] })),
+  ]
+  const techFilterOptions = [
+    { value: '', label: 'Kategorie' },
+    ...techOptions.map(t => ({ value: t, label: techLabels[t] })),
+  ]
+  const userFilterOptions = [
+    { value: '', label: 'Vlastník' },
+    ...uniqueUsers.map(u => ({ value: u, label: u })),
+  ]
+
   const quickFilters: { key: QuickFilter; label: string }[] = [
     { key: 'vyhraLetos', label: 'Výhra tento rok' },
     { key: 'uzavreniLetos', label: 'Uzavřeno tento rok' },
@@ -238,30 +252,24 @@ export default function DealsTable({ deals, isAdmin = false }: Props) {
           className="border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary w-full sm:w-56 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-400"
         />
         <div className="flex gap-2 flex-wrap flex-1">
-          <select
+          <FilterDropdown
             value={filterStav}
-            onChange={e => { setFilterStav(e.target.value); resetPage() }}
-            className="border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-slate-700 text-gray-900 dark:text-white flex-1 sm:flex-none"
-          >
-            <option value="">Stav</option>
-            {stavOptions.filter(s => s !== 'ZNEPLATNENO' || isAdmin).map(s => <option key={s} value={s}>{stavLabels[s]}</option>)}
-          </select>
-          <select
+            onChange={v => { setFilterStav(v); resetPage() }}
+            options={stavFilterOptions}
+            className="flex-1 sm:flex-none"
+          />
+          <FilterDropdown
             value={filterTech}
-            onChange={e => { setFilterTech(e.target.value); resetPage() }}
-            className="border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-slate-700 text-gray-900 dark:text-white flex-1 sm:flex-none"
-          >
-            <option value="">Kategorie</option>
-            {techOptions.map(t => <option key={t} value={t}>{techLabels[t]}</option>)}
-          </select>
-          <select
+            onChange={v => { setFilterTech(v); resetPage() }}
+            options={techFilterOptions}
+            className="flex-1 sm:flex-none"
+          />
+          <FilterDropdown
             value={filterUser}
-            onChange={e => { setFilterUser(e.target.value); resetPage() }}
-            className="border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-slate-700 text-gray-900 dark:text-white flex-1 sm:flex-none"
-          >
-            <option value="">Vlastník</option>
-            {uniqueUsers.map(u => <option key={u} value={u}>{u}</option>)}
-          </select>
+            onChange={v => { setFilterUser(v); resetPage() }}
+            options={userFilterOptions}
+            className="flex-1 sm:flex-none"
+          />
           {(search || filterStav || filterTech || filterUser || quickFilter) && (
             <button
               onClick={() => { setSearch(''); setFilterStav(''); setFilterTech(''); setFilterUser(''); setQuickFilter(''); resetPage() }}
