@@ -38,6 +38,15 @@ export function requireTechnikOrAdmin(session: MobileSession | null): NextRespon
   return null
 }
 
+/** Obchodní modul (Felucia Sales): OBCHODNIK + ADMIN, technik nemá přístup */
+export function requireObchodnikOrAdmin(session: MobileSession | null): NextResponse | null {
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (session.user.role !== 'OBCHODNIK' && session.user.role !== 'ADMIN') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+  return null
+}
+
 /** Checks technik is assigned to the order (or is ADMIN of same org) */
 export async function canAccessZakazka(
   session: MobileSession,
