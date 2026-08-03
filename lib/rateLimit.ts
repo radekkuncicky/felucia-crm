@@ -44,9 +44,18 @@ export function checkRateLimit(
   return { limited: false, remaining: limit - entry.count }
 }
 
-/** Extract the best available client IP from request headers (behind Nginx/proxy). */
+/**
+ * Extract the best available client IP from request headers (behind Nginx).
+ * X-Real-IP je nastavené natvrdo nginx configem (`$remote_addr`) — klient ho
+ * nemůže přepsat. X-Forwarded-For naproti tomu nginx jen DOPLŇUJE
+ * (`$proxy_add_x_forwarded_for`) za cokoliv, co klient sám pošle — jeho první
+ * hodnota je tedy klientem ovlivnitelná a nesmí se jí věřit jako primárnímu
+ * zdroji (jinak jde per-IP rate limit obejít rotací hlavičky).
+ */
 export function getClientIp(req: Request): string {
+  const realIp = req.headers.get('x-real-ip')
+  if (realIp) return realIp.trim()
   const xff = req.headers.get('x-forwarded-for')
   if (xff) return xff.split(',')[0].trim()
-  return req.headers.get('x-real-ip') ?? 'unknown'
+  return 'unknown'
 }

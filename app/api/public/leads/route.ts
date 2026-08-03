@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit'
+import { notifyNewLead } from '@/lib/leadNotify'
 
 function corsHeaders(origin: string | null, allowedOrigins: string | null) {
   const allowed = resolveAllowedOrigin(origin, allowedOrigins)
@@ -108,26 +109,6 @@ export async function POST(req: NextRequest) {
 
   const hdrs = corsHeaders(origin, apiKey.allowedOrigins)
   return NextResponse.json({ ok: true, leadId: lead.id }, { status: 201, headers: hdrs })
-}
-
-async function notifyNewLead(orgId: string, leadId: string, jmeno: string) {
-  const settings = await prisma.orgSettings.findUnique({ where: { orgId } })
-  if (!settings?.notifNovyLead) return
-
-  const users = await prisma.user.findMany({
-    where: { orgId, aktivni: true, role: { in: ['ADMIN', 'OBCHODNIK'] } },
-    select: { id: true },
-  })
-
-  await prisma.notification.createMany({
-    data: users.map(u => ({
-      orgId,
-      userId: u.id,
-      typ: 'NOVY_LEAD',
-      zprava: `Nový lead z webu: ${jmeno}`,
-      url: `/leady/${leadId}`,
-    })),
-  })
 }
 
 function extractBearer(req: NextRequest): string | null {

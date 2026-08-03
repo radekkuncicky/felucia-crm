@@ -35,14 +35,10 @@ const nextConfig = {
           { key: 'Access-Control-Allow-Headers', value: 'Authorization, Content-Type' },
         ],
       },
-      {
-        source: '/api/:path*',
-        headers: [
-          { key: 'Access-Control-Allow-Origin', value: '*' },
-          { key: 'Access-Control-Allow-Methods', value: 'GET,POST,PATCH,DELETE,OPTIONS' },
-          { key: 'Access-Control-Allow-Headers', value: 'Authorization, Content-Type' },
-        ],
-      },
+      // Pozor: blanketová CORS hlavička pro /api/:path* se NESMÍ přidávat —
+      // sčítá se (nenahrazuje) s vlastní CORS logikou v app/api/public/*
+      // (duplicitní Access-Control-Allow-Origin => prohlížeč odpověď zahodí).
+      // Cross-origin veřejné endpointy (leady z webu apod.) si CORS řeší samy.
     ]
   },
 }

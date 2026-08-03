@@ -50,6 +50,10 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     data.odhadovanaHodnota = parseFloat(data.odhadovanaHodnota as string)
   }
 
-  const updated = await orgPrisma(session.user.orgId).lead.update({ where: { id: params.id }, data })
+  const updated = await orgPrisma(session.user.orgId).lead.update({
+    where: { id: params.id },
+    data,
+    include: { assignedTo: { select: { id: true, jmeno: true, email: true, avatar: true } } },
+  })
   return NextResponse.json(updated)
 }
