@@ -2,9 +2,12 @@
 
 import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 import { LeadZdroj, LeadStatus } from '@prisma/client'
 import { formatDate, formatKcPresne } from '@/lib/format'
 import FilterDropdown from '@/components/ui/FilterDropdown'
+import { confirmDialog } from '@/components/ui/confirm'
+import { sluzbaLabel } from '@/lib/leadService'
 
 interface Lead {
   id: string
@@ -14,6 +17,7 @@ interface Lead {
   firma: string | null
   zdroj: LeadZdroj
   status: LeadStatus
+  sluzba: string | null
   assignedTo: { id: string; jmeno: string } | null
   odhadovanaHodnota: number | null
   tagy: string[]
@@ -69,6 +73,10 @@ export default function LeadyPageClient({ leady, users, novychCount, currentUser
   const [filterZdroj, setFilterZdroj] = useState<string>('all')
   const [filterAssigned, setFilterAssigned] = useState<string>('all')
   const [showModal, setShowModal] = useState(false)
+  const [selected, setSelected] = useState<string[]>([])
+  const [deleting, setDeleting] = useState(false)
+
+  const canDelete = role === 'ADMIN'
 
   const statusOptions = [
     { value: 'all', label: 'Všechny statusy' },
@@ -104,6 +112,36 @@ export default function LeadyPageClient({ leady, users, novychCount, currentUser
       return true
     })
   }, [leady, search, filterStatus, filterZdroj, filterAssigned, currentUserId])
+
+  const selectedSet = useMemo(() => new Set(selected), [selected])
+  const vsechnyVybrane = filtered.length > 0 && filtered.every(l => selectedSet.has(l.id))
+
+  function toggleLead(id: string) {
+    setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+  }
+
+  function toggleVse() {
+    setSelected(vsechnyVybrane ? [] : filtered.map(l => l.id))
+  }
+
+  async function smazatVybrane() {
+    const ok = await confirmDialog(
+      `Smazat ${selected.length} ${selected.length === 1 ? 'lead' : selected.length < 5 ? 'leady' : 'leadů'}? Akci nelze vrátit zpět.`,
+      { title: 'Smazat leady', confirmLabel: 'Smazat', danger: true }
+    )
+    if (!ok) return
+    setDeleting(true)
+    const vysledky = await Promise.all(
+      selected.map(id => fetch(`/api/leady/${id}`, { method: 'DELETE' }).then(r => r.ok).catch(() => false))
+    )
+    setDeleting(false)
+    const smazano = vysledky.filter(Boolean).length
+    const selhalo = vysledky.length - smazano
+    if (smazano > 0) toast.success(`Smazáno ${smazano} leadů`)
+    if (selhalo > 0) toast.error(`${selhalo} leadů se nepodařilo smazat`)
+    setSelected([])
+    router.refresh()
+  }
 
   return (
     <div className="space-y-4">
@@ -142,12 +180,46 @@ export default function LeadyPageClient({ leady, users, novychCount, currentUser
         <FilterDropdown variant="dark" value={filterAssigned} onChange={setFilterAssigned} options={assignedOptions} />
       </div>
 
+      {/* Hromadné akce */}
+      {canDelete && selected.length > 0 && (
+        <div className="flex items-center justify-between gap-3 px-4 py-2 bg-[#4CAF50]/10 border border-[#4CAF50]/30 rounded-lg">
+          <span className="text-sm text-gray-700 dark:text-slate-200">Vybráno {selected.length}</span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setSelected([])}
+              className="px-3 py-1.5 text-sm text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white transition-colors"
+            >
+              Zrušit výběr
+            </button>
+            <button
+              onClick={smazatVybrane}
+              disabled={deleting}
+              className="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+            >
+              {deleting ? 'Mažu...' : 'Smazat vybrané'}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Table */}
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 dark:bg-slate-900 border-b border-gray-200 dark:border-slate-700">
             <tr>
+              {canDelete && (
+                <th className="w-10 px-3 py-3">
+                  <input
+                    type="checkbox"
+                    checked={vsechnyVybrane}
+                    onChange={toggleVse}
+                    aria-label="Vybrat všechny leady"
+                    className="w-4 h-4 rounded border-gray-300 dark:border-slate-600 accent-[#4CAF50] cursor-pointer"
+                  />
+                </th>
+              )}
               <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide">Kontakt</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide hidden md:table-cell">Poptávka</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide hidden md:table-cell">Email / Telefon</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide">Status</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide hidden sm:table-cell">Zdroj</th>
@@ -159,7 +231,7 @@ export default function LeadyPageClient({ leady, users, novychCount, currentUser
           <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-sm text-gray-400 dark:text-slate-500">
+                <td colSpan={canDelete ? 9 : 8} className="px-4 py-10 text-center text-sm text-gray-400 dark:text-slate-500">
                   Žádné leady nenalezeny
                 </td>
               </tr>
@@ -168,11 +240,27 @@ export default function LeadyPageClient({ leady, users, novychCount, currentUser
                 <tr
                   key={lead.id}
                   onClick={() => router.push(`/leady/${lead.id}`)}
-                  className="hover:bg-gray-50 dark:hover:bg-slate-700/50 cursor-pointer transition-colors"
+                  className={`hover:bg-gray-50 dark:hover:bg-slate-700/50 cursor-pointer transition-colors ${selectedSet.has(lead.id) ? 'bg-[#4CAF50]/5' : ''}`}
                 >
+                  {canDelete && (
+                    <td className="px-3 py-3" onClick={e => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selectedSet.has(lead.id)}
+                        onChange={() => toggleLead(lead.id)}
+                        aria-label={`Vybrat lead ${lead.jmeno}`}
+                        className="w-4 h-4 rounded border-gray-300 dark:border-slate-600 accent-[#4CAF50] cursor-pointer"
+                      />
+                    </td>
+                  )}
                   <td className="px-4 py-3">
                     <div className="font-medium text-gray-900 dark:text-slate-100">{lead.jmeno}</div>
                     {lead.firma && <div className="text-gray-500 dark:text-slate-400 text-xs mt-0.5">{lead.firma}</div>}
+                  </td>
+                  <td className="px-4 py-3 hidden md:table-cell">
+                    {sluzbaLabel(lead.sluzba)
+                      ? <span className="inline-flex px-2 py-0.5 rounded-full text-xs bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300">{sluzbaLabel(lead.sluzba)}</span>
+                      : <span className="text-gray-400 dark:text-slate-500 text-xs">—</span>}
                   </td>
                   <td className="px-4 py-3 text-gray-500 dark:text-slate-400 text-xs hidden md:table-cell">
                     <div>{lead.email || '—'}</div>
@@ -236,7 +324,7 @@ function AddLeadModal({ users, onClose, onCreated }: {
     e.preventDefault()
     setSaving(true)
     try {
-      await fetch('/api/leady', {
+      const res = await fetch('/api/leady', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -245,6 +333,12 @@ function AddLeadModal({ users, onClose, onCreated }: {
           odhadovanaHodnota: form.odhadovanaHodnota || null,
         }),
       })
+      if (!res.ok) {
+        const body = await res.json().catch(() => null)
+        toast.error(body?.error ?? 'Lead se nepodařilo vytvořit')
+        return
+      }
+      toast.success('Lead vytvořen')
       onCreated()
     } finally {
       setSaving(false)

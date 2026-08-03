@@ -1555,6 +1555,12 @@ model Lead {
   zdroj                LeadZdroj  @default(RUCNE)
   status               LeadStatus @default(NOVY)
   zprava               String?
+  // Strukturovaná metadata z webového formuláře (dřív se lepila do zprávy)
+  sluzba               String?
+  zdrojFormulare       String?
+  strankaUrl           String?
+  prilohy              String?
+  objednavka           String?
   assignedToId         String?
   odhadovanaHodnota    Decimal?   @db.Decimal(12, 2)
   tagy                 String[]   @default([])
