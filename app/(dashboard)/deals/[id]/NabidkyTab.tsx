@@ -590,6 +590,24 @@ export default function NabidkyTab({
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isDirtyRef = useRef(false)
 
+  // ── Invalidace server dat ─────────────────────────────────────────────────
+  // Cena v seznamu OP i v hlavičce případu se počítá na serveru z aktivní
+  // nabídky. Po každé změně, která cenu ovlivní, je potřeba shodit client
+  // router cache (router.refresh() ji vyprázdní celou), jinak se po návratu do
+  // tabulky ukáže stav před úpravou a uživatel musí ručně obnovit stránku.
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const refreshPendingRef = useRef(false)
+
+  const refreshServerData = useCallback(() => {
+    refreshPendingRef.current = true
+    if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current)
+    refreshTimerRef.current = setTimeout(() => {
+      refreshTimerRef.current = null
+      refreshPendingRef.current = false
+      router.refresh()
+    }, 400)
+  }, [router])
+
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768)
     check()
@@ -689,11 +707,27 @@ export default function NabidkyTab({
       isDirtyRef.current = false
       setIsDirty(false)
       setSaveStatus('saved')
+      refreshServerData()
       setTimeout(() => setSaveStatus('idle'), 2500)
     } catch {
       setSaveStatus('dirty')
     }
-  }, [dealId])
+  }, [dealId, refreshServerData])
+
+  // Odchod ze stránky (klientská navigace zpět do tabulky) — doulož rozdělanou
+  // změnu a teprve pak invaliduj cache, ať tabulka nezobrazí starou cenu.
+  useEffect(() => {
+    return () => {
+      const pendingSave = autoSaveTimerRef.current !== null && isDirtyRef.current
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current)
+      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current)
+      if (pendingSave) {
+        doSave(selectedQuoteIdRef.current ?? undefined).finally(() => router.refresh())
+      } else if (refreshPendingRef.current) {
+        router.refresh()
+      }
+    }
+  }, [doSave, router])
 
   function triggerAutoSave() {
     setIsDirty(true)
@@ -765,6 +799,17 @@ export default function NabidkyTab({
 
   // ── Quote management ──────────────────────────────────────────────────────
 
+  // Nová nabídka se z API vrací s aktivni: false. Pokud na případu žádná
+  // aktivní není, rovnou ji aktivuj — jinak by případ zůstal bez ceny až do
+  // reloadu detailu (aktivaci jinak řeší až efekt při mountu).
+  function activateIfNone(newQuoteId: string) {
+    if (quotesRef.current.some(q => q.aktivni)) {
+      refreshServerData()
+      return
+    }
+    setActive(newQuoteId)
+  }
+
   async function createQuote() {
     setSaving(true)
     try {
@@ -780,6 +825,7 @@ export default function NabidkyTab({
           { ...q, items: [], popis: q.popis ?? '', dphSazba: q.dphSazba },
         ])
         setSelectedQuoteId(q.id)
+        activateIfNone(q.id)
       }
     } finally {
       setSaving(false)
@@ -815,6 +861,7 @@ export default function NabidkyTab({
           { ...q, popis: q.popis ?? '', dphSazba: q.dphSazba },
         ])
         setSelectedQuoteId(q.id)
+        activateIfNone(q.id)
       }
     } finally {
       setSaving(false)
@@ -822,7 +869,7 @@ export default function NabidkyTab({
   }
 
   async function setActive(quoteId: string) {
-    const prevQuotes = quotes
+    const prevActiveId = quotesRef.current.find(q => q.aktivni)?.id ?? null
     setQuotes(prev => prev.map(q => ({ ...q, aktivni: q.id === quoteId })))
     const res = await fetch(`/api/deals/${dealId}/quotes/${quoteId}`, {
       method: 'PATCH',
@@ -832,7 +879,7 @@ export default function NabidkyTab({
     if (res.ok) {
       router.refresh()
     } else {
-      setQuotes(prevQuotes)
+      setQuotes(prev => prev.map(q => ({ ...q, aktivni: q.id === prevActiveId })))
       showError('Nepodařilo se aktivovat nabídku')
     }
   }
@@ -851,6 +898,7 @@ export default function NabidkyTab({
           { ...q, popis: q.popis ?? '', dphSazba: q.dphSazba },
         ])
         setSelectedQuoteId(q.id)
+        activateIfNone(q.id)
       }
     } finally {
       setSaving(false)
@@ -859,11 +907,14 @@ export default function NabidkyTab({
 
   async function deleteQuoteConfirm() {
     if (!deleteQuoteId) return
+    const deletedWasActive = quotes.find(q => q.id === deleteQuoteId)?.aktivni ?? false
     const res = await fetch(`/api/deals/${dealId}/quotes/${deleteQuoteId}`, { method: 'DELETE' })
     if (res.ok) {
       const remaining = quotes.filter(q => q.id !== deleteQuoteId)
       setQuotes(remaining)
       setSelectedQuoteId(remaining[0]?.id ?? null)
+      if (deletedWasActive && remaining[0]) setActive(remaining[0].id)
+      else refreshServerData()
     } else {
       showError('Nabídku se nepodařilo smazat')
     }
@@ -908,6 +959,7 @@ export default function NabidkyTab({
     })
     if (res.ok) {
       setQuotes(prev => prev.map(q => (q.id === quoteId ? { ...q, dphSazba } : q)))
+      refreshServerData()
     } else {
       showError('Nepodařilo se uložit sazbu DPH')
     }
@@ -1008,6 +1060,7 @@ export default function NabidkyTab({
               : q
           )
         )
+        refreshServerData()
       }
     } finally {
       setSaving(false)
@@ -1076,6 +1129,7 @@ export default function NabidkyTab({
             : q
         )
       )
+      refreshServerData()
     } else {
       showError('Položku se nepodařilo smazat')
     }
