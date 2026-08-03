@@ -247,6 +247,24 @@ DROP POLICY IF EXISTS org_rls ON "zakazky";
 CREATE POLICY org_rls ON "zakazky" FOR ALL TO nanto_app
   USING ("orgId" = current_setting('app.org_id', true)) WITH CHECK ("orgId" = current_setting('app.org_id', true));
 
+-- Zamereni
+ALTER TABLE "zamereni" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_rls ON "zamereni";
+CREATE POLICY org_rls ON "zamereni" FOR ALL TO nanto_app
+  USING ("orgId" = current_setting('app.org_id', true)) WITH CHECK ("orgId" = current_setting('app.org_id', true));
+
+-- ZamereniDefinice
+ALTER TABLE "zamereni_definice" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_rls ON "zamereni_definice";
+CREATE POLICY org_rls ON "zamereni_definice" FOR ALL TO nanto_app
+  USING ("orgId" = current_setting('app.org_id', true)) WITH CHECK ("orgId" = current_setting('app.org_id', true));
+
+-- ZamereniFoto
+ALTER TABLE "zamereni_fotky" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_rls ON "zamereni_fotky";
+CREATE POLICY org_rls ON "zamereni_fotky" FOR ALL TO nanto_app
+  USING ("orgId" = current_setting('app.org_id', true)) WITH CHECK ("orgId" = current_setting('app.org_id', true));
+
 -- Zarizeni
 ALTER TABLE "zarizeni" ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS org_rls ON "zarizeni";

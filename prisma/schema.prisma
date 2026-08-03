@@ -301,6 +301,7 @@ model Organization {
   documents            Document[]
   leady                Lead[]
   aiUsageLogs          AiUsageLog[]
+  zamereniDefinice     ZamereniDefinice[]
 
   @@map("organizations")
 }
@@ -347,6 +348,7 @@ model User {
   assignedLeady       Lead[]               @relation("LeadAssigned")
   leadNotes           LeadNote[]
   aiUsageLogs         AiUsageLog[]
+  zamereni            Zamereni[]
 
   @@unique([orgId, email])
   @@map("users")
@@ -437,6 +439,7 @@ model Deal {
   kontaktniTelefon String?
   poznamky         String?
   duvodProhry      String?
+  duvodProhryKod   DuvodProhry?
   dphSazba         Int         @default(12)
   vytvoreno        DateTime    @default(now())
 
@@ -452,6 +455,7 @@ model Deal {
   zakazky           Zakazka[]
   sod               Sod[]
   lead              Lead?
+  zamereni          Zamereni[]
 
   @@unique([orgId, kod])
   @@map("deals")
@@ -521,6 +525,10 @@ model Quote {
   popis       String?
   dphSazba    Int      @default(12)
   aktivni     Boolean  @default(false)
+  // Felucia Sales: platnost nabídky + evidence odeslání klientovi
+  platnostDo    DateTime?
+  odeslanoAt    DateTime?
+  odeslanoKanal OdeslaniKanal?
   vytvoreno   DateTime @default(now())
   // Veřejné sdílení PDF: token jen jako SHA-256 hash; šifrovaná kopie
   // (lib/secretCrypto) pro opakované zobrazení stejného odkazu
@@ -1615,4 +1623,107 @@ model AiUsageLog {
   @@index([orgId, vytvoreno])
   @@index([userId, vytvoreno])
   @@map("ai_usage_logs")
+}
+
+// ─── Felucia Sales: zaměření u klienta ───────────────────────────────────────
+
+enum DuvodProhry {
+  CENA
+  KONKURENCE
+  ODLOZENO
+  NEREAGOVAL
+  JINE
+}
+
+enum OdeslaniKanal {
+  EMAIL
+  SMS
+}
+
+enum ZamereniStav {
+  ROZPRACOVANE
+  UZAVRENE
+}
+
+enum ZamereniFotoTag {
+  ROZVADEC
+  VENKOVNI_JEDNOTKA
+  VNITRNI_JEDNOTKA
+  STAVAJICI_ZDROJ
+  FASADA
+  PROSTUP
+  CELKOVY_POHLED
+  JINE
+}
+
+model Zamereni {
+  id            String       @id @default(cuid())
+  orgId         String
+  dealId        String
+  autorId       String?
+  typ           Technologie
+  stav          ZamereniStav @default(ROZPRACOVANE)
+  datum         DateTime     @default(now())
+  gpsLat        Float?
+  gpsLng        Float?
+  // Odpovědi formuláře podle ZamereniDefinice.schemaJson ({ klicOtazky: hodnota });
+  // definiceId+definiceVerze fixují verzi, se kterou bylo vyplněno
+  odpovedi      Json         @default("{}")
+  definiceId    String?
+  definiceVerze Int?
+  vytvoreno     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  deal     Deal              @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  autor    User?             @relation(fields: [autorId], references: [id])
+  definice ZamereniDefinice? @relation(fields: [definiceId], references: [id])
+  fotky    ZamereniFoto[]
+
+  @@index([orgId, stav])
+  @@index([dealId])
+  @@map("zamereni")
+}
+
+model ZamereniFoto {
+  id         String          @id @default(cuid())
+  orgId      String
+  zamereniId String
+  url        String
+  tag        ZamereniFotoTag @default(JINE)
+  popis      String?
+  poradi     Int             @default(0)
+  gpsLat     Float?
+  gpsLng     Float?
+  // Kresba přes fotku (šipky/obdélníky/texty) jako overlay, originál zůstává
+  anotace    Json?
+  vytvoreno  DateTime        @default(now())
+
+  zamereni Zamereni @relation(fields: [zamereniId], references: [id], onDelete: Cascade)
+
+  @@index([zamereniId])
+  @@index([orgId])
+  @@map("zamereni_fotky")
+}
+
+// Config-driven formulář zaměření: otázky per typ zakázky jdou měnit bez
+// release aplikace. Verzované — uzavřená zaměření drží verzi, se kterou vznikla.
+model ZamereniDefinice {
+  id          String            @id @default(cuid())
+  orgId       String
+  typ         Technologie
+  verze       Int               @default(1)
+  aktivni     Boolean           @default(true)
+  nazev       String
+  schemaJson  Json
+  // Bez fotek se všemi povinnými tagy nejde zaměření uzavřít
+  povinneTagy ZamereniFotoTag[] @default([])
+  vytvoreno   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  zamereni     Zamereni[]
+
+  @@unique([orgId, typ, verze])
+  @@index([orgId, typ, aktivni])
+  @@map("zamereni_definice")
 }
