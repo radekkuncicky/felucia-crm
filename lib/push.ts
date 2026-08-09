@@ -15,7 +15,8 @@ const TIMEOUT_MS = 5000
 export type PushMessage = {
   title: string
   body: string
-  data?: { type: 'zakazka'; zakazkaId: string }
+  // 'zakazka' otevírá felucia-tech, 'pripad' felucia-sales (obě appky sdílejí User.pushToken)
+  data?: { type: 'zakazka'; zakazkaId: string } | { type: 'pripad'; pripadId: string }
 }
 
 function isExpoPushToken(token: string) {

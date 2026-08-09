@@ -529,6 +529,8 @@ model Quote {
   platnostDo    DateTime?
   odeslanoAt    DateTime?
   odeslanoKanal OdeslaniKanal?
+  // Kdy worker poslal obchodníkovi follow-up připomínku (null = zatím ne)
+  followUpAt    DateTime?
   vytvoreno   DateTime @default(now())
   // Veřejné sdílení PDF: token jen jako SHA-256 hash; šifrovaná kopie
   // (lib/secretCrypto) pro opakované zobrazení stejného odkazu

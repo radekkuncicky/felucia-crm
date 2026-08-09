@@ -17,6 +17,7 @@ import { PATCH as nabidkaPatch } from '@/app/api/mobile/obchod/nabidka/[id]/rout
 import { POST as sodPost } from '@/app/api/mobile/obchod/pripady/[id]/sod/route'
 import { POST as sodPodepsatPost } from '@/app/api/mobile/obchod/sod/[id]/podepsat/route'
 import { quoteCelkemBezDph, quoteCelkemSDph } from '@/lib/quoteMath'
+import { sweepNabidkyFollowUp, FOLLOWUP_PO_DNECH } from '@/worker/followupy'
 
 const RUN = `obchod-${Date.now()}`
 
@@ -354,5 +355,45 @@ describe('podpis smlouvy na místě', () => {
       { params: { id: sod!.id } },
     )
     expect(res.status).toBe(422)
+  })
+})
+
+describe('follow-up odeslaných nabídek (worker)', () => {
+  it('nabídka bez reakce → jednorázový bell obchodníkovi, uzavřené OP se přeskočí', async () => {
+    const klient = await prisma.client.create({
+      data: { orgId, jmeno: 'Fero', prijmeni: 'Followupový' },
+    })
+    const staraOdeslana = new Date(Date.now() - (FOLLOWUP_PO_DNECH + 1) * 24 * 3600_000)
+
+    // OP v NABÍDKA s nabídkou odeslanou před 4 dny → follow-up
+    const deal = await prisma.deal.create({
+      data: { orgId, clientId: klient.id, userId, stav: 'NABIDKA', technologie: 'KLIMA', kod: `OP-F-${RUN}` },
+    })
+    const quote = await prisma.quote.create({
+      data: { orgId, dealId: deal.id, nazev: 'K follow-upu', odeslanoAt: staraOdeslana, odeslanoKanal: 'EMAIL' },
+    })
+    // OP vyhraný — follow-up nedává smysl
+    const dealUspech = await prisma.deal.create({
+      data: { orgId, clientId: klient.id, userId, stav: 'USPECH', technologie: 'KLIMA', kod: `OP-FU-${RUN}` },
+    })
+    await prisma.quote.create({
+      data: { orgId, dealId: dealUspech.id, nazev: 'Vyhraná', odeslanoAt: staraOdeslana, odeslanoKanal: 'EMAIL' },
+    })
+    // Čerstvě odeslaná — ještě ne
+    await prisma.quote.create({
+      data: { orgId, dealId: deal.id, nazev: 'Čerstvá', odeslanoAt: new Date(), odeslanoKanal: 'SMS' },
+    })
+
+    expect(await sweepNabidkyFollowUp(prisma)).toBe(1)
+
+    const po = await prisma.quote.findUnique({ where: { id: quote.id } })
+    expect(po?.followUpAt).toBeTruthy()
+    const notifikace = await prisma.notification.findFirst({
+      where: { orgId, userId, typ: 'NABIDKA_FOLLOWUP', dealId: deal.id },
+    })
+    expect(notifikace?.zprava).toContain('bez reakce')
+
+    // Druhý průchod už nic neposílá (followUpAt značka)
+    expect(await sweepNabidkyFollowUp(prisma)).toBe(0)
   })
 })
