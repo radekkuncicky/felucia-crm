@@ -15,6 +15,7 @@ import { POST as fotoPost } from '@/app/api/mobile/obchod/zamereni/[id]/foto/rou
 import { POST as nabidkaPost } from '@/app/api/mobile/obchod/pripady/[id]/nabidka/route'
 import { PATCH as nabidkaPatch } from '@/app/api/mobile/obchod/nabidka/[id]/route'
 import { POST as sodPost } from '@/app/api/mobile/obchod/pripady/[id]/sod/route'
+import { POST as sodPodepsatPost } from '@/app/api/mobile/obchod/sod/[id]/podepsat/route'
 import { quoteCelkemBezDph, quoteCelkemSDph } from '@/lib/quoteMath'
 
 const RUN = `obchod-${Date.now()}`
@@ -54,12 +55,15 @@ afterAll(async () => {
     await rm(join(process.cwd(), 'public', 'uploads', 'zamereni', zamereniId), { recursive: true, force: true }).catch(() => {})
   }
   await prisma.sod.deleteMany({ where: { orgId } })
+  await prisma.zakazka.deleteMany({ where: { orgId } })
+  await prisma.zarizeni.deleteMany({ where: { orgId } })
   await prisma.deal.deleteMany({ where: { orgId } })
   await prisma.zamereniDefinice.deleteMany({ where: { orgId } })
   await prisma.client.deleteMany({ where: { orgId } })
   await prisma.auditLog.deleteMany({ where: { orgId } })
   await prisma.notification.deleteMany({ where: { orgId } })
   await prisma.user.deleteMany({ where: { orgId } })
+  await prisma.orgSettings.deleteMany({ where: { orgId } })
   await prisma.organization.delete({ where: { id: orgId } })
   await prisma.$disconnect()
 })
@@ -288,5 +292,67 @@ describe('nabídky', () => {
 
     const a = await prisma.quote.findUnique({ where: { id: nabidkaAId } })
     expect(a?.aktivni).toBe(true)
+  })
+})
+
+describe('podpis smlouvy na místě', () => {
+  const SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180"><path d="M10,10 L100,50" stroke="#000" fill="none"/></svg>'
+
+  it('bez souhlasu se odmítne', async () => {
+    const sod = await prisma.sod.findFirst({ where: { dealId, orgId } })
+    const res = await sodPodepsatPost(
+      jsonReq('POST', { podpisSvg: SVG, jmeno: 'Klára Klientová' }),
+      { params: { id: sod!.id } },
+    )
+    expect(res.status).toBe(422)
+  })
+
+  it('neplatný formát podpisu se odmítne', async () => {
+    const sod = await prisma.sod.findFirst({ where: { dealId, orgId } })
+    const res = await sodPodepsatPost(
+      jsonReq('POST', { podpisSvg: 'javascript:alert(1)', jmeno: 'Klára', souhlas: true }),
+      { params: { id: sod!.id } },
+    )
+    expect(res.status).toBe(422)
+  })
+
+  it('podpis uloží snapshot verze a OP převede na USPECH se zakázkou', async () => {
+    const sod = await prisma.sod.findFirst({ where: { dealId, orgId } })
+    const res = await sodPodepsatPost(
+      jsonReq('POST', { podpisSvg: SVG, jmeno: 'Klára Klientová', souhlas: true }),
+      { params: { id: sod!.id } },
+    )
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.stav).toBe('PODEPSANO')
+    expect(data.dealStav).toBe('USPECH')
+    expect(data.zakazkaId).toBeTruthy()
+
+    const po = await prisma.sod.findUnique({ where: { id: sod!.id } })
+    expect(po?.stav).toBe('PODEPSANO')
+    expect(po?.podepsalJmeno).toBe('Klára Klientová')
+    expect(po?.podpisSvg?.startsWith('data:image/svg+xml;base64,')).toBe(true)
+    expect(po?.podpisTextHash).toBeTruthy()
+
+    // Snapshot podepsané verze přes relaci PODEPSANA — z něj se renderuje podepsané PDF
+    const relace = await prisma.sodPodpisRelace.findFirst({ where: { sodId: sod!.id, stav: 'PODEPSANA' } })
+    expect(relace?.verzeId).toBeTruthy()
+
+    const deal = await prisma.deal.findUnique({ where: { id: dealId } })
+    expect(deal?.stav).toBe('USPECH')
+    const zakazka = await prisma.zakazka.findFirst({ where: { opId: dealId, orgId } })
+    expect(zakazka?.id).toBe(data.zakazkaId)
+    // Položky zakázky převzaté z aktivní nabídky
+    const polozky = await prisma.zakazkaPolozka.findMany({ where: { zakazkaId: zakazka!.id } })
+    expect(polozky.length).toBeGreaterThan(0)
+  })
+
+  it('opakovaný podpis se odmítne', async () => {
+    const sod = await prisma.sod.findFirst({ where: { dealId, orgId } })
+    const res = await sodPodepsatPost(
+      jsonReq('POST', { podpisSvg: SVG, jmeno: 'Klára', souhlas: true }),
+      { params: { id: sod!.id } },
+    )
+    expect(res.status).toBe(422)
   })
 })

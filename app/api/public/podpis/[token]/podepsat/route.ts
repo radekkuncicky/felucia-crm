@@ -9,6 +9,7 @@ import { createNotification } from '@/lib/createNotification'
 import { sendOrgEmail, emailSmlouvaPodepsana } from '@/lib/email'
 import { getOrgSettings } from '@/lib/orgSettings'
 import { buildSodPdf } from '@/lib/sodPdf'
+import { prevedDealNaUspechPoPodpisu } from '@/lib/dealUspech'
 
 // Vlastní podpis: vyžaduje platnou OTP cookie. Uloží podpis + audit
 // (IP, user-agent, SHA-256 otisk podepsané verze), pošle podepsané PDF
@@ -73,6 +74,13 @@ export async function POST(req: NextRequest, { params }: { params: { token: stri
     orgId: relace.orgId, sodId: relace.sodId, typ: 'PODEPSANO', relaceId: relace.id,
     meta: { jmeno, textHash }, req,
   })
+
+  // Podepsaná smlouva = vyhraný obchod: OP → USPECH + zakázka
+  await prevedDealNaUspechPoPodpisu({
+    orgId: relace.orgId,
+    dealId: relace.sod.dealId,
+    userId: relace.odeslalId,
+  }).catch(() => { /* přechod OP nesmí shodit podpis */ })
 
   // Upozornění obchodníkovi (bell) — nesmí shodit podpis
   if (relace.odeslalId) {

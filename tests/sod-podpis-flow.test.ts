@@ -78,6 +78,10 @@ afterAll(async () => {
   await prisma.sodPodpisRelace.deleteMany({ where: { orgId } })
   await prisma.sodVerze.deleteMany({ where: { orgId } })
   await prisma.sod.deleteMany({ where: { orgId } })
+  // Podpis převádí OP na USPECH — vzniká zakázka, zařízení a audit log
+  await prisma.zakazka.deleteMany({ where: { orgId } })
+  await prisma.zarizeni.deleteMany({ where: { orgId } })
+  await prisma.auditLog.deleteMany({ where: { orgId } })
   await prisma.deal.deleteMany({ where: { orgId } })
   await prisma.client.deleteMany({ where: { orgId } })
   await prisma.notification.deleteMany({ where: { orgId } })
@@ -193,6 +197,12 @@ describe('veřejný podpisový flow', () => {
 
     const r = await prisma.sodPodpisRelace.findUnique({ where: { id: relace.id } })
     expect(r?.stav).toBe('PODEPSANA')
+
+    // podepsaná smlouva = vyhraný obchod: OP přešel na USPECH a vznikla zakázka
+    const deal = await prisma.deal.findUnique({ where: { id: po!.dealId } })
+    expect(deal?.stav).toBe('USPECH')
+    const zakazka = await prisma.zakazka.findFirst({ where: { opId: po!.dealId, orgId } })
+    expect(zakazka).toBeTruthy()
 
     const udalosti = await prisma.sodUdalost.findMany({ where: { sodId: sod.id }, orderBy: { vytvoreno: 'asc' } })
     const typy = udalosti.map(u => u.typ)
