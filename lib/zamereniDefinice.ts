@@ -238,3 +238,32 @@ export function chybejiciTagy(
   const mam = new Set(fotky.map(f => f.tag))
   return povinneTagy.filter(t => !mam.has(t))
 }
+
+export type ZamereniOdpoved = { popisek: string; hodnota: string }
+export type ZamereniSekceOdpovedi = { nazev: string; otazky: ZamereniOdpoved[] }
+
+function formatujHodnotu(otazka: ZamereniOtazka, hodnota: unknown): string {
+  if (otazka.typ === 'BOOLEAN') return hodnota ? 'Ano' : 'Ne'
+  if (otazka.typ === 'VICE_VYBER' && Array.isArray(hodnota)) return hodnota.join(', ')
+  if (otazka.typ === 'CISLO') return `${hodnota}${otazka.jednotka ? ` ${otazka.jednotka}` : ''}`
+  return String(hodnota)
+}
+
+/** Vyplněné (a viditelné) odpovědi seskupené podle sekcí, s čitelnými popisky — pro zobrazení na webu. */
+export function vyplneneSekce(
+  schema: ZamereniSchema,
+  odpovedi: Record<string, unknown>,
+): ZamereniSekceOdpovedi[] {
+  const vysledek: ZamereniSekceOdpovedi[] = []
+  for (const sekce of schema.sekce ?? []) {
+    const otazky: ZamereniOdpoved[] = []
+    for (const otazka of sekce.otazky ?? []) {
+      if (!jeZobrazena(otazka, odpovedi)) continue
+      const hodnota = odpovedi[otazka.klic]
+      if (!jeVyplnena(hodnota)) continue
+      otazky.push({ popisek: otazka.popisek, hodnota: formatujHodnotu(otazka, hodnota) })
+    }
+    if (otazky.length > 0) vysledek.push({ nazev: sekce.nazev, otazky })
+  }
+  return vysledek
+}

@@ -13,6 +13,7 @@ import NabidkyTab from './NabidkyTab'
 import DokumentyTab from './DokumentyTab'
 import SmlouvyTab from './SmlouvyTab'
 import FotodokumentaceTab from './FotodokumentaceTab'
+import ZamereniTab from './ZamereniTab'
 import TabActivator from './TabActivator'
 import ServisTab from './ServisTab'
 import { getPlanLimits } from '@/lib/planLimits'
@@ -20,6 +21,8 @@ import { NavigateButton } from '@/components/NavigateButton'
 import { CollapsibleEdit } from './CollapsibleEdit'
 import { DealNotesCard } from './DealNotesCard'
 import { formatDate, formatCislo } from '@/lib/format'
+import { getDefiniceProZamereni, vyplneneSekce } from '@/lib/zamereniDefinice'
+import { klientAdresa } from '@/lib/mobile-helpers'
 
 function fmt(d: Date | null) {
   if (!d) return ''
@@ -53,6 +56,13 @@ export default async function DealDetailPage({
           orderBy: { vytvoreno: 'asc' },
         },
         activities: { include: { user: true, resitel: true }, orderBy: { datum: 'desc' } },
+        zamereni: {
+          include: {
+            autor: { select: { jmeno: true } },
+            fotky: { orderBy: { poradi: 'asc' } },
+          },
+          orderBy: { vytvoreno: 'desc' },
+        },
       },
     }),
     prisma.product.findMany({
@@ -100,6 +110,25 @@ export default async function DealDetailPage({
     where: { opId: deal.id, orgId },
     select: { id: true, cislo: true, stav: true },
   })
+
+  const klientAdresaText = klientAdresa(deal.client)
+  const zamereniItems = await Promise.all(
+    deal.zamereni.map(async z => {
+      // getDefiniceProZamereni čeká OrgPrismaClient jen kvůli typům z orgPrisma's $extends —
+      // runtime na tom nezávisí, bare prisma má stejné delegáty (zamereniDefinice.find*)
+      const definice = await getDefiniceProZamereni(prisma as unknown as import('@/lib/orgPrisma').OrgPrismaClient, z)
+      return {
+        id: z.id,
+        typ: z.typ,
+        stav: z.stav,
+        datum: z.datum.toISOString(),
+        autor: z.autor?.jmeno ?? null,
+        adresa: deal.adresaDila || klientAdresaText || null,
+        sekce: vyplneneSekce(definice.schemaJson, z.odpovedi as Record<string, unknown>),
+        fotky: z.fotky.map(f => ({ id: f.id, url: f.url, tag: f.tag, popis: f.popis })),
+      }
+    }),
+  )
 
   // Calculate active quote price for header
   const activeQuote = deal.quotes.find(q => q.aktivni)
@@ -425,6 +454,10 @@ export default async function DealDetailPage({
 
       {tab === 'dokumenty' && (
         <DokumentyTab dealKod={deal.kod} />
+      )}
+
+      {tab === 'zamereni' && (
+        <ZamereniTab zamereni={zamereniItems} />
       )}
 
       {tab === 'fotodokumentace' && (
