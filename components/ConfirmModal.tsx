@@ -26,7 +26,9 @@ export default function ConfirmModal({
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    // z-[60]: musí být nad ostatními modaly (z-50), protože se často potvrzuje
+    // mazání zevnitř už otevřeného editačního modalu
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50">
       <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-xl max-w-sm w-full mx-4">
         <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{title}</h3>
         <p className="text-sm text-gray-600 dark:text-slate-400 mb-6">{message}</p>
