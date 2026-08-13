@@ -65,7 +65,9 @@ export default function DashboardShell({ user, orgSettings, orgNazev, children }
         <div className="flex flex-col flex-1 overflow-hidden min-w-0">
           <Header user={user} onMenuClick={() => setSidebarOpen(true)} />
           <TabBar />
-          <main className="flex-1 overflow-auto p-4 md:p-6 pb-safe-nav md:pb-6">
+          {/* md:pb-24: rezerva pod Dáša FAB (bottom:24 + výška 56px) + nápovědou (bottom:24 + 32px),
+              jinak poslední řádek obsahu končí pod plovoucími tlačítky (viz zakázka detail/předáváky) */}
+          <main className="flex-1 overflow-auto p-4 md:p-6 pb-safe-nav md:pb-24">
             {children}
           </main>
         </div>
