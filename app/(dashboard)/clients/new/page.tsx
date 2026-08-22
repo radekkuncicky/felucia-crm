@@ -7,6 +7,7 @@ import Link from 'next/link'
 import AresAutocomplete from '@/components/AresAutocomplete'
 import type { AresFirma } from '@/hooks/useAresLookup'
 import { parseEmailInput } from '@/lib/parseEmail'
+import { confirmDialog } from '@/components/ui/confirm'
 
 function parseFullAddress(text: string): { ulice: string; psc: string; mesto: string } | null {
   const trimmed = text.trim()
@@ -76,6 +77,33 @@ export default function NewClientPage() {
     setSaving(true)
     setError('')
     try {
+      const dupRes = await fetch('/api/clients/check-duplicate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jmeno: form.jmeno,
+          prijmeni: typKlienta === 'FIRMA' ? form.kontaktniOsoba : form.prijmeni,
+          telefon: form.telefon,
+          email: form.email,
+        }),
+      })
+      if (dupRes.ok) {
+        const { match } = await dupRes.json()
+        if (match) {
+          const popis = [`${match.jmeno} ${match.prijmeni}`.trim(), match.telefon, match.email].filter(Boolean).join(' · ')
+          const pouzitStavajiciho = await confirmDialog(popis, {
+            title: 'Nemyslíte náhodou tohoto klienta?',
+            confirmLabel: 'Ano, použít tohoto klienta',
+            cancelLabel: 'Ne, jde o jiného',
+            danger: false,
+          })
+          if (pouzitStavajiciho) {
+            router.push(`/deals/new?clientId=${match.id}`)
+            return
+          }
+        }
+      }
+
       const payload =
         typKlienta === 'FIRMA'
           ? {
