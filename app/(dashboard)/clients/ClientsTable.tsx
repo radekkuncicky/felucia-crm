@@ -118,7 +118,13 @@ export default function ClientsTable({ clients }: Props) {
                   <a href={`tel:${client.telefon}`} className="text-sm text-gray-500 dark:text-slate-400 block">{client.telefon}</a>
                 )}
                 {client.email && (
-                  <p className="text-sm text-gray-500 dark:text-slate-400 truncate">{client.email}</p>
+                  <a
+                    href={`mailto:${client.email}`}
+                    onClick={e => e.stopPropagation()}
+                    className="text-sm text-gray-500 dark:text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 hover:underline truncate block"
+                  >
+                    {client.email}
+                  </a>
                 )}
                 {client.mesto && (
                   <p className="text-xs text-gray-400 dark:text-slate-500">{client.mesto}</p>
@@ -194,7 +200,13 @@ export default function ClientsTable({ clients }: Props) {
                       case 'telefon':
                         return <td key={col.id} className="px-6 py-4 text-sm text-gray-600 dark:text-slate-400 truncate overflow-hidden">{client.telefon ?? '—'}</td>
                       case 'email':
-                        return <td key={col.id} className="px-6 py-4 text-sm text-gray-600 dark:text-slate-400 truncate overflow-hidden">{client.email ?? '—'}</td>
+                        return (
+                          <td key={col.id} className="px-6 py-4 text-sm text-gray-600 dark:text-slate-400 truncate overflow-hidden">
+                            {client.email
+                              ? <a href={`mailto:${client.email}`} onClick={e => e.stopPropagation()} className="hover:text-blue-600 dark:hover:text-blue-400 hover:underline">{client.email}</a>
+                              : '—'}
+                          </td>
+                        )
                       case 'ico':
                         return <td key={col.id} className="px-6 py-4 text-sm font-mono text-gray-600 dark:text-slate-400 overflow-hidden">{client.ico ?? '—'}</td>
                       case 'mesto':
