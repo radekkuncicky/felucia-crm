@@ -370,6 +370,93 @@ function NovaZakazkaModal({ open, onClose }: { open: boolean; onClose: () => voi
   )
 }
 
+function tableColSpan(canCreate: boolean, isTechnik: boolean): number {
+  // checkbox + Číslo/Klient/Název/Stav/Aktuální fáze/Typ/Technici/Montáž (8) + trailing akce sloupec
+  return (canCreate ? 1 : 0) + 8 + 1 + (isTechnik ? 0 : 3)
+}
+
+function ZakazkaTableRow({ z, isTechnik, canCreate, isSelected, onToggleSelect, inlineLoadingId, onInlineStavChange }: {
+  z: ZakazkaRow
+  isTechnik: boolean
+  canCreate: boolean
+  isSelected: boolean
+  onToggleSelect: (checked: boolean) => void
+  inlineLoadingId: string | null
+  onInlineStavChange: (id: string, stav: ZakazkaStav) => void
+}) {
+  const urgency = getUrgency(z)
+  const nextStav = STAV_NEXT[z.stav]
+  return (
+    <tr className={`hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors ${isSelected ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''}`}>
+      {canCreate && (
+        <td className="px-3 py-3">
+          <input type="checkbox" checked={isSelected}
+            onChange={e => onToggleSelect(e.target.checked)}
+            className="rounded border-gray-300 dark:border-slate-600 text-blue-600 focus:ring-primary" />
+        </td>
+      )}
+      <td className="px-4 py-3">
+        <div className="flex items-center gap-1.5">
+          <UrgencyDot urgency={urgency} />
+          <Link href={`/zakazky/${z.id}`} className="font-mono text-sm font-bold text-green-600 dark:text-green-400 hover:underline whitespace-nowrap">
+            {z.cislo}
+          </Link>
+        </div>
+      </td>
+      <td className="px-4 py-3 text-gray-600 dark:text-slate-400 text-sm truncate max-w-[140px]">{z.klientJmeno}</td>
+      <td className="px-4 py-3 text-gray-900 dark:text-white font-medium truncate max-w-[200px]">{z.nazev}</td>
+      <td className="px-4 py-3"><StavBadge stav={z.stav} /></td>
+      <td className="px-4 py-3 text-sm text-gray-600 dark:text-slate-400 whitespace-nowrap">
+        {z.aktualniFaze ?? <span className="text-gray-400 text-xs">—</span>}
+      </td>
+      <td className="px-4 py-3 whitespace-nowrap">
+        {z.technologie ? (
+          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${techColors[z.technologie as keyof typeof techColors] ?? 'bg-gray-100 text-gray-600'}`}>
+            {techLabels[z.technologie as keyof typeof techLabels] ?? z.technologie}
+          </span>
+        ) : <span className="text-gray-400 text-xs">—</span>}
+      </td>
+      {!isTechnik && <td className="px-4 py-3 text-gray-600 dark:text-slate-400 text-sm">{z.vedouciJmeno ?? '—'}</td>}
+      <td className="px-4 py-3">
+        {z.technici.length > 0 ? <TechniciAvatars technici={z.technici} /> : <span className="text-gray-400 text-xs">—</span>}
+      </td>
+      <td className="px-4 py-3 text-sm text-gray-600 dark:text-slate-400 whitespace-nowrap">
+        {z.montazOd ? (
+          <span className={urgency === 'red' ? 'text-red-600 dark:text-red-400 font-medium' : urgency === 'orange' ? 'text-orange-600 dark:text-orange-400' : ''}>
+            {formatMontaz(z.montazOd, z.montazDo)}
+          </span>
+        ) : <span className="text-gray-300 dark:text-slate-600">—</span>}
+      </td>
+      {!isTechnik && (
+        <td className="px-4 py-3 text-right text-sm font-medium text-gray-700 dark:text-slate-300 whitespace-nowrap">
+          {z.cenaOP !== null ? fmtKc(z.cenaOP) : <span className="text-gray-400 dark:text-slate-500">—</span>}
+        </td>
+      )}
+      {!isTechnik && (
+        <td className="px-4 py-3 text-right text-sm font-medium text-gray-700 dark:text-slate-300 whitespace-nowrap">
+          {z.cenaVyuctovani > 0 ? fmtKc(z.cenaVyuctovani) : <span className="text-gray-400 dark:text-slate-500">—</span>}
+        </td>
+      )}
+      <td className="px-4 py-3">
+        <div className="flex items-center gap-2 justify-end">
+          {canCreate && nextStav && (
+            <button
+              onClick={() => onInlineStavChange(z.id, nextStav)}
+              disabled={inlineLoadingId === z.id}
+              className="text-xs px-2 py-1 bg-gray-50 dark:bg-slate-700 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-gray-500 dark:text-slate-400 hover:text-primary dark:hover:text-primary-light border border-gray-200 dark:border-slate-600 rounded-md transition-colors whitespace-nowrap disabled:opacity-50"
+            >
+              {inlineLoadingId === z.id ? '…' : `→ ${STAV_LABELS[nextStav]}`}
+            </button>
+          )}
+          <Link href={`/zakazky/${z.id}`} className="text-primary dark:text-primary-light hover:underline text-sm font-medium whitespace-nowrap">
+            Detail →
+          </Link>
+        </div>
+      </td>
+    </tr>
+  )
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function ZakazkyPageClient({ zakazky, vedouci, role, keSchvaleni = [] }: Props) {
@@ -390,6 +477,7 @@ export default function ZakazkyPageClient({ zakazky, vedouci, role, keSchvaleni 
   const [montazFilter, setMontazFilter] = useState<'' | 'tento_tyden' | 'pristy_tyden' | 'bez_terminu' | 'po_terminu'>('')
   const [sortByMontaz, setSortByMontaz] = useState<'asc' | 'desc' | null>(null)
   const [showModal, setShowModal] = useState(false)
+  const [hotoveExpanded, setHotoveExpanded] = useState(false)
 
   // Inline stav change
   const [inlineLoadingId, setInlineLoadingId] = useState<string | null>(null)
@@ -495,6 +583,23 @@ export default function ZakazkyPageClient({ zakazky, vedouci, role, keSchvaleni 
 
     return result
   }, [localZakazky, search, pohled, view, stavFilter, vedouciFilter, montazFilter, sortByMontaz])
+
+  // Sbalitelná sekce "Hotovo" pod tabulkou — jen v pohledu Aktivní (jinak by
+  // duplikovala to, co je vidět v hlavním seznamu). Respektuje hledání a
+  // filtr vedoucího; termínové filtry (tento/příští týden, po termínu) se
+  // týkají nadcházející práce, na dokončené zakázky nemají smysl.
+  const hotoveRows = useMemo(() => {
+    if (view !== 'table' || pohled !== 'aktivni' || stavFilter || montazFilter) return []
+    return localZakazky.filter(z => {
+      if (!HOTOVE_STAVY.includes(z.stav)) return false
+      if (vedouciFilter && z.vedouciId !== vedouciFilter) return false
+      if (search) {
+        const q = search.toLowerCase()
+        if (!z.cislo.toLowerCase().includes(q) && !z.nazev.toLowerCase().includes(q) && !z.klientJmeno.toLowerCase().includes(q)) return false
+      }
+      return true
+    })
+  }, [localZakazky, view, pohled, stavFilter, vedouciFilter, search, montazFilter])
 
   const activeCount = localZakazky.filter(z => AKTIVNI_STAVY.includes(z.stav)).length
   const hotoveCount = localZakazky.filter(z => HOTOVE_STAVY.includes(z.stav)).length
@@ -705,84 +810,58 @@ export default function ZakazkyPageClient({ zakazky, vedouci, role, keSchvaleni 
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
-                    {filtered.map(z => {
-                      const urgency = getUrgency(z)
-                      const nextStav = STAV_NEXT[z.stav]
-                      const isSelected = selectedSet.has(z.id)
-                      return (
-                        <tr key={z.id} className={`hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors ${isSelected ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''}`}>
-                          {canCreate && (
-                            <td className="px-3 py-3">
-                              <input type="checkbox" checked={isSelected}
-                                onChange={e => {
-                                  if (e.target.checked) setSelectedIds(prev => [...prev, z.id])
-                                  else setSelectedIds(prev => prev.filter(id => id !== z.id))
-                                }}
-                                className="rounded border-gray-300 dark:border-slate-600 text-blue-600 focus:ring-primary" />
-                            </td>
-                          )}
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-1.5">
-                              <UrgencyDot urgency={urgency} />
-                              <Link href={`/zakazky/${z.id}`} className="font-mono text-sm font-bold text-green-600 dark:text-green-400 hover:underline whitespace-nowrap">
-                                {z.cislo}
-                              </Link>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-gray-600 dark:text-slate-400 text-sm truncate max-w-[140px]">{z.klientJmeno}</td>
-                          <td className="px-4 py-3 text-gray-900 dark:text-white font-medium truncate max-w-[200px]">{z.nazev}</td>
-                          <td className="px-4 py-3"><StavBadge stav={z.stav} /></td>
-                          <td className="px-4 py-3 text-sm text-gray-600 dark:text-slate-400 whitespace-nowrap">
-                            {z.aktualniFaze ?? <span className="text-gray-400 text-xs">—</span>}
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap">
-                            {z.technologie ? (
-                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${techColors[z.technologie as keyof typeof techColors] ?? 'bg-gray-100 text-gray-600'}`}>
-                                {techLabels[z.technologie as keyof typeof techLabels] ?? z.technologie}
-                              </span>
-                            ) : <span className="text-gray-400 text-xs">—</span>}
-                          </td>
-                          {!isTechnik && <td className="px-4 py-3 text-gray-600 dark:text-slate-400 text-sm">{z.vedouciJmeno ?? '—'}</td>}
-                          <td className="px-4 py-3">
-                            {z.technici.length > 0 ? <TechniciAvatars technici={z.technici} /> : <span className="text-gray-400 text-xs">—</span>}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-gray-600 dark:text-slate-400 whitespace-nowrap">
-                            {z.montazOd ? (
-                              <span className={urgency === 'red' ? 'text-red-600 dark:text-red-400 font-medium' : urgency === 'orange' ? 'text-orange-600 dark:text-orange-400' : ''}>
-                                {formatMontaz(z.montazOd, z.montazDo)}
-                              </span>
-                            ) : <span className="text-gray-300 dark:text-slate-600">—</span>}
-                          </td>
-                          {!isTechnik && (
-                            <td className="px-4 py-3 text-right text-sm font-medium text-gray-700 dark:text-slate-300 whitespace-nowrap">
-                              {z.cenaOP !== null ? fmtKc(z.cenaOP) : <span className="text-gray-400 dark:text-slate-500">—</span>}
-                            </td>
-                          )}
-                          {!isTechnik && (
-                            <td className="px-4 py-3 text-right text-sm font-medium text-gray-700 dark:text-slate-300 whitespace-nowrap">
-                              {z.cenaVyuctovani > 0 ? fmtKc(z.cenaVyuctovani) : <span className="text-gray-400 dark:text-slate-500">—</span>}
-                            </td>
-                          )}
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2 justify-end">
-                              {canCreate && nextStav && (
-                                <button
-                                  onClick={() => handleInlineStavChange(z.id, nextStav)}
-                                  disabled={inlineLoadingId === z.id}
-                                  className="text-xs px-2 py-1 bg-gray-50 dark:bg-slate-700 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-gray-500 dark:text-slate-400 hover:text-primary dark:hover:text-primary-light border border-gray-200 dark:border-slate-600 rounded-md transition-colors whitespace-nowrap disabled:opacity-50"
-                                >
-                                  {inlineLoadingId === z.id ? '…' : `→ ${STAV_LABELS[nextStav]}`}
-                                </button>
-                              )}
-                              <Link href={`/zakazky/${z.id}`} className="text-primary dark:text-primary-light hover:underline text-sm font-medium whitespace-nowrap">
-                                Detail →
-                              </Link>
-                            </div>
-                          </td>
-                        </tr>
-                      )
-                    })}
+                    {filtered.map(z => (
+                      <ZakazkaTableRow
+                        key={z.id}
+                        z={z}
+                        isTechnik={isTechnik}
+                        canCreate={canCreate}
+                        isSelected={selectedSet.has(z.id)}
+                        onToggleSelect={checked => {
+                          if (checked) setSelectedIds(prev => [...prev, z.id])
+                          else setSelectedIds(prev => prev.filter(id => id !== z.id))
+                        }}
+                        inlineLoadingId={inlineLoadingId}
+                        onInlineStavChange={handleInlineStavChange}
+                      />
+                    ))}
                   </tbody>
+                  {hotoveRows.length > 0 && (
+                    <tbody>
+                      <tr className="border-t border-gray-200 dark:border-slate-700">
+                        <td colSpan={tableColSpan(canCreate, isTechnik)} className="px-4 py-0">
+                          <button
+                            onClick={() => setHotoveExpanded(v => !v)}
+                            className="w-full flex items-center gap-2 py-2.5 text-sm font-medium text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 transition-colors"
+                          >
+                            <svg className={`w-4 h-4 flex-shrink-0 transition-transform ${hotoveExpanded ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                            Hotovo ({hotoveRows.length})
+                          </button>
+                        </td>
+                      </tr>
+                    </tbody>
+                  )}
+                  {hotoveExpanded && hotoveRows.length > 0 && (
+                    <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
+                      {hotoveRows.map(z => (
+                        <ZakazkaTableRow
+                          key={z.id}
+                          z={z}
+                          isTechnik={isTechnik}
+                          canCreate={canCreate}
+                          isSelected={selectedSet.has(z.id)}
+                          onToggleSelect={checked => {
+                            if (checked) setSelectedIds(prev => [...prev, z.id])
+                            else setSelectedIds(prev => prev.filter(id => id !== z.id))
+                          }}
+                          inlineLoadingId={inlineLoadingId}
+                          onInlineStavChange={handleInlineStavChange}
+                        />
+                      ))}
+                    </tbody>
+                  )}
                 </table>
               </div>
             )}
