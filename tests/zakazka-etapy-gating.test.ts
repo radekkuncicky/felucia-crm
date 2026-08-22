@@ -105,3 +105,33 @@ describe('lineární etapy — přidání další etapy je zablokované, dokud p
     expect(await prisma.zakazkaEtapa.count({ where: { zakazkaId } })).toBe(2)
   })
 })
+
+describe('souběžné založení první etapy (dvojklik) nespadne jako neošetřená chyba', () => {
+  it('dva souběžné požadavky — jeden uspěje (cislo 1), druhý dostane čistou 422 odpověď, ne pád', async () => {
+    const klient = await prisma.client.create({ data: { orgId, jmeno: 'Souběžný', prijmeni: 'Klient' } })
+    const zakazka = await prisma.zakazka.create({
+      data: { orgId, cislo: `${RUN}-ZAK-RACE`, nazev: 'Souběžná zakázka', klientId: klient.id, stav: 'V_REALIZACI' },
+    })
+
+    const [res1, res2] = await Promise.all([
+      postEtapa(zakazka.id, { nazev: 'Etapa A' }),
+      postEtapa(zakazka.id, { nazev: 'Etapa B' }),
+    ])
+
+    const statuses = [res1.status, res2.status].sort()
+    // Buď oba uspějí (retry doplní druhé číslo), nebo druhý narazí na gating
+    // (etapa 1 čerstvě založená ještě není hotová) — v obou případech čistá
+    // JSON odpověď, nikdy nezachycená výjimka / prázdné tělo.
+    expect(statuses[0]).toBe(201)
+    expect([201, 422]).toContain(statuses[1])
+
+    const bodies = await Promise.all([res1.json(), res2.json()])
+    for (const b of bodies) {
+      expect(b).not.toBeNull()
+      expect(typeof b).toBe('object')
+    }
+
+    const pocetEtap = await prisma.zakazkaEtapa.count({ where: { zakazkaId: zakazka.id } })
+    expect(pocetEtap).toBe(statuses[1] === 201 ? 2 : 1)
+  })
+})
