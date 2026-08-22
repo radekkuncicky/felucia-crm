@@ -161,4 +161,39 @@ describe('status leadu odpovídá skutečnosti', () => {
     expect(res.status).toBe(400)
     expect(await prisma.deal.count({ where: { orgId } })).toBe(pocetPredDruhym)
   })
+
+  it('souběžný převod dvou leadů nekolidují na čísle OP (race na kod)', async () => {
+    const id1 = await novyLead({ jmeno: 'Souběžný Jedna' })
+    const id2 = await novyLead({ jmeno: 'Souběžný Dva' })
+
+    const [res1, res2] = await Promise.all([
+      leadConvert(post(id1, {}), { params: { id: id1 } }),
+      leadConvert(post(id2, {}), { params: { id: id2 } }),
+    ])
+    expect(res1.status).toBe(201)
+    expect(res2.status).toBe(201)
+    const { kod: kod1, dealId: dealId1 } = await res1.json()
+    const { kod: kod2, dealId: dealId2 } = await res2.json()
+    expect(kod1).not.toBe(kod2)
+    expect(await prisma.deal.findUnique({ where: { id: dealId1 } })).not.toBeNull()
+    expect(await prisma.deal.findUnique({ where: { id: dealId2 } })).not.toBeNull()
+  })
+
+  it('neplatná technologie v těle požadavku vrátí srozumitelnou chybu, ne 500', async () => {
+    const id = await novyLead()
+    const res = await leadConvert(post(id, { technologie: 'NESMYSL' }), { params: { id } })
+    expect(res.status).toBe(400)
+    const body = await res.json()
+    expect(body.error).toMatch(/technologie/i)
+    expect((await prisma.lead.findUnique({ where: { id } }))?.status).toBe('NOVY')
+  })
+
+  it('lead bez jména (nový klient) vrátí srozumitelnou chybu, ne 500', async () => {
+    const id = await novyLead({ jmeno: '   ' })
+    const res = await leadConvert(post(id, {}), { params: { id } })
+    expect(res.status).toBe(400)
+    const body = await res.json()
+    expect(body.error).toMatch(/jméno/i)
+    expect((await prisma.lead.findUnique({ where: { id } }))?.status).toBe('NOVY')
+  })
 })
