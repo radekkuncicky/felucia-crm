@@ -37,11 +37,13 @@ export async function createSodFromDeal(
   let textSmlouvy: string | null = null
   let resolvedTyp = params.typ ?? 'DPH_21_SE_ZALOHOU'
 
-  let prefillData: Awaited<ReturnType<typeof buildSodRenderData>> | null = null
+  // Vždy spočítat z aktivní nabídky OP — i mimo šablonový flow je to fallback
+  // pro cenaBezDph/cenaSDph/dphSazba níže, ať DB sloupce sedí s vygenerovanou
+  // smlouvou (dřív se u šablon vůbec nepoužilo, Cena v přehledu SOD zůstala prázdná).
+  const prefillData = await buildSodRenderData(dealId, orgId, cislo)
   if (templateId) {
     const template = await db.contractTemplate.findFirst({ where: { id: templateId, orgId } })
     if (!template) return { error: 'Šablona nenalezena' as const }
-    prefillData = await buildSodRenderData(dealId, orgId, cislo)
     textSmlouvy = renderSodTemplate(template.obsah, applySodFormOverrides(prefillData, rest), overrides)
     // šablony uložené před zavedením sanitizace
     if (isHtmlContent(textSmlouvy)) textSmlouvy = sanitizeFullDocumentHtml(textSmlouvy)
@@ -71,9 +73,9 @@ export async function createSodFromDeal(
       terminPrevzeti: (rest.terminPrevzeti as string) ?? null,
       pocetDniRealizace: (rest.pocetDniRealizace as number) ?? null,
       zmenaTerm: (rest.zmenaTerm as string) ?? null,
-      cenaBezDph: (rest.cenaBezDph as number) ?? null,
-      cenaSDph: (rest.cenaSDph as number) ?? null,
-      dphSazba: (rest.dphSazba as number) ?? 21,
+      cenaBezDph: (rest.cenaBezDph as number) ?? prefillData.cenaBezDphRaw,
+      cenaSDph: (rest.cenaSDph as number) ?? prefillData.cenaSDphRaw,
+      dphSazba: (rest.dphSazba as number) ?? prefillData.dphSazbaRaw,
       zalohaKc: (rest.zalohaKc as number) ?? null,
       zalohaSplatnost: (rest.zalohaSplatnost as number) ?? 14,
       zalohaKategorie: (rest.zalohaKategorie as string) ?? null,

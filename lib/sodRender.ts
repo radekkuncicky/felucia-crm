@@ -25,6 +25,10 @@ export interface SodRenderData {
   konecnaCena: string
   cenaSDph: string
   dphSazba: string
+  /** Nezaokrouhlená čísla pro DB (Sod.cenaBezDph/cenaSDph/dphSazba) — konecnaCena/cenaSDph/dphSazba výše jsou jen formátovaný text pro placeholdery. */
+  cenaBezDphRaw: number
+  cenaSDphRaw: number
+  dphSazbaRaw: number
   kodOP: string
   organizace: string
   orgSidlo: string
@@ -79,6 +83,9 @@ export function buildSodRenderDataFromSodRecord(
     konecnaCena: fmtKcDecimal(sod.cenaBezDph),
     cenaSDph: fmtKcDecimal(sod.cenaSDph),
     dphSazba: sod.dphSazba != null ? String(Number(sod.dphSazba)) : '',
+    cenaBezDphRaw: sod.cenaBezDph != null ? Number(sod.cenaBezDph) : 0,
+    cenaSDphRaw: sod.cenaSDph != null ? Number(sod.cenaSDph) : 0,
+    dphSazbaRaw: sod.dphSazba != null ? Number(sod.dphSazba) : 21,
     kodOP: '',
     organizace: org.nazev ?? '',
     orgSidlo: org.sidlo ?? '',
@@ -166,6 +173,9 @@ export async function buildSodRenderData(dealId: string, orgId: string, cisloSml
     konecnaCena: fmtKc(Math.round(cenaBezDph)),
     cenaSDph: fmtKc(Math.round(cenaSDph)),
     dphSazba: String(dphSazba),
+    cenaBezDphRaw: Math.round(cenaBezDph),
+    cenaSDphRaw: Math.round(cenaSDph),
+    dphSazbaRaw: dphSazba,
     kodOP: deal.kod ?? '',
     organizace: org.nazev ?? '',
     orgSidlo: org.sidlo ?? '',
