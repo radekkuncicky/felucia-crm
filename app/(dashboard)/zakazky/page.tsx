@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
 import ZakazkyPageClient from './ZakazkyPageClient'
 import type { KeSchvaleniPolozka } from './KeSchvaleniBar'
+import { aktualniFazeLabel, etapaProgressFromRaw } from '@/lib/zakazkaEtapy'
 
 export default async function ZakazkyPage() {
   const session = await getServerSession(authOptions)
@@ -40,6 +41,16 @@ export default async function ZakazkyPage() {
         vyuctovani: {
           select: {
             polozky: { select: { mnozstvi: true, prodejniCena: true } },
+          },
+        },
+        etapy: {
+          orderBy: { cislo: 'asc' },
+          select: {
+            cislo: true,
+            nazev: true,
+            stav: true,
+            predavaky: { select: { stav: true } },
+            vyuctovani: { select: { stav: true } },
           },
         },
       },
@@ -131,6 +142,7 @@ export default async function ZakazkyPage() {
       updatedAt: z.updatedAt.toISOString(),
       cenaOP,
       cenaVyuctovani,
+      aktualniFaze: aktualniFazeLabel(z.etapy.map(etapaProgressFromRaw)),
     }
   })
 

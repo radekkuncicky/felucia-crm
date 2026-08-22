@@ -33,6 +33,7 @@ interface ZakazkaRow {
   updatedAt: string
   cenaOP: number | null
   cenaVyuctovani: number
+  aktualniFaze: string | null
 }
 
 interface Props {
@@ -685,6 +686,7 @@ export default function ZakazkyPageClient({ zakazky, vedouci, role, keSchvaleni 
                       <th className="text-left px-4 py-3 font-semibold text-gray-500 dark:text-slate-400 text-xs uppercase tracking-wide">Klient</th>
                       <th className="text-left px-4 py-3 font-semibold text-gray-500 dark:text-slate-400 text-xs uppercase tracking-wide">Název</th>
                       <th className="text-left px-4 py-3 font-semibold text-gray-500 dark:text-slate-400 text-xs uppercase tracking-wide">Stav</th>
+                      <th className="text-left px-4 py-3 font-semibold text-gray-500 dark:text-slate-400 text-xs uppercase tracking-wide">Aktuální fáze</th>
                       <th className="text-left px-4 py-3 font-semibold text-gray-500 dark:text-slate-400 text-xs uppercase tracking-wide">Typ</th>
                       {!isTechnik && <th className="text-left px-4 py-3 font-semibold text-gray-500 dark:text-slate-400 text-xs uppercase tracking-wide">Vedoucí</th>}
                       <th className="text-left px-4 py-3 font-semibold text-gray-500 dark:text-slate-400 text-xs uppercase tracking-wide">Technici</th>
@@ -730,6 +732,9 @@ export default function ZakazkyPageClient({ zakazky, vedouci, role, keSchvaleni 
                           <td className="px-4 py-3 text-gray-600 dark:text-slate-400 text-sm truncate max-w-[140px]">{z.klientJmeno}</td>
                           <td className="px-4 py-3 text-gray-900 dark:text-white font-medium truncate max-w-[200px]">{z.nazev}</td>
                           <td className="px-4 py-3"><StavBadge stav={z.stav} /></td>
+                          <td className="px-4 py-3 text-sm text-gray-600 dark:text-slate-400 whitespace-nowrap">
+                            {z.aktualniFaze ?? <span className="text-gray-400 text-xs">—</span>}
+                          </td>
                           <td className="px-4 py-3 whitespace-nowrap">
                             {z.technologie ? (
                               <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${techColors[z.technologie as keyof typeof techColors] ?? 'bg-gray-100 text-gray-600'}`}>

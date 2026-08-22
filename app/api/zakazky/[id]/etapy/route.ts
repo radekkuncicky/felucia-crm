@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
+import { etapaProgressFromRaw, lzePridatDalsiEtapu } from '@/lib/zakazkaEtapy'
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
@@ -39,7 +40,17 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const last = await db.zakazkaEtapa.findFirst({
     where: { zakazkaId: params.id },
     orderBy: { cislo: 'desc' },
+    include: {
+      predavaky: { select: { stav: true } },
+      vyuctovani: { select: { stav: true } },
+    },
   })
+  if (last && !lzePridatDalsiEtapu([etapaProgressFromRaw(last)])) {
+    return NextResponse.json(
+      { error: `Etapu ${last.cislo} je nejdřív potřeba dokončit (montáž → předávka → vyúčtování), než půjde přidat další.` },
+      { status: 422 },
+    )
+  }
   const cislo = (last?.cislo ?? 0) + 1
 
   const etapa = await db.$transaction(async tx => {

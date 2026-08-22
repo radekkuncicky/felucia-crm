@@ -250,7 +250,14 @@ export default async function ZakazkaDetailLayout({
         zakazkaId={zakazka.id}
         currentStav={zakazka.stav}
         canChange={canEdit}
-        etapy={zakazka.etapy.map(e => ({ id: e.id, cislo: e.cislo, nazev: e.nazev, stav: e.stav }))}
+        etapy={zakazka.etapy.map(e => ({
+          id: e.id,
+          cislo: e.cislo,
+          nazev: e.nazev,
+          stav: e.stav,
+          predavaky: e.predavaky.map(p => ({ stav: p.stav })),
+          vyuctovani: e.vyuctovani.map(v => ({ stav: v.stav })),
+        }))}
       />
 
       {/* Etapy sekce */}
