@@ -73,10 +73,10 @@ const STAV_NEXT: Partial<Record<ZakazkaStav, ZakazkaStav>> = {
 
 const KANBAN_STEPS = Object.entries(STAV_LABELS) as [ZakazkaStav, string][]
 
-// Aktivní vs. hotové — stejné množiny jako mobilní API (/api/mobile/zakazky),
-// ať web a appka říkají „hotová zakázka" témuž.
-const AKTIVNI_STAVY: ZakazkaStav[] = ['NOVA', 'PRIRAZENA', 'V_REALIZACI']
-const HOTOVE_STAVY: ZakazkaStav[] = ['PREDANA', 'VYUCTOVANA', 'HOTOVO']
+// Aktivní vs. hotové — vyúčtováno ještě neznamená hotovo, opravdu hotová je
+// zakázka až po ručním přepnutí do stavu HOTOVO (VYUCTOVANA → HOTOVO).
+const AKTIVNI_STAVY: ZakazkaStav[] = ['NOVA', 'PRIRAZENA', 'V_REALIZACI', 'PREDANA', 'VYUCTOVANA']
+const HOTOVE_STAVY: ZakazkaStav[] = ['HOTOVO']
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
