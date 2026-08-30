@@ -92,6 +92,7 @@ export default function OnboardingWizard({
 
   // Step 6 — Invites
   const [inviteEmails, setInviteEmails] = useState(['', ''])
+  const [invitesSentCount, setInvitesSentCount] = useState(0)
 
   // Step 7 — Import
   const [importFile, setImportFile] = useState<File | null>(null)
@@ -182,7 +183,7 @@ export default function OnboardingWizard({
         userName: jmeno || userName,
         categoryCount: selectedCategories.length,
         logoLoaded: !!logoPreview,
-        invitesSent: inviteEmails.filter(e => e.trim()).length,
+        invitesSent: invitesSentCount,
         productsImported: importDone,
       })
       setStep(8) // finish screen
@@ -249,7 +250,26 @@ export default function OnboardingWizard({
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ emails }),
           })
-          if (!res.ok) { const j = await res.json(); throw new Error(j.error) }
+          const j = await res.json()
+          if (!res.ok) throw new Error(j.error)
+
+          const sent: string[] = j.sent ?? []
+          const skipped: { email: string; reason: string }[] = j.skipped ?? []
+          setInvitesSentCount(c => c + sent.length)
+
+          if (skipped.length > 0) {
+            // V polích nechat jen neúspěšné adresy, ať opakované „Odeslat" neposílá
+            // znovu ty, které prošly. Vyhozená chyba drží wizard na tomto kroku,
+            // aby hlášku nepřebil přechod na další krok — dál se dá jít tlačítkem
+            // „Přeskočit".
+            setInviteEmails(skipped.map(s => s.email))
+            throw new Error(
+              `Nepodařilo se pozvat: ${skipped.map(s => `${s.email} (${s.reason})`).join(', ')}`
+              + (j.planLimitReached
+                ? '. Pro více kolegů povyšte plán v Nastavení → Předplatné, nebo pokračujte a pozvěte je později.'
+                : '')
+            )
+          }
         }
         break
       }

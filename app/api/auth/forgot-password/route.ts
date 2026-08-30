@@ -27,7 +27,7 @@ export async function POST(req: Request) {
   })
 
   const baseUrl = process.env.NEXTAUTH_URL ?? 'https://felucia.io'
-  const url = `${baseUrl}/auth/reset-password?token=${token}`
+  const url = `${baseUrl}/reset-password?token=${token}`
 
   try {
     await sendEmail(user.email, 'Obnova hesla – FELUCIA CRM', emailResetPassword(user.jmeno, url))

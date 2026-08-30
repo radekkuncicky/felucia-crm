@@ -66,7 +66,15 @@ export default function UsersManager({ users: initUsers, maxUsers, activeUserCou
       setActiveCount(c => c + 1)
       setAdding(false)
       setAddForm({ jmeno: '', email: '', heslo: '', role: 'OBCHODNIK' })
-      showToast(addIsTechnik ? 'Technik přidán, pozvánka odeslána e-mailem' : 'Uživatel přidán', 'ok')
+      if (addIsTechnik) {
+        if (data.inviteEmailSent) {
+          showToast('Technik přidán, pozvánka odeslána e-mailem', 'ok')
+        } else {
+          showToast(`Technik přidán, ale pozvánku se nepodařilo odeslat: ${data.inviteEmailError ?? 'neznámá chyba'}`, 'err')
+        }
+      } else {
+        showToast('Uživatel přidán', 'ok')
+      }
     } finally { setSaving(false) }
   }
 
@@ -93,6 +101,9 @@ export default function UsersManager({ users: initUsers, maxUsers, activeUserCou
       setUsers(prev => prev.map(u => u.id === user.id ? { ...u, aktivni: !u.aktivni } : u))
       setActiveCount(c => user.aktivni ? c - 1 : c + 1)
       showToast(user.aktivni ? 'Uživatel deaktivován' : 'Uživatel aktivován', 'ok')
+    } else {
+      const j = await res.json().catch(() => ({}))
+      showToast(j.message ?? 'Změnu se nepodařilo uložit', 'err')
     }
   }
 

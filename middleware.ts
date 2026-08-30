@@ -120,6 +120,13 @@ export async function middleware(req: NextRequest) {
     url.pathname.startsWith('/reset-password') ||
     url.pathname.startsWith('/magic-link')
 
+  // Podmnožina isAuthPage, ze které se přihlášený uživatel přesměruje na /dashboard.
+  // Reset/obnova hesla musí zůstat dostupná i se stále platnou (např. starou) session —
+  // jinak middleware odkopne uživatele zpátky na dashboard dřív, než stihne heslo změnit.
+  const isLoginOnlyPage =
+    url.pathname.startsWith('/auth') ||
+    url.pathname.startsWith('/login')
+
   const isPublicPage =
     url.pathname === '/' ||
     url.pathname.startsWith('/api/webhooks') ||
@@ -142,7 +149,7 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  if (token && !token.isDemo && isAuthPage) {
+  if (token && !token.isDemo && isLoginOnlyPage) {
     url.pathname = '/dashboard'
     return NextResponse.redirect(url)
   }

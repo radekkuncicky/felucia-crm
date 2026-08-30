@@ -3,6 +3,7 @@ import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { Role } from '@prisma/client'
+import { checkUserLimit } from '@/lib/checkPlanLimit'
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
@@ -15,6 +16,18 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (!user) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const body = await req.json()
+
+  // Reaktivace zabírá licenci stejně jako založení nového uživatele, takže
+  // musí projít stejným limitem — jinak by deaktivace + založení + reaktivace
+  // limit plánu obešly.
+  if (body.aktivni === true && !user.aktivni && !(await checkUserLimit(orgId))) {
+    return NextResponse.json({
+      error: 'PLAN_LIMIT_REACHED',
+      message: 'Dosáhli jste limitu uživatelů pro váš plán.',
+      upgradeUrl: '/settings/billing',
+    }, { status: 403 })
+  }
+
   const updated = await db.user.update({
     where: { id: params.id },
     data: {

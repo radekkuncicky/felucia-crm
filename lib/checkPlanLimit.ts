@@ -15,7 +15,9 @@ export async function checkUserLimit(orgId: string): Promise<boolean> {
   if (!org) return false
   const limits = getPlanLimits(org.plan)
   if (limits.maxUsers === Infinity) return true
-  const count = await prisma.user.count({ where: { orgId } })
+  // Licenci v plánu zabírá jen aktivní uživatel — stejně jako varování v UI
+  // (settings/users). Proto limit hlídá i reaktivace, ne jen zakládání.
+  const count = await prisma.user.count({ where: { orgId, aktivni: true } })
   return count < limits.maxUsers
 }
 

@@ -7,7 +7,7 @@ import crypto from 'crypto'
 import { Role } from '@prisma/client'
 import { checkUserLimit } from '@/lib/checkPlanLimit'
 import { logAction } from '@/lib/auditLog'
-import { sendEmail, emailTechnikInvite, isEmailConfigured } from '@/lib/email'
+import { sendOrgEmail, emailTechnikInvite, isOrgEmailConfigured } from '@/lib/email'
 
 export async function GET() {
   const session = await getServerSession(authOptions)
@@ -73,21 +73,30 @@ export async function POST(req: Request) {
     zmeny: { jmeno, email, role: user.role },
   })
 
-  if (isTechnik && isEmailConfigured()) {
-    try {
-      const token = crypto.randomBytes(32).toString('hex')
-      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-      await db.passwordResetToken.create({ data: { userId: user.id, token, expiresAt } })
+  let inviteEmailSent = false
+  let inviteEmailError: string | null = null
 
-      const baseUrl = process.env.NEXTAUTH_URL ?? 'https://crm.workspace-felucia.io'
-      const setPasswordUrl = `${baseUrl}/auth/reset-password?token=${token}`
-      const appDownloadUrl = process.env.FELUCIA_TECH_APP_URL
+  if (isTechnik) {
+    if (await isOrgEmailConfigured(orgId)) {
+      try {
+        const token = crypto.randomBytes(32).toString('hex')
+        const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+        await db.passwordResetToken.create({ data: { userId: user.id, token, expiresAt } })
 
-      await sendEmail(user.email, 'Přístup do aplikace Felucia Tech', emailTechnikInvite(user.jmeno, setPasswordUrl, appDownloadUrl))
-    } catch (err) {
-      console.error('Technik invite email error:', err)
+        const baseUrl = process.env.NEXTAUTH_URL ?? 'https://crm.workspace-felucia.io'
+        const setPasswordUrl = `${baseUrl}/reset-password?token=${token}`
+        const appDownloadUrl = process.env.FELUCIA_TECH_APP_URL
+
+        await sendOrgEmail(orgId, user.email, 'Přístup do aplikace Felucia Tech', emailTechnikInvite(user.jmeno, setPasswordUrl, appDownloadUrl))
+        inviteEmailSent = true
+      } catch (err) {
+        console.error('Technik invite email error:', err)
+        inviteEmailError = 'Pozvánku se nepodařilo odeslat e-mailem.'
+      }
+    } else {
+      inviteEmailError = 'Odesílání e-mailů není nastaveno — pošlete techniku reset odkaz ručně přes "Reset hesla" po nastavení SMTP.'
     }
   }
 
-  return NextResponse.json(user, { status: 201 })
+  return NextResponse.json({ ...user, inviteEmailSent, inviteEmailError }, { status: 201 })
 }

@@ -25,7 +25,7 @@ export async function POST(req: Request) {
   await orgPrisma(session.user.orgId).passwordResetToken.create({ data: { userId: user.id, token, expiresAt } })
 
   const baseUrl = process.env.NEXTAUTH_URL ?? 'https://crm.workspace-felucia.io'
-  const url = `${baseUrl}/auth/reset-password?token=${token}`
+  const url = `${baseUrl}/reset-password?token=${token}`
 
   try {
     await sendEmail(user.email, 'Obnova hesla – FELUCIA CRM', emailResetPassword(user.jmeno, url))
