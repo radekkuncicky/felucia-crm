@@ -275,7 +275,6 @@ export default async function ZakazkaDetailLayout({
           vyuctovani: e.vyuctovani,
         }))}
         canEdit={canEdit}
-        zakazkaStav={zakazka.stav}
       />
 
       {/* Marže panel (not technik) — zobraz jen pokud jsou data */}

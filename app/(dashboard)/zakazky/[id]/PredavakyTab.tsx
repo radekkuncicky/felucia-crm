@@ -145,6 +145,30 @@ export default function PredavakyTab({ zakazkaId, predavaky: initialPredavaky, c
     }
   }
 
+  async function handleAssignEtapa(predavakId: string, etapaId: string | null) {
+    setLoading(predavakId)
+    setChyba(null)
+    const predchozi = predavaky
+    setPredavaky(prev => prev.map(p => p.id === predavakId ? { ...p, etapaId } : p))
+    try {
+      const res = await fetch(`/api/predavaky/${predavakId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ etapaId }),
+      })
+      if (!res.ok) {
+        setPredavaky(predchozi)
+        const err = await res.json().catch(() => ({}))
+        setChyba(err.error ?? 'Nepodařilo se přeřadit protokol k etapě')
+      }
+    } catch {
+      setPredavaky(predchozi)
+      setChyba('Chyba připojení, zkuste znovu')
+    } finally {
+      setLoading(null)
+    }
+  }
+
   async function handleOdmitnout(predavakId: string) {
     if (!odmitnutiDuvod.trim()) return
     setLoading(predavakId)
@@ -230,6 +254,7 @@ export default function PredavakyTab({ zakazkaId, predavaky: initialPredavaky, c
             onNovy={handleNovy}
             onSchvalit={handleSchvalit}
             onOdmitnout={id => setOdmitnutiModal(id)}
+            onAssignEtapa={canApprove ? handleAssignEtapa : undefined}
           />
         )}
       </div>
@@ -237,9 +262,10 @@ export default function PredavakyTab({ zakazkaId, predavaky: initialPredavaky, c
   )
 }
 
-function PredavakRow({ p, zakazkaId, canApprove, loading, onSchvalit, onOdmitnout }: {
-  p: Predavak; zakazkaId: string; canApprove: boolean; loading: string | null
+function PredavakRow({ p, zakazkaId, canApprove, loading, etapy, onSchvalit, onOdmitnout, onAssignEtapa }: {
+  p: Predavak; zakazkaId: string; canApprove: boolean; loading: string | null; etapy: EtapaInfo[]
   onSchvalit: (id: string) => void; onOdmitnout: (id: string) => void
+  onAssignEtapa?: (id: string, etapaId: string | null) => void
 }) {
   return (
     <div className="px-5 py-4 flex items-center justify-between gap-4 flex-wrap">
@@ -264,6 +290,20 @@ function PredavakRow({ p, zakazkaId, canApprove, loading, onSchvalit, onOdmitnou
         )}
       </div>
       <div className="flex items-center gap-2">
+        {onAssignEtapa && etapy.length > 0 && (
+          <select
+            value={p.etapaId ?? ''}
+            onChange={e => onAssignEtapa(p.id, e.target.value || null)}
+            disabled={loading === p.id}
+            title="Přiřadit k etapě"
+            className="text-xs border border-gray-300 dark:border-slate-600 rounded-lg px-2 py-1 bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-300 disabled:opacity-50"
+          >
+            <option value="">Bez etapy</option>
+            {etapy.map(e => (
+              <option key={e.id} value={e.id}>{e.nazev ? `Etapa ${e.cislo} — ${e.nazev}` : `Etapa ${e.cislo}`}</option>
+            ))}
+          </select>
+        )}
         <Link href={`/zakazky/${zakazkaId}/predavaky/${p.id}`} className="text-sm text-primary dark:text-primary-light hover:underline font-medium">
           Detail
         </Link>
@@ -282,17 +322,18 @@ function PredavakRow({ p, zakazkaId, canApprove, loading, onSchvalit, onOdmitnou
   )
 }
 
-function PredavakyList({ predavaky, etapy, zakazkaId, canCreate, canApprove, loading, onNovy, onSchvalit, onOdmitnout }: {
+function PredavakyList({ predavaky, etapy, zakazkaId, canCreate, canApprove, loading, onNovy, onSchvalit, onOdmitnout, onAssignEtapa }: {
   predavaky: Predavak[]; etapy: EtapaInfo[]; zakazkaId: string
   canCreate: boolean; canApprove: boolean; loading: string | null
   onNovy: (etapaId?: string) => void
   onSchvalit: (id: string) => void; onOdmitnout: (id: string) => void
+  onAssignEtapa?: (id: string, etapaId: string | null) => void
 }) {
   if (etapy.length === 0) {
     return (
       <div className="divide-y divide-gray-100 dark:divide-slate-700">
         {predavaky.map(p => (
-          <PredavakRow key={p.id} p={p} zakazkaId={zakazkaId} canApprove={canApprove} loading={loading} onSchvalit={onSchvalit} onOdmitnout={onOdmitnout} />
+          <PredavakRow key={p.id} p={p} zakazkaId={zakazkaId} canApprove={canApprove} loading={loading} etapy={etapy} onSchvalit={onSchvalit} onOdmitnout={onOdmitnout} onAssignEtapa={onAssignEtapa} />
         ))}
       </div>
     )
@@ -323,7 +364,7 @@ function PredavakyList({ predavaky, etapy, zakazkaId, canCreate, canApprove, loa
               <div className="px-5 py-3 text-xs text-gray-400 dark:text-slate-500 italic">Žádné protokoly</div>
             ) : (
               <div className="divide-y divide-gray-100 dark:divide-slate-700">
-                {pp.map(p => <PredavakRow key={p.id} p={p} zakazkaId={zakazkaId} canApprove={canApprove} loading={loading} onSchvalit={onSchvalit} onOdmitnout={onOdmitnout} />)}
+                {pp.map(p => <PredavakRow key={p.id} p={p} zakazkaId={zakazkaId} canApprove={canApprove} loading={loading} etapy={etapy} onSchvalit={onSchvalit} onOdmitnout={onOdmitnout} onAssignEtapa={onAssignEtapa} />)}
               </div>
             )}
           </div>
@@ -335,7 +376,7 @@ function PredavakyList({ predavaky, etapy, zakazkaId, canCreate, canApprove, loa
             <span className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wide">Bez etapy</span>
           </div>
           <div className="divide-y divide-gray-100 dark:divide-slate-700">
-            {bezEtapy.map(p => <PredavakRow key={p.id} p={p} zakazkaId={zakazkaId} canApprove={canApprove} loading={loading} onSchvalit={onSchvalit} onOdmitnout={onOdmitnout} />)}
+            {bezEtapy.map(p => <PredavakRow key={p.id} p={p} zakazkaId={zakazkaId} canApprove={canApprove} loading={loading} etapy={etapy} onSchvalit={onSchvalit} onOdmitnout={onOdmitnout} onAssignEtapa={onAssignEtapa} />)}
           </div>
         </div>
       )}

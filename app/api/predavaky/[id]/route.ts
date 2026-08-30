@@ -162,6 +162,26 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     return reopenPredavak(db, orgId, session.user.id, predavak)
   }
 
+  // Přiřazení k etapě — čistě organizační přeřazení, nemění položky ani sklad,
+  // proto ho lze udělat i na už schváleném protokolu (na rozdíl od úprav níže).
+  if ('etapaId' in body) {
+    if (!isManager) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    const { etapaId } = body
+    if (etapaId !== null && typeof etapaId !== 'string') {
+      return NextResponse.json({ error: 'Neplatná etapa' }, { status: 400 })
+    }
+    if (etapaId) {
+      const etapa = await db.zakazkaEtapa.findFirst({ where: { id: etapaId, zakazkaId: predavak.zakazkaId, orgId } })
+      if (!etapa) return NextResponse.json({ error: 'Etapa nenalezena' }, { status: 404 })
+    }
+    const updated = await db.predavak.update({
+      where: { id: params.id },
+      data: { etapaId },
+      include: { polozky: { orderBy: { id: 'asc' } }, fotky: true },
+    })
+    return NextResponse.json(updated)
+  }
+
   if (predavak.stav === 'SCHVALEN') {
     return NextResponse.json({ error: 'Nelze editovat schválený protokol' }, { status: 422 })
   }

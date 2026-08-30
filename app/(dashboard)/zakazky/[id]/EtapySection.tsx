@@ -26,7 +26,6 @@ interface Props {
   zakazkaId: string
   etapy: Etapa[]
   canEdit: boolean
-  zakazkaStav: string
 }
 
 const STAV_LABELS: Record<EtapaStav, string> = {
@@ -56,16 +55,12 @@ function formatDate(iso: string | null) {
   return new Date(iso).toLocaleDateString('cs-CZ', { day: 'numeric', month: 'short' })
 }
 
-export default function EtapySection({ zakazkaId, etapy: initialEtapy, canEdit, zakazkaStav }: Props) {
+export default function EtapySection({ zakazkaId, etapy: initialEtapy, canEdit }: Props) {
   const router = useRouter()
   const [etapy, setEtapy] = useState<Etapa[]>(initialEtapy)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
-
-  const showSection = etapy.length > 0 || ['V_REALIZACI', 'PREDANA', 'VYUCTOVANA', 'HOTOVO'].includes(zakazkaStav)
-
-  if (!showSection) return null
 
   const canAddEtapa = lzePridatDalsiEtapu(etapy.map(etapaProgressFromRaw))
   const posledniEtapa = etapy[etapy.length - 1]
