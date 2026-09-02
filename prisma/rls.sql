@@ -199,12 +199,6 @@ DROP POLICY IF EXISTS org_rls ON "users";
 CREATE POLICY org_rls ON "users" FOR ALL TO nanto_app
   USING ("orgId" = current_setting('app.org_id', true)) WITH CHECK ("orgId" = current_setting('app.org_id', true));
 
--- VisibilityNode
-ALTER TABLE "visibility_nodes" ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS org_rls ON "visibility_nodes";
-CREATE POLICY org_rls ON "visibility_nodes" FOR ALL TO nanto_app
-  USING ("orgId" = current_setting('app.org_id', true)) WITH CHECK ("orgId" = current_setting('app.org_id', true));
-
 -- Vyuctovani
 ALTER TABLE "vyuctovani" ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS org_rls ON "vyuctovani";

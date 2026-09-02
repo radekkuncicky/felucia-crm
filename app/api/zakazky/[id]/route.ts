@@ -2,8 +2,9 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
-import { canTechnikAccessZakazka } from '@/lib/zakazkyHelpers'
+import { canAccessZakazka, userHasPerm } from '@/lib/zakazkyHelpers'
 import { sendPushToUsers } from '@/lib/push'
+import { getPerms, forbidden } from '@/lib/permissions'
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
@@ -11,11 +12,9 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)
-  const isTechnik = session.user.role === 'TECHNIK'
+  const perms = getPerms(session.user)
 
-  if (isTechnik && !(await canTechnikAccessZakazka(session.user.id, params.id, session.user.orgId))) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  if (!(await canAccessZakazka(session.user, perms, params.id))) return forbidden()
 
   const zakazka = await db.zakazka.findFirst({
     where: { id: params.id, orgId },
@@ -33,8 +32,8 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 
   if (!zakazka) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  // Strip prodejniCena for technicians
-  if (isTechnik) {
+  // Bez oprávnění na prodejní ceny je z položek vystřihneme
+  if (!perms.financeProdejni) {
     return NextResponse.json({
       ...zakazka,
       polozky: zakazka.polozky.map(p => ({ ...p, prodejniCena: null })),
@@ -47,14 +46,15 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const isTechnik = session.user.role === 'TECHNIK'
+  const perms = getPerms(session.user)
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)
   const body = await req.json()
 
-  // Technik může měnit pouze mistoStavby
-  if (isTechnik) {
-    if (body.mistoStavby === undefined) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  // Bez práva editace smí uživatel s přístupem na zakázku měnit jen mistoStavby (technik na stavbě)
+  if (!perms.zakazkyEdit) {
+    if (body.mistoStavby === undefined) return forbidden()
+    if (!(await canAccessZakazka(session.user, perms, params.id))) return forbidden()
     const zakazka = await db.zakazka.findFirst({ where: { id: params.id, orgId } })
     if (!zakazka) return NextResponse.json({ error: 'Not found' }, { status: 404 })
     await db.zakazka.update({
@@ -69,6 +69,10 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     select: { montazOd: true, montazDo: true },
   })
   if (!puvodni) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  if (body.vedouciId && !(await userHasPerm(orgId, body.vedouciId, 'zakazkySchvalovani'))) {
+    return NextResponse.json({ error: 'Vedoucí nemá oprávnění schvalovat' }, { status: 400 })
+  }
 
   const zakazka = await db.zakazka.update({
     where: { id: params.id, orgId },
@@ -108,7 +112,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 export async function DELETE(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (session.user.role !== 'ADMIN') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!getPerms(session.user).zakazkyMazani) return forbidden()
 
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)

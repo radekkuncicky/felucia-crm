@@ -2,11 +2,13 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
+import { getPerms, forbidden } from '@/lib/permissions'
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (session.user.role === 'TECHNIK') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const perms = getPerms(session.user)
+  if (!perms.zakazkyEdit) return forbidden()
 
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)
@@ -24,7 +26,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       nazev,
       mnozstvi: Number(mnozstvi ?? 1),
       jednotka: jednotka ?? 'ks',
-      nakupniCena: nakupniCena != null ? Number(nakupniCena) : null,
+      nakupniCena: perms.financeNakupkyEdit && nakupniCena != null ? Number(nakupniCena) : null,
       prodejniCena: Number(prodejniCena ?? 0),
       dphSazba: Number(dphSazba ?? 21),
       poradi: count,

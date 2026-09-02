@@ -3,6 +3,7 @@ import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { ZakazkaStav } from '@prisma/client'
+import { getPerms, forbidden } from '@/lib/permissions'
 
 const validTransitions: Record<ZakazkaStav, ZakazkaStav[]> = {
   NOVA: ['PRIRAZENA'],
@@ -16,7 +17,7 @@ const validTransitions: Record<ZakazkaStav, ZakazkaStav[]> = {
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (session.user.role === 'TECHNIK') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!getPerms(session.user).zakazkyEdit) return forbidden()
 
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)

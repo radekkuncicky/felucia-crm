@@ -39,7 +39,14 @@ interface ZakazkaRow {
 interface Props {
   zakazky: ZakazkaRow[]
   vedouci: { id: string; jmeno: string }[]
-  role: string
+  /** zjednodušený technický pohled (bez obchodu) — „Moje zakázky", bez vedoucího */
+  isTechnik: boolean
+  /** zakládat/editovat/hromadně měnit stav (zakazkyEdit) */
+  canCreate: boolean
+  /** schvalovat předáváky/vyúčtování — lišta „Ke schválení" (zakazkySchvalovani) */
+  canApprove: boolean
+  /** cenové sloupce (financeProdejni) */
+  showCeny: boolean
   keSchvaleni?: KeSchvaleniPolozka[]
 }
 
@@ -370,14 +377,15 @@ function NovaZakazkaModal({ open, onClose }: { open: boolean; onClose: () => voi
   )
 }
 
-function tableColSpan(canCreate: boolean, isTechnik: boolean): number {
+function tableColSpan(canCreate: boolean, isTechnik: boolean, showCeny: boolean): number {
   // checkbox + Číslo/Klient/Název/Stav/Aktuální fáze/Typ/Technici/Montáž (8) + trailing akce sloupec
-  return (canCreate ? 1 : 0) + 8 + 1 + (isTechnik ? 0 : 3)
+  return (canCreate ? 1 : 0) + 8 + 1 + (isTechnik ? 0 : 1) + (showCeny ? 2 : 0)
 }
 
-function ZakazkaTableRow({ z, isTechnik, canCreate, isSelected, onToggleSelect, inlineLoadingId, onInlineStavChange }: {
+function ZakazkaTableRow({ z, isTechnik, showCeny, canCreate, isSelected, onToggleSelect, inlineLoadingId, onInlineStavChange }: {
   z: ZakazkaRow
   isTechnik: boolean
+  showCeny: boolean
   canCreate: boolean
   isSelected: boolean
   onToggleSelect: (checked: boolean) => void
@@ -427,12 +435,12 @@ function ZakazkaTableRow({ z, isTechnik, canCreate, isSelected, onToggleSelect, 
           </span>
         ) : <span className="text-gray-300 dark:text-slate-600">—</span>}
       </td>
-      {!isTechnik && (
+      {showCeny && (
         <td className="px-4 py-3 text-right text-sm font-medium text-gray-700 dark:text-slate-300 whitespace-nowrap">
           {z.cenaOP !== null ? fmtKc(z.cenaOP) : <span className="text-gray-400 dark:text-slate-500">—</span>}
         </td>
       )}
-      {!isTechnik && (
+      {showCeny && (
         <td className="px-4 py-3 text-right text-sm font-medium text-gray-700 dark:text-slate-300 whitespace-nowrap">
           {z.cenaVyuctovani > 0 ? fmtKc(z.cenaVyuctovani) : <span className="text-gray-400 dark:text-slate-500">—</span>}
         </td>
@@ -459,10 +467,8 @@ function ZakazkaTableRow({ z, isTechnik, canCreate, isSelected, onToggleSelect, 
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function ZakazkyPageClient({ zakazky, vedouci, role, keSchvaleni = [] }: Props) {
+export default function ZakazkyPageClient({ zakazky, vedouci, isTechnik, canCreate, canApprove, showCeny, keSchvaleni = [] }: Props) {
   const router = useRouter()
-  const isTechnik = role === 'TECHNIK'
-  const canCreate = role === 'ADMIN'
 
   // Local copy for optimistic updates
   const [localZakazky, setLocalZakazky] = useState<ZakazkaRow[]>(zakazky)
@@ -697,7 +703,7 @@ export default function ZakazkyPageClient({ zakazky, vedouci, role, keSchvaleni 
           </div>
         </div>
 
-        {!isTechnik && <KeSchvaleniBar polozky={keSchvaleni} />}
+        {canApprove && <KeSchvaleniBar polozky={keSchvaleni} />}
 
         {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
@@ -804,8 +810,8 @@ export default function ZakazkyPageClient({ zakazky, vedouci, role, keSchvaleni 
                           </span>
                         </button>
                       </th>
-                      {!isTechnik && <th className="text-right px-4 py-3 font-semibold text-gray-500 dark:text-slate-400 text-xs uppercase tracking-wide">Cena dle OP</th>}
-                      {!isTechnik && <th className="text-right px-4 py-3 font-semibold text-gray-500 dark:text-slate-400 text-xs uppercase tracking-wide">Vyúčtováno</th>}
+                      {showCeny && <th className="text-right px-4 py-3 font-semibold text-gray-500 dark:text-slate-400 text-xs uppercase tracking-wide">Cena dle OP</th>}
+                      {showCeny && <th className="text-right px-4 py-3 font-semibold text-gray-500 dark:text-slate-400 text-xs uppercase tracking-wide">Vyúčtováno</th>}
                       <th className="px-4 py-3" />
                     </tr>
                   </thead>
@@ -815,6 +821,7 @@ export default function ZakazkyPageClient({ zakazky, vedouci, role, keSchvaleni 
                         key={z.id}
                         z={z}
                         isTechnik={isTechnik}
+                        showCeny={showCeny}
                         canCreate={canCreate}
                         isSelected={selectedSet.has(z.id)}
                         onToggleSelect={checked => {
@@ -829,7 +836,7 @@ export default function ZakazkyPageClient({ zakazky, vedouci, role, keSchvaleni 
                   {hotoveRows.length > 0 && (
                     <tbody>
                       <tr className="border-t border-gray-200 dark:border-slate-700">
-                        <td colSpan={tableColSpan(canCreate, isTechnik)} className="px-4 py-0">
+                        <td colSpan={tableColSpan(canCreate, isTechnik, showCeny)} className="px-4 py-0">
                           <button
                             onClick={() => setHotoveExpanded(v => !v)}
                             className="w-full flex items-center gap-2 py-2.5 text-sm font-medium text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 transition-colors"
@@ -850,6 +857,7 @@ export default function ZakazkyPageClient({ zakazky, vedouci, role, keSchvaleni 
                           key={z.id}
                           z={z}
                           isTechnik={isTechnik}
+                          showCeny={showCeny}
                           canCreate={canCreate}
                           isSelected={selectedSet.has(z.id)}
                           onToggleSelect={checked => {

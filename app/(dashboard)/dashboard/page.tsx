@@ -12,6 +12,7 @@ import {
   IconHammer, IconCreditCard, IconSparkles,
 } from '@/components/ui/Icons'
 import { formatKcCompact } from '@/lib/format'
+import { getPerms, isTechnikView } from '@/lib/permissions'
 
 const stavLabels: Record<StavDealu, string> = {
   NOVY: 'Nový', JEDNANI: 'Jednání', NABIDKA: 'Nabídka',
@@ -141,7 +142,7 @@ export default async function DashboardPage() {
   }, 0)
   const maxStageCount = Math.max(...pipelineStages.map(s => countByStav[s.stav] ?? 0), 1)
 
-  const role = session!.user.role
+  const perms = getPerms(session!.user)
   const firstName = session!.user.jmeno.split(' ')[0]
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Dobré ráno' : hour < 18 ? 'Dobrý den' : 'Dobrý večer'
@@ -380,13 +381,13 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Zakázky section for managers */}
-      {role === 'ADMIN' && (
+      {/* Zakázky section for managers (schvalování předáváků/vyúčtování) */}
+      {perms.zakazkySchvalovani && (
         <ZakazkyDashboardSection orgId={orgId} />
       )}
 
       {/* Technik: assigned orders & protocols */}
-      {role === 'TECHNIK' && (
+      {isTechnikView(perms) && (
         <TechnikDashboardSection userId={session!.user.id} orgId={orgId} />
       )}
     </div>

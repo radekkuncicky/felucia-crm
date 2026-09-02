@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
+import { getPerms } from '@/lib/permissions'
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
@@ -17,6 +18,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
     },
   })
   if (!product) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (!getPerms(session.user).financeNakupky) return NextResponse.json({ ...product, nakladovaCena: null })
   return NextResponse.json(product)
 }
 
@@ -43,7 +45,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     produktovaRada: body.produktovaRada !== undefined ? (body.produktovaRada || null) : product.produktovaRada,
     popis: body.popis !== undefined ? (body.popis || null) : product.popis,
     dphSazba: body.dphSazba !== undefined ? Number(body.dphSazba) : product.dphSazba,
-    nakladovaCena: body.nakladovaCena !== undefined ? (body.nakladovaCena !== null && body.nakladovaCena !== '' ? Number(body.nakladovaCena) : null) : product.nakladovaCena,
+    nakladovaCena: body.nakladovaCena !== undefined && getPerms(session.user).financeNakupkyEdit ? (body.nakladovaCena !== null && body.nakladovaCena !== '' ? Number(body.nakladovaCena) : null) : product.nakladovaCena,
     standardniCena: body.standardniCena !== undefined ? Number(body.standardniCena) : product.standardniCena,
     jednotka: body.jednotka ?? product.jednotka,
     aktivni: body.aktivni !== undefined ? body.aktivni : product.aktivni,
@@ -68,7 +70,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (session.user.role !== 'ADMIN') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!getPerms(session.user).nastaveniOrg) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)
 

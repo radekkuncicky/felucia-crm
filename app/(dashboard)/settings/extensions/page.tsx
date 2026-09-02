@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
 import ExtensionsManager from './ExtensionsManager'
 import { IconMail, IconBuilding, IconPhone } from '@/components/ui/Icons'
+import { getPerms } from '@/lib/permissions'
 
 const AVAILABLE_EXTENSIONS = [
   { nazev: 'digisign', label: 'DigiSign', popis: 'Elektronické podepisování dokumentů', icon: '✍️' },
@@ -14,7 +15,7 @@ const AVAILABLE_EXTENSIONS = [
 
 export default async function ExtensionsPage() {
   const session = await getServerSession(authOptions)
-  if (!session || session.user.role !== 'ADMIN') redirect('/dashboard')
+  if (!session || !getPerms(session.user).nastaveniOrg) redirect('/dashboard')
   const orgId = session.user.orgId
 
   const extensions = await prisma.extension.findMany({ where: { orgId } })

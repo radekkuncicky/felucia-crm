@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { orgPrisma } from '@/lib/orgPrisma'
+import { servisScopeWhere } from '@/lib/permissions'
 import { getPlanLimits } from '@/lib/planLimits'
 import { getMobileOrWebSession, requireTechnikOrAdmin } from '@/lib/mobile-helpers'
 
@@ -15,13 +16,15 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'Servisní modul není v plánu' }, { status: 403 })
   }
 
-  const { orgId, id: userId, role } = session!.user
+  const { orgId, id: userId } = session!.user
+  const scope = servisScopeWhere(session!.user.perms, userId)
+  if (scope === null) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   const vse = new URL(req.url).searchParams.get('vse') === '1'
 
   const zakazky = await orgPrisma(orgId).servisniZakazka.findMany({
     where: {
       orgId,
-      ...(role === 'TECHNIK' ? { technikId: userId } : {}),
+      ...scope,
       ...(vse ? {} : { stav: { in: [...AKTIVNI_STAVY] as never } }),
     },
     include: {

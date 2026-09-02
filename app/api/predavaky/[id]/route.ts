@@ -4,16 +4,10 @@ import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { Predavak, ZakazkaStav } from '@prisma/client'
 import { vratZakazkuZPredane } from '@/lib/zakazkaStavFlow'
+import { canAccessPredavak, canEditPredavak } from '@/lib/zakazkyHelpers'
+import { getPerms, forbidden } from '@/lib/permissions'
 
 type Db = ReturnType<typeof orgPrisma>
-
-async function canAccess(userId: string, role: string, predavakId: string, orgId: string) {
-  if (role === 'ADMIN') return true
-  const p = await orgPrisma(orgId).predavak.findFirst({ where: { id: predavakId } })
-  if (!p) return false
-  if (role === 'TECHNIK') return p.technikId === userId
-  return true // OBCHODNIK (ADMIN handled above)
-}
 
 /**
  * Vrátí protokol do stavu Rozpracován a odčiní všechno, co schválení způsobilo:
@@ -114,10 +108,6 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)
-  if (!(await canAccess(session.user.id, session.user.role, params.id, orgId))) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
-
   const predavak = await db.predavak.findFirst({
     where: { id: params.id, orgId },
     include: {
@@ -135,6 +125,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   })
 
   if (!predavak) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (!(await canAccessPredavak(session.user, getPerms(session.user), predavak))) return forbidden()
 
   return NextResponse.json(predavak)
 }
@@ -145,14 +136,13 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)
-  const isManager = session.user.role === 'ADMIN' || session.user.role === 'OBCHODNIK'
+  const perms = getPerms(session.user)
+  const isManager = perms.zakazkySchvalovani
 
   const predavak = await db.predavak.findFirst({ where: { id: params.id, orgId } })
   if (!predavak) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  if (session.user.role === 'TECHNIK' && predavak.technikId !== session.user.id) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  if (!canEditPredavak(session.user, perms, predavak)) return forbidden()
 
   const body = await req.json()
 
@@ -227,8 +217,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const isManager = session.user.role === 'ADMIN' || session.user.role === 'OBCHODNIK'
-  if (!isManager) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!getPerms(session.user).zakazkySchvalovani) return forbidden()
 
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)

@@ -110,7 +110,8 @@ interface Props {
   templates: TemplateData[]
   renderTemplates: RenderTemplate[]
   dphSazba: number
-  userRole: string
+  /** zobrazit nákupní ceny a marži (oprávnění financeNakupky) */
+  showNakupky: boolean
   clientEmail?: string | null
 }
 
@@ -535,7 +536,7 @@ export default function NabidkyTab({
   templates,
   renderTemplates,
   dphSazba: dealDph,
-  userRole,
+  showNakupky,
   clientEmail,
 }: Props) {
   const [quotes, setQuotes] = useState(() =>
@@ -568,7 +569,7 @@ export default function NabidkyTab({
   >('idle')
   const [moreOpen, setMoreOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
-  const isManazer = userRole === 'MANAZER' || userRole === 'ADMIN'
+  const isManazer = showNakupky
   const router = useRouter()
 
   // Auto-activate first CN if none is active on mount

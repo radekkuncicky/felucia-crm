@@ -3,10 +3,11 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import { stripe, STRIPE_PLANS } from '@/lib/stripe'
+import { getPerms } from '@/lib/permissions'
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
-  if (!session || session.user.role !== 'ADMIN') {
+  if (!session || !getPerms(session.user).fakturace) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

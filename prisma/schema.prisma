@@ -8,7 +8,9 @@ datasource db {
 
 enum Role {
   ADMIN
+  MANAZER
   OBCHODNIK
+  HLAVNI_TECHNIK
   TECHNIK
 }
 
@@ -111,12 +113,6 @@ enum TypPole {
   DATUM
   CHECKBOX
   VYBER
-}
-
-enum Viditelnost {
-  ALL
-  OWN
-  SELECTED
 }
 
 enum QuoteTemplateTyp {
@@ -278,7 +274,6 @@ model Organization {
   webhookEndpoints     WebhookEndpoint[]
   auditLogs            AuditLog[]
   customFields         CustomField[]
-  visibilityNodes      VisibilityNode[]
   extensions           Extension[]
   ceniky               Cenik[]
   zarizeni             Zarizeni[]
@@ -315,9 +310,10 @@ model User {
   role         Role     @default(OBCHODNIK)
   aktivni      Boolean  @default(true)
   isSuperAdmin  Boolean   @default(false)
-  serviceAccess Boolean   @default(false)
   // zmocněnec k podpisu smluv o dílo za zhotovitele (nastavuje ADMIN)
   podepisujeSmlouvy Boolean @default(false)
+  // per-user přepisy oprávnění nad presetem role (Partial<Permissions>, viz lib/permissions.ts)
+  permissions   Json?
   telefon      String?
   avatar       String?
   pushToken    String?
@@ -329,7 +325,6 @@ model User {
   activities          Activity[]           @relation("ActivityUser")
   assignedActivities  Activity[]           @relation("ActivityResitel")
   auditLogs           AuditLog[]
-  visibilityNodes     VisibilityNodeUser[]
   passwordResetTokens PasswordResetToken[]
   magicLinkTokens     MagicLinkToken[]
   servisniZakazky     ServisniZakazka[]
@@ -794,34 +789,6 @@ model CustomFieldValue {
 
   @@unique([entityId, fieldId])
   @@map("custom_field_values")
-}
-
-model VisibilityNode {
-  id       String  @id @default(cuid())
-  orgId    String
-  parentId String?
-  nazev    String
-  poradi   Int     @default(0)
-
-  organization Organization        @relation(fields: [orgId], references: [id])
-  parent       VisibilityNode?     @relation("NodeChildren", fields: [parentId], references: [id])
-  children     VisibilityNode[]    @relation("NodeChildren")
-  users        VisibilityNodeUser[]
-
-  @@map("visibility_nodes")
-}
-
-model VisibilityNodeUser {
-  id          String      @id @default(cuid())
-  nodeId      String
-  userId      String
-  viditelnost Viditelnost @default(ALL)
-
-  node VisibilityNode @relation(fields: [nodeId], references: [id], onDelete: Cascade)
-  user User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([nodeId, userId])
-  @@map("visibility_node_users")
 }
 
 model Extension {

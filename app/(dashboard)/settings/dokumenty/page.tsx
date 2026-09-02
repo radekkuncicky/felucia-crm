@@ -4,12 +4,13 @@ import { redirect } from 'next/navigation'
 import { getOrgSettings } from '@/lib/orgSettings'
 import { getPlanLimits } from '@/lib/planLimits'
 import DokumentySettingsForm from './DokumentySettingsForm'
+import { getPerms } from '@/lib/permissions'
 
 export const dynamic = 'force-dynamic'
 
 export default async function DokumentySettingsPage() {
   const session = await getServerSession(authOptions)
-  if (!session || session.user.role !== 'ADMIN') redirect('/settings')
+  if (!session || !getPerms(session.user).nastaveniOrg) redirect('/settings')
 
   const settings = await getOrgSettings(session.user.orgId)
   const hasWhiteLabel = getPlanLimits(session.user.plan).hasWhiteLabel

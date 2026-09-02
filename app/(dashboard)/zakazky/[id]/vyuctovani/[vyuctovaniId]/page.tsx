@@ -3,6 +3,8 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
 import VyuctovaniDetailClient from './VyuctovaniDetailClient'
+import { getPerms } from '@/lib/permissions'
+import { canAccessZakazka } from '@/lib/zakazkyHelpers'
 
 export default async function VyuctovaniDetailPage({
   params,
@@ -11,7 +13,9 @@ export default async function VyuctovaniDetailPage({
 }) {
   const session = await getServerSession(authOptions)
   if (!session) notFound()
-  if (session.user.role === 'TECHNIK') notFound()
+  const perms = getPerms(session.user)
+  if (!perms.financeProdejni) notFound()
+  if (!(await canAccessZakazka(session.user, perms, params.id))) notFound()
 
   const orgId = session.user.orgId
 
@@ -74,13 +78,15 @@ export default async function VyuctovaniDetailPage({
           nazev: p.nazev,
           mnozstvi: Number(p.mnozstvi),
           jednotka: p.jednotka,
-          nakupniCena: p.nakupniCena !== null ? Number(p.nakupniCena) : null,
+          nakupniCena: perms.financeNakupky && p.nakupniCena !== null ? Number(p.nakupniCena) : null,
           prodejniCena: Number(p.prodejniCena),
           dphSazba: Number(p.dphSazba),
           poradi: p.poradi,
         })),
       }}
-      role={session.user.role}
+      canApprove={perms.zakazkySchvalovani}
+      canDelete={perms.zakazkyMazani}
+      showNakupky={perms.financeNakupky}
       defaultDph={defaultDph}
     />
   )

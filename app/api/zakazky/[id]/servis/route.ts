@@ -7,11 +7,12 @@ import { SignJWT } from 'jose'
 import { prisma } from '@/lib/prisma'
 import { nextServisniZakazkaCislo } from '@/lib/servisniZakazkaCislo'
 import { nextServisniKontraktCislo } from '@/lib/servisniKontraktCislo'
+import { getPerms, forbidden } from '@/lib/permissions'
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (session.user.role === 'TECHNIK') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!getPerms(session.user).zakazkyEdit) return forbidden()
 
   const { orgId, plan } = session.user
   const db = orgPrisma(orgId)

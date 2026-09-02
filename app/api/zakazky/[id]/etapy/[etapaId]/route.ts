@@ -3,6 +3,7 @@ import { EtapaStav } from '@prisma/client'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
+import { getPerms, forbidden } from '@/lib/permissions'
 
 const ETAPA_STAV_VALUES = new Set<string>(Object.values(EtapaStav))
 
@@ -10,8 +11,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string; et
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const role = session.user.role
-  if (role === 'TECHNIK') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!getPerms(session.user).zakazkyEdit) return forbidden()
 
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)
@@ -56,8 +56,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string; e
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const role = session.user.role
-  if (role !== 'ADMIN') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!getPerms(session.user).zakazkyMazani) return forbidden()
 
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)

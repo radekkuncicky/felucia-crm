@@ -3,6 +3,7 @@ import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { sendOrgEmail, isOrgEmailConfigured } from '@/lib/email'
+import { getPerms } from '@/lib/permissions'
 
 // Známé SMTP chyby přeložené do češtiny s návodem — surová hláška serveru
 // se přidá pod to, ať jde problém dohledat.
@@ -41,7 +42,7 @@ function prelozSmtpChybu(raw: string): string {
 // Úspěch nastaví `overeno`; chybu vracíme v textu, ať jde nastavení odladit.
 export async function POST() {
   const session = await getServerSession(authOptions)
-  if (!session || session.user.role !== 'ADMIN') {
+  if (!session || !getPerms(session.user).nastaveniOrg) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
   const orgId = session.user.orgId

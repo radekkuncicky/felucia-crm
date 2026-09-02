@@ -3,6 +3,7 @@ import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { getPlanLimits } from '@/lib/planLimits'
 import { NextResponse } from 'next/server'
+import { getPerms } from '@/lib/permissions'
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
@@ -30,6 +31,10 @@ export async function GET(req: Request) {
   if (productLine) where.produktovaRada = productLine
 
   const include = { categories: { orderBy: { nazev: 'asc' } } } as const
+  // Nákladové ceny jen s oprávněním financeNakupky
+  const showNakupky = getPerms(session.user).financeNakupky
+  const hideNakupky = <T extends { nakladovaCena: unknown }>(items: T[]) =>
+    showNakupky ? items : items.map(p => ({ ...p, nakladovaCena: null }))
 
   if (!hasPagination && !search && !categoryId && !productLine) {
     const products = await db.product.findMany({
@@ -37,7 +42,7 @@ export async function GET(req: Request) {
       include,
       orderBy: { nazev: 'asc' },
     })
-    return NextResponse.json(products)
+    return NextResponse.json(hideNakupky(products))
   }
 
   const [total, products] = await Promise.all([
@@ -51,7 +56,7 @@ export async function GET(req: Request) {
     }),
   ])
 
-  return NextResponse.json({ products, total, pages: Math.ceil(total / limit) })
+  return NextResponse.json({ products: hideNakupky(products), total, pages: Math.ceil(total / limit) })
 }
 
 export async function POST(req: Request) {
@@ -100,7 +105,7 @@ export async function POST(req: Request) {
       produktovaRada: produktovaRada || null,
       popis: popis || null,
       dphSazba: dphSazba ? Number(dphSazba) : 12,
-      nakladovaCena: nakladovaCena !== undefined && nakladovaCena !== '' ? Number(nakladovaCena) : null,
+      nakladovaCena: nakladovaCena !== undefined && nakladovaCena !== '' && getPerms(session.user).financeNakupkyEdit ? Number(nakladovaCena) : null,
       standardniCena: parsedCena,
       jednotka: jednotka || 'ks',
       aktivni: true,

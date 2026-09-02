@@ -8,20 +8,22 @@ interface Props {
   stav?: string
   opId?: string | null
   hasServiceModule?: boolean
-  role?: string
+  /** zakazkyMazani */
+  canDelete: boolean
+  /** servisDispecink — založení servisní zakázky */
+  canServis: boolean
 }
 
-export default function ZakazkaDetailHeader({ zakazkaId, stav, opId, hasServiceModule, role }: Props) {
+export default function ZakazkaDetailHeader({ zakazkaId, stav, opId, hasServiceModule, canDelete, canServis }: Props) {
   const [showServisModal, setShowServisModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const isHotovo = stav === 'HOTOVO'
-  const canManager = role === 'ADMIN'
 
   return (
     <>
       <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
         {/* Servis button – only when HOTOVO + service module + manager */}
-        {isHotovo && hasServiceModule && canManager && (
+        {isHotovo && hasServiceModule && canServis && (
           <button
             onClick={() => setShowServisModal(true)}
             className="inline-flex items-center gap-1.5 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 px-3 py-2 rounded-lg transition-colors"
@@ -34,8 +36,8 @@ export default function ZakazkaDetailHeader({ zakazkaId, stav, opId, hasServiceM
           </button>
         )}
 
-        {/* Delete button – only ADMIN, not when HOTOVO */}
-        {canManager && !isHotovo && (
+        {/* Delete button – jen s oprávněním mazat, ne když HOTOVO */}
+        {canDelete && !isHotovo && (
           <button
             onClick={() => setShowDeleteModal(true)}
             className="inline-flex items-center gap-1.5 text-sm font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 px-3 py-2 rounded-lg transition-colors"

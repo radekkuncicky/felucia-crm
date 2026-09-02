@@ -3,6 +3,7 @@ import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { logAction } from '@/lib/auditLog'
 import { NextResponse } from 'next/server'
+import { forbidden, getPerms } from '@/lib/permissions'
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
@@ -36,7 +37,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (session.user.role === 'TECHNIK') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!getPerms(session.user).obchod) return forbidden()
 
   const lead = await orgPrisma(session.user.orgId).lead.findFirst({ where: { id: params.id, orgId: session.user.orgId } })
   if (!lead) return NextResponse.json({ error: 'Nenalezeno' }, { status: 404 })
@@ -76,9 +77,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (session.user.role !== 'ADMIN' && !session.user.isSuperAdmin) {
-    return NextResponse.json({ error: 'Pouze admin může mazat leady.' }, { status: 403 })
-  }
+  if (!getPerms(session.user).obchodMazani) return forbidden('Nemáte oprávnění mazat leady.')
 
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)

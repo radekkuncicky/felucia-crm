@@ -3,12 +3,13 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import { stripe, STRIPE_PODPISY_PRICE_ID } from '@/lib/stripe'
+import { getPerms } from '@/lib/permissions'
 
 // Checkout příplatkového modulu Online podpis smluv (jen plán STANDARD).
 // Množství = počet aktivních licencí (uživatelů) organizace.
 export async function POST() {
   const session = await getServerSession(authOptions)
-  if (!session || session.user.role !== 'ADMIN') {
+  if (!session || !getPerms(session.user).fakturace) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
   if (!STRIPE_PODPISY_PRICE_ID) {

@@ -4,12 +4,13 @@ import { redirect } from 'next/navigation'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { isEmailConfigured } from '@/lib/email'
 import EmailSettingsForm from './EmailSettingsForm'
+import { getPerms } from '@/lib/permissions'
 
 export const dynamic = 'force-dynamic'
 
 export default async function EmailSettingsPage() {
   const session = await getServerSession(authOptions)
-  if (!session || session.user.role !== 'ADMIN') redirect('/settings')
+  if (!session || !getPerms(session.user).nastaveniOrg) redirect('/settings')
 
   const db = orgPrisma(session.user.orgId)
   const s = await db.orgEmailSettings.findUnique({ where: { orgId: session.user.orgId } })

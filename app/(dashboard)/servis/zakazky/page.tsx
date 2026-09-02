@@ -4,20 +4,23 @@ import { prisma } from '@/lib/prisma'
 import PlatinumGuard from '@/components/PlatinumGuard'
 import { getPlanLimits } from '@/lib/planLimits'
 import ZakazkySeznamClient from './ZakazkySeznamClient'
+import { getPerms, servisScopeWhere } from '@/lib/permissions'
+import { redirect } from 'next/navigation'
 
 export default async function ServisZakazkyPage() {
   const session = await getServerSession(authOptions)
   const orgId = session!.user.orgId
   const plan = session!.user.plan
-  const role = session!.user.role
 
   if (!getPlanLimits(plan).hasServiceModule) return <PlatinumGuard />
 
-  const isTechnik = role === 'TECHNIK'
+  const perms = getPerms(session!.user)
+  const scope = servisScopeWhere(perms, session!.user.id)
+  if (!scope) redirect('/')
 
   const [zakazky, orgUsers, zarizeniList] = await Promise.all([
     prisma.servisniZakazka.findMany({
-      where: { orgId, ...(isTechnik ? { technikId: session!.user.id } : {}) },
+      where: { orgId, ...scope },
       include: {
         kontrakt: {
           select: {
@@ -83,7 +86,7 @@ export default async function ServisZakazkyPage() {
         zakazky={rows}
         orgUsers={orgUsers}
         zarizeniList={zarizeniSerialized}
-        canCreate={!isTechnik}
+        canCreate={perms.servisDispecink}
       />
     </div>
   )

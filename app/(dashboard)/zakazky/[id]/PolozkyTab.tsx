@@ -36,7 +36,14 @@ interface Polozka {
 interface Props {
   zakazkaId: string
   polozky: Polozka[]
-  isTechnik: boolean
+  /** zakazkyEdit — přidávání/úprava/mazání položek, Objednáno */
+  canEdit: boolean
+  /** sklad PLNY — naskladnění a storno rezervace */
+  canSklad: boolean
+  /** financeProdejni — prodejní ceny a celkem */
+  showCeny: boolean
+  /** financeNakupky — nákupní ceny */
+  showNakupky: boolean
 }
 
 function NaskladnitModal({ polozka, zakazkaId, onClose, onDone }: {
@@ -322,7 +329,8 @@ function UpravitPolozkaModal({ polozka, zakazkaId, onClose, onDone }: {
 
 type NewRow = { nazev: string; kod: string; mnozstvi: string; jednotka: string; prodejniCena: string }
 
-export default function PolozkyTab({ zakazkaId, polozky: initialPolozky, isTechnik }: Props) {
+export default function PolozkyTab({ zakazkaId, polozky: initialPolozky, canEdit, canSklad, showCeny, showNakupky }: Props) {
+  const canActions = canEdit || canSklad
   const [polozky, setPolozky] = useState(initialPolozky)
   const [naskladnitModal, setNaskladnitModal] = useState<Polozka | null>(null)
   const [stornoModal, setStornoModal] = useState<Polozka | null>(null)
@@ -420,7 +428,7 @@ export default function PolozkyTab({ zakazkaId, polozky: initialPolozky, isTechn
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700">
         <div className="px-5 py-4 border-b border-gray-200 dark:border-slate-700 flex items-center justify-between">
           <h3 className="font-semibold text-gray-900 dark:text-white">Položky ({polozky.length})</h3>
-          {!isTechnik && (
+          {canEdit && (
             <button
               onClick={startNewRow}
               className="text-sm font-medium text-primary dark:text-primary-light hover:underline flex items-center gap-1"
@@ -452,36 +460,44 @@ export default function PolozkyTab({ zakazkaId, polozky: initialPolozky, isTechn
                   </div>
                   <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-slate-400">
                     <span>{Number(p.mnozstvi)} {p.jednotka}</span>
-                    {!isTechnik && p.prodejniCena !== null && (
+                    {showCeny && p.prodejniCena !== null && (
                       <span className="font-medium text-gray-900 dark:text-white">
                         {formatKcPresne(Number(p.mnozstvi) * Number(p.prodejniCena))}
                       </span>
                     )}
                   </div>
-                  {!isTechnik && (
+                  {canActions && (
                     <div className="flex items-center gap-2 flex-wrap">
                       {p.stav === 'CEKA' && (
                         <>
+                          {canEdit && (
                           <button onClick={() => handleObjednano(p)} className="text-xs px-2.5 py-1.5 text-primary dark:text-primary-light border border-blue-300 dark:border-blue-700 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20">
                             Objednáno
                           </button>
+                          )}
+                          {canSklad && (
                           <button onClick={() => setNaskladnitModal(p)} className="text-xs px-2.5 py-1.5 text-green-700 dark:text-green-400 border border-green-300 dark:border-green-700 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/20">
                             Naskladnit
                           </button>
+                          )}
+                          {canEdit && (
                           <button onClick={() => setUpravitModal(p)} className="text-xs px-2.5 py-1.5 text-gray-600 dark:text-slate-400 border border-gray-300 dark:border-slate-600 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700">
                             Upravit
                           </button>
+                          )}
+                          {canEdit && (
                           <button onClick={() => handleSmazat(p)} disabled={deletingId === p.id} className="text-xs px-2.5 py-1.5 text-red-600 dark:text-red-400 border border-red-300 dark:border-red-700 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50">
                             Smazat
                           </button>
+                          )}
                         </>
                       )}
-                      {p.stav === 'OBJEDNANO' && (
+                      {p.stav === 'OBJEDNANO' && canSklad && (
                         <button onClick={() => setNaskladnitModal(p)} className="text-xs px-2.5 py-1.5 text-green-700 dark:text-green-400 border border-green-300 dark:border-green-700 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/20">
                           Naskladnit
                         </button>
                       )}
-                      {p.stav === 'NASKLADNENO' && (
+                      {p.stav === 'NASKLADNENO' && canSklad && (
                         <button onClick={() => setStornoModal(p)} className="text-xs px-2.5 py-1.5 text-red-600 dark:text-red-400 border border-red-300 dark:border-red-700 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20">
                           Storno rezervace
                         </button>
@@ -523,7 +539,7 @@ export default function PolozkyTab({ zakazkaId, polozky: initialPolozky, isTechn
                       className="w-14 border border-gray-300 dark:border-slate-600 rounded-lg px-2 py-2 text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
                     />
                   </div>
-                  {!isTechnik && (
+                  {showCeny && (
                     <input
                       type="number"
                       value={newRow.prodejniCena}
@@ -558,33 +574,35 @@ export default function PolozkyTab({ zakazkaId, polozky: initialPolozky, isTechn
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-900/30">
-                    {!isTechnik && <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide">Kód</th>}
+                    {canEdit && <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide">Kód</th>}
                     <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide">Název</th>
                     <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide">Mn.</th>
                     <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide">Jed.</th>
-                    {!isTechnik && (
+                    {showNakupky && <th className="text-right px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide">NK. cena</th>}
+                    {showCeny && (
                       <>
-                        <th className="text-right px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide">NK. cena</th>
                         <th className="text-right px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide">Pr. cena</th>
                         <th className="text-right px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide">Celkem</th>
                       </>
                     )}
                     <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide">Stav</th>
-                    {!isTechnik && <th className="px-4 py-2.5" />}
+                    {canActions && <th className="px-4 py-2.5" />}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50 dark:divide-slate-700/50">
                   {polozky.map(p => (
                     <tr key={p.id} className="hover:bg-gray-50 dark:hover:bg-slate-700/30">
-                      {!isTechnik && <td className="px-4 py-3 font-mono text-xs text-gray-400 dark:text-slate-500">{p.kod ?? '—'}</td>}
+                      {canEdit && <td className="px-4 py-3 font-mono text-xs text-gray-400 dark:text-slate-500">{p.kod ?? '—'}</td>}
                       <td className="px-4 py-3 text-gray-900 dark:text-white font-medium">{p.nazev}</td>
                       <td className="px-4 py-3 text-gray-600 dark:text-slate-400">{Number(p.mnozstvi)}</td>
                       <td className="px-4 py-3 text-gray-500 dark:text-slate-500 text-xs">{p.jednotka}</td>
-                      {!isTechnik && (
+                      {showNakupky && (
+                        <td className="px-4 py-3 text-right text-gray-600 dark:text-slate-400">
+                          {p.nakupniCena !== null ? `${formatKcPresne(Number(p.nakupniCena))}` : '—'}
+                        </td>
+                      )}
+                      {showCeny && (
                         <>
-                          <td className="px-4 py-3 text-right text-gray-600 dark:text-slate-400">
-                            {p.nakupniCena !== null ? `${formatKcPresne(Number(p.nakupniCena))}` : '—'}
-                          </td>
                           <td className="px-4 py-3 text-right text-gray-600 dark:text-slate-400">
                             {p.prodejniCena !== null ? `${formatKcPresne(Number(p.prodejniCena))}` : '—'}
                           </td>
@@ -600,29 +618,36 @@ export default function PolozkyTab({ zakazkaId, polozky: initialPolozky, isTechn
                           {STAV_LABELS[p.stav]}
                         </span>
                       </td>
-                      {!isTechnik && (
+                      {canActions && (
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-1.5">
                             {p.stav === 'CEKA' && (
                               <>
+                                {canEdit && (
                                 <button
                                   onClick={() => handleObjednano(p)}
                                   className="text-xs px-2 py-1 text-primary dark:text-primary-light border border-blue-300 dark:border-blue-700 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20"
                                 >
                                   Objednáno
                                 </button>
+                                )}
+                                {canSklad && (
                                 <button
                                   onClick={() => setNaskladnitModal(p)}
                                   className="text-xs px-2 py-1 text-green-700 dark:text-green-400 border border-green-300 dark:border-green-700 rounded hover:bg-green-50 dark:hover:bg-green-900/20"
                                 >
                                   Naskladnit
                                 </button>
+                                )}
+                                {canEdit && (
                                 <button
                                   onClick={() => setUpravitModal(p)}
                                   className="text-xs px-2 py-1 text-gray-600 dark:text-slate-400 border border-gray-300 dark:border-slate-600 rounded hover:bg-gray-50 dark:hover:bg-slate-700"
                                 >
                                   Upravit
                                 </button>
+                                )}
+                                {canEdit && (
                                 <button
                                   onClick={() => handleSmazat(p)}
                                   disabled={deletingId === p.id}
@@ -630,9 +655,10 @@ export default function PolozkyTab({ zakazkaId, polozky: initialPolozky, isTechn
                                 >
                                   Smazat
                                 </button>
+                                )}
                               </>
                             )}
-                            {p.stav === 'OBJEDNANO' && (
+                            {p.stav === 'OBJEDNANO' && canSklad && (
                               <button
                                 onClick={() => setNaskladnitModal(p)}
                                 className="text-xs px-2 py-1 text-green-700 dark:text-green-400 border border-green-300 dark:border-green-700 rounded hover:bg-green-50 dark:hover:bg-green-900/20"
@@ -640,7 +666,7 @@ export default function PolozkyTab({ zakazkaId, polozky: initialPolozky, isTechn
                                 Naskladnit
                               </button>
                             )}
-                            {p.stav === 'NASKLADNENO' && (
+                            {p.stav === 'NASKLADNENO' && canSklad && (
                               <button
                                 onClick={() => setStornoModal(p)}
                                 className="text-xs px-2 py-1 text-red-600 dark:text-red-400 border border-red-300 dark:border-red-700 rounded hover:bg-red-50 dark:hover:bg-red-900/20"
@@ -655,7 +681,7 @@ export default function PolozkyTab({ zakazkaId, polozky: initialPolozky, isTechn
                   ))}
                   {newRow !== null && (
                     <tr className="bg-blue-50/50 dark:bg-blue-900/10">
-                      {!isTechnik && (
+                      {canEdit && (
                         <td className="px-4 py-2">
                           <input
                             value={newRow.kod}
@@ -695,9 +721,9 @@ export default function PolozkyTab({ zakazkaId, polozky: initialPolozky, isTechn
                           style={{ width: 44 }}
                         />
                       </td>
-                      {!isTechnik && (
+                      {showNakupky && <td className="px-4 py-2 text-right text-gray-400 dark:text-slate-600 text-xs">—</td>}
+                      {showCeny && (
                         <>
-                          <td className="px-4 py-2 text-right text-gray-400 dark:text-slate-600 text-xs">—</td>
                           <td className="px-4 py-2">
                             <input
                               type="number"
@@ -714,7 +740,7 @@ export default function PolozkyTab({ zakazkaId, polozky: initialPolozky, isTechn
                         </>
                       )}
                       <td className="px-4 py-2 text-gray-400 dark:text-slate-600 text-xs">—</td>
-                      {!isTechnik && (
+                      {canEdit && (
                         <td className="px-4 py-2">
                           <div className="flex items-center gap-1">
                             <button

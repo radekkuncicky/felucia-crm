@@ -4,18 +4,19 @@ import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
 import UsersManager from './UsersManager'
 import { getPlanLimits } from '@/lib/planLimits'
+import { getPerms } from '@/lib/permissions'
 
 export default async function UsersPage() {
   const session = await getServerSession(authOptions)
   if (!session) redirect('/login')
-  if (session.user.role !== 'ADMIN') redirect('/dashboard')
+  if (!getPerms(session.user).spravaUzivatelu) redirect('/dashboard')
 
   const orgId = session.user.orgId
 
   const [users, org] = await Promise.all([
     prisma.user.findMany({
       where: { orgId },
-      select: { id: true, jmeno: true, email: true, role: true, aktivni: true, vytvoreno: true, serviceAccess: true, podepisujeSmlouvy: true },
+      select: { id: true, jmeno: true, email: true, role: true, aktivni: true, vytvoreno: true, podepisujeSmlouvy: true, permissions: true },
       orderBy: { vytvoreno: 'asc' },
     }),
     prisma.organization.findUnique({ where: { id: orgId }, select: { plan: true } }),
@@ -34,6 +35,8 @@ export default async function UsersPage() {
         users={users.map(u => ({ ...u, vytvoreno: u.vytvoreno.toISOString() }))}
         maxUsers={planLimits.maxUsers}
         activeUserCount={activeUserCount}
+        canCustomize={planLimits.hasCustomPermissions}
+        currentUserId={session.user.id}
       />
     </div>
   )

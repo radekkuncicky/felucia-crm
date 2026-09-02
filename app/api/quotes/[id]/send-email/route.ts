@@ -8,14 +8,13 @@ import { isOrgEmailConfigured, sendOrgEmail, emailCenovaNabidka } from '@/lib/em
 import { getOrgSettings } from '@/lib/orgSettings'
 import { ensureQuoteShare, quoteShareUrl, QUOTE_SHARE_DNI } from '@/lib/quoteShare'
 import { checkRateLimit } from '@/lib/rateLimit'
+import { getPerms, forbidden } from '@/lib/permissions'
 
 // Odeslání cenové nabídky klientovi: PDF v příloze + veřejný odkaz.
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (session.user.role === 'TECHNIK') {
-    return NextResponse.json({ error: 'Nedostatečná oprávnění' }, { status: 403 })
-  }
+  if (!getPerms(session.user).obchod) return forbidden('Nedostatečná oprávnění')
 
   const { limited } = checkRateLimit(`quote-email:${session.user.id}`, 10, 3600_000)
   if (limited) return NextResponse.json({ error: 'Příliš mnoho odeslaných e-mailů, zkuste to později.' }, { status: 429 })

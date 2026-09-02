@@ -14,6 +14,7 @@ export const PLAN_LIMITS = {
     hasWhiteLabel: false,
     hasServiceModule: false,
     hasOnlinePodpis: false,
+    hasCustomPermissions: false,
     supportResponseHours: 48,
   },
   STANDARD: {
@@ -31,6 +32,7 @@ export const PLAN_LIMITS = {
     hasWhiteLabel: false,
     hasServiceModule: false,
     hasOnlinePodpis: false,
+    hasCustomPermissions: true,
     supportResponseHours: 24,
   },
   PROFESSIONAL: {
@@ -48,6 +50,7 @@ export const PLAN_LIMITS = {
     hasWhiteLabel: true,
     hasServiceModule: true,
     hasOnlinePodpis: true,
+    hasCustomPermissions: true,
     supportResponseHours: 4,
   },
   ENTERPRISE: {
@@ -65,6 +68,7 @@ export const PLAN_LIMITS = {
     hasWhiteLabel: true,
     hasServiceModule: true,
     hasOnlinePodpis: true,
+    hasCustomPermissions: true,
     supportResponseHours: 1,
   },
 } as const

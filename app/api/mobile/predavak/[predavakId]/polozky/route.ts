@@ -1,17 +1,6 @@
 import { NextResponse } from 'next/server'
 import { orgPrisma } from '@/lib/orgPrisma'
-import { getMobileOrWebSession, requireTechnikOrAdmin, type MobileSession } from '@/lib/mobile-helpers'
-
-async function canAccess(session: MobileSession, predavakId: string): Promise<boolean> {
-  const p = await orgPrisma(session!.user.orgId).predavak.findFirst({ where: { id: predavakId, orgId: session.user.orgId } })
-  if (!p) return false
-  if (session.user.role === 'ADMIN') return true
-  if (p.technikId === session.user.id) return true
-  const rel = await orgPrisma(session!.user.orgId).technikZakazka.findFirst({
-    where: { technikId: session.user.id, zakazkaId: p.zakazkaId },
-  })
-  return !!rel
-}
+import { getMobileOrWebSession, requireTechnikOrAdmin, canAccessPredavak as canAccess } from '@/lib/mobile-helpers'
 
 // POST /api/mobile/predavak/[predavakId]/polozky — přidání vlastní položky
 // { nazev, mnozstvi?, jednotka? }

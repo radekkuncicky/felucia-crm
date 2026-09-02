@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
 import EvidenceManager from './EvidenceManager'
 import { IconUser, IconClipboard, IconDocument, IconBox } from '@/components/ui/Icons'
+import { getPerms } from '@/lib/permissions'
 
 const ENTITY_TYPES = [
   { key: 'Client', label: 'Klient', icon: <IconUser className="w-5 h-5" /> },
@@ -14,7 +15,7 @@ const ENTITY_TYPES = [
 
 export default async function EvidencePage() {
   const session = await getServerSession(authOptions)
-  if (!session || session.user.role !== 'ADMIN') redirect('/dashboard')
+  if (!session || !getPerms(session.user).nastaveniOrg) redirect('/dashboard')
   const orgId = session.user.orgId
 
   const fields = await prisma.customField.findMany({

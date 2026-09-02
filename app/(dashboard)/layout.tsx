@@ -1,5 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { getPerms } from '@/lib/permissions'
 import { redirect } from 'next/navigation'
 import DashboardShell from '@/components/DashboardShell'
 import AIAssistant from '@/components/AIAssistant'
@@ -25,11 +26,6 @@ export default async function DashboardLayout({
   if (!session) redirect('/login')
 
   const orgSettings = await getOrgSettings(session.user.orgId)
-
-  const currentUser = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { serviceAccess: true },
-  })
 
   // Trial + onboarding status
   const org = await prisma.organization.findUnique({
@@ -93,7 +89,7 @@ export default async function DashboardLayout({
           />
         )}
         <DashboardShell
-          user={{ jmeno: session.user.jmeno, email: session.user.email, role: session.user.role, plan: session.user.plan, isSuperAdmin: session.user.isSuperAdmin, serviceAccess: session.user.role === 'ADMIN' || (currentUser?.serviceAccess ?? false) }}
+          user={{ jmeno: session.user.jmeno, email: session.user.email, role: session.user.role, perms: getPerms(session.user), plan: session.user.plan, isSuperAdmin: session.user.isSuperAdmin }}
           orgSettings={orgSettings}
           orgNazev={org?.nazev}
         >

@@ -35,7 +35,8 @@ interface Props {
   users: User[]
   novychCount: number
   currentUserId: string
-  role: string
+  canEdit: boolean
+  canDelete: boolean
 }
 
 const STATUS_LABELS: Record<LeadStatus, string> = {
@@ -66,7 +67,7 @@ const ZDROJ_COLORS: Record<LeadZdroj, string> = {
   IMPORT: 'bg-orange-500/20 text-orange-300',
 }
 
-export default function LeadyPageClient({ leady, users, novychCount, currentUserId, role }: Props) {
+export default function LeadyPageClient({ leady, users, novychCount, currentUserId, canEdit, canDelete }: Props) {
   const router = useRouter()
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState<string>('all')
@@ -75,8 +76,6 @@ export default function LeadyPageClient({ leady, users, novychCount, currentUser
   const [showModal, setShowModal] = useState(false)
   const [selected, setSelected] = useState<string[]>([])
   const [deleting, setDeleting] = useState(false)
-
-  const canDelete = role === 'ADMIN'
 
   const statusOptions = [
     { value: 'all', label: 'Všechny statusy' },
@@ -153,7 +152,7 @@ export default function LeadyPageClient({ leady, users, novychCount, currentUser
             <p className="text-sm text-yellow-400 mt-0.5">{novychCount} nových leadů čeká na zpracování</p>
           )}
         </div>
-        {role !== 'TECHNIK' && (
+        {canEdit && (
           <button
             onClick={() => setShowModal(true)}
             className="flex items-center gap-2 px-4 py-2 bg-[#4CAF50] hover:bg-[#43A047] text-white rounded-lg text-sm font-medium transition-colors"

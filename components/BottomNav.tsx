@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import { IconHome, IconBriefcase, IconClipboard, IconUsers, IconActivity, IconDocument } from '@/components/ui/Icons'
 import { useOrgSettings } from '@/context/OrgSettingsContext'
+import { isTechnikView, type Permissions } from '@/lib/permissions'
 
 const homeItem = {
   href: '/dashboard',
@@ -99,7 +100,7 @@ const technikItems = [
   },
 ]
 
-export default function BottomNav({ role }: { role?: string }) {
+export default function BottomNav({ perms }: { perms: Permissions }) {
   const pathname = usePathname()
   const orgSettings = useOrgSettings()
   const [dasaOpen, setDasaOpen] = useState(false)
@@ -116,7 +117,8 @@ export default function BottomNav({ role }: { role?: string }) {
     window.dispatchEvent(new Event('dasha:open'))
   }
 
-  const items = role === 'TECHNIK' ? technikItems : role === 'ADMIN' ? adminItems : obchodnikItems
+  // Technický pohled → zakázky/protokoly; kdo má zakázky i obchod → admin sada; jinak obchodní sada
+  const items = isTechnikView(perms) ? technikItems : perms.zakazky !== 'ZADNE' ? adminItems : obchodnikItems
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-30 bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-green-900/40 md:hidden pb-safe">

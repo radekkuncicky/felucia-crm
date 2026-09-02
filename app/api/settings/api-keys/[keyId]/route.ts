@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
+import { getPerms } from '@/lib/permissions'
 
 export async function PATCH(req: NextRequest, { params }: { params: { keyId: string } }) {
   const session = await getServerSession(authOptions)
-  if (!session || session.user.role !== 'ADMIN') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!session || !getPerms(session.user).nastaveniOrg) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)
 
@@ -21,7 +22,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { keyId: str
 
 export async function DELETE(req: NextRequest, { params }: { params: { keyId: string } }) {
   const session = await getServerSession(authOptions)
-  if (!session || session.user.role !== 'ADMIN') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!session || !getPerms(session.user).nastaveniOrg) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)
   await db.apiKey.deleteMany({ where: { id: params.keyId, orgId } })

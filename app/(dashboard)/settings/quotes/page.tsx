@@ -4,12 +4,13 @@ import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
 import QuoteTemplatesSettings from './QuoteTemplatesSettings'
 import { getOrgSettings } from '@/lib/orgSettings'
+import { getPerms } from '@/lib/permissions'
 
 export default async function QuoteTemplatesPage() {
   const session = await getServerSession(authOptions)
   if (!session) redirect('/login')
   const orgId = session.user.orgId
-  const isAdmin = session.user.role === 'ADMIN'
+  const isAdmin = getPerms(session.user).nastaveniOrg
 
   if (!isAdmin) redirect('/settings')
 

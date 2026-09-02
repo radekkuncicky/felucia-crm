@@ -1,5 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { forbidden, getPerms } from '@/lib/permissions'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { najdiDuplicitnihoKlienta } from '@/lib/clientDuplicate'
@@ -11,6 +12,7 @@ import { najdiDuplicitnihoKlienta } from '@/lib/clientDuplicate'
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!(getPerms(session.user).obchod || getPerms(session.user).zakazkyEdit)) return forbidden()
   const orgId = session.user.orgId
 
   const body = await req.json().catch(() => null)

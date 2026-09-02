@@ -1,6 +1,7 @@
 import { orgPrisma } from './orgPrisma'
 import { prisma } from './prisma'
 import { createZakazkaFromDeal } from './zakazkaWorkflow'
+import { listUsersWithPerm } from '@/lib/zakazkyHelpers'
 import { createNotification } from './createNotification'
 import { getOrgSettings } from './orgSettings'
 import { getPlanLimits } from './planLimits'
@@ -67,8 +68,9 @@ export async function prevedDealNaUspechPoPodpisu(params: {
     }
   }
 
-  const admins = await db.user.findMany({ where: { role: 'ADMIN' }, select: { id: true } })
-  const prijemci = new Set(admins.map(a => a.id))
+  // Vyhraný OP zakládá zakázku — informuj ty, kdo zakázky vedou/schvalují, a obchodníka OP
+  const manazeri = await listUsersWithPerm(orgId, 'zakazkySchvalovani')
+  const prijemci = new Set(manazeri.map(a => a.id))
   if (deal.userId) prijemci.add(deal.userId)
   await Promise.all(Array.from(prijemci).map(uid =>
     createNotification({

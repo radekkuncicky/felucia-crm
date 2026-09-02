@@ -50,7 +50,8 @@ interface Lead {
 interface Props {
   lead: Lead
   users: { id: string; jmeno: string }[]
-  role: string
+  canEdit: boolean
+  canDelete: boolean
 }
 
 const PIPELINE: { key: LeadStatus; label: string }[] = [
@@ -83,7 +84,7 @@ const TECH_OPTIONS: { value: Technologie; label: string }[] = [
   { value: 'JINE', label: 'Jiné' },
 ]
 
-export default function LeadDetailClient({ lead: initialLead, users, role }: Props) {
+export default function LeadDetailClient({ lead: initialLead, users, canEdit, canDelete }: Props) {
   const router = useRouter()
   const [lead, setLead] = useState(initialLead)
   const [noteText, setNoteText] = useState('')
@@ -94,8 +95,6 @@ export default function LeadDetailClient({ lead: initialLead, users, role }: Pro
   const [savingStatus, setSavingStatus] = useState(false)
 
   const isClosed = lead.status === 'PREVEDEN' || lead.status === 'ZRUSEN'
-  const canEdit = role !== 'TECHNIK'
-  const canDelete = role === 'ADMIN'
 
   async function patch(data: Record<string, unknown>) {
     const res = await fetch(`/api/leady/${lead.id}`, {

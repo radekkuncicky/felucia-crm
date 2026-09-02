@@ -1,5 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { forbidden, getPerms } from '@/lib/permissions'
 import { getMobileSession } from '@/lib/mobile-auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
@@ -53,6 +54,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions) ?? await getMobileSession(req)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!(getPerms(session.user).obchod)) return forbidden('Nemáte oprávnění zakládat aktivity')
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)
 

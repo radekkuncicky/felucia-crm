@@ -2,6 +2,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
+import { canAccessZakazka } from '@/lib/zakazkyHelpers'
+import { getPerms, forbidden } from '@/lib/permissions'
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
@@ -9,7 +11,8 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)
-  const isTechnik = session.user.role === 'TECHNIK'
+  const perms = getPerms(session.user)
+  if (!(await canAccessZakazka(session.user, perms, params.id))) return forbidden()
 
   const zakazka = await db.zakazka.findFirst({
     where: { id: params.id, orgId },
@@ -17,9 +20,11 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   })
   if (!zakazka) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const polozky = isTechnik
-    ? zakazka.polozky.map(p => ({ ...p, prodejniCena: null, nakupniCena: null }))
-    : zakazka.polozky
+  const polozky = zakazka.polozky.map(p => ({
+    ...p,
+    prodejniCena: perms.financeProdejni ? p.prodejniCena : null,
+    nakupniCena: perms.financeNakupky ? p.nakupniCena : null,
+  }))
 
   return NextResponse.json(polozky)
 }
@@ -27,7 +32,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (session.user.role === 'TECHNIK') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!getPerms(session.user).zakazkyEdit) return forbidden()
 
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)
@@ -47,7 +52,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       mnozstvi: body.mnozstvi ?? 1,
       jednotka: body.jednotka ?? 'ks',
       prodejniCena: body.prodejniCena ?? null,
-      nakupniCena: body.nakupniCena ?? null,
+      nakupniCena: getPerms(session.user).financeNakupkyEdit ? (body.nakupniCena ?? null) : null,
       dphSazba: body.dphSazba ?? orgSettings?.zakazkyDefaultDph ?? 12,
       poznamka: body.poznamka ?? null,
       poradi: count,
@@ -60,7 +65,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (session.user.role === 'TECHNIK') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!getPerms(session.user).zakazkyEdit) return forbidden()
 
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)
@@ -89,7 +94,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 export async function DELETE(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (session.user.role === 'TECHNIK') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!getPerms(session.user).zakazkyEdit) return forbidden()
 
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)

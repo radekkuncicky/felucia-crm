@@ -30,7 +30,7 @@ interface Props {
 export default function InlineStatusBadge({ dealId, stav: initialStav, onChange }: Props) {
   const router = useRouter()
   const { data: session } = useSession()
-  const isAdmin = session?.user?.role === 'ADMIN' || session?.user?.isSuperAdmin === true
+  const isAdmin = session?.user?.perms?.obchodMazani === true
 
   const [stav, setStav] = useState(initialStav)
   const [open, setOpen] = useState(false)

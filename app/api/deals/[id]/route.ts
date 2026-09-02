@@ -2,30 +2,34 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { getMobileSession } from '@/lib/mobile-auth'
 import { orgPrisma } from '@/lib/orgPrisma'
+import { listUsersWithPerm } from '@/lib/zakazkyHelpers'
 import { getOrgSettings } from '@/lib/orgSettings'
 import { getPlanLimits } from '@/lib/planLimits'
 import { NextResponse } from 'next/server'
 import { logAction } from '@/lib/auditLog'
 import { createNotification } from '@/lib/createNotification'
 import { createZakazkaFromDeal } from '@/lib/zakazkaWorkflow'
+import { dealScopeWhere, forbidden, getPerms } from '@/lib/permissions'
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions) ?? await getMobileSession(req)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)
+  const scope = dealScopeWhere(getPerms(session.user), session.user.id)
+  if (!scope) return forbidden()
 
   const deal = await db.deal.findFirst({
-    where: { id: params.id, orgId },
+    where: { id: params.id, orgId, ...scope },
     include: { activities: { select: { typ: true } } },
   })
   if (!deal) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const body = await req.json()
 
-  // Zneplatnit smí jen admin
-  if (body.stav === 'ZNEPLATNENO' && session.user.role !== 'ADMIN' && !session.user.isSuperAdmin) {
-    return NextResponse.json({ error: 'Pouze admin může zneplatnit OP' }, { status: 403 })
+  // Zneplatnit smí jen kdo má právo mazat v obchodu
+  if (body.stav === 'ZNEPLATNENO' && !getPerms(session.user).obchodMazani) {
+    return forbidden('Nemáte oprávnění zneplatnit OP')
   }
 
   // Ověř že přiřazovaný uživatel patří stejné org
@@ -113,7 +117,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   }
 
   if (body.stav === 'USPECH' && deal.stav !== 'USPECH') {
-    const admins = await db.user.findMany({ where: { orgId, role: 'ADMIN' }, select: { id: true } })
+    const admins = await listUsersWithPerm(orgId, 'zakazkySchvalovani')
     await Promise.all(admins.map(admin =>
       createNotification({
         orgId,
@@ -150,9 +154,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
   const session = await getServerSession(authOptions) ?? await getMobileSession(req)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  if (session.user.role !== 'ADMIN' && !session.user.isSuperAdmin) {
-    return NextResponse.json({ error: 'Pouze admin může mazat OP' }, { status: 403 })
-  }
+  if (!getPerms(session.user).obchodMazani) return forbidden('Nemáte oprávnění mazat OP')
 
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)

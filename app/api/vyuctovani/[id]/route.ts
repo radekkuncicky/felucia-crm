@@ -4,11 +4,13 @@ import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { ZakazkaStav } from '@prisma/client'
 import { vratZakazkuZVyuctovane } from '@/lib/zakazkaStavFlow'
+import { getPerms, forbidden } from '@/lib/permissions'
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (session.user.role === 'TECHNIK') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const perms = getPerms(session.user)
+  if (!perms.financeProdejni) return forbidden()
 
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)
@@ -26,23 +28,28 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     },
   })
   if (!v) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (!perms.financeNakupky) {
+    return NextResponse.json({ ...v, polozky: v.polozky.map(p => ({ ...p, nakupniCena: null })) })
+  }
   return NextResponse.json(v)
 }
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (session.user.role === 'TECHNIK') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const perms = getPerms(session.user)
+  if (!perms.zakazkyEdit) return forbidden()
 
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)
-  const isAdmin = session.user.role === 'ADMIN'
+  // Reopen schváleného vyúčtování je destruktivní krok — vyžaduje stejné oprávnění jako mazání
+  const isAdmin = perms.zakazkyMazani
   const v = await db.vyuctovani.findFirst({ where: { id: params.id, orgId } })
   if (!v) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const body = await req.json()
 
-  // Vrácení do návrhu: z KE_SCHVALENI smí manažer (ADMIN/OBCHODNIK), reopen SCHVALENÉHO jen admin
+  // Vrácení do návrhu: z KE_SCHVALENI smí kdokoli s editací zakázek, reopen SCHVALENÉHO jen s právem mazat
   if (body.stav === 'NAVRH' && (v.stav === 'KE_SCHVALENI' || isAdmin)) {
     const bylSchvaleno = v.stav === 'SCHVALENO'
     let zakazkaNovyStav: ZakazkaStav | null = null
@@ -91,7 +98,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 export async function DELETE(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (session.user.role !== 'ADMIN') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!getPerms(session.user).zakazkyMazani) return forbidden()
 
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)

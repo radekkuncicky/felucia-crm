@@ -4,10 +4,11 @@ import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { writeFile, mkdir } from 'fs/promises'
 import path from 'path'
+import { getPerms } from '@/lib/permissions'
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
-  if (!session || session.user.role !== 'ADMIN') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!session || !getPerms(session.user).nastaveniOrg) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)
 

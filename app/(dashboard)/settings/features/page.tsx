@@ -3,11 +3,12 @@ import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { getOrgSettings } from '@/lib/orgSettings'
 import FeaturesClient from './FeaturesClient'
+import { getPerms } from '@/lib/permissions'
 
 export default async function FeaturesPage() {
   const session = await getServerSession(authOptions)
   if (!session) redirect('/login')
-  if (session.user.role !== 'ADMIN') redirect('/dashboard')
+  if (!getPerms(session.user).nastaveniOrg) redirect('/dashboard')
 
   const settings = await getOrgSettings(session.user.orgId)
   const plan = session.user.plan

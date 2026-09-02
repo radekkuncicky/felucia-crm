@@ -1,5 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { getPerms } from '@/lib/permissions'
 import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
@@ -220,7 +221,7 @@ export default async function ClientDetailPage({
               dic: client.dic ?? '',
               poznamka: client.poznamka ?? '',
               anonymizedAt: client.anonymizedAt ? client.anonymizedAt.toISOString() : null,
-            }} isAdmin={session!.user.role === 'ADMIN' || !!session!.user.isSuperAdmin} />
+            }} isAdmin={getPerms(session!.user).obchodMazani} />
           {(client.ulice || client.mesto) && (
             <div className="bg-white rounded-xl border border-gray-200 px-5 py-4">
               <p className="text-xs text-gray-500 font-medium uppercase tracking-wide mb-2">Navigace</p>

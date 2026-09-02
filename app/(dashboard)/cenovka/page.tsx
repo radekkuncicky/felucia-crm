@@ -1,5 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { getPerms } from '@/lib/permissions'
 import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
 import CenovkaWizard from './CenovkaWizard'
@@ -10,7 +11,7 @@ export const metadata = { title: 'Rychlá cenovka' }
 export default async function CenovkaPage() {
   const session = await getServerSession(authOptions)
   if (!session) redirect('/auth/signin')
-  if (session.user.role === 'TECHNIK') redirect('/dashboard')
+  if (!getPerms(session.user).obchod) redirect('/dashboard')
 
   const templates = await prisma.quoteTemplate.findMany({
     where: { orgId: session.user.orgId },

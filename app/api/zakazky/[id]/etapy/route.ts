@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { etapaProgressFromRaw, lzePridatDalsiEtapu } from '@/lib/zakazkaEtapy'
+import { getPerms, forbidden } from '@/lib/permissions'
 
 const MAX_ATTEMPTS = 5
 
@@ -30,8 +31,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const role = session.user.role
-  if (role === 'TECHNIK') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!getPerms(session.user).zakazkyEdit) return forbidden()
 
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)

@@ -3,6 +3,8 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
 import PredavakClient from './PredavakClient'
+import { getPerms } from '@/lib/permissions'
+import { canAccessPredavak } from '@/lib/zakazkyHelpers'
 
 export default async function PredavakPage({
   params,
@@ -13,7 +15,7 @@ export default async function PredavakPage({
   if (!session) notFound()
 
   const orgId = session.user.orgId
-  const role = session.user.role
+  const perms = getPerms(session.user)
 
   const predavak = await prisma.predavak.findFirst({
     where: { id: params.predavakId, orgId },
@@ -34,8 +36,8 @@ export default async function PredavakPage({
 
   if (!predavak) notFound()
 
-  // Technik can only access their own predavak
-  if (role === 'TECHNIK' && predavak.technikId !== session.user.id) notFound()
+  // Vlastní protokol, nebo zakázka v rozsahu uživatele
+  if (!(await canAccessPredavak(session.user, perms, predavak))) notFound()
 
   // Verify zakazkaId matches
   if (predavak.zakazkaId !== params.id) notFound()
@@ -81,7 +83,8 @@ export default async function PredavakPage({
         vyuctovani: predavak.vyuctovani,
       }}
       currentUserId={session.user.id}
-      role={role}
+      canApprove={perms.zakazkySchvalovani}
+      showVyuctovani={perms.financeProdejni}
     />
   )
 }

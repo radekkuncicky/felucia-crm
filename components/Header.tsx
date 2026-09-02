@@ -2,20 +2,14 @@
 
 import { useTheme } from 'next-themes'
 import { useEffect, useState } from 'react'
-import { Role } from '@prisma/client'
 import NotificationBell from './NotificationBell'
-
-const roleLabels: Record<Role, string> = {
-  ADMIN: 'Administrátor',
-  OBCHODNIK: 'Obchodník',
-  TECHNIK: 'Technik',
-}
+import { ROLE_LABELS as roleLabels } from '@/lib/permissions'
 
 interface HeaderProps {
   user: {
     jmeno: string
     email?: string | null
-    role: Role
+    role: string
   }
   onMenuClick?: () => void
 }
@@ -99,7 +93,7 @@ export default function Header({ user, onMenuClick }: HeaderProps) {
         <div className="hidden sm:block h-5 w-px bg-[#C8E6C9] dark:bg-green-900/50" />
         <div className="hidden sm:block text-right">
           <p className="text-sm font-semibold text-gray-900 dark:text-green-100">{user.jmeno}</p>
-          <p className="text-xs text-gray-500 dark:text-green-400/50">{roleLabels[user.role]}</p>
+          <p className="text-xs text-gray-500 dark:text-green-400/50">{roleLabels[user.role as keyof typeof roleLabels] ?? user.role}</p>
         </div>
       </div>
     </header>

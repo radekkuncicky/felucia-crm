@@ -5,7 +5,8 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { Suspense } from 'react'
 import { techLabels } from '@/lib/constants'
-import { canTechnikAccessZakazka } from '@/lib/zakazkyHelpers'
+import { canAccessZakazka } from '@/lib/zakazkyHelpers'
+import { getPerms, isTechnikView } from '@/lib/permissions'
 import { getPlanLimits } from '@/lib/planLimits'
 import { NavigateButton } from '@/components/NavigateButton'
 import ZakazkyTabs from './ZakazkyTabs'
@@ -40,11 +41,13 @@ export default async function ZakazkaDetailLayout({
   if (!session) notFound()
 
   const orgId = session.user.orgId
-  const role = session.user.role
-  const isTechnik = role === 'TECHNIK'
-  const canEdit = role === 'ADMIN' || role === 'OBCHODNIK'
+  const perms = getPerms(session.user)
+  // „technický pohled" — bez obchodu: jednodušší breadcrumb, bez odkazu na OP
+  const isTechnik = isTechnikView(perms)
+  const canEdit = perms.zakazkyEdit
+  const showNakupky = perms.financeNakupky
 
-  if (isTechnik && !(await canTechnikAccessZakazka(session.user.id, params.id, session.user.orgId))) {
+  if (!(await canAccessZakazka(session.user, perms, params.id))) {
     notFound()
   }
 
@@ -77,7 +80,7 @@ export default async function ZakazkaDetailLayout({
 
   // CN marže from linked OP
   let cnMarzeProc: number | null = null
-  if (!isTechnik && zakazka.opId) {
+  if (showNakupky && zakazka.opId) {
     const op = await prisma.deal.findFirst({
       where: { id: zakazka.opId, orgId },
       include: {
@@ -139,7 +142,7 @@ export default async function ZakazkaDetailLayout({
                   zakazkaId={zakazka.id}
                   titulniFotoUrl={zakazka.titulniFotoUrl ?? null}
                   canEdit={canEdit}
-                  canTechnikUpload={isTechnik}
+                  canTechnikUpload={true}
                 />
 
                 <div className="space-y-1 min-w-0">
@@ -185,7 +188,7 @@ export default async function ZakazkaDetailLayout({
                     zakazkaId={zakazka.id}
                     mistoStavby={zakazka.mistoStavby ?? null}
                     klientAdresa={adresa}
-                    canEdit={canEdit || isTechnik}
+                    canEdit={true}
                   />
                 </div>
               </div>
@@ -215,12 +218,13 @@ export default async function ZakazkaDetailLayout({
             </div>
 
             {/* Right actions */}
-            {!isTechnik && (
+            {(perms.zakazkyMazani || perms.servisDispecink) && (
               <ZakazkaDetailHeader
                 zakazkaId={zakazka.id}
                 stav={zakazka.stav}
                 opId={zakazka.opId ?? null}
-                role={role}
+                canDelete={perms.zakazkyMazani}
+                canServis={perms.servisDispecink}
                 hasServiceModule={getPlanLimits(session!.user.plan as string).hasServiceModule}
               />
             )}
@@ -277,8 +281,8 @@ export default async function ZakazkaDetailLayout({
         canEdit={canEdit}
       />
 
-      {/* Marže panel (not technik) — zobraz jen pokud jsou data */}
-      {!isTechnik && (cnMarzeProc !== null || nakupniTotal > 0) && (
+      {/* Marže panel (jen s oprávněním na nákupky) — zobraz jen pokud jsou data */}
+      {showNakupky && (cnMarzeProc !== null || nakupniTotal > 0) && (
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 px-4 py-3">
             <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase mb-1">CN marže</p>
@@ -297,7 +301,7 @@ export default async function ZakazkaDetailLayout({
 
       {/* Tab bar — always visible, active tab determined from URL */}
       <Suspense fallback={<div className="border-b border-gray-200 dark:border-slate-700 h-10" />}>
-        <ZakazkyTabs zakazkaId={zakazka.id} isTechnik={isTechnik} />
+        <ZakazkyTabs zakazkaId={zakazka.id} showTechnici={canEdit} showVyuctovani={perms.financeProdejni} showHistorie={canEdit} />
       </Suspense>
 
       {/* Page content */}

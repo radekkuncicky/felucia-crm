@@ -3,6 +3,8 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
 import GenerujVyuctovaniClient from './GenerujVyuctovaniClient'
+import { getPerms } from '@/lib/permissions'
+import { canAccessZakazka } from '@/lib/zakazkyHelpers'
 
 export default async function GenerujVyuctovaniPage({
   params,
@@ -13,7 +15,9 @@ export default async function GenerujVyuctovaniPage({
 }) {
   const session = await getServerSession(authOptions)
   if (!session) notFound()
-  if (session.user.role === 'TECHNIK') notFound()
+  const perms = getPerms(session.user)
+  if (!perms.zakazkyEdit || !perms.financeProdejni) notFound()
+  if (!(await canAccessZakazka(session.user, perms, params.id))) notFound()
 
   const orgId = session.user.orgId
 

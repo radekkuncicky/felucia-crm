@@ -27,7 +27,6 @@ export const TENANT_MODELS = new Set([
   'AuditLog',
   'CustomField',
   'CustomFieldValue',
-  'VisibilityNode',
   'Extension',
   'OrgSettings',
   'OrgEmailSettings',

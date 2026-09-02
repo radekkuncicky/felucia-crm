@@ -3,6 +3,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
 import PlatinumGuard from '@/components/PlatinumGuard'
+import { getPerms, servisScopeWhere } from '@/lib/permissions'
 import { getPlanLimits } from '@/lib/planLimits'
 import ZakazkaDetailClient from './ZakazkaDetailClient'
 
@@ -20,12 +21,15 @@ export default async function ServisZakazkaDetailPage({ params }: { params: { id
   const session = await getServerSession(authOptions)
   const orgId = session!.user.orgId
   const plan = session!.user.plan
-  const role = session!.user.role
 
   if (!getPlanLimits(plan).hasServiceModule) return <PlatinumGuard />
 
+  const perms = getPerms(session!.user)
+  const scope = servisScopeWhere(perms, session!.user.id)
+  if (!scope) notFound()
+
   const z = await prisma.servisniZakazka.findFirst({
-    where: { id: params.id, orgId },
+    where: { id: params.id, orgId, ...scope },
     include: {
       kontrakt: {
         select: {
@@ -44,9 +48,6 @@ export default async function ServisZakazkaDetailPage({ params }: { params: { id
   })
 
   if (!z) notFound()
-
-  // Technik vidí jen své zakázky
-  if (role === 'TECHNIK' && z.technikId !== session!.user.id) notFound()
 
   const orgUsers = await prisma.user.findMany({
     where: { orgId, aktivni: true },
@@ -92,7 +93,6 @@ export default async function ServisZakazkaDetailPage({ params }: { params: { id
     reklamace: z.reklamace,
   }
 
-  const isAdmin = role === 'ADMIN' || !!session!.user.isSuperAdmin
-
-  return <ZakazkaDetailClient zakazka={data} orgUsers={orgUsers} canEdit={true} isAdmin={isAdmin} />
+  // Ruční přepis stavu, přiřazení technika a termín = dispečink
+  return <ZakazkaDetailClient zakazka={data} orgUsers={orgUsers} canEdit={true} isAdmin={perms.servisDispecink} />
 }

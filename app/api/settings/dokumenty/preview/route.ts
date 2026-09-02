@@ -4,13 +4,14 @@ import { NextResponse } from 'next/server'
 import { generatePdf } from '@/lib/pdf'
 import { buildDokumentChrome, DokumentChromeOverrides } from '@/lib/dokumentyChrome'
 import { getPlanLimits } from '@/lib/planLimits'
+import { getPerms } from '@/lib/permissions'
 
 // Náhled vzhledu dokumentů: vygeneruje ukázkovou stránku smlouvy
 // s aktuálním (i neuloženým) nastavením záhlaví/patičky.
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (session.user.role !== 'ADMIN') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!getPerms(session.user).nastaveniOrg) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = (await req.json().catch(() => ({}))) as DokumentChromeOverrides
   const overrides: DokumentChromeOverrides = {}

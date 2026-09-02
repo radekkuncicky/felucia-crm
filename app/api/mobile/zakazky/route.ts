@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { orgPrisma } from '@/lib/orgPrisma'
+import { zakazkyScopeWhere } from '@/lib/permissions'
 import { getMobileOrWebSession, requireTechnikOrAdmin, klientAdresa, toAbsoluteUrl } from '@/lib/mobile-helpers'
 import type { ZakazkaStav } from '@prisma/client'
 
@@ -12,7 +13,9 @@ export async function GET(req: Request) {
   const authErr = requireTechnikOrAdmin(session)
   if (authErr) return authErr
 
-  const { id: userId, orgId, role } = session!.user
+  const { id: userId, orgId } = session!.user
+  const scope = zakazkyScopeWhere(session!.user.perms, userId)
+  if (scope === null) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   const db = orgPrisma(orgId)
   const url = new URL(req.url)
 
@@ -32,9 +35,7 @@ export async function GET(req: Request) {
     ...(stavParam ? { stav: stavParam } : {}),
     ...(filtr === 'aktivni' ? { stav: { in: AKTIVNI } } : {}),
     ...(filtr === 'hotove' ? { stav: { in: HOTOVE } } : {}),
-    ...(role === 'TECHNIK'
-      ? { techniciRel: { some: { technikId: userId } } }
-      : {}),
+    AND: [scope],
     ...(q
       ? {
           OR: [

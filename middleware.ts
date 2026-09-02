@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { getToken } from 'next-auth/jwt'
+import { isRoleName, isTechnikView, ROLE_PRESETS } from '@/lib/permissions'
+
+// Stránky obchodní části — technický pohled je nevidí (menu je nenabízí, tohle chytá přímé URL)
+const OBCHOD_PREFIXES = ['/deals', '/clients', '/leady', '/products', '/quote-templates', '/quotes', '/activities', '/sod', '/cenovka', '/analytics', '/documents']
 
 const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'felucia.io'
 
@@ -164,25 +168,18 @@ export async function middleware(req: NextRequest) {
     return NextResponse.json({ ok: true, _demo: true }, { status: 200 })
   }
 
-  // ── TECHNIK role restriction ──────────────────────────────────────────────
-  if (token && token.role === 'TECHNIK') {
-    const isTechnikAllowedPage =
-      url.pathname.startsWith('/zakazky') ||
-      url.pathname.startsWith('/api/zakazky') ||
-      url.pathname.startsWith('/api/predavaky') ||
-      url.pathname.startsWith('/api/auth') ||
-      url.pathname.startsWith('/api/notifications') ||
-      url.pathname.startsWith('/api/settings/profile') ||
-      url.pathname.startsWith('/auth') ||
-      url.pathname === '/dashboard'
-
-    if (!isTechnikAllowedPage && !isApiRoute) {
-      url.pathname = '/zakazky'
-      return NextResponse.redirect(url)
-    }
-
-    if (isApiRoute && !isTechnikAllowedPage) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  // ── Technický pohled (bez obchodu) — hrubý filtr obchodních stránek ─────────
+  // Jemná kontrola (rozsah zakázek, nákupky, sklad, servis…) je v každé stránce/API
+  // přes getPerms(); tady jen přesměrujeme technika mimo obchodní část UI.
+  if (token && !isApiRoute && !token.isSuperAdmin) {
+    const perms = token.perms ?? ROLE_PRESETS[isRoleName(token.role) ? token.role : 'TECHNIK']
+    if (isTechnikView(perms)) {
+      const isObchodPage = OBCHOD_PREFIXES.some(p => url.pathname === p || url.pathname.startsWith(p + '/'))
+      if (isObchodPage) {
+        url.pathname = '/zakazky'
+        url.search = ''
+        return NextResponse.redirect(url)
+      }
     }
   }
 

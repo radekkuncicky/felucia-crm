@@ -1,15 +1,13 @@
 import { NextResponse } from 'next/server'
 import { orgPrisma } from '@/lib/orgPrisma'
-import { getMobileOrWebSession, requireTechnikOrAdmin } from '@/lib/mobile-helpers'
-import { canTechnikAccessZakazka } from '@/lib/zakazkyHelpers'
+import { getMobileOrWebSession, requireTechnikOrAdmin, canAccessZakazka } from '@/lib/mobile-helpers'
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   const session = await getMobileOrWebSession(req)
   const authErr = requireTechnikOrAdmin(session)
   if (authErr) return authErr
 
-  const isTechnik = session!.user.role === 'TECHNIK'
-  if (isTechnik && !(await canTechnikAccessZakazka(session!.user.id, params.id, session!.user.orgId))) {
+  if (!(await canAccessZakazka(session!, params.id))) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 

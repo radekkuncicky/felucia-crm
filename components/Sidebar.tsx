@@ -4,8 +4,8 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { signOut } from 'next-auth/react'
-import { Role } from '@prisma/client'
 import { useOrgSettings } from '@/context/OrgSettingsContext'
+import { isTechnikView, ROLE_LABELS, type Permissions } from '@/lib/permissions'
 import {
   IconHome, IconUsers, IconBriefcase, IconCoins, IconDocument, IconBox,
   IconActivity, IconChart, IconCog, IconLogout, IconChevronDown, IconChevronLeft,
@@ -15,10 +15,10 @@ import {
 
 interface SidebarUser {
   jmeno: string
-  role: Role
+  role: string
+  perms: Permissions
   plan?: string
   isSuperAdmin?: boolean
-  serviceAccess?: boolean
 }
 
 interface Props {
@@ -124,6 +124,14 @@ export default function Sidebar({ user, orgNazev }: Props) {
   const isPlatinum = user.plan === 'PROFESSIONAL' || user.plan === 'ENTERPRISE'
   const orgSettings = useOrgSettings()
 
+  const perms = user.perms
+  // Technický pohled = bez obchodu, jen zakázky (TECHNIK / HLAVNI_TECHNIK preset)
+  const isTechnik = isTechnikView(perms)
+  const hasServiceAccess = perms.servis !== 'ZADNY'
+  const showZakazky = perms.zakazky !== 'ZADNE'
+  const showSklad = perms.sklad !== 'ZADNY'
+  const showSettings = perms.spravaUzivatelu || perms.nastaveniOrg || perms.fakturace || perms.analytiky
+
   useEffect(() => {
     const saved = localStorage.getItem('sidebar-collapsed')
     if (saved === 'true') setCollapsed(true)
@@ -133,7 +141,7 @@ export default function Sidebar({ user, orgNazev }: Props) {
       setActiveGroup('aktivity')
     } else if (pathname.startsWith('/servis')) {
       // Servisní zakázky žijí ve skupině Servis (mimo techniky, ti je mají ve skupině Zakázky)
-      setActiveGroup(user.role === 'TECHNIK' ? 'zakazky' : 'servis')
+      setActiveGroup(isTechnik ? 'zakazky' : 'servis')
     } else if (pathname.startsWith('/zakazky')) {
       setActiveGroup('zakazky')
     } else if (pathname.startsWith('/leady')) {
@@ -141,10 +149,7 @@ export default function Sidebar({ user, orgNazev }: Props) {
     } else {
       setActiveGroup(null)
     }
-  }, [pathname])
-
-  const isTechnik = user.role === 'TECHNIK'
-  const hasServiceAccess = user.serviceAccess ?? false
+  }, [pathname, isTechnik])
 
   function toggleCollapse() {
     const next = !collapsed
@@ -152,7 +157,6 @@ export default function Sidebar({ user, orgNazev }: Props) {
     localStorage.setItem('sidebar-collapsed', String(next))
   }
 
-  const isAdmin = user.role === 'ADMIN'
   const isSuperAdmin = user.isSuperAdmin ?? false
 
   function NavItem({ href, icon, label, exact = false }: { href: string; icon: React.ReactNode; label: string; exact?: boolean }) {
@@ -264,18 +268,23 @@ export default function Sidebar({ user, orgNazev }: Props) {
             ) : (
               <NavItem href="/zakazky" icon={<IconClipboard className="w-5 h-5 flex-shrink-0" />} label="Moje zakázky" />
             )}
+            <NavItem href="/predavaky" icon={<IconDocument className="w-5 h-5 flex-shrink-0" />} label="Předávací protokoly" />
+            {showSklad && <NavItem href="/sklad" icon={<IconWarehouse className="w-5 h-5 flex-shrink-0" />} label="Sklad" />}
+            <NavItem href="/calendar" icon={<IconCalendar className="w-5 h-5 flex-shrink-0" />} label="Kalendář" />
           </>
         ) : (
           <>
             <NavItem href="/dashboard" icon={<IconHome className="w-5 h-5 flex-shrink-0" />} label="Nástěnka" exact />
-            <NavItem href="/clients" icon={<IconUsers className="w-5 h-5 flex-shrink-0" />} label="Klienti" />
+            {perms.obchod && <NavItem href="/clients" icon={<IconUsers className="w-5 h-5 flex-shrink-0" />} label="Klienti" />}
 
-            {/* Leady - STANDARD+ only, not TECHNIK */}
-            {user.plan !== 'STARTER' && orgSettings?.modulLeady !== false && (
+            {/* Leady - STANDARD+ only, jen s právem obchodu */}
+            {perms.obchod && user.plan !== 'STARTER' && orgSettings?.modulLeady !== false && (
               <NavItem href="/leady" icon={<IconBell className="w-5 h-5 flex-shrink-0" />} label="Leady" />
             )}
 
             {/* Obchod group */}
+            {perms.obchod && (
+              <>
             <GroupToggle
               open={activeGroup === 'obchod'}
               onToggle={() => setActiveGroup(g => g === 'obchod' ? null : 'obchod')}
@@ -299,17 +308,17 @@ export default function Sidebar({ user, orgNazev }: Props) {
                 )}
               </div>
             )}
-
-            {/* Zakázky + Sklad - not for OBCHODNIK */}
-            {/* Servisní zakázky žijí ve skupině Servis (Professional+ s modulem), ne tady */}
-            {user.role !== 'OBCHODNIK' && (
-              <>
-                <NavItem href="/zakazky" icon={<IconClipboard className="w-5 h-5 flex-shrink-0" />} label="Zakázky" exact />
-                <NavItem href="/sklad" icon={<IconWarehouse className="w-5 h-5 flex-shrink-0" />} label="Sklad" />
               </>
             )}
 
+            {/* Zakázky + Sklad podle oprávnění */}
+            {/* Servisní zakázky žijí ve skupině Servis (Professional+ s modulem), ne tady */}
+            {showZakazky && <NavItem href="/zakazky" icon={<IconClipboard className="w-5 h-5 flex-shrink-0" />} label="Zakázky" exact />}
+            {showSklad && <NavItem href="/sklad" icon={<IconWarehouse className="w-5 h-5 flex-shrink-0" />} label="Sklad" />}
+
             {/* Aktivity group */}
+            {perms.obchod && (
+              <>
             <GroupToggle
               open={activeGroup === 'aktivity'}
               onToggle={() => setActiveGroup(g => g === 'aktivity' ? null : 'aktivity')}
@@ -332,9 +341,11 @@ export default function Sidebar({ user, orgNazev }: Props) {
                 )}
               </div>
             )}
+              </>
+            )}
 
             {/* Servis group - Professional/Enterprise only + module enabled */}
-            {isPlatinum && orgSettings.modulServis && (
+            {isPlatinum && orgSettings.modulServis && hasServiceAccess && (
               <>
                 <GroupToggle
                   open={activeGroup === 'servis'}
@@ -365,7 +376,7 @@ export default function Sidebar({ user, orgNazev }: Props) {
 
             <NavItem href="/calendar" icon={<IconCalendar className="w-5 h-5 flex-shrink-0" />} label="Kalendář" />
             {orgSettings.modulDokumenty && <NavItem href="/documents" icon={<IconDocument className="w-5 h-5 flex-shrink-0" />} label="Dokumenty" />}
-            {orgSettings.modulAnalytiky && <NavItem href="/analytics" icon={<IconChart className="w-5 h-5 flex-shrink-0" />} label="Analýzy" />}
+            {orgSettings.modulAnalytiky && perms.analytiky && <NavItem href="/analytics" icon={<IconChart className="w-5 h-5 flex-shrink-0" />} label="Analýzy" />}
           </>
         )}
       </nav>
@@ -380,7 +391,7 @@ export default function Sidebar({ user, orgNazev }: Props) {
 
       {/* Bottom */}
       <div className="border-t border-green-900/50 p-2 space-y-0.5">
-        {isAdmin && (
+        {showSettings && (
           <NavItem href="/settings" icon={<IconCog className="w-5 h-5 flex-shrink-0" />} label="Nastavení" />
         )}
         {isSuperAdmin && (
@@ -398,7 +409,7 @@ export default function Sidebar({ user, orgNazev }: Props) {
           {!collapsed && (
             <div className="flex-1 min-w-0">
               <p className="text-xs font-semibold text-green-100 truncate">{user.jmeno}</p>
-              <p className="text-xs text-green-400/50">{user.role === 'ADMIN' ? 'Admin' : user.role === 'OBCHODNIK' ? 'Obchodník' : 'Technik'}</p>
+              <p className="text-xs text-green-400/50">{ROLE_LABELS[user.role as keyof typeof ROLE_LABELS] ?? user.role}</p>
             </div>
           )}
         </Link>

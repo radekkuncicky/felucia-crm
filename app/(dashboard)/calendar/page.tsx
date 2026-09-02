@@ -3,6 +3,7 @@ import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import CalendarClient, { CalendarEvent } from './CalendarClient'
+import { getPerms, dealScopeWhere, servisScopeWhere, zakazkyScopeWhere } from '@/lib/permissions'
 
 export default async function CalendarPage() {
   const session = await getServerSession(authOptions)
@@ -10,19 +11,24 @@ export default async function CalendarPage() {
 
   const orgId = session.user.orgId
   const userId = session.user.id
-  const isTechnik = session.user.role === 'TECHNIK'
+  const perms = getPerms(session.user)
+  // Každý druh události jen v rozsahu oprávnění uživatele
+  const dealScope = dealScopeWhere(perms, userId)
+  const servisScope = servisScopeWhere(perms, userId)
+  const zakazkyScope = zakazkyScopeWhere(perms, userId)
 
   const [activities, deals, servisNavstevy, montazZakazky] = await Promise.all([
-    prisma.activity.findMany({
-      where: { deal: { orgId } },
+    !dealScope ? [] : prisma.activity.findMany({
+      where: { deal: { orgId, ...dealScope } },
       include: {
         deal: { include: { client: { select: { jmeno: true, prijmeni: true } } } },
       },
       orderBy: { datum: 'asc' },
     }),
-    prisma.deal.findMany({
+    !dealScope ? [] : prisma.deal.findMany({
       where: {
         orgId,
+        ...dealScope,
         OR: [
           { terminRealizace: { not: null } },
           { terminPrevzeti: { not: null } },
@@ -31,8 +37,8 @@ export default async function CalendarPage() {
       },
       include: { client: { select: { jmeno: true, prijmeni: true } } },
     }),
-    prisma.servisniZakazka.findMany({
-      where: { orgId, stav: { in: ['NAPLANOVANA', 'PROBIHA'] }, planovanyTermin: { not: null } },
+    !servisScope ? [] : prisma.servisniZakazka.findMany({
+      where: { orgId, ...servisScope, stav: { in: ['NAPLANOVANA', 'PROBIHA'] }, planovanyTermin: { not: null } },
       include: {
         kontrakt: { select: { nazev: true, klient: { select: { jmeno: true, prijmeni: true } } } },
         klient: { select: { jmeno: true, prijmeni: true } },
@@ -40,11 +46,11 @@ export default async function CalendarPage() {
         technik: { select: { jmeno: true } },
       },
     }),
-    prisma.zakazka.findMany({
+    !zakazkyScope ? [] : prisma.zakazka.findMany({
       where: {
         orgId,
         montazOd: { not: null },
-        ...(isTechnik ? { techniciRel: { some: { technikId: userId } } } : {}),
+        AND: [zakazkyScope],
       },
       include: {
         klient: { select: { jmeno: true, prijmeni: true } },
@@ -159,7 +165,7 @@ export default async function CalendarPage() {
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Kalendář</h1>
         <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">Aktivity, termíny realizací, zálohy a servisní návštěvy</p>
       </div>
-      <CalendarClient events={events} canDispatch={!isTechnik} />
+      <CalendarClient events={events} canDispatch={perms.zakazkyEdit} />
     </div>
   )
 }

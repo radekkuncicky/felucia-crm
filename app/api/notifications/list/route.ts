@@ -4,11 +4,13 @@ import { getMobileSession } from '@/lib/mobile-auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { getPlanLimits } from '@/lib/planLimits'
 import { NextResponse } from 'next/server'
+import { getPerms } from '@/lib/permissions'
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions) ?? await getMobileSession(req)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const { orgId, id: userId, role } = session.user
+  const { orgId, id: userId } = session.user
+  const perms = getPerms(session.user)
   const db = orgPrisma(orgId)
 
   const orgSettings = await import('@/lib/orgSettings').then(m => m.getOrgSettings(orgId))
@@ -61,7 +63,7 @@ export async function GET(req: Request) {
   })
 
   // C) New deals in last 24h
-  const noveOPWhere = role === 'ADMIN'
+  const noveOPWhere = perms.obchodCiziOP
     ? { orgId, vytvoreno: { gte: oneDayAgo } }
     : { orgId, userId, vytvoreno: { gte: oneDayAgo } }
 
