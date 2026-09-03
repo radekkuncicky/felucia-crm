@@ -2,8 +2,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
-import { generatePredavakCislo } from '@/lib/zakazkyHelpers'
-import { canTechnikAccessZakazka } from '@/lib/zakazkyHelpers'
+import { generatePredavakCislo, canAccessZakazka } from '@/lib/zakazkyHelpers'
+import { getPerms, forbidden } from '@/lib/permissions'
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
@@ -11,16 +11,13 @@ export async function POST(req: Request) {
 
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)
-  const role = session.user.role
   const body = await req.json()
   const { zakazkaId, etapaId } = body
 
   if (!zakazkaId) return NextResponse.json({ error: 'Chybí zakazkaId' }, { status: 400 })
 
-  // Check access — OBCHODNIK je v modulu zakázek manažer (schvaluje protokoly), smí je i zakládat
-  if (role === 'TECHNIK' && !(await canTechnikAccessZakazka(session.user.id, zakazkaId, session.user.orgId))) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  // Předávák může založit kdokoli, kdo má zakázku v rozsahu (technik na ní, vedoucí, manažer)
+  if (!(await canAccessZakazka(session.user, getPerms(session.user), zakazkaId))) return forbidden()
 
   const zakazka = await db.zakazka.findFirst({
     where: { id: zakazkaId, orgId },

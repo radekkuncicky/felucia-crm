@@ -3,11 +3,13 @@ import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { SkladPohybTyp } from '@prisma/client'
+import { getPerms, forbidden } from '@/lib/permissions'
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (session.user.role === 'TECHNIK') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const perms = getPerms(session.user)
+  if (perms.sklad === 'ZADNY') return forbidden()
 
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)
@@ -55,11 +57,13 @@ export async function GET(req: Request) {
     db.skladPohyb.count({ where: { orgId } }),
   ])
 
+  // Nákupní ceny jen s oprávněním financeNakupky
+  const showNakupky = perms.financeNakupky
   return NextResponse.json({
-    pohyby,
+    pohyby: showNakupky ? pohyby : pohyby.map(p => ({ ...p, nakupniCena: null })),
     kpi: {
-      rezervaceHodnota: Number(rezervaceTotal._sum.nakupniCena ?? 0),
-      vydejMesicHodnota: Number(vydejMesic._sum.nakupniCena ?? 0),
+      rezervaceHodnota: showNakupky ? Number(rezervaceTotal._sum.nakupniCena ?? 0) : 0,
+      vydejMesicHodnota: showNakupky ? Number(vydejMesic._sum.nakupniCena ?? 0) : 0,
       pocetPohybu,
     },
   })

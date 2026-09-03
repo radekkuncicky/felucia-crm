@@ -1,5 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { getPerms, dealScopeWhere } from '@/lib/permissions'
 import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
@@ -13,6 +14,7 @@ import NabidkyTab from './NabidkyTab'
 import DokumentyTab from './DokumentyTab'
 import SmlouvyTab from './SmlouvyTab'
 import FotodokumentaceTab from './FotodokumentaceTab'
+import ZamereniTab from './ZamereniTab'
 import TabActivator from './TabActivator'
 import ServisTab from './ServisTab'
 import { getPlanLimits } from '@/lib/planLimits'
@@ -20,6 +22,8 @@ import { NavigateButton } from '@/components/NavigateButton'
 import { CollapsibleEdit } from './CollapsibleEdit'
 import { DealNotesCard } from './DealNotesCard'
 import { formatDate, formatCislo } from '@/lib/format'
+import { getDefiniceProZamereni, vyplneneSekce } from '@/lib/zamereniDefinice'
+import { klientAdresa } from '@/lib/mobile-helpers'
 
 function fmt(d: Date | null) {
   if (!d) return ''
@@ -38,21 +42,32 @@ export default async function DealDetailPage({
   const session = await getServerSession(authOptions)
   const orgId = session!.user.orgId
   const tab = searchParams.tab ?? 'prehled'
+  const perms = getPerms(session!.user)
+  // Bez obchodu nic; bez obchodCiziOP jen vlastní OP
+  const dealScope = dealScopeWhere(perms, session!.user.id)
+  if (!dealScope) notFound()
 
   const isPlatinum = getPlanLimits(session!.user.plan).hasServiceModule
 
   const [deal, products, quoteTemplates, orgUsers, servisKontrakty, orgSettings, dealZarizeni, renderTemplates] = await Promise.all([
     prisma.deal.findFirst({
-      where: { id: params.id, orgId },
+      where: { id: params.id, orgId, ...dealScope },
       include: {
         client: true,
         user: true,
         organization: true,
         quotes: {
-          include: { items: { include: { product: true }, orderBy: { id: 'asc' } } },
+          include: { items: { include: { product: true }, orderBy: { poradi: 'asc' } } },
           orderBy: { vytvoreno: 'asc' },
         },
         activities: { include: { user: true, resitel: true }, orderBy: { datum: 'desc' } },
+        zamereni: {
+          include: {
+            autor: { select: { jmeno: true } },
+            fotky: { orderBy: { poradi: 'asc' } },
+          },
+          orderBy: { vytvoreno: 'desc' },
+        },
       },
     }),
     prisma.product.findMany({
@@ -91,15 +106,33 @@ export default async function DealDetailPage({
 
   if (!deal) notFound()
 
-  // Zneplatněné OP vidí jen admin
-  const isAdmin = session!.user.role === 'ADMIN' || session!.user.isSuperAdmin === true
-  if (deal.stav === 'ZNEPLATNENO' && !isAdmin) notFound()
+  // Zneplatněné OP vidí jen kdo je smí zneplatňovat/mazat
+  if (deal.stav === 'ZNEPLATNENO' && !perms.obchodMazani) notFound()
 
   // Zakázka vzniklá z tohoto OP (auto-create při Úspěchu)
   const linkedZakazka = await prisma.zakazka.findFirst({
     where: { opId: deal.id, orgId },
     select: { id: true, cislo: true, stav: true },
   })
+
+  const klientAdresaText = klientAdresa(deal.client)
+  const zamereniItems = await Promise.all(
+    deal.zamereni.map(async z => {
+      // getDefiniceProZamereni čeká OrgPrismaClient jen kvůli typům z orgPrisma's $extends —
+      // runtime na tom nezávisí, bare prisma má stejné delegáty (zamereniDefinice.find*)
+      const definice = await getDefiniceProZamereni(prisma as unknown as import('@/lib/orgPrisma').OrgPrismaClient, z)
+      return {
+        id: z.id,
+        typ: z.typ,
+        stav: z.stav,
+        datum: z.datum.toISOString(),
+        autor: z.autor?.jmeno ?? null,
+        adresa: deal.adresaDila || klientAdresaText || null,
+        sekce: vyplneneSekce(definice.schemaJson, z.odpovedi as Record<string, unknown>),
+        fotky: z.fotky.map(f => ({ id: f.id, url: f.url, tag: f.tag, popis: f.popis })),
+      }
+    }),
+  )
 
   // Calculate active quote price for header
   const activeQuote = deal.quotes.find(q => q.aktivni)
@@ -311,7 +344,7 @@ export default async function DealDetailPage({
                     <p className="text-lg font-bold text-gray-900 dark:text-white">{konecnaCena.toLocaleString('cs-CZ', { maximumFractionDigits: 0 })}</p>
                     <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">Kč bez DPH</p>
                   </div>
-                  {hasNakupni ? (
+                  {hasNakupni && perms.financeNakupky ? (
                     <>
                       <div className="bg-white dark:bg-slate-800 rounded-lg p-3">
                         <p className="text-lg font-bold text-gray-600 dark:text-slate-300">{nakupniTotal.toLocaleString('cs-CZ', { maximumFractionDigits: 0 })}</p>
@@ -379,7 +412,7 @@ export default async function DealDetailPage({
               sleva: Number(i.sleva ?? 0),
               dphSazba: Number(i.dphSazba ?? 12),
               // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              nakupniCena: (i as any).nakupniCena != null ? Number((i as any).nakupniCena) : null,
+              nakupniCena: perms.financeNakupky && (i as any).nakupniCena != null ? Number((i as any).nakupniCena) : null,
               poznamky: i.poznamky ?? null,
               productId: i.productId ?? null,
               poradi: i.poradi ?? 0,
@@ -389,7 +422,7 @@ export default async function DealDetailPage({
             id: p.id,
             nazev: p.nazev,
             cena: Number(p.standardniCena),
-            nakladovaCena: p.nakladovaCena !== null ? Number(p.nakladovaCena) : null,
+            nakladovaCena: perms.financeNakupky && p.nakladovaCena !== null ? Number(p.nakladovaCena) : null,
             kategorie: p.categories[0]?.nazev ?? null,
             categoryId: p.categories[0]?.id ?? null,
             jednotka: p.jednotka,
@@ -401,7 +434,7 @@ export default async function DealDetailPage({
             polozky: t.polozky as TemplateItem[],
           }))}
           renderTemplates={renderTemplates}
-          userRole={session!.user.role}
+          showNakupky={perms.financeNakupky}
           clientEmail={deal.client.email}
         />
       )}
@@ -409,7 +442,7 @@ export default async function DealDetailPage({
       {tab === 'smlouvy' && (
         <SmlouvyTab
           dealId={deal.id}
-          role={session!.user.role}
+          canDelete={perms.obchodMazani}
         />
       )}
 
@@ -425,6 +458,10 @@ export default async function DealDetailPage({
 
       {tab === 'dokumenty' && (
         <DokumentyTab dealKod={deal.kod} />
+      )}
+
+      {tab === 'zamereni' && (
+        <ZamereniTab zamereni={zamereniItems} />
       )}
 
       {tab === 'fotodokumentace' && (

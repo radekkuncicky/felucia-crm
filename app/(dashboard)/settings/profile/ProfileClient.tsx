@@ -5,9 +5,8 @@ import { toast } from 'sonner'
 import { signOut } from 'next-auth/react'
 import AvatarCropModal from '@/components/AvatarCropModal'
 
-const roleLabels: Record<string, string> = {
-  ADMIN: 'Administrátor', OBCHODNIK: 'Obchodník', TECHNIK: 'Technik',
-}
+import { ROLE_LABELS } from '@/lib/permissions'
+const roleLabels: Record<string, string> = ROLE_LABELS
 
 interface UserData {
   id: string

@@ -1,6 +1,7 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { getPerms } from '@/lib/permissions'
 import { notFound } from 'next/navigation'
 import PolozkyTab from './PolozkyTab'
 import TechniciTab from './TechniciTab'
@@ -22,9 +23,9 @@ export default async function ZakazkaDetailPage({
   if (!session) notFound()
 
   const orgId = session.user.orgId
-  const role = session.user.role
-  const isTechnik = role === 'TECHNIK'
-  const canEdit = role === 'ADMIN' || role === 'OBCHODNIK'
+  // Přístup k zakázce ověřuje layout.tsx (canAccessZakazka)
+  const perms = getPerms(session.user)
+  const canEdit = perms.zakazkyEdit
   const tab = searchParams.tab ?? 'polozky'
 
   const [zakazka, vsichniTechnici, komentare, auditLogs] = await Promise.all([
@@ -59,10 +60,10 @@ export default async function ZakazkaDetailPage({
         kontakty: { orderBy: { vytvoreno: 'asc' } },
       },
     }),
-    isTechnik
+    !canEdit
       ? Promise.resolve([])
       : prisma.user.findMany({
-          where: { orgId, aktivni: true, role: 'TECHNIK' },
+          where: { orgId, aktivni: true, role: { in: ['TECHNIK', 'HLAVNI_TECHNIK'] } },
           select: { id: true, jmeno: true, email: true },
           orderBy: { jmeno: 'asc' },
         }),
@@ -101,17 +102,20 @@ export default async function ZakazkaDetailPage({
             kod: p.kod,
             mnozstvi: Number(p.mnozstvi),
             jednotka: p.jednotka,
-            prodejniCena: isTechnik ? null : (p.prodejniCena !== null ? Number(p.prodejniCena) : null),
-            nakupniCena: isTechnik ? null : (p.nakupniCena !== null ? Number(p.nakupniCena) : null),
+            prodejniCena: perms.financeProdejni && p.prodejniCena !== null ? Number(p.prodejniCena) : null,
+            nakupniCena: perms.financeNakupky && p.nakupniCena !== null ? Number(p.nakupniCena) : null,
             dphSazba: Number(p.dphSazba),
             stav: p.stav,
             poznamka: p.poznamka,
           }))}
-          isTechnik={isTechnik}
+          canEdit={canEdit}
+          canSklad={perms.sklad === 'PLNY'}
+          showCeny={perms.financeProdejni}
+          showNakupky={perms.financeNakupky}
         />
       )}
 
-      {tab === 'technici' && !isTechnik && (
+      {tab === 'technici' && canEdit && (
         <TechniciTab
           zakazkaId={zakazka.id}
           technici={zakazka.techniciRel.map(t => ({
@@ -140,12 +144,12 @@ export default async function ZakazkaDetailPage({
             etapaId: p.etapaId ?? null,
           }))}
           canCreate={true}
-          canApprove={canEdit}
+          canApprove={perms.zakazkySchvalovani}
           etapy={zakazka.etapy ?? []}
         />
       )}
 
-      {tab === 'vyuctovani' && !isTechnik && (
+      {tab === 'vyuctovani' && perms.financeProdejni && (
         <VyuctovaniTab
           zakazkaId={zakazka.id}
           vyuctovani={zakazka.vyuctovani.map(v => ({
@@ -191,7 +195,7 @@ export default async function ZakazkaDetailPage({
             email: k.email,
             poznamka: k.poznamka,
           }))}
-          canEdit={canEdit || isTechnik}
+          canEdit={true}
         />
       )}
 

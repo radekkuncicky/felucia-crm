@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { orgPrisma } from '@/lib/orgPrisma'
+import { zakazkyScopeWhere } from '@/lib/permissions'
 import { getMobileOrWebSession, requireTechnikOrAdmin, klientAdresa, toAbsoluteUrl } from '@/lib/mobile-helpers'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -37,7 +38,7 @@ export async function GET(req: Request) {
   const authErr = requireTechnikOrAdmin(session)
   if (authErr) return authErr
 
-  const { id: userId, orgId, role } = session!.user
+  const { id: userId, orgId } = session!.user
   const db = orgPrisma(orgId)
 
   const now = new Date()
@@ -45,7 +46,9 @@ export async function GET(req: Request) {
   const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59)
   const in60Days = new Date(todayStart.getTime() + 60 * 24 * 60 * 60 * 1000)
 
-  const technikFilter = role === 'TECHNIK' ? { techniciRel: { some: { technikId: userId } } } : {}
+  const scope = zakazkyScopeWhere(session!.user.perms, userId)
+  if (scope === null) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const technikFilter = scope
   const include = {
     klient: { select: { jmeno: true, prijmeni: true, telefon: true, ulice: true, mesto: true, psc: true } },
     polozky: { select: { id: true, hotovo: true } },

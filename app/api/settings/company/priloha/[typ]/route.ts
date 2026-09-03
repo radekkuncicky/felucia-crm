@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import fs from 'fs'
 import path from 'path'
+import { getPerms } from '@/lib/permissions'
 
 const ALLOWED_TYPES = ['vop', 'vzsp', 'cenik'] as const
 type AttachType = typeof ALLOWED_TYPES[number]
@@ -16,7 +17,7 @@ const DB_FIELD: Record<AttachType, 'prilohaVopPath' | 'prilohaVzspPath' | 'prilo
 
 export async function POST(req: Request, { params }: { params: { typ: string } }) {
   const session = await getServerSession(authOptions)
-  if (!session || session.user.role !== 'ADMIN') {
+  if (!session || !getPerms(session.user).nastaveniOrg) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -51,7 +52,7 @@ export async function POST(req: Request, { params }: { params: { typ: string } }
 
 export async function DELETE(req: Request, { params }: { params: { typ: string } }) {
   const session = await getServerSession(authOptions)
-  if (!session || session.user.role !== 'ADMIN') {
+  if (!session || !getPerms(session.user).nastaveniOrg) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll } from 'vitest'
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { POST as leadsPost } from '@/app/api/public/website-leads/route'
+import { leadPredmet, sluzbaToTechnologie } from '@/lib/leadService'
 
 const RUN = `website-leads-${Date.now()}`
 
@@ -129,7 +130,7 @@ describe('POST /api/public/website-leads', () => {
     expect(count).toBe(2)
   })
 
-  it('plný payload s order a hasAttachments → 200, info vidět ve zprávě', async () => {
+  it('plný payload s order a hasAttachments → 200, metadata ve vlastních sloupcích', async () => {
     const res = await leadsPost(
       req(
         {
@@ -150,11 +151,48 @@ describe('POST /api/public/website-leads', () => {
 
     const lead = await prisma.lead.findUnique({ where: { id: data.id } })
     expect(lead?.telefon).toBe('+420 777 111 222')
-    expect(lead?.zprava).toContain('Služba: klimatizace')
-    expect(lead?.zprava).toContain('(klimatizace-1-1)')
-    expect(lead?.zprava).toMatch(/42\s000\sKč/)
-    expect(lead?.zprava).toContain('Přílohy: 2')
-    expect(lead?.zprava).toContain('Chci klimu do 3+1')
+    expect(lead?.sluzba).toBe('klimatizace')
+    expect(lead?.zdrojFormulare).toBe('order')
+    expect(lead?.objednavka).toBe('klimatizace-1-1')
+    expect(Number(lead?.odhadovanaHodnota)).toBe(42000)
+    expect(lead?.prilohy).toContain('2')
+    // Zpráva obsahuje jen text od klienta — žádnou hlavičku formuláře
+    expect(lead?.zprava).toBe('Chci klimu do 3+1')
+    expect(lead?.zprava).not.toContain('Zdroj formuláře')
+  })
+
+  it('předmět OP se skládá ze služby, ne z hlavičky formuláře', async () => {
+    const res = await leadsPost(
+      req(
+        {
+          source: 'contact_page',
+          submittedAt: '2026-07-22T12:07:00.000Z',
+          contact: { name: 'Eva Předmětová', email: 'eva@x.cz' },
+          service: 'tepelne-cerpadlo',
+          message: 'Dobrý den, poptávám tepelné čerpadlo pro rodinný dům v Ostravě, děkuji.',
+        },
+        { 'x-api-key': apiKey }
+      )
+    )
+    const lead = await prisma.lead.findUnique({ where: { id: (await res.json()).id } })
+    expect(leadPredmet(lead!)).toBe('Tepelné čerpadlo')
+    expect(sluzbaToTechnologie(lead!.sluzba)).toBe('TEPELNE_CERPADLO')
+  })
+
+  it('bez služby se předmět vezme ze zprávy a zkrátí na hranici slova', async () => {
+    const lead = {
+      jmeno: 'Karel Dlouhý',
+      sluzba: null,
+      zprava: 'Dobrý den, chtěl bych nacenit klimatizaci do bytu 3+1 v Ostravě-Porubě včetně montáže a revize.',
+    }
+    const predmet = leadPredmet(lead)
+    expect(predmet.length).toBeLessThanOrEqual(81)
+    expect(predmet).not.toContain('Zdroj formuláře')
+    expect(predmet.endsWith('…')).toBe(true)
+    // řez padne na hranici slova — za useknutou částí následuje v originálu mezera
+    const bezVypustky = predmet.slice(0, -1)
+    expect(lead.zprava.startsWith(bezVypustky)).toBe(true)
+    expect(lead.zprava[bezVypustky.length]).toBe(' ')
   })
 
   it('STARTER plán nemá přístup → 403', async () => {

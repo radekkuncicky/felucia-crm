@@ -65,6 +65,7 @@ interface Props {
   zakazka: Zakazka
   orgUsers: OrgUser[]
   canEdit: boolean
+  /** dispečink: ruční stav, přiřazení technika, termín (servisDispecink) */
   isAdmin: boolean
 }
 
@@ -550,14 +551,14 @@ export default function ZakazkaDetailClient({ zakazka, orgUsers, canEdit, isAdmi
               </div>
               <div>
                 <label className={labelClass}>Technik</label>
-                <select value={form.technikId} onChange={e => set('technikId', e.target.value)} disabled={!canEdit} className={inputClass}>
+                <select value={form.technikId} onChange={e => set('technikId', e.target.value)} disabled={!canEdit || !isAdmin} className={inputClass}>
                   <option value="">— nepřiřazen —</option>
                   {orgUsers.map(u => <option key={u.id} value={u.id}>{u.jmeno}</option>)}
                 </select>
               </div>
               <div>
                 <label className={labelClass}>Plánovaný termín</label>
-                <input type="datetime-local" value={form.planovanyTermin} onChange={e => set('planovanyTermin', e.target.value)} disabled={!canEdit} className={inputClass} />
+                <input type="datetime-local" value={form.planovanyTermin} onChange={e => set('planovanyTermin', e.target.value)} disabled={!canEdit || !isAdmin} className={inputClass} />
               </div>
               <div>
                 <label className={labelClass}>Skutečný termín</label>

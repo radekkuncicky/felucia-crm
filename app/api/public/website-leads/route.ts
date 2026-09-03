@@ -168,8 +168,6 @@ export async function POST(req: NextRequest) {
   const attachmentsNote = typeof body.attachmentsInfo?.note === 'string' ? body.attachmentsInfo.note.trim().slice(0, 300) : null
   const pageUrl = typeof body.meta?.pageUrl === 'string' ? body.meta.pageUrl.trim().slice(0, 500) : null
 
-  const zprava = buildZprava({ source, service, message, orderPrice, orderSlug, attachmentsCount, attachmentsNote, pageUrl })
-
   const lead = await prisma.lead.create({
     data: {
       orgId: apiKey.orgId,
@@ -178,7 +176,17 @@ export async function POST(req: NextRequest) {
       telefon: phone,
       zdroj: 'WEB_FORMULAR',
       status: 'NOVY',
-      zprava,
+      // Zpráva = jen text od klienta; metadata formuláře jdou do vlastních sloupců,
+      // aby se z nich daly rozumně skládat předmět OP a UI.
+      zprava: message,
+      sluzba: service,
+      zdrojFormulare: source,
+      strankaUrl: pageUrl,
+      prilohy: attachmentsCount
+        ? `${attachmentsCount}${attachmentsNote ? ` — ${attachmentsNote}` : ''}`
+        : null,
+      objednavka: orderSlug,
+      odhadovanaHodnota: orderPrice,
       apiKeyId: apiKey.id,
       submittedAt,
     },
@@ -189,29 +197,6 @@ export async function POST(req: NextRequest) {
 
   log(ip, 200)
   return NextResponse.json({ ok: true, id: lead.id }, { headers: hdrs })
-}
-
-function buildZprava(fields: {
-  source: string
-  service: string | null
-  message: string | null
-  orderPrice: number | null
-  orderSlug: string | null
-  attachmentsCount: number | null
-  attachmentsNote: string | null
-  pageUrl: string | null
-}) {
-  const lines: string[] = [`Zdroj formuláře: ${fields.source}`]
-  if (fields.service) lines.push(`Služba: ${fields.service}`)
-  if (fields.orderPrice !== null) {
-    lines.push(`Objednávka: ${fields.orderPrice.toLocaleString('cs-CZ')} Kč${fields.orderSlug ? ` (${fields.orderSlug})` : ''}`)
-  }
-  if (fields.attachmentsCount) {
-    lines.push(`Přílohy: ${fields.attachmentsCount}${fields.attachmentsNote ? ` — ${fields.attachmentsNote}` : ''}`)
-  }
-  if (fields.pageUrl) lines.push(`Stránka: ${fields.pageUrl}`)
-  if (fields.message) lines.push('', fields.message)
-  return lines.join('\n')
 }
 
 function log(ip: string, status: number) {

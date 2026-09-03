@@ -3,6 +3,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
 import AuditLogTable from './AuditLogTable'
+import { getPerms } from '@/lib/permissions'
 
 export default async function AuditLogPage({
   searchParams,
@@ -10,7 +11,7 @@ export default async function AuditLogPage({
   searchParams: { page?: string; user?: string; akce?: string; zaznam?: string }
 }) {
   const session = await getServerSession(authOptions)
-  if (!session || session.user.role !== 'ADMIN') redirect('/dashboard')
+  if (!session || !getPerms(session.user).analytiky) redirect('/dashboard')
   const orgId = session.user.orgId
 
   const page = Math.max(1, Number(searchParams.page ?? 1))

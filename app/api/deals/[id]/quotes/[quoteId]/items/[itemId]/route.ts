@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
+import { getPerms } from '@/lib/permissions'
 
 export async function PATCH(req: Request, { params }: { params: { id: string; quoteId: string; itemId: string } }) {
   const session = await getServerSession(authOptions)
@@ -23,7 +24,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string; qu
       mnozstvi: body.mnozstvi !== undefined ? Number(body.mnozstvi) : item.mnozstvi,
       jednotka: body.jednotka !== undefined ? (body.jednotka || 'ks') : item.jednotka,
       cenaZaKus: body.cenaZaKus !== undefined ? Number(body.cenaZaKus) : item.cenaZaKus,
-      nakupniCena: body.nakupniCena !== undefined
+      nakupniCena: body.nakupniCena !== undefined && getPerms(session.user).financeNakupkyEdit
         ? (body.nakupniCena === '' || body.nakupniCena === null ? null : Number(body.nakupniCena))
         : item.nakupniCena,
       sleva: body.sleva !== undefined ? Number(body.sleva) : item.sleva,

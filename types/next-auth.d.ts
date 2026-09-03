@@ -1,5 +1,6 @@
 import { Role } from '@prisma/client'
 import NextAuth, { DefaultSession } from 'next-auth'
+import type { Permissions } from '@/lib/permissions'
 
 declare module 'next-auth' {
   interface Session {
@@ -12,6 +13,7 @@ declare module 'next-auth' {
       plan: string
       isSuperAdmin: boolean
       isDemo?: boolean
+      perms: Permissions
       impersonating?: boolean        // true when superadmin is viewing another org
       impersonatingOrgNazev?: string // display name of the impersonated org
     } & DefaultSession['user']
@@ -37,5 +39,7 @@ declare module 'next-auth/jwt' {
     plan: string | null
     isSuperAdmin: boolean
     isDemo?: boolean
+    perms?: Permissions
+    permsAt?: number
   }
 }

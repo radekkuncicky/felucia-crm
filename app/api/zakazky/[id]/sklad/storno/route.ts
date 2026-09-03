@@ -1,12 +1,14 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { listUsersWithPermValue } from '@/lib/zakazkyHelpers'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
+import { getPerms, forbidden } from '@/lib/permissions'
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (session.user.role === 'TECHNIK') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (getPerms(session.user).sklad !== 'PLNY') return forbidden()
 
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)
@@ -21,11 +23,8 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   })
   if (!polozka) return NextResponse.json({ error: 'Položka nenalezena' }, { status: 404 })
 
-  // Find admin user to notify
-  const adminUser = await db.user.findFirst({
-    where: { orgId, role: 'ADMIN', aktivni: true },
-    select: { id: true },
-  })
+  // Notifikovat všechny s plným přístupem ke skladu (příjem/storno)
+  const skladUsers = await listUsersWithPermValue(orgId, 'sklad', 'PLNY')
 
   await db.$transaction([
     db.skladPohyb.create({
@@ -55,14 +54,14 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         zmeny: { stav: 'CEKA', storno: true, duvod },
       },
     }),
-    ...(adminUser ? [db.notification.create({
+    ...skladUsers.map(u => db.notification.create({
       data: {
         orgId,
-        userId: adminUser.id,
+        userId: u.id,
         typ: 'STORNO_REZERVACE',
         zprava: `Storno rezervace položky "${polozka.nazev}" v zakázce. Důvod: ${duvod}`,
       },
-    })] : []),
+    })),
   ])
 
   return NextResponse.json({ ok: true })

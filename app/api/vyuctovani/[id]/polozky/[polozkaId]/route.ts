@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
+import { getPerms, forbidden } from '@/lib/permissions'
 
 async function getVyuctovani(id: string, orgId: string) {
   return orgPrisma(orgId).vyuctovani.findFirst({ where: { id } })
@@ -10,7 +11,8 @@ async function getVyuctovani(id: string, orgId: string) {
 export async function PATCH(req: Request, { params }: { params: { id: string; polozkaId: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (session.user.role === 'TECHNIK') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const perms = getPerms(session.user)
+  if (!perms.zakazkyEdit) return forbidden()
 
   const v = await getVyuctovani(params.id, session.user.orgId)
   if (!v) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -23,7 +25,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string; po
       nazev: body.nazev ?? undefined,
       mnozstvi: body.mnozstvi != null ? Number(body.mnozstvi) : undefined,
       jednotka: body.jednotka ?? undefined,
-      nakupniCena: body.nakupniCena != null ? Number(body.nakupniCena) : undefined,
+      nakupniCena: perms.financeNakupkyEdit && body.nakupniCena != null ? Number(body.nakupniCena) : undefined,
       prodejniCena: body.prodejniCena != null ? Number(body.prodejniCena) : undefined,
       dphSazba: body.dphSazba != null ? Number(body.dphSazba) : undefined,
       poradi: body.poradi != null ? Number(body.poradi) : undefined,
@@ -35,7 +37,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string; po
 export async function DELETE(req: Request, { params }: { params: { id: string; polozkaId: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (session.user.role === 'TECHNIK') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!getPerms(session.user).zakazkyEdit) return forbidden()
 
   const v = await getVyuctovani(params.id, session.user.orgId)
   if (!v) return NextResponse.json({ error: 'Not found' }, { status: 404 })

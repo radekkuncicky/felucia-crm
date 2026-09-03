@@ -1,18 +1,6 @@
 import { NextResponse } from 'next/server'
 import { orgPrisma } from '@/lib/orgPrisma'
-import { getMobileOrWebSession, requireTechnikOrAdmin, type MobileSession } from '@/lib/mobile-helpers'
-
-async function canAccess(session: MobileSession, predavakId: string): Promise<boolean> {
-  const db = orgPrisma(session.user.orgId)
-  const p = await db.predavak.findFirst({ where: { id: predavakId } })
-  if (!p) return false
-  if (session.user.role === 'ADMIN') return true
-  if (p.technikId === session.user.id) return true
-  const rel = await db.technikZakazka.findFirst({
-    where: { technikId: session.user.id, zakazkaId: p.zakazkaId },
-  })
-  return !!rel
-}
+import { getMobileOrWebSession, requireTechnikOrAdmin, canAccessPredavak as canAccess } from '@/lib/mobile-helpers'
 
 export async function POST(req: Request, { params }: { params: { predavakId: string } }) {
   const session = await getMobileOrWebSession(req)

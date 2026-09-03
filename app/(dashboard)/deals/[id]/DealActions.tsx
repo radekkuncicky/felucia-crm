@@ -23,7 +23,7 @@ interface Props {
 export default function DealActions({ dealId, dealData }: Props) {
   const router = useRouter()
   const { data: session } = useSession()
-  const isAdmin = session?.user?.role === 'ADMIN' || session?.user?.isSuperAdmin === true
+  const isAdmin = session?.user?.perms?.obchodMazani === true
   const [loading, setLoading] = useState(false)
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [confirmModal, setConfirmModal] = useState(false)

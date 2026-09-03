@@ -9,10 +9,11 @@ import DealsKanban, { KanbanDeal } from './DealsKanban'
 // KanbanDeal is a superset of what DealsTable needs
 interface Props {
   deals: KanbanDeal[]
-  isAdmin?: boolean
+  showZneplatnene?: boolean
+  showMarze?: boolean
 }
 
-export default function DealsPageClient({ deals, isAdmin = false }: Props) {
+export default function DealsPageClient({ deals, showZneplatnene = false, showMarze = false }: Props) {
   const searchParams = useSearchParams()
   const [view, setView] = useState<'table' | 'kanban'>('table')
 
@@ -75,7 +76,7 @@ export default function DealsPageClient({ deals, isAdmin = false }: Props) {
 
       {view === 'table' ? (
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        <DealsTable deals={deals as any} isAdmin={isAdmin} />
+        <DealsTable deals={deals as any} showZneplatnene={showZneplatnene} showMarze={showMarze} />
       ) : (
         <DealsKanban deals={deals} />
       )}

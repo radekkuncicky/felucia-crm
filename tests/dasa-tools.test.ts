@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { prisma } from '@/lib/prisma'
 import { executeDasaTool, type DasaUser } from '@/lib/dasaTools'
+import { ROLE_PRESETS } from '@/lib/permissions'
 
 /**
  * Integrační test nástrojů Dáši nad nanto_crm_test — scénář „rychlá cenovka":
@@ -27,8 +28,8 @@ beforeAll(async () => {
   const dbUser = await prisma.user.create({
     data: { orgId: org.id, jmeno: 'Radek Test', email: `${RUN}@test.cz`, hesloHash: 'x', role: 'ADMIN' },
   })
-  user = { id: dbUser.id, orgId: org.id, role: 'ADMIN', jmeno: dbUser.jmeno }
-  technik = { ...user, role: 'TECHNIK' }
+  user = { id: dbUser.id, orgId: org.id, role: 'ADMIN', jmeno: dbUser.jmeno, perms: ROLE_PRESETS.ADMIN }
+  technik = { ...user, role: 'TECHNIK', perms: ROLE_PRESETS.TECHNIK }
 
   const client = await prisma.client.create({
     data: { orgId: org.id, jmeno: 'Karel', prijmeni: 'Novák' },

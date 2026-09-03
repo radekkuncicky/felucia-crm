@@ -3,10 +3,11 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
 import ContractTemplatesManager from './ContractTemplatesManager'
+import { getPerms } from '@/lib/permissions'
 
 export default async function ContractTemplatesPage() {
   const session = await getServerSession(authOptions)
-  if (!session || session.user.role !== 'ADMIN') redirect('/deals')
+  if (!session || !getPerms(session.user).nastaveniOrg) redirect('/deals')
   const orgId = session.user.orgId
 
   const [templates, org] = await Promise.all([

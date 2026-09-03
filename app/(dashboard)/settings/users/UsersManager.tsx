@@ -4,14 +4,22 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import Link from 'next/link'
 import { formatDate } from '@/lib/format'
+import { ROLES, ROLE_LABELS as roleLabels, ROLE_DESCRIPTIONS, parseOverrides, type PermissionOverrides } from '@/lib/permissions'
+import PermissionsPanel from './PermissionsPanel'
 
-const roleLabels: Record<string, string> = {
-  ADMIN: 'Admin', OBCHODNIK: 'Obchodník', TECHNIK: 'Technik',
-}
 const roleBadge: Record<string, string> = {
   ADMIN: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400',
+  MANAZER: 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-400',
   OBCHODNIK: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400',
+  HLAVNI_TECHNIK: 'bg-teal-100 dark:bg-teal-900/30 text-teal-700 dark:text-teal-400',
   TECHNIK: 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300',
+}
+
+// Technici si heslo nastavují sami přes pozvánku do appky Felucia Tech
+const isTechnikRole = (role: string) => role === 'TECHNIK' || role === 'HLAVNI_TECHNIK'
+
+function RoleOptions() {
+  return <>{ROLES.map(r => <option key={r} value={r}>{roleLabels[r]}</option>)}</>
 }
 
 interface UserRow {
@@ -21,8 +29,8 @@ interface UserRow {
   role: string
   aktivni: boolean
   vytvoreno: string
-  serviceAccess: boolean
   podepisujeSmlouvy: boolean
+  permissions: unknown
 }
 
 function UserAvatar({ jmeno, size = 8 }: { jmeno: string; size?: number }) {
@@ -34,7 +42,7 @@ function UserAvatar({ jmeno, size = 8 }: { jmeno: string; size?: number }) {
   )
 }
 
-export default function UsersManager({ users: initUsers, maxUsers, activeUserCount: initActiveCount }: { users: UserRow[]; maxUsers: number; activeUserCount: number }) {
+export default function UsersManager({ users: initUsers, maxUsers, activeUserCount: initActiveCount, canCustomize, currentUserId }: { users: UserRow[]; maxUsers: number; activeUserCount: number; canCustomize: boolean; currentUserId: string }) {
   const [users, setUsers] = useState(initUsers)
   const [activeCount, setActiveCount] = useState(initActiveCount)
   const [adding, setAdding] = useState(false)
@@ -44,13 +52,14 @@ export default function UsersManager({ users: initUsers, maxUsers, activeUserCou
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editRole, setEditRole] = useState('')
   const [resetLoading, setResetLoading] = useState<string | null>(null)
+  const [permsUserId, setPermsUserId] = useState<string | null>(null)
 
   function showToast(msg: string, type: 'ok' | 'err') {
     if (type === 'ok') toast.success(msg)
     else toast.error(msg)
   }
 
-  const addIsTechnik = addForm.role === 'TECHNIK'
+  const addIsTechnik = isTechnikRole(addForm.role)
 
   async function handleAdd() {
     if (!addForm.jmeno || !addForm.email || (!addIsTechnik && !addForm.heslo)) return
@@ -66,7 +75,15 @@ export default function UsersManager({ users: initUsers, maxUsers, activeUserCou
       setActiveCount(c => c + 1)
       setAdding(false)
       setAddForm({ jmeno: '', email: '', heslo: '', role: 'OBCHODNIK' })
-      showToast(addIsTechnik ? 'Technik přidán, pozvánka odeslána e-mailem' : 'Uživatel přidán', 'ok')
+      if (addIsTechnik) {
+        if (data.inviteEmailSent) {
+          showToast('Technik přidán, pozvánka odeslána e-mailem', 'ok')
+        } else {
+          showToast(`Technik přidán, ale pozvánku se nepodařilo odeslat: ${data.inviteEmailError ?? 'neznámá chyba'}`, 'err')
+        }
+      } else {
+        showToast('Uživatel přidán', 'ok')
+      }
     } finally { setSaving(false) }
   }
 
@@ -78,9 +95,30 @@ export default function UsersManager({ users: initUsers, maxUsers, activeUserCou
       })
       if (res.ok) {
         const updated = await res.json()
-        setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: updated.role } : u))
+        setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: updated.role, permissions: updated.permissions } : u))
         setEditingId(null)
         showToast('Role aktualizována', 'ok')
+      } else {
+        const j = await res.json().catch(() => ({}))
+        showToast(j.message ?? j.error ?? 'Roli se nepodařilo změnit', 'err')
+      }
+    } finally { setSaving(false) }
+  }
+
+  async function savePermissions(userId: string, overrides: PermissionOverrides) {
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/settings/users/${userId}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ permissions: overrides }),
+      })
+      if (res.ok) {
+        const updated = await res.json()
+        setUsers(prev => prev.map(u => u.id === userId ? { ...u, permissions: updated.permissions } : u))
+        setPermsUserId(null)
+        showToast('Oprávnění uložena — projeví se do minuty', 'ok')
+      } else {
+        const j = await res.json().catch(() => ({}))
+        showToast(j.message ?? j.error ?? 'Oprávnění se nepodařilo uložit', 'err')
       }
     } finally { setSaving(false) }
   }
@@ -93,16 +131,9 @@ export default function UsersManager({ users: initUsers, maxUsers, activeUserCou
       setUsers(prev => prev.map(u => u.id === user.id ? { ...u, aktivni: !u.aktivni } : u))
       setActiveCount(c => user.aktivni ? c - 1 : c + 1)
       showToast(user.aktivni ? 'Uživatel deaktivován' : 'Uživatel aktivován', 'ok')
-    }
-  }
-
-  async function toggleServiceAccess(user: UserRow) {
-    const res = await fetch(`/api/settings/users/${user.id}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ serviceAccess: !user.serviceAccess }),
-    })
-    if (res.ok) {
-      setUsers(prev => prev.map(u => u.id === user.id ? { ...u, serviceAccess: !u.serviceAccess } : u))
-      showToast(!user.serviceAccess ? 'Přístup k ser. zakázkám povolen' : 'Přístup k ser. zakázkám odebrán', 'ok')
+    } else {
+      const j = await res.json().catch(() => ({}))
+      showToast(j.message ?? 'Změnu se nepodařilo uložit', 'err')
     }
   }
 
@@ -131,6 +162,8 @@ export default function UsersManager({ users: initUsers, maxUsers, activeUserCou
   const inp = 'w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary'
 
   const atUserLimit = maxUsers !== Infinity && activeCount >= maxUsers
+  const permsUser = permsUserId ? users.find(u => u.id === permsUserId) ?? null : null
+  const hasOverrides = (u: UserRow) => canCustomize && Object.keys(parseOverrides(u.permissions)).length > 0
   const showUserWarning = maxUsers !== Infinity && activeCount / maxUsers >= 0.75
 
   return (
@@ -167,16 +200,14 @@ export default function UsersManager({ users: initUsers, maxUsers, activeUserCou
               {editingId === user.id ? (
                 <div className="flex items-center gap-2 flex-1">
                   <select value={editRole} onChange={e => setEditRole(e.target.value)} className="border border-gray-300 dark:border-slate-600 rounded px-2 py-1 text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-white flex-1">
-                    <option value="OBCHODNIK">Obchodník</option>
-                    <option value="TECHNIK">Technik</option>
-                    <option value="ADMIN">Admin</option>
+                    <RoleOptions />
                   </select>
                   <button onClick={() => handleEditRole(user.id)} disabled={saving} className="text-xs text-green-600 hover:text-green-800 font-medium whitespace-nowrap">Uložit</button>
                   <button onClick={() => setEditingId(null)} className="text-xs text-gray-500 hover:text-gray-700">×</button>
                 </div>
               ) : (
                 <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${roleBadge[user.role] ?? roleBadge.TECHNIK}`}>
-                  {roleLabels[user.role] ?? user.role}
+                  {roleLabels[user.role as keyof typeof roleLabels] ?? user.role}{hasOverrides(user) ? ' *' : ''}
                 </span>
               )}
               <div className="flex items-center gap-3 flex-shrink-0">
@@ -185,6 +216,9 @@ export default function UsersManager({ users: initUsers, maxUsers, activeUserCou
                     Role
                   </button>
                 )}
+                <button onClick={() => setPermsUserId(user.id)} className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400">
+                  Oprávnění
+                </button>
                 <button
                   onClick={() => sendResetLink(user)}
                   disabled={resetLoading === user.id || !user.aktivni}
@@ -192,9 +226,11 @@ export default function UsersManager({ users: initUsers, maxUsers, activeUserCou
                 >
                   {resetLoading === user.id ? 'Odesílám…' : 'Reset'}
                 </button>
-                <button onClick={() => toggleAktivni(user)} className={`text-xs ${user.aktivni ? 'text-red-400 hover:text-red-600' : 'text-green-600 hover:text-green-800'}`}>
-                  {user.aktivni ? 'Deaktivovat' : 'Aktivovat'}
-                </button>
+                {user.id !== currentUserId && (
+                  <button onClick={() => toggleAktivni(user)} className={`text-xs ${user.aktivni ? 'text-red-400 hover:text-red-600' : 'text-green-600 hover:text-green-800'}`}>
+                    {user.aktivni ? 'Deaktivovat' : 'Aktivovat'}
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -209,10 +245,9 @@ export default function UsersManager({ users: initUsers, maxUsers, activeUserCou
               <th className="text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase px-4 py-3">Uživatel</th>
               <th className="text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase px-4 py-3 w-36">Role</th>
               <th className="text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase px-4 py-3 w-24">Stav</th>
-              <th className="text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase px-4 py-3 w-28">Ser. zak.</th>
               <th className="text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase px-4 py-3 w-32" title="Zmocněnec k podpisu smluv o dílo za firmu">Podpis smluv</th>
               <th className="text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase px-4 py-3 w-24">Přidán</th>
-              <th className="px-4 py-3 w-48" />
+              <th className="px-4 py-3 w-64" />
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
@@ -231,16 +266,14 @@ export default function UsersManager({ users: initUsers, maxUsers, activeUserCou
                   {editingId === user.id ? (
                     <div className="flex items-center gap-2">
                       <select value={editRole} onChange={e => setEditRole(e.target.value)} className="border border-gray-300 dark:border-slate-600 rounded px-2 py-1 text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-white">
-                        <option value="OBCHODNIK">Obchodník</option>
-                        <option value="TECHNIK">Technik</option>
-                        <option value="ADMIN">Admin</option>
+                        <RoleOptions />
                       </select>
                       <button onClick={() => handleEditRole(user.id)} disabled={saving} className="text-xs text-green-600 hover:text-green-800 font-medium whitespace-nowrap">Uložit</button>
                       <button onClick={() => setEditingId(null)} className="text-xs text-gray-500 hover:text-gray-700">×</button>
                     </div>
                   ) : (
-                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${roleBadge[user.role] ?? roleBadge.TECHNIK}`}>
-                      {roleLabels[user.role] ?? user.role}
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${roleBadge[user.role] ?? roleBadge.TECHNIK}`} title={hasOverrides(user) ? 'Oprávnění upravena nad rámec role' : undefined}>
+                      {roleLabels[user.role as keyof typeof roleLabels] ?? user.role}{hasOverrides(user) ? ' *' : ''}
                     </span>
                   )}
                 </td>
@@ -248,15 +281,6 @@ export default function UsersManager({ users: initUsers, maxUsers, activeUserCou
                   <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${user.aktivni ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400'}`}>
                     {user.aktivni ? 'Aktivní' : 'Neaktivní'}
                   </span>
-                </td>
-                <td className="px-4 py-3">
-                  <button
-                    onClick={() => toggleServiceAccess(user)}
-                    title={user.serviceAccess ? 'Odebrat přístup' : 'Povolit přístup'}
-                    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${user.serviceAccess ? 'bg-orange-500' : 'bg-gray-200 dark:bg-slate-600'}`}
-                  >
-                    <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform ${user.serviceAccess ? 'translate-x-4.5' : 'translate-x-0.5'}`} />
-                  </button>
                 </td>
                 <td className="px-4 py-3">
                   <button
@@ -277,6 +301,9 @@ export default function UsersManager({ users: initUsers, maxUsers, activeUserCou
                         Role
                       </button>
                     )}
+                    <button onClick={() => setPermsUserId(user.id)} className="text-xs text-blue-600 hover:text-blue-800 dark:text-blue-400 whitespace-nowrap">
+                      Oprávnění
+                    </button>
                     <button
                       onClick={() => sendResetLink(user)}
                       disabled={resetLoading === user.id || !user.aktivni}
@@ -285,9 +312,11 @@ export default function UsersManager({ users: initUsers, maxUsers, activeUserCou
                     >
                       {resetLoading === user.id ? 'Odesílám…' : 'Reset hesla'}
                     </button>
-                    <button onClick={() => toggleAktivni(user)} className={`text-xs whitespace-nowrap ${user.aktivni ? 'text-red-400 hover:text-red-600' : 'text-green-600 hover:text-green-800'}`}>
-                      {user.aktivni ? 'Deaktivovat' : 'Aktivovat'}
-                    </button>
+                    {user.id !== currentUserId && (
+                      <button onClick={() => toggleAktivni(user)} className={`text-xs whitespace-nowrap ${user.aktivni ? 'text-red-400 hover:text-red-600' : 'text-green-600 hover:text-green-800'}`}>
+                        {user.aktivni ? 'Deaktivovat' : 'Aktivovat'}
+                      </button>
+                    )}
                   </div>
                 </td>
               </tr>
@@ -295,6 +324,20 @@ export default function UsersManager({ users: initUsers, maxUsers, activeUserCou
           </tbody>
         </table>
       </div>
+
+      {/* Oprávnění uživatele */}
+      {permsUser && (
+        <PermissionsPanel
+          key={permsUser.id}
+          userJmeno={permsUser.jmeno}
+          role={permsUser.role}
+          overrides={parseOverrides(permsUser.permissions)}
+          canCustomize={canCustomize}
+          saving={saving}
+          onSave={o => savePermissions(permsUser.id, o)}
+          onClose={() => setPermsUserId(null)}
+        />
+      )}
 
       {/* Add user */}
       {adding ? (
@@ -323,10 +366,9 @@ export default function UsersManager({ users: initUsers, maxUsers, activeUserCou
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Role</label>
               <select value={addForm.role} onChange={e => setAddForm(f => ({ ...f, role: e.target.value }))} className={inp}>
-                <option value="OBCHODNIK">Obchodník</option>
-                <option value="TECHNIK">Technik</option>
-                <option value="ADMIN">Admin</option>
+                <RoleOptions />
               </select>
+              <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">{ROLE_DESCRIPTIONS[addForm.role as keyof typeof ROLE_DESCRIPTIONS]}</p>
             </div>
           </div>
           <div className="flex gap-3">

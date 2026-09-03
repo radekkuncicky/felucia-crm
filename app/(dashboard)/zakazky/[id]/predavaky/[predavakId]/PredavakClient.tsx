@@ -55,7 +55,10 @@ interface PredavakData {
 interface Props {
   predavak: PredavakData
   currentUserId: string
-  role: string
+  /** schvalovat/odmítat/mazat/vracet předáváky (zakazkySchvalovani) */
+  canApprove: boolean
+  /** odkaz na vyúčtování (financeProdejni) */
+  showVyuctovani: boolean
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -76,10 +79,9 @@ const STAV_COLORS: Record<PredavakStav, string> = {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function PredavakClient({ predavak: initial, currentUserId, role }: Props) {
+export default function PredavakClient({ predavak: initial, currentUserId, canApprove, showVyuctovani }: Props) {
   const router = useRouter()
-  const isTechnik = role === 'TECHNIK'
-  const isManager = role === 'ADMIN' || role === 'OBCHODNIK'
+  const isManager = canApprove
   const isOwnTechnik = initial.technik.id === currentUserId
   const canEdit = initial.stav !== 'SCHVALEN' && (isOwnTechnik || isManager)
 
@@ -533,9 +535,9 @@ export default function PredavakClient({ predavak: initial, currentUserId, role 
                   vyuctovani={initial.vyuctovani}
                   stav={stav}
                   canEdit={canEdit}
-                  isTechnik={isTechnik}
                   isManager={isManager}
                   isOwnTechnik={isOwnTechnik}
+                  showVyuctovani={showVyuctovani}
                   saving={saving}
                   canSubmit={canSubmit}
                   submitBlockReason={submitBlockReason}
@@ -1081,7 +1083,7 @@ export default function PredavakClient({ predavak: initial, currentUserId, role 
 // ─── HeaderActions ────────────────────────────────────────────────────────────
 
 function HeaderActions({
-  predavakId, zakazkaId, vyuctovani, stav, canEdit, isTechnik, isManager, isOwnTechnik, saving, canSubmit, submitBlockReason,
+  predavakId, zakazkaId, vyuctovani, stav, canEdit, isManager, isOwnTechnik, showVyuctovani, saving, canSubmit, submitBlockReason,
   onSave, onPodepsat, onSchvalit, onOdmitnout, onReopen, onDelete,
 }: {
   predavakId: string
@@ -1089,9 +1091,9 @@ function HeaderActions({
   vyuctovani: { id: string; cislo: string } | null
   stav: PredavakStav
   canEdit: boolean
-  isTechnik: boolean
   isManager: boolean
   isOwnTechnik: boolean
+  showVyuctovani: boolean
   saving: boolean
   canSubmit: boolean
   submitBlockReason: string | null
@@ -1102,7 +1104,8 @@ function HeaderActions({
   onReopen: () => void
   onDelete: () => void
 }) {
-  const showPdf = stav === 'SCHVALEN' && (!isTechnik || isOwnTechnik)
+  // Schválený protokol si může stáhnout každý, kdo ho vidí
+  const showPdf = stav === 'SCHVALEN'
 
   if (isManager && stav === 'PODPISAN') {
     return (
@@ -1172,7 +1175,7 @@ function HeaderActions({
         >
           {saving ? 'Ukládám…' : 'Uložit'}
         </button>
-        {(isTechnik ? isOwnTechnik : true) && (
+        {(isOwnTechnik || isManager) && (
           <span title={submitBlockReason ?? undefined}>
             <button
               onClick={onPodepsat}
@@ -1200,7 +1203,7 @@ function HeaderActions({
             Vrátit k úpravám
           </button>
         )}
-        {!isTechnik && vyuctovani && (
+        {showVyuctovani && vyuctovani && (
           <a
             href={`/zakazky/${zakazkaId}/vyuctovani/${vyuctovani.id}`}
             className="inline-flex items-center gap-1.5 text-sm font-medium text-white bg-[#1B5E20] hover:bg-green-800 px-4 py-2 rounded-lg transition-colors"

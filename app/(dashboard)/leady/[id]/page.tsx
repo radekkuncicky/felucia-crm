@@ -1,5 +1,7 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { getPerms } from '@/lib/permissions'
+import { listUsersWithPerm } from '@/lib/zakazkyHelpers'
 import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
 import LeadDetailClient from './LeadDetailClient'
@@ -9,6 +11,7 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
   if (!session) notFound()
 
   const orgId = session.user.orgId
+  const perms = getPerms(session.user)
   const plan = (session.user as { plan?: string }).plan
   if (plan === 'STARTER') notFound()
 
@@ -35,11 +38,7 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
 
   if (!lead) notFound()
 
-  const users = await prisma.user.findMany({
-    where: { orgId, aktivni: true, role: { in: ['ADMIN', 'OBCHODNIK'] } },
-    select: { id: true, jmeno: true },
-    orderBy: { jmeno: 'asc' },
-  })
+  const users = await listUsersWithPerm(orgId, 'obchod')
 
   return (
     <LeadDetailClient
@@ -60,7 +59,8 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
           : null,
       }}
       users={users}
-      role={session.user.role}
+      canEdit={perms.obchod}
+      canDelete={perms.obchodMazani}
     />
   )
 }

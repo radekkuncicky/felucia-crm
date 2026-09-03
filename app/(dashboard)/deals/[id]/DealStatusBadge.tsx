@@ -30,7 +30,7 @@ interface Props {
 export default function DealStatusBadge({ dealId, currentStav, plan, klientId, klientJmeno, automatickyServis = true }: Props) {
   const router = useRouter()
   const { data: session } = useSession()
-  const isAdmin = session?.user?.role === 'ADMIN' || session?.user?.isSuperAdmin === true
+  const isAdmin = session?.user?.perms?.obchodMazani === true
   const [open, setOpen] = useState(false)
   const [stav, setStav] = useState<StavDealu>(currentStav)
   const [saving, setSaving] = useState(false)

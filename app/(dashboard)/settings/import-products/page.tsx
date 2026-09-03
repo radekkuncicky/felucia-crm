@@ -2,10 +2,11 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import ImportWizard from './ImportWizard'
+import { getPerms } from '@/lib/permissions'
 
 export default async function ImportProductsPage() {
   const session = await getServerSession(authOptions)
-  if (!session || session.user.role !== 'ADMIN') redirect('/dashboard')
+  if (!session || !getPerms(session.user).nastaveniOrg) redirect('/dashboard')
 
   return (
     <div className="max-w-3xl space-y-6">

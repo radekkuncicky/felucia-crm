@@ -35,6 +35,10 @@ interface Props {
   pohyby: Pohyb[]
   zakazky: { id: string; cislo: string; nazev: string }[]
   kpi: { rezervaceHodnota: number; vydejMesicHodnota: number; pocetPohybu: number }
+  /** naskladňovat (sklad = PLNY) */
+  canPrijem: boolean
+  /** nákupní ceny a hodnoty (financeNakupky) */
+  showNakupky: boolean
 }
 
 function PrijemModal({ onClose, onDone }: { onClose: () => void; onDone: (p: Pohyb) => void }) {
@@ -110,7 +114,7 @@ function PrijemModal({ onClose, onDone }: { onClose: () => void; onDone: (p: Poh
   )
 }
 
-export default function SkladPageClient({ pohyby: initialPohyby, zakazky, kpi: initialKpi }: Props) {
+export default function SkladPageClient({ pohyby: initialPohyby, zakazky, kpi: initialKpi, canPrijem, showNakupky }: Props) {
   const [pohyby, setPohyby] = useState(initialPohyby)
   const [kpi, setKpi] = useState(initialKpi)
   const [search, setSearch] = useState('')
@@ -156,22 +160,26 @@ export default function SkladPageClient({ pohyby: initialPohyby, zakazky, kpi: i
         {/* Header */}
         <div className="flex items-center justify-between gap-4">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Sklad</h1>
-          <button
-            onClick={() => setShowPrijem(true)}
-            className="bg-green-600 hover:bg-green-700 text-white font-medium px-4 py-2 rounded-lg text-sm transition-colors flex items-center gap-2"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Naskladnit na sklad
-          </button>
+          {canPrijem && (
+            <button
+              onClick={() => setShowPrijem(true)}
+              className="bg-green-600 hover:bg-green-700 text-white font-medium px-4 py-2 rounded-lg text-sm transition-colors flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Naskladnit na sklad
+            </button>
+          )}
         </div>
 
         {/* KPI */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[
-            { label: 'Hodnota rezervací', value: `${kpi.rezervaceHodnota.toLocaleString('cs-CZ', { maximumFractionDigits: 0 })} Kč`, color: 'text-primary dark:text-primary-light' },
-            { label: 'Vydáno tento měsíc', value: `${kpi.vydejMesicHodnota.toLocaleString('cs-CZ', { maximumFractionDigits: 0 })} Kč`, color: 'text-orange-600 dark:text-orange-400' },
+            ...(showNakupky ? [
+              { label: 'Hodnota rezervací', value: `${kpi.rezervaceHodnota.toLocaleString('cs-CZ', { maximumFractionDigits: 0 })} Kč`, color: 'text-primary dark:text-primary-light' },
+              { label: 'Vydáno tento měsíc', value: `${kpi.vydejMesicHodnota.toLocaleString('cs-CZ', { maximumFractionDigits: 0 })} Kč`, color: 'text-orange-600 dark:text-orange-400' },
+            ] : []),
             { label: 'Pohybů celkem', value: formatCislo(kpi.pocetPohybu), color: 'text-gray-900 dark:text-white' },
           ].map(k => (
             <div key={k.label} className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 px-5 py-4">
@@ -215,8 +223,8 @@ export default function SkladPageClient({ pohyby: initialPohyby, zakazky, kpi: i
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide">Položka</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide">Zakázka</th>
                     <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide">Množství</th>
-                    <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide">NK. cena</th>
-                    <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide">Celkem</th>
+                    {showNakupky && <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide">NK. cena</th>}
+                    {showNakupky && <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide">Celkem</th>}
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide">Kdo</th>
                   </tr>
                 </thead>
@@ -245,12 +253,16 @@ export default function SkladPageClient({ pohyby: initialPohyby, zakazky, kpi: i
                           ) : <span className="text-gray-400 text-xs">—</span>}
                         </td>
                         <td className="px-4 py-3 text-right text-gray-700 dark:text-slate-300">{p.mnozstvi}</td>
-                        <td className="px-4 py-3 text-right text-gray-600 dark:text-slate-400">
-                          {p.nakupniCena !== null ? `${formatKcPresne(p.nakupniCena)}` : '—'}
-                        </td>
-                        <td className="px-4 py-3 text-right font-medium text-gray-900 dark:text-white">
-                          {celkem !== null ? `${celkem.toLocaleString('cs-CZ', { maximumFractionDigits: 0 })} Kč` : '—'}
-                        </td>
+                        {showNakupky && (
+                          <td className="px-4 py-3 text-right text-gray-600 dark:text-slate-400">
+                            {p.nakupniCena !== null ? `${formatKcPresne(p.nakupniCena)}` : '—'}
+                          </td>
+                        )}
+                        {showNakupky && (
+                          <td className="px-4 py-3 text-right font-medium text-gray-900 dark:text-white">
+                            {celkem !== null ? `${celkem.toLocaleString('cs-CZ', { maximumFractionDigits: 0 })} Kč` : '—'}
+                          </td>
+                        )}
                         <td className="px-4 py-3 text-gray-500 dark:text-slate-400 text-xs">{p.vytvoril.jmeno}</td>
                       </tr>
                     )

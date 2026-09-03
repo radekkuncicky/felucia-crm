@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
+import { getPerms, zakazkyScopeWhere, isTechnikView } from '@/lib/permissions'
 import Link from 'next/link'
 import { formatDate } from '@/lib/format'
 
@@ -24,12 +25,16 @@ export default async function PredavakyPage() {
   if (!session) notFound()
 
   const orgId = session.user.orgId
-  const isTechnik = session.user.role === 'TECHNIK'
+  const perms = getPerms(session.user)
+  // Vlastní protokoly + protokoly na zakázkách v rozsahu uživatele
+  const scope = zakazkyScopeWhere(perms, session.user.id)
+  if (!scope) notFound()
+  const isTechnik = isTechnikView(perms)
 
   const predavaky = await prisma.predavak.findMany({
     where: {
       orgId,
-      ...(isTechnik ? { technikId: session.user.id } : {}),
+      OR: [{ technikId: session.user.id }, { zakazka: scope }],
     },
     include: {
       zakazka: {

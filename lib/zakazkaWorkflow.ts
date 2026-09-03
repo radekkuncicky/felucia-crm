@@ -50,8 +50,10 @@ export async function polozkyZAktivniNabidky(dealId: string, orgId: string) {
 /**
  * Auto-vytvoření zakázky z OP (volá se při přechodu OP na USPECH).
  * Vrací vytvořenou zakázku, nebo null pokud už pro OP zakázka existuje.
+ * Bez vedoucího (podpis smlouvy bez dohledatelného odesílatele) vznikne
+ * zakázka nepřiřazená — dispečink ji přidělí ručně.
  */
-export async function createZakazkaFromDeal(dealId: string, orgId: string, vedouciId: string) {
+export async function createZakazkaFromDeal(dealId: string, orgId: string, vedouciId: string | null) {
   const existing = await prisma.zakazka.findFirst({ where: { opId: dealId, orgId }, select: { id: true } })
   if (existing) return null
 

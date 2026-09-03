@@ -13,7 +13,7 @@ export async function GET(req: Request, { params }: { params: { id: string; quot
   const quote = await db.quote.findFirst({
     where: { id: params.quoteId, dealId: params.id, orgId },
     include: {
-      items: { orderBy: { id: 'asc' } },
+      items: { orderBy: { poradi: 'asc' } },
       deal: {
         include: {
           client: true,

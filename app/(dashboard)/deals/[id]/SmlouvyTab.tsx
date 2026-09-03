@@ -58,10 +58,10 @@ interface Template {
 
 interface Props {
   dealId: string
-  role: string
+  canDelete: boolean
 }
 
-export default function SmlouvyTab({ dealId, role }: Props) {
+export default function SmlouvyTab({ dealId, canDelete }: Props) {
   const [sods, setSods] = useState<Sod[]>([])
   const [templates, setTemplates] = useState<Template[]>([])
   const [loading, setLoading] = useState(true)
@@ -176,7 +176,7 @@ export default function SmlouvyTab({ dealId, role }: Props) {
                   >
                     DOCX
                   </a>
-                  {role === 'ADMIN' && (
+                  {canDelete && (
                     <button
                       onClick={() => handleDelete(sod.id, sod.cislo)}
                       disabled={deletingId === sod.id}

@@ -1,18 +1,16 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { getOrgSettings } from '@/lib/orgSettings'
+import { getPerms } from '@/lib/permissions'
 import ProductsClient from './ProductsClient'
 
 export default async function ProductsPage() {
   const session = await getServerSession(authOptions)
   const orgId = session!.user.orgId
-  const role = session!.user.role
-  const isAdmin = role === 'ADMIN'
-
-  const orgSettings = await getOrgSettings(orgId)
-  // Show cost prices only if: setting enabled OR user is not TECHNIK
-  const showNakladoveCeny = orgSettings.zobrazitNakladoveCeny || role !== 'TECHNIK'
+  const perms = getPerms(session!.user)
+  // Správa ceníků = nastavení organizace (stejně jako API /api/ceniky)
+  const isAdmin = perms.nastaveniOrg
+  const showNakladoveCeny = perms.financeNakupky
 
   const [products, categories, ceniky] = await Promise.all([
     prisma.product.findMany({
@@ -41,7 +39,7 @@ export default async function ProductsPage() {
         jednotka: p.jednotka,
         popis: p.popis,
         dphSazba: p.dphSazba,
-        nakladovaCena: p.nakladovaCena !== null ? Number(p.nakladovaCena) : null,
+        nakladovaCena: showNakladoveCeny && p.nakladovaCena !== null ? Number(p.nakladovaCena) : null,
         standardniCena: Number(p.standardniCena),
         aktivni: p.aktivni,
       }))}

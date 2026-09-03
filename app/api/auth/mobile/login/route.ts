@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { resolvePermissions } from '@/lib/permissions'
 import { NextResponse } from 'next/server'
 import { SignJWT } from 'jose'
 import { secret } from '@/lib/mobile-auth'
@@ -89,6 +90,7 @@ export async function POST(req: Request) {
       jmeno: user.jmeno,
       email: user.email,
       role: user.role,
+      perms: resolvePermissions(user.role, user.permissions, user.organization.plan),
       orgSlug: user.organization.slug,
       plan: user.organization.plan,
     },

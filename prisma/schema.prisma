@@ -8,7 +8,9 @@ datasource db {
 
 enum Role {
   ADMIN
+  MANAZER
   OBCHODNIK
+  HLAVNI_TECHNIK
   TECHNIK
 }
 
@@ -111,12 +113,6 @@ enum TypPole {
   DATUM
   CHECKBOX
   VYBER
-}
-
-enum Viditelnost {
-  ALL
-  OWN
-  SELECTED
 }
 
 enum QuoteTemplateTyp {
@@ -278,7 +274,6 @@ model Organization {
   webhookEndpoints     WebhookEndpoint[]
   auditLogs            AuditLog[]
   customFields         CustomField[]
-  visibilityNodes      VisibilityNode[]
   extensions           Extension[]
   ceniky               Cenik[]
   zarizeni             Zarizeni[]
@@ -301,6 +296,7 @@ model Organization {
   documents            Document[]
   leady                Lead[]
   aiUsageLogs          AiUsageLog[]
+  zamereniDefinice     ZamereniDefinice[]
 
   @@map("organizations")
 }
@@ -314,9 +310,10 @@ model User {
   role         Role     @default(OBCHODNIK)
   aktivni      Boolean  @default(true)
   isSuperAdmin  Boolean   @default(false)
-  serviceAccess Boolean   @default(false)
   // zmocněnec k podpisu smluv o dílo za zhotovitele (nastavuje ADMIN)
   podepisujeSmlouvy Boolean @default(false)
+  // per-user přepisy oprávnění nad presetem role (Partial<Permissions>, viz lib/permissions.ts)
+  permissions   Json?
   telefon      String?
   avatar       String?
   pushToken    String?
@@ -328,7 +325,6 @@ model User {
   activities          Activity[]           @relation("ActivityUser")
   assignedActivities  Activity[]           @relation("ActivityResitel")
   auditLogs           AuditLog[]
-  visibilityNodes     VisibilityNodeUser[]
   passwordResetTokens PasswordResetToken[]
   magicLinkTokens     MagicLinkToken[]
   servisniZakazky     ServisniZakazka[]
@@ -347,6 +343,7 @@ model User {
   assignedLeady       Lead[]               @relation("LeadAssigned")
   leadNotes           LeadNote[]
   aiUsageLogs         AiUsageLog[]
+  zamereni            Zamereni[]
 
   @@unique([orgId, email])
   @@map("users")
@@ -437,6 +434,7 @@ model Deal {
   kontaktniTelefon String?
   poznamky         String?
   duvodProhry      String?
+  duvodProhryKod   DuvodProhry?
   dphSazba         Int         @default(12)
   vytvoreno        DateTime    @default(now())
 
@@ -452,6 +450,7 @@ model Deal {
   zakazky           Zakazka[]
   sod               Sod[]
   lead              Lead?
+  zamereni          Zamereni[]
 
   @@unique([orgId, kod])
   @@map("deals")
@@ -521,6 +520,12 @@ model Quote {
   popis       String?
   dphSazba    Int      @default(12)
   aktivni     Boolean  @default(false)
+  // Felucia Sales: platnost nabídky + evidence odeslání klientovi
+  platnostDo    DateTime?
+  odeslanoAt    DateTime?
+  odeslanoKanal OdeslaniKanal?
+  // Kdy worker poslal obchodníkovi follow-up připomínku (null = zatím ne)
+  followUpAt    DateTime?
   vytvoreno   DateTime @default(now())
   // Veřejné sdílení PDF: token jen jako SHA-256 hash; šifrovaná kopie
   // (lib/secretCrypto) pro opakované zobrazení stejného odkazu
@@ -784,34 +789,6 @@ model CustomFieldValue {
 
   @@unique([entityId, fieldId])
   @@map("custom_field_values")
-}
-
-model VisibilityNode {
-  id       String  @id @default(cuid())
-  orgId    String
-  parentId String?
-  nazev    String
-  poradi   Int     @default(0)
-
-  organization Organization        @relation(fields: [orgId], references: [id])
-  parent       VisibilityNode?     @relation("NodeChildren", fields: [parentId], references: [id])
-  children     VisibilityNode[]    @relation("NodeChildren")
-  users        VisibilityNodeUser[]
-
-  @@map("visibility_nodes")
-}
-
-model VisibilityNodeUser {
-  id          String      @id @default(cuid())
-  nodeId      String
-  userId      String
-  viditelnost Viditelnost @default(ALL)
-
-  node VisibilityNode @relation(fields: [nodeId], references: [id], onDelete: Cascade)
-  user User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([nodeId, userId])
-  @@map("visibility_node_users")
 }
 
 model Extension {
@@ -1555,6 +1532,12 @@ model Lead {
   zdroj                LeadZdroj  @default(RUCNE)
   status               LeadStatus @default(NOVY)
   zprava               String?
+  // Strukturovaná metadata z webového formuláře (dřív se lepila do zprávy)
+  sluzba               String?
+  zdrojFormulare       String?
+  strankaUrl           String?
+  prilohy              String?
+  objednavka           String?
   assignedToId         String?
   odhadovanaHodnota    Decimal?   @db.Decimal(12, 2)
   tagy                 String[]   @default([])
@@ -1609,4 +1592,107 @@ model AiUsageLog {
   @@index([orgId, vytvoreno])
   @@index([userId, vytvoreno])
   @@map("ai_usage_logs")
+}
+
+// ─── Felucia Sales: zaměření u klienta ───────────────────────────────────────
+
+enum DuvodProhry {
+  CENA
+  KONKURENCE
+  ODLOZENO
+  NEREAGOVAL
+  JINE
+}
+
+enum OdeslaniKanal {
+  EMAIL
+  SMS
+}
+
+enum ZamereniStav {
+  ROZPRACOVANE
+  UZAVRENE
+}
+
+enum ZamereniFotoTag {
+  ROZVADEC
+  VENKOVNI_JEDNOTKA
+  VNITRNI_JEDNOTKA
+  STAVAJICI_ZDROJ
+  FASADA
+  PROSTUP
+  CELKOVY_POHLED
+  JINE
+}
+
+model Zamereni {
+  id            String       @id @default(cuid())
+  orgId         String
+  dealId        String
+  autorId       String?
+  typ           Technologie
+  stav          ZamereniStav @default(ROZPRACOVANE)
+  datum         DateTime     @default(now())
+  gpsLat        Float?
+  gpsLng        Float?
+  // Odpovědi formuláře podle ZamereniDefinice.schemaJson ({ klicOtazky: hodnota });
+  // definiceId+definiceVerze fixují verzi, se kterou bylo vyplněno
+  odpovedi      Json         @default("{}")
+  definiceId    String?
+  definiceVerze Int?
+  vytvoreno     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  deal     Deal              @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  autor    User?             @relation(fields: [autorId], references: [id])
+  definice ZamereniDefinice? @relation(fields: [definiceId], references: [id])
+  fotky    ZamereniFoto[]
+
+  @@index([orgId, stav])
+  @@index([dealId])
+  @@map("zamereni")
+}
+
+model ZamereniFoto {
+  id         String          @id @default(cuid())
+  orgId      String
+  zamereniId String
+  url        String
+  tag        ZamereniFotoTag @default(JINE)
+  popis      String?
+  poradi     Int             @default(0)
+  gpsLat     Float?
+  gpsLng     Float?
+  // Kresba přes fotku (šipky/obdélníky/texty) jako overlay, originál zůstává
+  anotace    Json?
+  vytvoreno  DateTime        @default(now())
+
+  zamereni Zamereni @relation(fields: [zamereniId], references: [id], onDelete: Cascade)
+
+  @@index([zamereniId])
+  @@index([orgId])
+  @@map("zamereni_fotky")
+}
+
+// Config-driven formulář zaměření: otázky per typ zakázky jdou měnit bez
+// release aplikace. Verzované — uzavřená zaměření drží verzi, se kterou vznikla.
+model ZamereniDefinice {
+  id          String            @id @default(cuid())
+  orgId       String
+  typ         Technologie
+  verze       Int               @default(1)
+  aktivni     Boolean           @default(true)
+  nazev       String
+  schemaJson  Json
+  // Bez fotek se všemi povinnými tagy nejde zaměření uzavřít
+  povinneTagy ZamereniFotoTag[] @default([])
+  vytvoreno   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  zamereni     Zamereni[]
+
+  @@unique([orgId, typ, verze])
+  @@index([orgId, typ, aktivni])
+  @@map("zamereni_definice")
 }

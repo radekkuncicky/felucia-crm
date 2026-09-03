@@ -8,10 +8,11 @@ import ModulPodpisyCard from '@/components/ModulPodpisyCard'
 import { PODPISY_MESICNI_LIMIT, PODPISY_CENA_LICENCE } from '@/lib/modulPodpisy'
 import { STRIPE_PODPISY_PRICE_ID } from '@/lib/stripe'
 import { Suspense } from 'react'
+import { getPerms } from '@/lib/permissions'
 
 export default async function BillingPage() {
   const session = await getServerSession(authOptions)
-  if (!session || session.user.role !== 'ADMIN') redirect('/dashboard')
+  if (!session || !getPerms(session.user).fakturace) redirect('/dashboard')
   const orgId = session.user.orgId
 
   const [org, userCount, dealCount] = await Promise.all([

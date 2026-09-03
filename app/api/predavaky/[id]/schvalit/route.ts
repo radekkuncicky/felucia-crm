@@ -3,6 +3,7 @@ import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { generateVyuctovaniCislo } from '@/lib/zakazkyHelpers'
+import { getPerms, forbidden } from '@/lib/permissions'
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
@@ -10,9 +11,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)
-  const role = session.user.role
-
-  if (role === 'TECHNIK') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!getPerms(session.user).zakazkySchvalovani) return forbidden()
 
   const predavak = await db.predavak.findFirst({
     where: { id: params.id, orgId },

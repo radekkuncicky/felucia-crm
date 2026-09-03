@@ -4,6 +4,7 @@ import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { vratZakazkuZPredane } from '@/lib/zakazkaStavFlow'
 import { ZakazkaStav } from '@prisma/client'
+import { getPerms, forbidden } from '@/lib/permissions'
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
@@ -11,8 +12,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)
-  const role = session.user.role
-  if (role === 'TECHNIK') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!getPerms(session.user).zakazkySchvalovani) return forbidden()
 
   const { duvod } = await req.json()
   if (!duvod?.trim()) return NextResponse.json({ error: 'Důvod odmítnutí je povinný' }, { status: 400 })

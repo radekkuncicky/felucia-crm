@@ -3,10 +3,11 @@ import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { formatDateTime } from '@/lib/format'
+import { getPerms } from '@/lib/permissions'
 
 export async function GET() {
   const session = await getServerSession(authOptions)
-  if (!session || session.user.role !== 'ADMIN') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!session || !getPerms(session.user).analytiky) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)
 

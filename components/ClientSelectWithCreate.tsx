@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { confirmDialog } from '@/components/ui/confirm'
 
 interface Client {
   id: string
@@ -82,6 +83,28 @@ function CreateClientModal({
     setSaving(true)
     setError('')
     try {
+      const dupRes = await fetch('/api/clients/check-duplicate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jmeno: form.jmeno, prijmeni: form.prijmeni, telefon: form.telefon, email: form.email }),
+      })
+      if (dupRes.ok) {
+        const { match } = await dupRes.json()
+        if (match) {
+          const popis = [`${match.jmeno} ${match.prijmeni}`.trim(), match.telefon, match.email].filter(Boolean).join(' · ')
+          const pouzitStavajiciho = await confirmDialog(popis, {
+            title: 'Nemyslíte náhodou tohoto klienta?',
+            confirmLabel: 'Ano, použít tohoto klienta',
+            cancelLabel: 'Ne, jde o jiného',
+            danger: false,
+          })
+          if (pouzitStavajiciho) {
+            onCreated({ id: match.id, jmeno: match.jmeno, prijmeni: match.prijmeni })
+            return
+          }
+        }
+      }
+
       const res = await fetch('/api/clients', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

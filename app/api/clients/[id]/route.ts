@@ -1,5 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { forbidden, getPerms } from '@/lib/permissions'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { logAction } from '@/lib/auditLog'
@@ -7,6 +8,7 @@ import { logAction } from '@/lib/auditLog'
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!(getPerms(session.user).obchod || getPerms(session.user).zakazkyEdit)) return forbidden('Nemáte oprávnění upravovat klienty')
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)
 

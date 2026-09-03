@@ -4,19 +4,22 @@ import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
 import ZakazkyPageClient from './ZakazkyPageClient'
 import type { KeSchvaleniPolozka } from './KeSchvaleniBar'
+import { aktualniFazeLabel, etapaProgressFromRaw } from '@/lib/zakazkaEtapy'
+import { getPerms, zakazkyScopeWhere, isTechnikView } from '@/lib/permissions'
+import { listVedouciKandidati } from '@/lib/zakazkyHelpers'
 
 export default async function ZakazkyPage() {
   const session = await getServerSession(authOptions)
   if (!session) notFound()
 
   const orgId = session.user.orgId
-  const role = session.user.role
-  const isTechnik = role === 'TECHNIK'
+  const perms = getPerms(session.user)
+  const scope = zakazkyScopeWhere(perms, session.user.id)
+  if (!scope) notFound()
+  const isTechnik = isTechnikView(perms)
+  const canApprove = perms.zakazkySchvalovani
 
-  const where: Record<string, unknown> = { orgId, typ: 'OBCHODNI' }
-  if (isTechnik) {
-    where.techniciRel = { some: { technikId: session.user.id } }
-  }
+  const where = { orgId, typ: 'OBCHODNI' as const, AND: [scope] }
 
   const [zakazky, vedouci, cekaPredavaky, cekaVyuctovani] = await Promise.all([
     prisma.zakazka.findMany({
@@ -42,17 +45,21 @@ export default async function ZakazkyPage() {
             polozky: { select: { mnozstvi: true, prodejniCena: true } },
           },
         },
+        etapy: {
+          orderBy: { cislo: 'asc' },
+          select: {
+            cislo: true,
+            nazev: true,
+            stav: true,
+            predavaky: { select: { stav: true } },
+            vyuctovani: { select: { stav: true } },
+          },
+        },
       },
       orderBy: { vytvoreno: 'desc' },
     }),
-    isTechnik
-      ? Promise.resolve([])
-      : prisma.user.findMany({
-          where: { orgId, aktivni: true, role: { in: ['ADMIN'] } },
-          select: { id: true, jmeno: true },
-          orderBy: { jmeno: 'asc' },
-        }),
-    isTechnik
+    isTechnik ? Promise.resolve([]) : listVedouciKandidati(orgId),
+    !canApprove
       ? Promise.resolve([])
       : prisma.predavak.findMany({
           where: { orgId, stav: 'PODPISAN' },
@@ -63,7 +70,7 @@ export default async function ZakazkyPage() {
           },
           orderBy: { podpisano: 'asc' },
         }),
-    isTechnik
+    !canApprove
       ? Promise.resolve([])
       : prisma.vyuctovani.findMany({
           where: { orgId, stav: 'KE_SCHVALENI' },
@@ -131,6 +138,7 @@ export default async function ZakazkyPage() {
       updatedAt: z.updatedAt.toISOString(),
       cenaOP,
       cenaVyuctovani,
+      aktualniFaze: aktualniFazeLabel(z.etapy.map(etapaProgressFromRaw)),
     }
   })
 
@@ -138,7 +146,10 @@ export default async function ZakazkyPage() {
     <ZakazkyPageClient
       zakazky={rows}
       vedouci={vedouci}
-      role={role}
+      isTechnik={isTechnik}
+      canCreate={perms.zakazkyEdit}
+      canApprove={canApprove}
+      showCeny={perms.financeProdejni}
       keSchvaleni={keSchvaleni}
     />
   )

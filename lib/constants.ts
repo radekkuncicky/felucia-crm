@@ -48,6 +48,22 @@ export const techLabels: Record<Technologie, string> = {
   JINE: 'Jiné',
 }
 
+export const zamereniStavLabels: Record<string, string> = {
+  ROZPRACOVANE: 'Rozpracované',
+  UZAVRENE: 'Uzavřené',
+}
+
+export const zamereniFotoTagLabels: Record<string, string> = {
+  ROZVADEC: 'Rozvaděč',
+  VENKOVNI_JEDNOTKA: 'Venkovní jednotka',
+  VNITRNI_JEDNOTKA: 'Vnitřní jednotka',
+  STAVAJICI_ZDROJ: 'Stávající zdroj',
+  FASADA: 'Fasáda',
+  PROSTUP: 'Prostup',
+  CELKOVY_POHLED: 'Celkový pohled',
+  JINE: 'Jiné',
+}
+
 export const techColors: Record<Technologie, string> = {
   KLIMA: 'bg-blue-50 text-blue-700',
   TEPELNE_CERPADLO: 'bg-amber-50 text-amber-700',

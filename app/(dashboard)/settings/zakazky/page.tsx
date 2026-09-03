@@ -2,12 +2,15 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { resolvePermissions } from '@/lib/permissions'
 
 interface OrgUser {
   id: string
   jmeno: string
   email: string
   role: string
+  aktivni: boolean
+  permissions: unknown
 }
 
 export default function ZakazkySettingsPage() {
@@ -90,7 +93,7 @@ export default function ZakazkySettingsPage() {
                 className="mt-2 w-full border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm"
               >
                 <option value="">— Nevybráno —</option>
-                {users.filter(u => u.role !== 'TECHNIK').map(u => (
+                {users.filter(u => u.aktivni && resolvePermissions(u.role, u.permissions).zakazkySchvalovani).map(u => (
                   <option key={u.id} value={u.id}>{u.jmeno} ({u.email})</option>
                 ))}
               </select>

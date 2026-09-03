@@ -1,5 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { forbidden, getPerms } from '@/lib/permissions'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { generateQuoteKod } from '@/lib/quoteKod'
 import { createWithUniqueKod } from '@/lib/uniqueKod'
@@ -8,6 +9,7 @@ import { NextResponse } from 'next/server'
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!(getPerms(session.user).obchod)) return forbidden()
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)
   const { searchParams } = new URL(req.url)
@@ -28,6 +30,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!(getPerms(session.user).obchod)) return forbidden()
 
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)

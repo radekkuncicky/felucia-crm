@@ -1,5 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { getPerms } from '@/lib/permissions'
 import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
 import SkladPageClient from './SkladPageClient'
@@ -7,7 +8,8 @@ import SkladPageClient from './SkladPageClient'
 export default async function SkladPage() {
   const session = await getServerSession(authOptions)
   if (!session) notFound()
-  if (session.user.role === 'TECHNIK') notFound()
+  const perms = getPerms(session.user)
+  if (perms.sklad === 'ZADNY') notFound()
 
   const orgId = session.user.orgId
   const now = new Date()
@@ -42,7 +44,7 @@ export default async function SkladPage() {
         typ: p.typ,
         nazev: p.nazev,
         mnozstvi: Number(p.mnozstvi),
-        nakupniCena: p.nakupniCena !== null ? Number(p.nakupniCena) : null,
+        nakupniCena: perms.financeNakupky && p.nakupniCena !== null ? Number(p.nakupniCena) : null,
         duvod: p.duvod,
         vytvoreno: p.vytvoreno.toISOString(),
         zakazka: p.zakazka ? { id: p.zakazka.id, cislo: p.zakazka.cislo, nazev: p.zakazka.nazev } : null,
@@ -50,10 +52,12 @@ export default async function SkladPage() {
       }))}
       zakazky={zakazky}
       kpi={{
-        rezervaceHodnota: Number(kpi[0]._sum.nakupniCena ?? 0),
-        vydejMesicHodnota: Number(kpi[1]._sum.nakupniCena ?? 0),
+        rezervaceHodnota: perms.financeNakupky ? Number(kpi[0]._sum.nakupniCena ?? 0) : 0,
+        vydejMesicHodnota: perms.financeNakupky ? Number(kpi[1]._sum.nakupniCena ?? 0) : 0,
         pocetPohybu: kpi[2],
       }}
+      canPrijem={perms.sklad === 'PLNY'}
+      showNakupky={perms.financeNakupky}
     />
   )
 }

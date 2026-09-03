@@ -3,6 +3,8 @@ import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { generateZakazkaCislo, polozkyZAktivniNabidky } from '@/lib/zakazkaWorkflow'
+import { userHasPerm } from '@/lib/zakazkyHelpers'
+import { getPerms, forbidden, zakazkyScopeWhere } from '@/lib/permissions'
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
@@ -15,11 +17,13 @@ export async function GET(req: Request) {
   const search = searchParams.get('search')
   const vedouciId = searchParams.get('vedouciId')
 
-  const isTechnik = session.user.role === 'TECHNIK'
+  const scope = zakazkyScopeWhere(getPerms(session.user), session.user.id)
+  if (scope === null) return forbidden()
 
   const typ = searchParams.get('typ')
 
-  const where: Record<string, unknown> = { orgId }
+  // scope (PRIRAZENE) používá OR, proto jde do AND, aby ho search nepřepsal
+  const where: Record<string, unknown> = { orgId, AND: [scope] }
   if (stav) where.stav = stav
   if (vedouciId) where.vedouciId = vedouciId
   if (typ) where.typ = typ
@@ -28,9 +32,6 @@ export async function GET(req: Request) {
       { cislo: { contains: search, mode: 'insensitive' } },
       { nazev: { contains: search, mode: 'insensitive' } },
     ]
-  }
-  if (isTechnik) {
-    where.techniciRel = { some: { technikId: session.user.id } }
   }
 
   const zakazky = await db.zakazka.findMany({
@@ -50,7 +51,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (session.user.role === 'TECHNIK') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!getPerms(session.user).zakazkyEdit) return forbidden()
 
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)
@@ -72,8 +73,9 @@ export async function POST(req: Request) {
 
   // Validate vedouciId (if explicitly provided) belongs to this org
   if (body.vedouciId) {
-    const vedouci = await db.user.findFirst({ where: { id: body.vedouciId, orgId } })
-    if (!vedouci) return NextResponse.json({ error: 'Vedoucí nenalezen' }, { status: 400 })
+    if (!(await userHasPerm(orgId, body.vedouciId, 'zakazkySchvalovani'))) {
+      return NextResponse.json({ error: 'Vedoucí nenalezen nebo nemá oprávnění schvalovat' }, { status: 400 })
+    }
   }
 
   const polozkyFromQuote = body.opId ? await polozkyZAktivniNabidky(body.opId, orgId) : []
@@ -86,7 +88,7 @@ export async function POST(req: Request) {
       nazev: body.nazev,
       technologie: body.technologie ?? null,
       mistoStavby: body.mistoStavby ?? opAdresaDila ?? null,
-      vedouciId: body.vedouciId ?? session.user.id,
+      vedouciId: body.vedouciId ?? (getPerms(session.user).zakazkySchvalovani ? session.user.id : null),
       opId: body.opId ?? null,
       poznamka: body.poznamka ?? null,
       polozky: polozkyFromQuote.length > 0 ? { create: polozkyFromQuote } : undefined,

@@ -2,13 +2,13 @@ import { getServerSession, type Session } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
-import { canTechnikAccessZakazka } from '@/lib/zakazkyHelpers'
+import { canAccessZakazka } from '@/lib/zakazkyHelpers'
 import { parseKontaktInput } from '@/lib/zakazkaKontakt'
+import { getPerms } from '@/lib/permissions'
 
 async function guard(session: Session | null, zakazkaId: string) {
   if (!session) return { err: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
-  const isTechnik = session.user.role === 'TECHNIK'
-  if (isTechnik && !(await canTechnikAccessZakazka(session.user.id, zakazkaId, session.user.orgId))) {
+  if (!(await canAccessZakazka(session.user, getPerms(session.user), zakazkaId))) {
     return { err: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }
   }
   return { err: null }

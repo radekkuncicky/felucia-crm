@@ -4,6 +4,7 @@ import { prisma } from '../lib/prisma'
 import { findDueReminders, processReminder } from './reminders'
 import { sweepWebhookOutbox, deliverWebhook } from './webhooks'
 import { sweepExpirovanePodpisy, sweepPripominkyPodpisu } from './podpisy'
+import { sweepNabidkyFollowUp } from './followupy'
 import { QUEUE_WEBHOOK_SWEEP, QUEUE_WEBHOOK_DELIVER, type WebhookJob } from '../lib/webhooks'
 
 /**
@@ -80,7 +81,16 @@ async function main() {
     if (p > 0) console.log(`[podpisy] odesláno ${p} připomínek klientům`)
   })
 
-  console.log('[worker] běží — fronty:', QUEUE_SWEEP, QUEUE_REMINDER, QUEUE_WEBHOOK_SWEEP, QUEUE_WEBHOOK_DELIVER, QUEUE_PODPISY_SWEEP)
+  const QUEUE_FOLLOWUP_SWEEP = 'followupy-sweep'
+  await boss.createQueue(QUEUE_FOLLOWUP_SWEEP)
+  await boss.schedule(QUEUE_FOLLOWUP_SWEEP, '30 7 * * *') // 1× denně ráno — follow-up má přijít v pracovní době
+
+  await boss.work(QUEUE_FOLLOWUP_SWEEP, async () => {
+    const n = await sweepNabidkyFollowUp(prisma)
+    if (n > 0) console.log(`[followupy] odesláno ${n} follow-up připomínek k nabídkám`)
+  })
+
+  console.log('[worker] běží — fronty:', QUEUE_SWEEP, QUEUE_REMINDER, QUEUE_WEBHOOK_SWEEP, QUEUE_WEBHOOK_DELIVER, QUEUE_PODPISY_SWEEP, QUEUE_FOLLOWUP_SWEEP)
 
   const shutdown = async (signal: string) => {
     console.log(`[worker] ${signal}, ukončuji…`)

@@ -2,6 +2,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
+import { canEditPredavak } from '@/lib/zakazkyHelpers'
+import { getPerms, forbidden } from '@/lib/permissions'
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
@@ -13,9 +15,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const predavak = await db.predavak.findFirst({ where: { id: params.id, orgId } })
   if (!predavak) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  if (session.user.role === 'TECHNIK' && predavak.technikId !== session.user.id) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  if (!canEditPredavak(session.user, getPerms(session.user), predavak)) return forbidden()
   if (predavak.stav !== 'ROZPRACOVAN' && predavak.stav !== 'ODMITNUTO') {
     return NextResponse.json({ error: 'Nelze přidat položku v tomto stavu' }, { status: 422 })
   }

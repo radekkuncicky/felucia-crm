@@ -1,3 +1,4 @@
+import type { Permissions } from '@/lib/permissions'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { generateQuoteKod } from '@/lib/quoteKod'
 import { generateDealKod } from '@/lib/dealKod'
@@ -162,13 +163,14 @@ export const DASA_TOOLS = [
   },
 ]
 
-// ─── Tool execution (server-side, always scoped to org + role) ───────────────
+// ─── Tool execution (server-side, always scoped to org + oprávnění) ──────────
 
 export interface DasaUser {
   id: string
   orgId: string
   role: string
   jmeno: string
+  perms: Permissions
 }
 
 export async function executeDasaTool(
@@ -176,10 +178,12 @@ export async function executeDasaTool(
   input: Record<string, unknown>,
   user: DasaUser
 ): Promise<{ result: string; navigateTo?: string }> {
-  const { orgId, id: userId, role } = user
+  const { orgId, id: userId, perms } = user
   const db = orgPrisma(orgId)
-  const isTechnik = role === 'TECHNIK'
-  const isObchodnik = role === 'OBCHODNIK'
+  // bez obchodu = „technik": jen čtení katalogu bez cen, žádné OP/klienti
+  const isTechnik = !perms.obchod
+  // vidí jen vlastní OP
+  const isObchodnik = !perms.obchodCiziOP
   const canCreate = !isTechnik
 
   try {

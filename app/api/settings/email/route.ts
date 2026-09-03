@@ -4,6 +4,7 @@ import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { encryptSecret } from '@/lib/secretCrypto'
 import { isEmailConfigured } from '@/lib/email'
+import { getPerms } from '@/lib/permissions'
 
 function publicShape(s: {
   rezim: string; smtpHost: string | null; smtpPort: number; smtpSecure: boolean
@@ -29,7 +30,7 @@ function publicShape(s: {
 
 export async function GET() {
   const session = await getServerSession(authOptions)
-  if (!session || session.user.role !== 'ADMIN') {
+  if (!session || !getPerms(session.user).nastaveniOrg) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
   const db = orgPrisma(session.user.orgId)
@@ -39,7 +40,7 @@ export async function GET() {
 
 export async function PUT(req: Request) {
   const session = await getServerSession(authOptions)
-  if (!session || session.user.role !== 'ADMIN') {
+  if (!session || !getPerms(session.user).nastaveniOrg) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
   const orgId = session.user.orgId
@@ -110,7 +111,7 @@ export async function PUT(req: Request) {
 
 export async function DELETE() {
   const session = await getServerSession(authOptions)
-  if (!session || session.user.role !== 'ADMIN') {
+  if (!session || !getPerms(session.user).nastaveniOrg) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
   const orgId = session.user.orgId

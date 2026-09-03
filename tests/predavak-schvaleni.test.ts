@@ -18,6 +18,8 @@ let orgId: string
 let adminId: string
 let obchodnikId: string
 let technikId: string
+let mistrId: string
+let manazerId: string
 let zakazkaId: string
 let etapaId: string
 let predavakId: string
@@ -53,6 +55,14 @@ beforeAll(async () => {
     data: { orgId, jmeno: 'Tonda Technik', email: `${RUN}-technik@example.com`, hesloHash: 'x', role: 'TECHNIK' },
   })
   technikId = technik.id
+  const mistr = await prisma.user.create({
+    data: { orgId, jmeno: 'Mistr Hlavní', email: `${RUN}-mistr@example.com`, hesloHash: 'x', role: 'HLAVNI_TECHNIK' },
+  })
+  mistrId = mistr.id
+  const manazer = await prisma.user.create({
+    data: { orgId, jmeno: 'Marek Manažer', email: `${RUN}-manazer@example.com`, hesloHash: 'x', role: 'MANAZER' },
+  })
+  manazerId = manazer.id
   const klient = await prisma.client.create({ data: { orgId, jmeno: 'Karel', prijmeni: 'Klient' } })
   const zakazka = await prisma.zakazka.create({
     data: {
@@ -94,8 +104,15 @@ afterAll(async () => {
 })
 
 describe('předávák → schválení → vyúčtování', () => {
-  it('OBCHODNIK smí založit protokol', async () => {
+  it('OBCHODNIK (bez editace zakázek) protokol nezaloží, HLAVNI_TECHNIK ano', async () => {
     loginAs(obchodnikId, 'OBCHODNIK')
+    const odmitnuto = await predavakyPost(new Request('http://test/api/predavaky', {
+      method: 'POST',
+      body: JSON.stringify({ zakazkaId, etapaId }),
+    }))
+    expect(odmitnuto.status).toBe(403)
+
+    loginAs(mistrId, 'HLAVNI_TECHNIK')
     const res = await predavakyPost(new Request('http://test/api/predavaky', {
       method: 'POST',
       body: JSON.stringify({ zakazkaId, etapaId }),
@@ -126,8 +143,8 @@ describe('předávák → schválení → vyúčtování', () => {
   })
 
   it('notifikace o schválení jde technikovi protokolu, ale ne aktérovi (vedoucí schvaloval sám)', async () => {
-    // technikem protokolu je obchodník, který ho založil — dostane notifikaci
-    const proTechnika = await cekejNaNotifikaci(obchodnikId, 'PREDAVAK_SCHVALEN')
+    // technikem protokolu je hlavní technik, který ho založil — dostane notifikaci
+    const proTechnika = await cekejNaNotifikaci(mistrId, 'PREDAVAK_SCHVALEN')
     expect(proTechnika).toBeTruthy()
     // vedoucí (admin) akci sám provedl — "vyúčtování připraveno" si neposílá
     const proVedouciho = await prisma.notification.findFirst({
@@ -224,7 +241,7 @@ describe('procesní flow — schvalování a vracení stavů', () => {
     const vyu = await prisma.vyuctovani.findUnique({ where: { id: vyuctovaniId } })
     expect(vyu?.stav).toBe('NAVRH')
 
-    loginAs(obchodnikId, 'OBCHODNIK')
+    loginAs(manazerId, 'MANAZER')
     const res = await vyuSchvalitPost(new Request('http://test'), { params: { id: vyuctovaniId } })
     expect(res.status).toBe(200)
     const data = await res.json()
@@ -232,7 +249,7 @@ describe('procesní flow — schvalování a vracení stavů', () => {
 
     const po = await prisma.vyuctovani.findUnique({ where: { id: vyuctovaniId } })
     expect(po?.stav).toBe('SCHVALENO')
-    expect(po?.schvalenoId).toBe(obchodnikId)
+    expect(po?.schvalenoId).toBe(manazerId)
   })
 
   it('vrácení schváleného vyúčtování vrátí zakázku z Vyúčtované na Předanou', async () => {

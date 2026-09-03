@@ -3,8 +3,11 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { toast } from 'sonner'
 import { LeadZdroj, LeadStatus, Technologie } from '@prisma/client'
 import { formatDate, formatKcPresne } from '@/lib/format'
+import { confirmDialog } from '@/components/ui/confirm'
+import { leadPredmet, sluzbaLabel, sluzbaToTechnologie } from '@/lib/leadService'
 
 interface LeadNote {
   id: string
@@ -22,6 +25,11 @@ interface Lead {
   zdroj: LeadZdroj
   status: LeadStatus
   zprava: string | null
+  sluzba: string | null
+  zdrojFormulare: string | null
+  strankaUrl: string | null
+  prilohy: string | null
+  objednavka: string | null
   assignedTo: { id: string; jmeno: string; email: string; avatar: string | null } | null
   odhadovanaHodnota: number | null
   tagy: string[]
@@ -42,7 +50,8 @@ interface Lead {
 interface Props {
   lead: Lead
   users: { id: string; jmeno: string }[]
-  role: string
+  canEdit: boolean
+  canDelete: boolean
 }
 
 const PIPELINE: { key: LeadStatus; label: string }[] = [
@@ -75,7 +84,7 @@ const TECH_OPTIONS: { value: Technologie; label: string }[] = [
   { value: 'JINE', label: 'Jiné' },
 ]
 
-export default function LeadDetailClient({ lead: initialLead, users, role }: Props) {
+export default function LeadDetailClient({ lead: initialLead, users, canEdit, canDelete }: Props) {
   const router = useRouter()
   const [lead, setLead] = useState(initialLead)
   const [noteText, setNoteText] = useState('')
@@ -86,7 +95,6 @@ export default function LeadDetailClient({ lead: initialLead, users, role }: Pro
   const [savingStatus, setSavingStatus] = useState(false)
 
   const isClosed = lead.status === 'PREVEDEN' || lead.status === 'ZRUSEN'
-  const canEdit = role !== 'TECHNIK'
 
   async function patch(data: Record<string, unknown>) {
     const res = await fetch(`/api/leady/${lead.id}`, {
@@ -97,7 +105,44 @@ export default function LeadDetailClient({ lead: initialLead, users, role }: Pro
     if (res.ok) {
       const updated = await res.json()
       setLead(prev => ({ ...prev, ...updated }))
+      // Seznam leadů drží router cache — bez refreshe by ukazoval starý stav.
+      router.refresh()
+    } else {
+      const body = await res.json().catch(() => null)
+      toast.error(body?.error ?? 'Uložení se nezdařilo')
     }
+  }
+
+  async function handleDelete() {
+    const ok = await confirmDialog(
+      lead.prevedenNaOp
+        ? `Smazat lead ${lead.jmeno}? Vytvořený obchodní případ ${lead.prevedenNaOp.kod ?? ''} i klient zůstanou.`
+        : `Smazat lead ${lead.jmeno}? Akci nelze vrátit zpět.`,
+      { title: 'Smazat lead', confirmLabel: 'Smazat', danger: true }
+    )
+    if (!ok) return
+    const res = await fetch(`/api/leady/${lead.id}`, { method: 'DELETE' })
+    if (!res.ok) {
+      const body = await res.json().catch(() => null)
+      toast.error(body?.error ?? 'Smazání se nezdařilo')
+      return
+    }
+    toast.success('Lead smazán')
+    router.push('/leady')
+    router.refresh()
+  }
+
+  async function handleReopen() {
+    const res = await fetch(`/api/leady/${lead.id}/reopen`, { method: 'POST' })
+    if (!res.ok) {
+      const body = await res.json().catch(() => null)
+      toast.error(body?.error ?? 'Znovuotevření se nezdařilo')
+      return
+    }
+    const updated = await res.json()
+    setLead(prev => ({ ...prev, ...updated }))
+    toast.success('Lead vrácen do pipeline')
+    router.refresh()
   }
 
   async function setStatus(status: LeadStatus) {
@@ -119,6 +164,9 @@ export default function LeadDetailClient({ lead: initialLead, users, role }: Pro
       const note = await res.json()
       setLead(prev => ({ ...prev, notes: [...prev.notes, note] }))
       setNoteText('')
+    } else {
+      const body = await res.json().catch(() => null)
+      toast.error(body?.error ?? 'Poznámku se nepodařilo uložit')
     }
     setSavingNote(false)
   }
@@ -191,10 +239,18 @@ export default function LeadDetailClient({ lead: initialLead, users, role }: Pro
           <svg className="w-5 h-5 text-red-500 dark:text-red-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
-          <div>
-            <p className="text-red-700 dark:text-red-300 font-medium text-sm">Lead zrušen</p>
+          <div className="flex-1">
+            <p className="text-red-700 dark:text-red-300 font-medium text-sm">Lead zamítnut</p>
             {lead.duvodZruseni && <p className="text-red-600 dark:text-red-400/70 text-xs mt-0.5">{lead.duvodZruseni}</p>}
           </div>
+          {canEdit && (
+            <button
+              onClick={handleReopen}
+              className="px-3 py-1.5 text-xs rounded-lg border border-red-300 dark:border-red-500/30 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors flex-shrink-0"
+            >
+              Znovu otevřít
+            </button>
+          )}
         </div>
       )}
 
@@ -242,11 +298,30 @@ export default function LeadDetailClient({ lead: initialLead, users, role }: Pro
             </div>
           </div>
 
-          {/* 3. Zpráva z formuláře */}
-          {lead.zprava && (
+          {/* 3. Poptávka — služba a text od klienta */}
+          {(lead.zprava || sluzbaLabel(lead.sluzba) || lead.objednavka || lead.prilohy) && (
             <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-5">
-              <h3 className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-3">Zpráva / poptávka</h3>
-              <p className="text-gray-700 dark:text-slate-300 text-sm leading-relaxed whitespace-pre-wrap">{lead.zprava}</p>
+              <h3 className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-3">Poptávka</h3>
+              {(sluzbaLabel(lead.sluzba) || lead.objednavka) && (
+                <div className="flex flex-wrap gap-1.5 mb-3">
+                  {sluzbaLabel(lead.sluzba) && (
+                    <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-medium bg-[#4CAF50]/10 text-[#3d8b40] dark:text-[#4CAF50] border border-[#4CAF50]/30">
+                      {sluzbaLabel(lead.sluzba)}
+                    </span>
+                  )}
+                  {lead.objednavka && (
+                    <span className="inline-flex px-2 py-0.5 rounded-full text-xs bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300">
+                      Objednávka: {lead.objednavka}
+                    </span>
+                  )}
+                </div>
+              )}
+              {lead.zprava
+                ? <p className="text-gray-700 dark:text-slate-300 text-sm leading-relaxed whitespace-pre-wrap">{lead.zprava}</p>
+                : <p className="text-gray-400 dark:text-slate-500 text-sm">Klient nepřipojil žádnou zprávu</p>}
+              {lead.prilohy && (
+                <p className="text-xs text-gray-500 dark:text-slate-400 mt-3">Přílohy: {lead.prilohy}</p>
+              )}
             </div>
           )}
 
@@ -406,6 +481,26 @@ export default function LeadDetailClient({ lead: initialLead, users, role }: Pro
                 <span className="text-gray-500 dark:text-slate-400">Zdroj</span>
                 <span className="text-gray-800 dark:text-slate-200 font-medium">{ZDROJ_LABELS[lead.zdroj]}</span>
               </div>
+              {lead.zdrojFormulare && (
+                <div className="flex justify-between gap-2 py-1">
+                  <span className="text-gray-500 dark:text-slate-400 flex-shrink-0">Formulář</span>
+                  <span className="text-gray-800 dark:text-slate-200 font-medium truncate">{lead.zdrojFormulare}</span>
+                </div>
+              )}
+              {lead.strankaUrl && (
+                <div className="flex justify-between gap-2 py-1">
+                  <span className="text-gray-500 dark:text-slate-400 flex-shrink-0">Stránka</span>
+                  <a
+                    href={lead.strankaUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[#3d8b40] dark:text-[#4CAF50] font-medium truncate hover:underline"
+                    title={lead.strankaUrl}
+                  >
+                    {lead.strankaUrl.replace(/^https?:\/\//, '')}
+                  </a>
+                </div>
+              )}
               <div className="flex justify-between py-1">
                 <span className="text-gray-500 dark:text-slate-400">Status</span>
                 <span className="text-gray-800 dark:text-slate-200 font-medium">{STATUS_LABELS[lead.status]}</span>
@@ -414,8 +509,8 @@ export default function LeadDetailClient({ lead: initialLead, users, role }: Pro
           </div>
 
           {/* 9 + 10. Akce */}
-          {canEdit && !isClosed && (
-            <div className="space-y-2">
+          <div className="space-y-2">
+            {canEdit && !isClosed && (
               <button
                 onClick={() => setShowConvertModal(true)}
                 className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-[#4CAF50] hover:bg-[#43A047] text-white rounded-lg text-sm font-medium transition-colors"
@@ -425,6 +520,8 @@ export default function LeadDetailClient({ lead: initialLead, users, role }: Pro
                 </svg>
                 Převést na OP
               </button>
+            )}
+            {canEdit && !isClosed && (
               <button
                 onClick={() => setShowCancelModal(true)}
                 className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-white dark:bg-slate-800 hover:bg-red-50 dark:hover:bg-red-500/10 border border-gray-200 dark:border-slate-600 hover:border-red-300 dark:hover:border-red-500/30 text-gray-600 dark:text-slate-300 hover:text-red-600 dark:hover:text-red-400 rounded-lg text-sm transition-colors"
@@ -434,8 +531,19 @@ export default function LeadDetailClient({ lead: initialLead, users, role }: Pro
                 </svg>
                 Zamítnout
               </button>
-            </div>
-          )}
+            )}
+            {canDelete && (
+              <button
+                onClick={handleDelete}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-gray-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 rounded-lg text-sm transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Smazat lead
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -444,7 +552,14 @@ export default function LeadDetailClient({ lead: initialLead, users, role }: Pro
         <ConvertModal
           lead={lead}
           onClose={() => setShowConvertModal(false)}
-          onConverted={(dealId) => { setShowConvertModal(false); router.push(`/deals/${dealId}`) }}
+          onConverted={(dealId) => {
+            setShowConvertModal(false)
+            setLead(prev => ({ ...prev, status: 'PREVEDEN' }))
+            // Refresh musí být před navigací — jinak zůstane v router cache
+            // seznam i detail se starým statusem "Nový".
+            router.refresh()
+            router.push(`/deals/${dealId}`)
+          }}
         />
       )}
 
@@ -453,9 +568,10 @@ export default function LeadDetailClient({ lead: initialLead, users, role }: Pro
         <CancelModal
           leadId={lead.id}
           onClose={() => setShowCancelModal(false)}
-          onCancelled={() => {
+          onCancelled={(duvod) => {
             setShowCancelModal(false)
-            setLead(prev => ({ ...prev, status: 'ZRUSEN' }))
+            setLead(prev => ({ ...prev, status: 'ZRUSEN', duvodZruseni: duvod || null }))
+            router.refresh()
           }}
         />
       )}
@@ -469,8 +585,8 @@ function ConvertModal({ lead, onClose, onConverted }: {
   onConverted: (dealId: string) => void
 }) {
   const [saving, setSaving] = useState(false)
-  const [technologie, setTechnologie] = useState<Technologie>('JINE')
-  const [predmet, setPredmet] = useState(lead.zprava?.slice(0, 100) || lead.jmeno)
+  const [technologie, setTechnologie] = useState<Technologie>(sluzbaToTechnologie(lead.sluzba))
+  const [predmet, setPredmet] = useState(leadPredmet(lead))
 
   async function handleConvert() {
     setSaving(true)
@@ -481,7 +597,11 @@ function ConvertModal({ lead, onClose, onConverted }: {
     })
     if (res.ok) {
       const data = await res.json()
+      toast.success('Obchodní případ vytvořen')
       onConverted(data.dealId)
+    } else {
+      const body = await res.json().catch(() => null)
+      toast.error(body?.error ?? 'Převod se nezdařil')
     }
     setSaving(false)
   }
@@ -543,7 +663,7 @@ function ConvertModal({ lead, onClose, onConverted }: {
 function CancelModal({ leadId, onClose, onCancelled }: {
   leadId: string
   onClose: () => void
-  onCancelled: () => void
+  onCancelled: (duvod: string) => void
 }) {
   const [reason, setReason] = useState('')
   const [saving, setSaving] = useState(false)
@@ -555,7 +675,13 @@ function CancelModal({ leadId, onClose, onCancelled }: {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ duvodZruseni: reason }),
     })
-    if (res.ok) onCancelled()
+    if (res.ok) {
+      toast.success('Lead zamítnut')
+      onCancelled(reason.trim())
+    } else {
+      const body = await res.json().catch(() => null)
+      toast.error(body?.error ?? 'Zamítnutí se nezdařilo')
+    }
     setSaving(false)
   }
 

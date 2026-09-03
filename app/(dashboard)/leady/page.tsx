@@ -1,5 +1,7 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { getPerms } from '@/lib/permissions'
+import { listUsersWithPerm } from '@/lib/zakazkyHelpers'
 import { prisma } from '@/lib/prisma'
 import { notFound, redirect } from 'next/navigation'
 import LeadyPageClient from './LeadyPageClient'
@@ -12,6 +14,7 @@ export default async function LeadyPage() {
   if (plan === 'STARTER') redirect('/dashboard')
 
   const orgId = session.user.orgId
+  const perms = getPerms(session.user)
 
   const [leady, users] = await Promise.all([
     prisma.lead.findMany({
@@ -22,11 +25,7 @@ export default async function LeadyPage() {
       },
       orderBy: { vytvoreno: 'desc' },
     }),
-    prisma.user.findMany({
-      where: { orgId, aktivni: true, role: { in: ['ADMIN', 'OBCHODNIK'] } },
-      select: { id: true, jmeno: true },
-      orderBy: { jmeno: 'asc' },
-    }),
+    listUsersWithPerm(orgId, 'obchod'),
   ])
 
   const novychCount = leady.filter(l => l.status === 'NOVY').length
@@ -42,7 +41,8 @@ export default async function LeadyPage() {
       users={users}
       novychCount={novychCount}
       currentUserId={session.user.id}
-      role={session.user.role}
+      canEdit={perms.obchod}
+      canDelete={perms.obchodMazani}
     />
   )
 }

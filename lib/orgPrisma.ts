@@ -27,7 +27,6 @@ export const TENANT_MODELS = new Set([
   'AuditLog',
   'CustomField',
   'CustomFieldValue',
-  'VisibilityNode',
   'Extension',
   'OrgSettings',
   'OrgEmailSettings',
@@ -52,6 +51,9 @@ export const TENANT_MODELS = new Set([
   'AiUsageLog',
   'WebhookEndpoint',
   'WebhookOutbox',
+  'Zamereni',
+  'ZamereniFoto',
+  'ZamereniDefinice',
 ])
 
 // where přes AND: pokud volající pošle vlastní orgId, podmínky se sečtou —

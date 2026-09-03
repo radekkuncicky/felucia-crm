@@ -302,13 +302,11 @@ export default function FeaturesClient({ settings, plan }: Props) {
               </div>
             </div>
           </div>
-          <ToggleRow
-            icon={<IconActivity className="w-6 h-6" />}
-            title="Zobrazit nákladové ceny technikům"
-            description="Technici uvidí nákupní ceny a marže produktů."
-            checked={vals.zobrazitNakladoveCeny}
-            onChange={toggle('zobrazitNakladoveCeny')}
-          />
+          <p className="text-xs text-gray-500 dark:text-slate-400 px-1">
+            Kdo vidí nákupní ceny a marže se nastavuje u jednotlivých uživatelů v{' '}
+            <a href="/settings/users" className="underline hover:text-gray-700 dark:hover:text-slate-200">Nastavení → Uživatelé</a>{' '}
+            (oprávnění „Nákupní ceny a marže“).
+          </p>
         </SectionCard>
 
         {/* Servis */}

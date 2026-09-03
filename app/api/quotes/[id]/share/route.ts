@@ -3,10 +3,11 @@ import type { Session } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { NextResponse } from 'next/server'
 import { ensureQuoteShare, getQuoteShare, revokeQuoteShare, quoteShareUrl, QUOTE_SHARE_DNI } from '@/lib/quoteShare'
+import { getPerms } from '@/lib/permissions'
 
 function auth(session: Session | null): { session: Session; error?: undefined } | { session?: undefined; error: NextResponse } {
   if (!session) return { error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
-  if (session.user.role === 'TECHNIK') {
+  if (!getPerms(session.user).obchod) {
     return { error: NextResponse.json({ error: 'Nedostatečná oprávnění' }, { status: 403 }) }
   }
   return { session }

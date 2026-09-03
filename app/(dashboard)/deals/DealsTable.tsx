@@ -31,7 +31,8 @@ interface DealRow {
 
 interface Props {
   deals: DealRow[]
-  isAdmin?: boolean
+  showZneplatnene?: boolean
+  showMarze?: boolean
 }
 
 type SortKey = 'kod' | 'predmet' | 'stav' | 'technologie' | 'konecnaCena' | 'cenaSDph' | 'vytvoreno' | 'pravdepodobnost' | 'marze'
@@ -73,7 +74,7 @@ const DEFS: ColumnDef[] = [
 ]
 
 
-export default function DealsTable({ deals, isAdmin = false }: Props) {
+export default function DealsTable({ deals, showZneplatnene = false, showMarze = false }: Props) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { data: session } = useSession()
@@ -81,7 +82,7 @@ export default function DealsTable({ deals, isAdmin = false }: Props) {
   const { columns, visibleColumns, updateColumn, resizeColumn, resetColumns, reorderColumns } = useTableColumns(
     'deals',
     userId,
-    DEFS
+    showMarze ? DEFS : DEFS.filter(d => d.id !== 'marze')
   )
 
   const [search, setSearch] = useState(searchParams.get('q') ?? '')
@@ -192,7 +193,7 @@ export default function DealsTable({ deals, isAdmin = false }: Props) {
 
   const stavFilterOptions = [
     { value: '', label: 'Stav' },
-    ...stavOptions.filter(s => s !== 'ZNEPLATNENO' || isAdmin).map(s => ({ value: s, label: stavLabels[s] })),
+    ...stavOptions.filter(s => s !== 'ZNEPLATNENO' || showZneplatnene).map(s => ({ value: s, label: stavLabels[s] })),
   ]
   const techFilterOptions = [
     { value: '', label: 'Kategorie' },
@@ -208,7 +209,7 @@ export default function DealsTable({ deals, isAdmin = false }: Props) {
     { key: 'uzavreniLetos', label: 'Uzavřeno tento rok' },
     { key: 'aktivni', label: 'Aktivní' },
     { key: 'vyrizene', label: 'Vyřízené' },
-    ...(isAdmin ? [{ key: 'zneplatnene' as QuickFilter, label: 'Zneplatněné' }] : []),
+    ...(showZneplatnene ? [{ key: 'zneplatnene' as QuickFilter, label: 'Zneplatněné' }] : []),
   ]
 
 

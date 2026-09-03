@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
+import { getPerms, forbidden } from '@/lib/permissions'
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
@@ -49,7 +50,7 @@ export async function POST(req: Request) {
 
   const { plan } = session.user as { plan?: string }
   if (plan === 'STARTER') return NextResponse.json({ error: 'Nedostupné v tomto plánu.' }, { status: 403 })
-  if (session.user.role === 'TECHNIK') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!getPerms(session.user).obchod) return forbidden()
 
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)

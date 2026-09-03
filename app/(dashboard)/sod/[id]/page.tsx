@@ -1,5 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { getPerms } from '@/lib/permissions'
 import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
@@ -61,7 +62,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 export default async function SodDetailPage({ params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) notFound()
-  if (session.user.role === 'TECHNIK') notFound()
+  if (!getPerms(session.user).obchod) notFound()
 
   const orgId = session.user.orgId
 
@@ -104,7 +105,7 @@ export default async function SodDetailPage({ params }: { params: { id: string }
   const zadost = sod.podpisZadost as { email: string; telefon: string; jmeno?: string } | null
 
   const seZalohou = ['DPH_12_SE_ZALOHOU', 'DPH_21_SE_ZALOHOU', 'PDP_SE_ZALOHOU'].includes(sod.typ)
-  const isAdmin = session.user.role === 'ADMIN'
+  const isAdmin = getPerms(session.user).obchodMazani
 
   return (
     <div className="max-w-2xl mx-auto space-y-4">

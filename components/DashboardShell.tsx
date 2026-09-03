@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
-import { Role } from '@prisma/client'
+import type { Permissions } from '@/lib/permissions'
 import Sidebar from './Sidebar'
 import Header from './Header'
 import BottomNav from './BottomNav'
@@ -14,10 +14,10 @@ import type { OrgSettingsData } from '@/lib/orgSettings'
 interface User {
   jmeno: string
   email?: string | null
-  role: Role
+  role: string
+  perms: Permissions
   plan?: string
   isSuperAdmin?: boolean
-  serviceAccess?: boolean
 }
 
 export default function DashboardShell({ user, orgSettings, orgNazev, children }: { user: User; orgSettings: OrgSettingsData; orgNazev?: string; children: React.ReactNode }) {
@@ -58,19 +58,21 @@ export default function DashboardShell({ user, orgSettings, orgNazev, children }
             sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
           }`}
         >
-          <Sidebar user={{ jmeno: user.jmeno, role: user.role, plan: user.plan, isSuperAdmin: user.isSuperAdmin, serviceAccess: user.serviceAccess }} orgNazev={orgNazev} />
+          <Sidebar user={{ jmeno: user.jmeno, role: user.role, perms: user.perms, plan: user.plan, isSuperAdmin: user.isSuperAdmin }} orgNazev={orgNazev} />
         </div>
 
         {/* Main area */}
         <div className="flex flex-col flex-1 overflow-hidden min-w-0">
           <Header user={user} onMenuClick={() => setSidebarOpen(true)} />
           <TabBar />
-          <main className="flex-1 overflow-auto p-4 md:p-6 pb-safe-nav md:pb-6">
+          {/* md:pb-24: rezerva pod Dáša FAB (bottom:24 + výška 56px) + nápovědou (bottom:24 + 32px),
+              jinak poslední řádek obsahu končí pod plovoucími tlačítky (viz zakázka detail/předáváky) */}
+          <main className="flex-1 overflow-auto p-4 md:p-6 pb-safe-nav md:pb-24">
             {children}
           </main>
         </div>
 
-        <BottomNav role={user.role} />
+        <BottomNav perms={user.perms} />
       </div>
     </TabsProvider>
     </OrgSettingsProvider>

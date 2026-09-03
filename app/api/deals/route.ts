@@ -9,24 +9,28 @@ import { logAction } from '@/lib/auditLog'
 import { createNotification } from '@/lib/createNotification'
 import { createWithUniqueKod } from '@/lib/uniqueKod'
 import { generateDealKod } from '@/lib/dealKod'
+import { getPerms, forbidden, dealScopeWhere } from '@/lib/permissions'
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions) ?? await getMobileSession(req)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)
+  const perms = getPerms(session.user)
+  const scope = dealScopeWhere(perms, session.user.id)
+  if (!scope) return forbidden()
 
   const { searchParams } = new URL(req.url)
   const search = searchParams.get('search') ?? ''
   const kodFilter = searchParams.get('kod')
   const qFilter = searchParams.get('q')
-  const zobrazitZneplatnene = searchParams.get('zobrazitZneplatnene') === 'true'
+  const zobrazitZneplatnene = searchParams.get('zobrazitZneplatnene') === 'true' && perms.obchodMazani
 
   // Single-record lookup by UUID or OP code (used by AI assistant)
   if (qFilter) {
     const isUuid = /^[0-9a-f-]{36}$/i.test(qFilter)
     const deal = await db.deal.findFirst({
-      where: { orgId, ...(isUuid ? { id: qFilter } : { kod: qFilter }) },
+      where: { orgId, ...scope, ...(isUuid ? { id: qFilter } : { kod: qFilter }) },
       select: { id: true, kod: true, predmet: true },
     })
     if (!deal) return NextResponse.json({ error: `Deal ${qFilter} not found` }, { status: 404 })
@@ -36,6 +40,7 @@ export async function GET(req: Request) {
   const deals = await db.deal.findMany({
     where: {
       orgId,
+      ...scope,
       ...(kodFilter ? { kod: kodFilter } : {}),
       ...(!kodFilter && !zobrazitZneplatnene ? { stav: { not: 'ZNEPLATNENO' } } : {}),
       ...(!kodFilter && search
@@ -60,6 +65,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions) ?? await getMobileSession(req)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!getPerms(session.user).obchod) return forbidden()
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)
   const userId = session.user.id

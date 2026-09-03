@@ -6,11 +6,12 @@ import { generateSodDocx } from '@/lib/sodDocx'
 import { renderSodContractHtml } from '@/lib/sodContractHtml'
 import htmlToDocx from 'html-to-docx'
 import { formatDate } from '@/lib/format'
+import { getPerms, forbidden } from '@/lib/permissions'
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (session.user.role === 'TECHNIK') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!getPerms(session.user).obchod) return forbidden()
 
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)

@@ -2,6 +2,8 @@ export const dynamic = 'force-dynamic'
 
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { getPerms, dealScopeWhere } from '@/lib/permissions'
+import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
 import DealsPageClient from './DealsPageClient'
@@ -11,7 +13,11 @@ import UpgradeBanner from '@/components/UpgradeBanner'
 export default async function DealsPage() {
   const session = await getServerSession(authOptions)
   const orgId = session!.user.orgId
-  const isAdmin = session!.user.role === 'ADMIN' || session!.user.isSuperAdmin === true
+  const perms = getPerms(session!.user)
+  const scope = dealScopeWhere(perms, session!.user.id)
+  if (!scope) redirect('/')
+  // Zneplatněné OP vidí jen ten, kdo je smí zneplatňovat/mazat
+  const showZneplatnene = perms.obchodMazani
 
   const org = await prisma.organization.findUnique({ where: { id: orgId } })
   const planLimits = getPlanLimits(org?.plan ?? 'STARTER')
@@ -19,7 +25,7 @@ export default async function DealsPage() {
   const atLimit = planLimits.maxDeals !== Infinity && dealCount >= planLimits.maxDeals
 
   const deals = await prisma.deal.findMany({
-    where: { orgId, ...(isAdmin ? {} : { stav: { not: 'ZNEPLATNENO' as const } }) },
+    where: { orgId, ...scope, ...(showZneplatnene ? {} : { stav: { not: 'ZNEPLATNENO' as const } }) },
     include: {
       client: true,
       user: { select: { id: true, jmeno: true } },
@@ -47,7 +53,7 @@ export default async function DealsPage() {
     }, 0)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const hasNakupni = items.some((i: any) => i.nakupniCena != null || Number(i.product?.nakladovaCena ?? 0) > 0)
-    const marzeProc = hasNakupni && konecnaCena > 0 ? Math.round((konecnaCena - nakupniTotal) / konecnaCena * 1000) / 10 : null
+    const marzeProc = perms.financeNakupky && hasNakupni && konecnaCena > 0 ? Math.round((konecnaCena - nakupniTotal) / konecnaCena * 1000) / 10 : null
 
     return {
       id: deal.id,
@@ -98,7 +104,7 @@ export default async function DealsPage() {
 
       <UpgradeBanner used={dealCount} limit={planLimits.maxDeals} label="obchodních případů" />
 
-      <DealsPageClient deals={rows} isAdmin={isAdmin} />
+      <DealsPageClient deals={rows} showZneplatnene={showZneplatnene} showMarze={perms.financeNakupky} />
     </div>
   )
 }

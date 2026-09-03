@@ -19,14 +19,17 @@ export type ListFilter = {
   from?: string | null
   to?: string | null
   stav?: string | null // už namapováno na nový enum (volající si poradí se shimem)
+  /** rozsah uživatele (servisScopeWhere) — `{}` = vše */
+  scope?: Record<string, unknown>
 }
 
 export async function listServisniZakazky(orgId: string, filter: ListFilter = {}) {
   const db = orgPrisma(orgId)
-  const { from, to, stav } = filter
+  const { from, to, stav, scope } = filter
   return db.servisniZakazka.findMany({
     where: {
       orgId,
+      ...(scope ?? {}),
       ...(from || to
         ? {
             planovanyTermin: {
@@ -114,8 +117,10 @@ export async function createServisniZakazka(
 export type UpdateInput = Record<string, unknown>
 
 export type UpdateOptions = {
-  // Admin escape hatch: ruční přepis stavu mimo povolené přechody.
+  // Dispečer escape hatch: ruční přepis stavu mimo povolené přechody.
   forceStav?: boolean
+  /** rozsah uživatele (servisScopeWhere) — zakázka mimo rozsah = 404 */
+  scope?: Record<string, unknown>
 }
 
 // Úprava servisní zakázky (stav, výsledek práce, náklady, termíny, cekaDuvod...).
@@ -127,7 +132,7 @@ export async function updateServisniZakazka(
   opts: UpdateOptions = {},
 ): Promise<ServiceResult<{ id: string }>> {
   const db = orgPrisma(orgId)
-  const z = await db.servisniZakazka.findFirst({ where: { id, orgId } })
+  const z = await db.servisniZakazka.findFirst({ where: { id, orgId, ...(opts.scope ?? {}) } })
   if (!z) return { ok: false, status: 404, error: 'Not found' }
 
   if (body.technikId) {

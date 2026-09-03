@@ -110,7 +110,8 @@ interface Props {
   templates: TemplateData[]
   renderTemplates: RenderTemplate[]
   dphSazba: number
-  userRole: string
+  /** zobrazit nákupní ceny a marži (oprávnění financeNakupky) */
+  showNakupky: boolean
   clientEmail?: string | null
 }
 
@@ -535,7 +536,7 @@ export default function NabidkyTab({
   templates,
   renderTemplates,
   dphSazba: dealDph,
-  userRole,
+  showNakupky,
   clientEmail,
 }: Props) {
   const [quotes, setQuotes] = useState(() =>
@@ -568,7 +569,7 @@ export default function NabidkyTab({
   >('idle')
   const [moreOpen, setMoreOpen] = useState(false)
   const [isMobile, setIsMobile] = useState(false)
-  const isManazer = userRole === 'MANAZER' || userRole === 'ADMIN'
+  const isManazer = showNakupky
   const router = useRouter()
 
   // Auto-activate first CN if none is active on mount
@@ -1415,24 +1416,25 @@ export default function NabidkyTab({
               )}
             </div>
             <div className="flex items-center gap-2 flex-wrap">
-              {/* Save status indicator */}
-              {saveStatus !== 'idle' && (
-                <span
-                  className={`text-xs ${
-                    saveStatus === 'saving'
-                      ? 'text-amber-500 dark:text-amber-400'
-                      : saveStatus === 'saved'
-                      ? 'text-green-600 dark:text-green-400'
-                      : 'text-gray-400 dark:text-slate-500'
-                  }`}
-                >
-                  {saveStatus === 'saving'
-                    ? 'Ukládám…'
+              {/* Save status indicator — pevná šířka a vždy vykreslené (jen neviditelné
+                  při idle), ať přepínání Ukládám/Uloženo nezpůsobí zalomení řádku */}
+              <span
+                className={`text-xs w-[72px] flex-shrink-0 text-right whitespace-nowrap ${
+                  saveStatus === 'idle'
+                    ? 'invisible'
+                    : saveStatus === 'saving'
+                    ? 'text-amber-500 dark:text-amber-400'
                     : saveStatus === 'saved'
-                    ? '✓ Uloženo'
-                    : '●'}
-                </span>
-              )}
+                    ? 'text-green-600 dark:text-green-400'
+                    : 'text-gray-400 dark:text-slate-500'
+                }`}
+              >
+                {saveStatus === 'saving'
+                  ? 'Ukládám…'
+                  : saveStatus === 'saved'
+                  ? '✓ Uloženo'
+                  : '●'}
+              </span>
               <button
                 onClick={() => doSave()}
                 disabled={!isDirty || saveStatus === 'saving'}

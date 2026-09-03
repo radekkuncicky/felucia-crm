@@ -6,6 +6,7 @@ import { getPlanLimits } from '@/lib/planLimits'
 import { checkRateLimit } from '@/lib/rateLimit'
 import { formatDate } from '@/lib/format'
 import { DASA_TOOLS, executeDasaTool } from '@/lib/dasaTools'
+import { getPerms } from '@/lib/permissions'
 
 // ─── Credit calculation ───────────────────────────────────────────────────────
 
@@ -291,7 +292,7 @@ NIKDY nevracej plain text — vždy JSON objekt.`
             const toolResult = await executeDasaTool(
               String(tu.name),
               (tu.input ?? {}) as Record<string, unknown>,
-              { id: session.user.id, orgId, role, jmeno: session.user.jmeno }
+              { id: session.user.id, orgId, role, jmeno: session.user.jmeno, perms: getPerms(session.user) }
             )
             if (toolResult.navigateTo) navigateTo = toolResult.navigateTo
             return {

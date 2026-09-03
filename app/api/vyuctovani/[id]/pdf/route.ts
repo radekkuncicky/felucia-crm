@@ -4,11 +4,13 @@ import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { generateVyuctovaniHtml } from '@/lib/vyuctovaniPdf'
 import { generatePdf } from '@/lib/pdf'
+import { getPerms, forbidden } from '@/lib/permissions'
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (session.user.role === 'TECHNIK') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const perms = getPerms(session.user)
+  if (!perms.financeProdejni) return forbidden()
 
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)
@@ -47,7 +49,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       nazev: p.nazev,
       mnozstvi: Number(p.mnozstvi),
       jednotka: p.jednotka,
-      nakupniCena: p.nakupniCena !== null ? Number(p.nakupniCena) : null,
+      nakupniCena: perms.financeNakupky && p.nakupniCena !== null ? Number(p.nakupniCena) : null,
       prodejniCena: Number(p.prodejniCena),
       dphSazba: Number(p.dphSazba),
     })),

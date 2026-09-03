@@ -26,17 +26,14 @@ const TABS = [
   { key: 'historie',   label: 'Historie' },
 ]
 
-const TABS_TECHNIK = [
-  { key: 'polozky',   label: 'Položky' },
-  { key: 'predavaky', label: 'Protokoly' },
-  { key: 'kontakty',  label: 'Kontakty' },
-  { key: 'podklady',  label: 'Podklady' },
-  { key: 'foto',      label: 'Foto' },
-]
-
 interface Props {
   zakazkaId: string
-  isTechnik: boolean
+  /** zakazkyEdit */
+  showTechnici: boolean
+  /** financeProdejni */
+  showVyuctovani: boolean
+  /** zakazkyEdit */
+  showHistorie: boolean
 }
 
 function Icon({ path }: { path: string }) {
@@ -47,8 +44,12 @@ function Icon({ path }: { path: string }) {
   )
 }
 
-export default function ZakazkyTabs({ zakazkaId, isTechnik }: Props) {
-  const tabs = isTechnik ? TABS_TECHNIK : TABS
+export default function ZakazkyTabs({ zakazkaId, showTechnici, showVyuctovani, showHistorie }: Props) {
+  const tabs = TABS.filter(t =>
+    (t.key !== 'technici' || showTechnici) &&
+    (t.key !== 'vyuctovani' || showVyuctovani) &&
+    (t.key !== 'historie' || showHistorie),
+  )
   const pathname = usePathname()
   const searchParams = useSearchParams()
 

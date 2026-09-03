@@ -4,6 +4,7 @@ import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import fs from 'fs/promises'
 import path from 'path'
+import { getPerms } from '@/lib/permissions'
 
 export async function POST(
   req: Request,
@@ -13,7 +14,7 @@ export async function POST(
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)
-  if (session.user.role !== 'ADMIN') return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  if (!getPerms(session.user).nastaveniOrg) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const template = await db.quoteTemplate.findFirst({ where: { id: params.id, orgId } })
   if (!template) return NextResponse.json({ error: 'Not found' }, { status: 404 })

@@ -6,6 +6,7 @@ import { isHtmlContent, sanitizeFullDocumentHtml } from '@/lib/sanitizeHtml'
 import { renderSodTemplate } from '@/lib/sodRender'
 import { buildSodRenderDataFromSodRecord } from '@/lib/sodRender'
 import { NextResponse } from 'next/server'
+import { getPerms, forbidden } from '@/lib/permissions'
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
@@ -104,9 +105,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  if (session.user.role !== 'ADMIN' && !session.user.isSuperAdmin) {
-    return NextResponse.json({ error: 'Pouze admin může mazat SOD' }, { status: 403 })
-  }
+  if (!getPerms(session.user).obchodMazani) return forbidden('Nemáte oprávnění mazat SOD')
 
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)

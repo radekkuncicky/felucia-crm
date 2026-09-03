@@ -2,10 +2,13 @@
 
 import { useState } from 'react'
 import { formatDate } from '@/lib/format'
+import { ROLES, ROLE_LABELS } from '@/lib/permissions'
 
 const ROLE_COLORS: Record<string, string> = {
   ADMIN: 'bg-purple-900 text-purple-200',
+  MANAZER: 'bg-orange-900 text-orange-200',
   OBCHODNIK: 'bg-blue-900 text-blue-200',
+  HLAVNI_TECHNIK: 'bg-teal-900 text-teal-200',
   TECHNIK: 'bg-green-900 text-green-200',
 }
 
@@ -112,9 +115,7 @@ export default function UsersClient({ users, orgs }: { users: User[]; orgs: Org[
           className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-yellow-500"
         >
           <option value="">Všechny role</option>
-          <option value="ADMIN">Admin</option>
-          <option value="OBCHODNIK">Obchodník</option>
-          <option value="TECHNIK">Technik</option>
+          {ROLES.map(r => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
         </select>
         <select
           value={filterActivity}
@@ -150,7 +151,7 @@ export default function UsersClient({ users, orgs }: { users: User[]; orgs: Org[
                 <td className="px-4 py-3 text-gray-300 text-sm">{user.orgNazev}</td>
                 <td className="px-4 py-3">
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${ROLE_COLORS[user.role] ?? 'bg-gray-700 text-gray-200'}`}>
-                    {user.role}
+                    {ROLE_LABELS[user.role as keyof typeof ROLE_LABELS] ?? user.role}
                   </span>
                 </td>
                 <td className="px-4 py-3">

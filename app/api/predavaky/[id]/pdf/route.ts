@@ -2,8 +2,10 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
+import { canAccessPredavak } from '@/lib/zakazkyHelpers'
 import { generatePredavakHtml } from '@/lib/predavakPdf'
 import { generatePdf } from '@/lib/pdf'
+import { getPerms, forbidden } from '@/lib/permissions'
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
@@ -11,7 +13,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)
-  const role = session.user.role
+  const perms = getPerms(session.user)
 
   const predavak = await db.predavak.findFirst({
     where: { id: params.id, orgId },
@@ -30,11 +32,9 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 
   if (!predavak) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  // TECHNIK can only download approved protocols
-  if (role === 'TECHNIK') {
-    if (predavak.technikId !== session.user.id) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    }
+  if (!(await canAccessPredavak(session.user, perms, predavak))) return forbidden()
+  // Kdo protokoly neschvaluje (technik), stáhne jen schválené
+  if (!perms.zakazkySchvalovani) {
     if (predavak.stav !== 'SCHVALEN') {
       return NextResponse.json({ error: 'PDF dostupné jen pro schválené protokoly' }, { status: 403 })
     }

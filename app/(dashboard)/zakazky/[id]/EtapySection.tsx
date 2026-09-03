@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { EtapaStav } from '@prisma/client'
 import { api } from '@/lib/api'
+import { etapaProgressFromRaw, lzePridatDalsiEtapu } from '@/lib/zakazkaEtapy'
 
 interface EtapaPredavak { id: string; cislo: string; stav: string }
 interface EtapaVyuctovani { id: string; cislo: string; stav: string }
@@ -25,7 +26,6 @@ interface Props {
   zakazkaId: string
   etapy: Etapa[]
   canEdit: boolean
-  zakazkaStav: string
 }
 
 const STAV_LABELS: Record<EtapaStav, string> = {
@@ -55,16 +55,18 @@ function formatDate(iso: string | null) {
   return new Date(iso).toLocaleDateString('cs-CZ', { day: 'numeric', month: 'short' })
 }
 
-export default function EtapySection({ zakazkaId, etapy: initialEtapy, canEdit, zakazkaStav }: Props) {
+export default function EtapySection({ zakazkaId, etapy: initialEtapy, canEdit }: Props) {
   const router = useRouter()
   const [etapy, setEtapy] = useState<Etapa[]>(initialEtapy)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
 
-  const showSection = etapy.length > 0 || ['V_REALIZACI', 'PREDANA', 'VYUCTOVANA', 'HOTOVO'].includes(zakazkaStav)
-
-  if (!showSection) return null
+  const canAddEtapa = lzePridatDalsiEtapu(etapy.map(etapaProgressFromRaw))
+  const posledniEtapa = etapy[etapy.length - 1]
+  const blokovanoDuvod = posledniEtapa
+    ? `Etapu ${posledniEtapa.cislo} je nejdřív potřeba dokončit (montáž → předávka → vyúčtování), než půjde přidat další.`
+    : ''
 
   return (
     <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700">
@@ -77,7 +79,7 @@ export default function EtapySection({ zakazkaId, etapy: initialEtapy, canEdit, 
             </span>
           )}
         </div>
-        {canEdit && (
+        {canEdit && canAddEtapa && (
           <button
             onClick={() => setShowAddForm(v => !v)}
             className="inline-flex items-center gap-1 text-sm font-medium text-green-700 dark:text-green-400 hover:text-green-800 dark:hover:text-green-300 transition-colors"
@@ -87,6 +89,17 @@ export default function EtapySection({ zakazkaId, etapy: initialEtapy, canEdit, 
             </svg>
             Přidat etapu
           </button>
+        )}
+        {canEdit && !canAddEtapa && etapy.length > 0 && (
+          <span
+            title={blokovanoDuvod}
+            className="inline-flex items-center gap-1 text-xs text-gray-400 dark:text-slate-500 cursor-help"
+          >
+            <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Přidat etapu (po dokončení etapy {posledniEtapa?.cislo})
+          </span>
         )}
       </div>
 

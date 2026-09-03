@@ -53,7 +53,12 @@ interface VyuctovaniData {
 
 interface Props {
   vyuctovani: VyuctovaniData
-  role: string
+  /** schvalovat / vracet k úpravám (zakazkySchvalovani) */
+  canApprove: boolean
+  /** mazat a otevírat schválené vyúčtování (zakazkyMazani) */
+  canDelete: boolean
+  /** nákupní ceny a marže (financeNakupky) */
+  showNakupky: boolean
   defaultDph?: number
 }
 
@@ -61,10 +66,10 @@ const fmtKc = formatKc
 
 type NewRow = { nazev: string; mnozstvi: string; jednotka: string; prodejniCena: string; nakupniCena: string; dphSazba: number }
 
-export default function VyuctovaniDetailClient({ vyuctovani: initial, role, defaultDph }: Props) {
+export default function VyuctovaniDetailClient({ vyuctovani: initial, canApprove, canDelete, showNakupky, defaultDph }: Props) {
   const router = useRouter()
-  const isAdmin = role === 'ADMIN'
-  const isManager = role === 'ADMIN' || role === 'OBCHODNIK'
+  const isAdmin = canDelete
+  const isManager = canApprove
 
   const [stav, setStav] = useState<VyuctovaniStav>(initial.stav)
   const canEdit = stav !== 'SCHVALENO'
@@ -88,7 +93,7 @@ export default function VyuctovaniDetailClient({ vyuctovani: initial, role, defa
   const nakupniNaklady = polozky.reduce((s, p) => s + p.mnozstvi * (p.nakupniCena ?? 0), 0)
   const hrubaMarze = celkemBezDph - nakupniNaklady
   const marzeProc = celkemBezDph > 0 ? (hrubaMarze / celkemBezDph) * 100 : 0
-  const hasNakupni = polozky.some(p => p.nakupniCena !== null && p.nakupniCena > 0)
+  const hasNakupni = showNakupky && polozky.some(p => p.nakupniCena !== null && p.nakupniCena > 0)
 
   async function handleUpdatePolozka(polozkaId: string, field: string, value: string | number) {
     const res = await fetch(`/api/vyuctovani/${initial.id}/polozky/${polozkaId}`, {
@@ -423,7 +428,7 @@ export default function VyuctovaniDetailClient({ vyuctovani: initial, role, defa
                   <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">Název</th>
                   <th className="text-right px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">Mn.</th>
                   <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">Jed.</th>
-                  <th className="text-right px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">NK. cena</th>
+                  {showNakupky && <th className="text-right px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">NK. cena</th>}
                   <th className="text-right px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">PR. cena</th>
                   <th className="text-right px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">DPH%</th>
                   <th className="text-right px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">Bez DPH</th>
@@ -450,9 +455,11 @@ export default function VyuctovaniDetailClient({ vyuctovani: initial, role, defa
                       </td>
                       <td className="px-4 py-3 text-right"><EditableCell value={p.mnozstvi} polozkaId={p.id} field="mnozstvi" type="number" /></td>
                       <td className="px-4 py-3 text-gray-500 dark:text-slate-400 text-xs">{p.jednotka}</td>
-                      <td className="px-4 py-3 text-right text-gray-500 dark:text-slate-400">
-                        <EditableCell value={p.nakupniCena ?? 0} polozkaId={p.id} field="nakupniCena" type="number" />
-                      </td>
+                      {showNakupky && (
+                        <td className="px-4 py-3 text-right text-gray-500 dark:text-slate-400">
+                          <EditableCell value={p.nakupniCena ?? 0} polozkaId={p.id} field="nakupniCena" type="number" />
+                        </td>
+                      )}
                       <td className="px-4 py-3 text-right"><EditableCell value={p.prodejniCena} polozkaId={p.id} field="prodejniCena" type="number" /></td>
                       <td className="px-4 py-3 text-right text-gray-500 dark:text-slate-400 text-xs">
                         {canEdit ? (
@@ -488,9 +495,11 @@ export default function VyuctovaniDetailClient({ vyuctovani: initial, role, defa
                     <td className="px-4 py-2">
                       <input value={newRow.jednotka} onChange={e => setNewRow(r => r && { ...r, jednotka: e.target.value })} className={`${inputCls} text-left`} style={{ width: 44 }} />
                     </td>
-                    <td className="px-4 py-2 text-right">
-                      <input type="number" value={newRow.nakupniCena} onChange={e => setNewRow(r => r && { ...r, nakupniCena: e.target.value })} placeholder="0" min="0" step="0.01" className={`${inputCls} text-right`} style={{ minWidth: 70 }} />
-                    </td>
+                    {showNakupky && (
+                      <td className="px-4 py-2 text-right">
+                        <input type="number" value={newRow.nakupniCena} onChange={e => setNewRow(r => r && { ...r, nakupniCena: e.target.value })} placeholder="0" min="0" step="0.01" className={`${inputCls} text-right`} style={{ minWidth: 70 }} />
+                      </td>
+                    )}
                     <td className="px-4 py-2 text-right">
                       <input type="number" value={newRow.prodejniCena} onChange={e => setNewRow(r => r && { ...r, prodejniCena: e.target.value })} placeholder="0" min="0" step="0.01" className={`${inputCls} text-right`} style={{ minWidth: 70 }} />
                     </td>

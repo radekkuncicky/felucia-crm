@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { jwtVerify, SignJWT, type JWTPayload } from 'jose'
 import { secret } from '@/lib/mobile-auth'
 import { prisma } from '@/lib/prisma'
+import { resolvePermissions } from '@/lib/permissions'
 
 interface MobileTokenPayload extends JWTPayload {
   userId: string
@@ -34,7 +35,7 @@ export async function POST(req: Request) {
   // technik mohl donekonečna obnovovat token, protože JWT je self-contained.
   const user = await prisma.user.findFirst({
     where: { id: payload.userId, aktivni: true },
-    include: { organization: { select: { aktivni: true } } },
+    include: { organization: { select: { aktivni: true, plan: true } } },
   })
   if (!user || !user.organization?.aktivni) {
     return NextResponse.json({ error: 'Účet byl deaktivován' }, { status: 401 })
@@ -46,13 +47,16 @@ export async function POST(req: Request) {
     userId: payload.userId,
     orgId: payload.orgId,
     orgSlug: payload.orgSlug,
-    role: payload.role,
-    plan: payload.plan,
+    role: user.role,
+    plan: user.organization.plan,
   })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime(exp)
     .sign(secret)
 
-  return NextResponse.json({ token: newToken })
+  return NextResponse.json({
+    token: newToken,
+    user: { role: user.role, perms: resolvePermissions(user.role, user.permissions, user.organization.plan) },
+  })
 }

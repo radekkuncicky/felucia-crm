@@ -373,7 +373,13 @@ export default function ClientEditForm({ client, isAdmin }: { client: ClientData
             </div>
             <div>
               <p className="text-xs text-gray-500 dark:text-slate-400">Email</p>
-              <p className="text-sm text-gray-900 dark:text-slate-100">{client.email || '—'}</p>
+              {client.email ? (
+                <a href={`mailto:${client.email}`} className="text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 hover:underline">
+                  {client.email}
+                </a>
+              ) : (
+                <p className="text-sm text-gray-900 dark:text-slate-100">—</p>
+              )}
             </div>
 
             {(client.ico || client.dic) && (
