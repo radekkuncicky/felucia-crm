@@ -10,7 +10,6 @@ export const PLAN_LIMITS = {
     aiTokensPerMonth: 0,
     aiCreditsPerMonth: 0,
     hasSubdomain: true,
-    hasCustomDomain: false,
     hasWhiteLabel: false,
     hasServiceModule: false,
     hasOnlinePodpis: false,
@@ -28,7 +27,6 @@ export const PLAN_LIMITS = {
     aiTokensPerMonth: 500,
     aiCreditsPerMonth: 200,
     hasSubdomain: true,
-    hasCustomDomain: false,
     hasWhiteLabel: false,
     hasServiceModule: false,
     hasOnlinePodpis: false,
@@ -46,7 +44,6 @@ export const PLAN_LIMITS = {
     aiTokensPerMonth: Infinity,
     aiCreditsPerMonth: 1000,
     hasSubdomain: true,
-    hasCustomDomain: true,
     hasWhiteLabel: true,
     hasServiceModule: true,
     hasOnlinePodpis: true,
@@ -64,7 +61,6 @@ export const PLAN_LIMITS = {
     aiTokensPerMonth: Infinity,
     aiCreditsPerMonth: Infinity,
     hasSubdomain: true,
-    hasCustomDomain: true,
     hasWhiteLabel: true,
     hasServiceModule: true,
     hasOnlinePodpis: true,
@@ -85,7 +81,6 @@ export function canPerformAction(plan: string, action: string): boolean {
   switch (action) {
     case 'use_ai': return limits.canUseAI
     case 'edit_template_footer': return limits.canEditTemplateFooter
-    case 'custom_domain': return limits.hasCustomDomain
     case 'white_label': return limits.hasWhiteLabel
     case 'service_module': return limits.hasServiceModule
     default: return false

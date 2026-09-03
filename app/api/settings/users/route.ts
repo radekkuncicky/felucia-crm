@@ -77,28 +77,33 @@ export async function POST(req: Request) {
 
   let inviteEmailSent = false
   let inviteEmailError: string | null = null
+  let inviteUrl: string | null = null
 
   if (isTechnik) {
+    // Odkaz na nastavení hesla se vytváří vždy a vrací se adminovi do UI —
+    // e-mail je jen doručovací kanál navíc; když nedorazí (chybí SMTP,
+    // spam/karanténa), admin pošle techniku odkaz ručně jiným kanálem.
+    const token = crypto.randomBytes(32).toString('hex')
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+    await db.passwordResetToken.create({ data: { userId: user.id, token, expiresAt } })
+
+    const org = await db.organization.findUnique({ where: { id: orgId }, select: { slug: true } })
+    const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'felucia.io'
+    inviteUrl = `https://${org?.slug}.${rootDomain}/reset-password?token=${token}`
+
     if (await isOrgEmailConfigured(orgId)) {
       try {
-        const token = crypto.randomBytes(32).toString('hex')
-        const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-        await db.passwordResetToken.create({ data: { userId: user.id, token, expiresAt } })
-
-        const baseUrl = process.env.NEXTAUTH_URL ?? 'https://crm.workspace-felucia.io'
-        const setPasswordUrl = `${baseUrl}/reset-password?token=${token}`
         const appDownloadUrl = process.env.FELUCIA_TECH_APP_URL
-
-        await sendOrgEmail(orgId, user.email, 'Přístup do aplikace Felucia Tech', emailTechnikInvite(user.jmeno, setPasswordUrl, appDownloadUrl))
+        await sendOrgEmail(orgId, user.email, 'Přístup do aplikace Felucia Tech', emailTechnikInvite(user.jmeno, inviteUrl, appDownloadUrl))
         inviteEmailSent = true
       } catch (err) {
         console.error('Technik invite email error:', err)
-        inviteEmailError = 'Pozvánku se nepodařilo odeslat e-mailem.'
+        inviteEmailError = 'Pozvánku se nepodařilo odeslat e-mailem — pošlete techniku odkaz ručně.'
       }
     } else {
-      inviteEmailError = 'Odesílání e-mailů není nastaveno — pošlete techniku reset odkaz ručně přes "Reset hesla" po nastavení SMTP.'
+      inviteEmailError = 'Odesílání e-mailů není nastaveno — pošlete techniku odkaz ručně.'
     }
   }
 
-  return NextResponse.json({ ...user, inviteEmailSent, inviteEmailError }, { status: 201 })
+  return NextResponse.json({ ...user, inviteEmailSent, inviteEmailError, inviteUrl }, { status: 201 })
 }

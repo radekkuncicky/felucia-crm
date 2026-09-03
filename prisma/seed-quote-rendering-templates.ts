@@ -6,42 +6,10 @@ const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! })
 const prisma = new PrismaClient({ adapter })
 
 async function main() {
-  // ── NANTO org: SYSTEM šablony ────────────────────────────────────────────
+  // NANTO se přeskakuje: má vlastní sadu šablon bez výchozí (vybírá se per
+  // nabídka / mapping). Původní větev se SYSTEM šablonami tu založila 2026-09-03
+  // nechtěné prázdné šablony (smazány ručně) — proto byla odstraněna.
   const nantoOrg = await prisma.organization.findFirst({ where: { slug: 'nanto' } })
-
-  if (nantoOrg) {
-    const systemTemplates = [
-      { nazev: 'NANTO – Tepelné čerpadlo', technologie: 'TEPELNE_CERPADLO' as const, isDefault: true },
-      { nazev: 'NANTO – Klimatizace', technologie: 'KLIMA' as const, isDefault: false },
-      { nazev: 'NANTO – Rekuperace', technologie: 'REKUPERACE' as const, isDefault: false },
-      { nazev: 'NANTO – Podlahové vytápění', technologie: 'PODLAHOVE_TOPENI' as const, isDefault: false },
-      { nazev: 'NANTO – Vzduchotechnika', technologie: 'VZDUCHOTECHNIKA' as const, isDefault: false },
-    ]
-
-    for (const tpl of systemTemplates) {
-      const existing = await prisma.quoteTemplate.findFirst({
-        where: { orgId: nantoOrg.id, nazev: tpl.nazev, isSystem: true },
-      })
-      if (!existing) {
-        await prisma.quoteTemplate.create({
-          data: {
-            orgId: nantoOrg.id,
-            nazev: tpl.nazev,
-            typ: 'SYSTEM',
-            isSystem: true,
-            isDefault: tpl.isDefault,
-            planRequired: 'STARTER',
-            technologie: tpl.technologie,
-          },
-        })
-        console.log(`✓ Vytvořena SYSTEM šablona: ${tpl.nazev}`)
-      } else {
-        console.log(`– Přeskočena (existuje): ${tpl.nazev}`)
-      }
-    }
-  } else {
-    console.log('! Org s slug "nanto" nenalezena, přeskakuji SYSTEM šablony')
-  }
 
   // ── Všechny ostatní org: BASE výchozí šablona ────────────────────────────
   const allOrgs = await prisma.organization.findMany()

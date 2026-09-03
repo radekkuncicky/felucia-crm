@@ -22,7 +22,10 @@ export async function POST(req: Request) {
 
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'felucia.io'
   const emailConfigured = await isOrgEmailConfigured(orgId)
-  const sent: string[] = []
+  // Pozvánka se vytvoří vždy a odkaz se vrací adminovi do UI — e-mail je jen
+  // doručovací kanál navíc. Když nedorazí (chybí SMTP, spam/karanténa), admin
+  // pošle odkaz kolegovi ručně jiným kanálem.
+  const sent: { email: string; inviteUrl: string; emailSent: boolean; emailError?: string }[] = []
   const skipped: { email: string; reason: string }[] = []
   let planLimitReached = false
 
@@ -35,11 +38,6 @@ export async function POST(req: Request) {
     const existing = await prisma.user.findFirst({ where: { orgId, email: trimmed } })
     if (existing) {
       skipped.push({ email: trimmed, reason: 'Uživatel s tímto e-mailem už v organizaci existuje' })
-      continue
-    }
-
-    if (!emailConfigured) {
-      skipped.push({ email: trimmed, reason: 'Odesílání e-mailů není nastaveno' })
       continue
     }
 
@@ -78,29 +76,29 @@ export async function POST(req: Request) {
       ? `http://localhost:3000/magic-link?token=${token}`
       : `https://${org?.slug}.${rootDomain}/magic-link?token=${token}`
 
-    try {
-      await sendOrgEmail(
-        orgId,
-        trimmed,
-        `Pozvánka do ${org?.nazev ?? 'FELUCIA CRM'}`,
-        `<p>Byl/a jste pozván/a do CRM systému <strong>${org?.nazev ?? 'FELUCIA CRM'}</strong>.</p>
-         <p>Klikněte na odkaz pro přihlášení:</p>
-         <p><a href="${loginUrl}" style="color:#4CAF50;font-weight:bold;">Přihlásit se →</a></p>
-         <p style="color:#666;font-size:12px;">Odkaz je platný 7 dní.</p>`
-      )
-      sent.push(trimmed)
-    } catch (err) {
-      console.error('Onboarding invite email error:', err)
-      // Uživatele i token zase smazat (token přes onDelete: Cascade) — jinak by
-      // zůstal účet s náhodným heslem a nedoručeným odkazem a opakovaná pozvánka
-      // by spadla do větve „už existuje" výše.
+    let emailSent = false
+    let emailError: string | undefined
+    if (emailConfigured) {
       try {
-        await prisma.user.delete({ where: { id: newUser.id } })
-      } catch (cleanupErr) {
-        console.error('Onboarding invite rollback error:', cleanupErr)
+        await sendOrgEmail(
+          orgId,
+          trimmed,
+          `Pozvánka do ${org?.nazev ?? 'FELUCIA CRM'}`,
+          `<p>Byl/a jste pozván/a do CRM systému <strong>${org?.nazev ?? 'FELUCIA CRM'}</strong>.</p>
+           <p>Klikněte na odkaz pro přihlášení:</p>
+           <p><a href="${loginUrl}" style="color:#4CAF50;font-weight:bold;">Přihlásit se →</a></p>
+           <p style="color:#666;font-size:12px;">Odkaz je platný 7 dní.</p>`
+        )
+        emailSent = true
+      } catch (err) {
+        console.error('Onboarding invite email error:', err)
+        emailError = 'Odeslání e-mailu selhalo'
       }
-      skipped.push({ email: trimmed, reason: 'Odeslání e-mailu selhalo' })
+    } else {
+      emailError = 'Odesílání e-mailů není nastaveno'
     }
+
+    sent.push({ email: trimmed, inviteUrl: loginUrl, emailSent, ...(emailError ? { emailError } : {}) })
   }
 
   await prisma.organization.update({

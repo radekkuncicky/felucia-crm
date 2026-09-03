@@ -22,7 +22,7 @@
 ## Plány
 - **STARTER**: 1 user, 20 OP, 100 produktů, 1 šablona (bez AI, bez editace footeru)
 - **STANDARD**: 5 users, neomezené OP/produkty, 10 šablon, AI 500 tokenů/měsíc
-- **PROFESSIONAL**: 20 users, neomezené vše, custom doména, white-label, servisní modul
+- **PROFESSIONAL**: 20 users, neomezené vše, white-label, servisní modul
 - **ENTERPRISE**: neomezené vše, SLA 1h support
 
 ## Branding

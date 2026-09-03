@@ -93,6 +93,10 @@ export default function OnboardingWizard({
   // Step 6 — Invites
   const [inviteEmails, setInviteEmails] = useState(['', ''])
   const [invitesSentCount, setInvitesSentCount] = useState(0)
+  // Pozvánky, jejichž e-mail se nepodařilo odeslat — odkaz se zobrazí adminovi
+  // ke zkopírování (pošle ho kolegovi jiným kanálem)
+  const [inviteLinks, setInviteLinks] = useState<{ email: string; inviteUrl: string }[]>([])
+  const [copiedInvite, setCopiedInvite] = useState<string | null>(null)
 
   // Step 7 — Import
   const [importFile, setImportFile] = useState<File | null>(null)
@@ -253,22 +257,35 @@ export default function OnboardingWizard({
           const j = await res.json()
           if (!res.ok) throw new Error(j.error)
 
-          const sent: string[] = j.sent ?? []
+          const sent: { email: string; inviteUrl: string; emailSent: boolean }[] = j.sent ?? []
           const skipped: { email: string; reason: string }[] = j.skipped ?? []
           setInvitesSentCount(c => c + sent.length)
 
-          if (skipped.length > 0) {
-            // V polích nechat jen neúspěšné adresy, ať opakované „Odeslat" neposílá
-            // znovu ty, které prošly. Vyhozená chyba drží wizard na tomto kroku,
-            // aby hlášku nepřebil přechod na další krok — dál se dá jít tlačítkem
-            // „Přeskočit".
-            setInviteEmails(skipped.map(s => s.email))
-            throw new Error(
-              `Nepodařilo se pozvat: ${skipped.map(s => `${s.email} (${s.reason})`).join(', ')}`
-              + (j.planLimitReached
-                ? '. Pro více kolegů povyšte plán v Nastavení → Předplatné, nebo pokračujte a pozvěte je později.'
-                : '')
-            )
+          const unsent = sent.filter(s => !s.emailSent)
+          if (unsent.length > 0) {
+            setInviteLinks(prev => [...prev, ...unsent.map(({ email, inviteUrl }) => ({ email, inviteUrl }))])
+          }
+
+          if (skipped.length > 0 || unsent.length > 0) {
+            // Účty ze `sent` už existují — v polích nechat jen adresy, které
+            // neprošly vůbec, ať opakované „Odeslat" neposílá znovu ty hotové.
+            // Vyhozená chyba drží wizard na tomto kroku, aby hlášku (a odkazy
+            // ke zkopírování) nepřebil přechod dál — pokračuje se tlačítkem
+            // „Pokračovat"/„Přeskočit".
+            setInviteEmails(skipped.length > 0 ? skipped.map(s => s.email) : [''])
+            const parts: string[] = []
+            if (unsent.length > 0) {
+              parts.push(`Účet vytvořen, ale e-mail se nepodařilo odeslat: ${unsent.map(s => s.email).join(', ')} — zkopírujte kolegům pozvánkový odkaz níže.`)
+            }
+            if (skipped.length > 0) {
+              parts.push(
+                `Nepodařilo se pozvat: ${skipped.map(s => `${s.email} (${s.reason})`).join(', ')}`
+                + (j.planLimitReached
+                  ? '. Pro více kolegů povyšte plán v Nastavení → Předplatné, nebo pokračujte a pozvěte je později.'
+                  : '')
+              )
+            }
+            throw new Error(parts.join(' '))
           }
         }
         break
@@ -790,6 +807,29 @@ export default function OnboardingWizard({
                     </button>
                   )}
                 </div>
+
+                {inviteLinks.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8, background: 'rgba(76,175,80,0.08)', border: '1px solid rgba(76,175,80,0.35)', borderRadius: 10, padding: '12px 14px' }}>
+                    <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: textMain, margin: 0, fontWeight: 600 }}>
+                      Pozvánkové odkazy — pošlete je kolegům ručně (SMS, WhatsApp…):
+                    </p>
+                    {inviteLinks.map(l => (
+                      <div key={l.email} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                        <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: textMuted, overflow: 'hidden', textOverflow: 'ellipsis' }}>{l.email}</span>
+                        <button
+                          type="button"
+                          onClick={() => { navigator.clipboard.writeText(l.inviteUrl); setCopiedInvite(l.email); setTimeout(() => setCopiedInvite(null), 2000) }}
+                          style={{ ...btnSkip, fontSize: 13, whiteSpace: 'nowrap', padding: '4px 8px' }}
+                        >
+                          {copiedInvite === l.email ? '✓ Zkopírováno' : 'Zkopírovat odkaz'}
+                        </button>
+                      </div>
+                    ))}
+                    <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: textMuted, margin: 0 }}>
+                      Odkaz je platný 7 dní a po odchodu z tohoto kroku už ho neuvidíte.
+                    </p>
+                  </div>
+                )}
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 8 }}>
                   <button style={btnPrimary} onClick={() => goNext()} disabled={saving}>

@@ -53,6 +53,10 @@ export default function UsersManager({ users: initUsers, maxUsers, activeUserCou
   const [editRole, setEditRole] = useState('')
   const [resetLoading, setResetLoading] = useState<string | null>(null)
   const [permsUserId, setPermsUserId] = useState<string | null>(null)
+  // Poslední vygenerovaný pozvánkový/reset odkaz — admin ho může zkopírovat a
+  // poslat jiným kanálem, když e-mail nedorazí (chybí SMTP, spam/karanténa)
+  const [linkInfo, setLinkInfo] = useState<{ title: string; url: string } | null>(null)
+  const [linkCopied, setLinkCopied] = useState(false)
 
   function showToast(msg: string, type: 'ok' | 'err') {
     if (type === 'ok') toast.success(msg)
@@ -76,6 +80,10 @@ export default function UsersManager({ users: initUsers, maxUsers, activeUserCou
       setAdding(false)
       setAddForm({ jmeno: '', email: '', heslo: '', role: 'OBCHODNIK' })
       if (addIsTechnik) {
+        if (data.inviteUrl) {
+          setLinkInfo({ title: `Pozvánka pro ${data.email}`, url: data.inviteUrl })
+          setLinkCopied(false)
+        }
         if (data.inviteEmailSent) {
           showToast('Technik přidán, pozvánka odeslána e-mailem', 'ok')
         } else {
@@ -155,7 +163,15 @@ export default function UsersManager({ users: initUsers, maxUsers, activeUserCou
       })
       const data = await res.json()
       if (!res.ok) { showToast(data.error || 'Chyba odeslání', 'err'); return }
-      showToast(`Reset odkaz odeslán na ${user.email}`, 'ok')
+      if (data.resetUrl) {
+        setLinkInfo({ title: `Reset hesla pro ${user.email}`, url: data.resetUrl })
+        setLinkCopied(false)
+      }
+      if (data.emailSent) {
+        showToast(`Reset odkaz odeslán na ${user.email}`, 'ok')
+      } else {
+        showToast('E-mail se nepodařilo odeslat — zkopírujte odkaz níže a pošlete ho jiným kanálem', 'err')
+      }
     } finally { setResetLoading(null) }
   }
 
@@ -168,6 +184,32 @@ export default function UsersManager({ users: initUsers, maxUsers, activeUserCou
 
   return (
     <div className="space-y-4">
+      {linkInfo && (
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20 px-4 py-3 text-sm text-green-900 dark:text-green-200">
+          <div className="min-w-0 flex-1">
+            <p className="font-semibold">{linkInfo.title}</p>
+            <p className="truncate font-mono text-xs text-green-800/80 dark:text-green-300/80">{linkInfo.url}</p>
+            <p className="mt-1 text-xs text-green-800/80 dark:text-green-300/80">Pokud e-mail nedorazí, pošlete odkaz jiným kanálem (SMS, WhatsApp…).</p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={() => { navigator.clipboard.writeText(linkInfo.url); setLinkCopied(true) }}
+              className="rounded-lg border border-green-400 dark:border-green-600 px-3 py-1.5 font-semibold hover:bg-green-100 dark:hover:bg-green-900/40"
+            >
+              {linkCopied ? '✓ Zkopírováno' : 'Zkopírovat odkaz'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setLinkInfo(null)}
+              aria-label="Zavřít"
+              className="rounded-lg px-2 py-1.5 hover:bg-green-100 dark:hover:bg-green-900/40"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
       {showUserWarning && (
         <div className={`flex items-center justify-between rounded-lg border px-4 py-3 text-sm ${atUserLimit ? 'bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700 text-red-800 dark:text-red-300' : 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-300 dark:border-yellow-700 text-yellow-800 dark:text-yellow-300'}`}>
           <span>

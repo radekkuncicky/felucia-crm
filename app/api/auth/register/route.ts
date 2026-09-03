@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
 import { sendEmail, emailWelcome } from '@/lib/email'
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit'
+import { seedOrgDefaults } from '@/lib/orgDefaults'
 
 const FORBIDDEN_SLUGS = ['www', 'app', 'api', 'admin', 'mail', 'felucia', 'test', 'demo', 'staging']
 
@@ -95,6 +96,8 @@ export async function POST(req: Request) {
           poradi: 0,
         },
       })
+
+      await seedOrgDefaults(tx, newOrg.id)
 
       return newOrg
     })
