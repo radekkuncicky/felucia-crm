@@ -7,6 +7,7 @@ import { POST as etapyPost } from '@/app/api/zakazky/[id]/etapy/route'
 import { POST as predavakyPost } from '@/app/api/predavaky/route'
 import { POST as schvalitPost } from '@/app/api/predavaky/[id]/schvalit/route'
 import { POST as vyuSchvalitPost } from '@/app/api/vyuctovani/[id]/schvalit/route'
+import { POST as mobilePredavakPost } from '@/app/api/mobile/zakazka/[id]/predavak/route'
 import { getServerSession } from 'next-auth'
 
 const RUN = `etapy-gating-${Date.now()}`
@@ -92,17 +93,86 @@ describe('lineární etapy — přidání další etapy je zablokované, dokud p
     expect(vyuSchval.status).toBe(200)
   })
 
-  it('jakmile je vyúčtování etapy 1 schválené, druhou etapu lze přidat', async () => {
+  it('jakmile je vyúčtování etapy 1 schválené, druhou etapu lze přidat a zakázka se vrátí do realizace', async () => {
+    // po schválení vyúčtování je zakázka VYUCTOVANA
+    const pred = await prisma.zakazka.findUniqueOrThrow({ where: { id: zakazkaId } })
+    expect(pred.stav).toBe('VYUCTOVANA')
+
     const res = await postEtapa(zakazkaId, { nazev: 'Etapa 2' })
     expect(res.status).toBe(201)
     const etapa2 = await res.json()
     expect(etapa2.cislo).toBe(2)
+
+    // nová etapa začíná stejně jako předtím — zakázka zpět V_REALIZACI, ne „hotová"
+    const po = await prisma.zakazka.findUniqueOrThrow({ where: { id: zakazkaId } })
+    expect(po.stav).toBe('V_REALIZACI')
   })
 
   it('třetí etapu zase nejde přidat, dokud druhá není vyúčtovaná', async () => {
     const res = await postEtapa(zakazkaId, { nazev: 'Etapa 3' })
     expect(res.status).toBe(422)
     expect(await prisma.zakazkaEtapa.count({ where: { zakazkaId } })).toBe(2)
+  })
+})
+
+describe('schválení vyúčtování s volbou zahájit další etapu', () => {
+  it('schválí vyúčtování etapy 2, založí etapu 3 a zakázku vrátí do realizace jedním požadavkem', async () => {
+    // dokončení etapy 2: protokol → podpis → schválení (auto-vznik vyúčtování s vazbou na etapu)
+    const etapa2 = await prisma.zakazkaEtapa.findFirstOrThrow({ where: { zakazkaId, cislo: 2 } })
+    const p = await predavakyPost(new Request('http://test/api/predavaky', {
+      method: 'POST', body: JSON.stringify({ zakazkaId, etapaId: etapa2.id }),
+    }))
+    const predavak = await p.json()
+    await prisma.predavak.update({ where: { id: predavak.id }, data: { stav: 'PODPISAN', podpisano: new Date() } })
+    const schval = await schvalitPost(new Request('http://test'), { params: { id: predavak.id } })
+    expect(schval.status).toBe(200)
+    const { vyuctovaniId } = await schval.json()
+
+    const res = await vyuSchvalitPost(new Request('http://test', {
+      method: 'POST', body: JSON.stringify({ zahajitDalsiEtapu: true }),
+    }), { params: { id: vyuctovaniId } })
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.dalsiEtapa?.cislo).toBe(3)
+    expect(body.dalsiEtapaChyba).toBeNull()
+    expect(body.zakazkaNovyStav).toBe('V_REALIZACI')
+
+    const etapa3 = await prisma.zakazkaEtapa.findFirst({ where: { zakazkaId, cislo: 3 } })
+    expect(etapa3?.stav).toBe('PLANOVANA')
+    const zak = await prisma.zakazka.findUniqueOrThrow({ where: { id: zakazkaId } })
+    expect(zak.stav).toBe('V_REALIZACI')
+  })
+
+  it('když gating další etapu nepustí, vyúčtování se přesto schválí a chyba se jen vrátí v odpovědi', async () => {
+    // etapa 3 je čerstvě založená (nekompletní) — další etapa nejde, ale schválení projde
+    const v = await prisma.vyuctovani.create({
+      data: { orgId, zakazkaId, cislo: `${RUN}-VYU-EXTRA`, stav: 'NAVRH' },
+    })
+    const res = await vyuSchvalitPost(new Request('http://test', {
+      method: 'POST', body: JSON.stringify({ zahajitDalsiEtapu: true }),
+    }), { params: { id: v.id } })
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.dalsiEtapa).toBeNull()
+    expect(body.dalsiEtapaChyba).toMatch(/dokončit/i)
+
+    const po = await prisma.vyuctovani.findUniqueOrThrow({ where: { id: v.id } })
+    expect(po.stav).toBe('SCHVALENO')
+    expect(await prisma.zakazkaEtapa.count({ where: { zakazkaId } })).toBe(3)
+  })
+})
+
+describe('mobilní protokol se automaticky zařadí do otevřené etapy', () => {
+  it('protokol založený přes mobilní API dostane etapaId poslední nepředané etapy', async () => {
+    const etapa3 = await prisma.zakazkaEtapa.findFirstOrThrow({ where: { zakazkaId, cislo: 3 } })
+    const res = await mobilePredavakPost(
+      new Request('http://test/api/mobile/zakazka/x/predavak', { method: 'POST' }),
+      { params: { id: zakazkaId } },
+    )
+    expect(res.status).toBe(201)
+    const { id } = await res.json()
+    const predavak = await prisma.predavak.findUniqueOrThrow({ where: { id } })
+    expect(predavak.etapaId).toBe(etapa3.id)
   })
 })
 

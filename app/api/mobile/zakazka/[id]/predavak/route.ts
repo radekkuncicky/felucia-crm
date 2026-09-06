@@ -32,11 +32,20 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   const cislo = await generatePredavakCislo(orgId)
 
+  // Protokol z appky se automaticky zařadí do aktuálně otevřené etapy — poslední
+  // etapa, která ještě není předaná (stejná logika jako web v PredavakyTab)
+  const otevrenaEtapa = await db.zakazkaEtapa.findFirst({
+    where: { zakazkaId: params.id, stav: { not: 'PREDANA' } },
+    orderBy: { cislo: 'desc' },
+    select: { id: true },
+  })
+
   const predavak = await db.predavak.create({
     data: {
       orgId,
       zakazkaId: params.id,
       cislo,
+      etapaId: otevrenaEtapa?.id ?? null,
       technikId: session!.user.id,
       stav: 'ROZPRACOVAN',
       polozky: {

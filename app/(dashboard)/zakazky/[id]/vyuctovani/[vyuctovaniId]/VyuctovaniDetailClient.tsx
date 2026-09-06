@@ -60,13 +60,15 @@ interface Props {
   /** nákupní ceny a marže (financeNakupky) */
   showNakupky: boolean
   defaultDph?: number
+  /** číslo etapy, kterou lze zahájit hned při schválení (null = nenabízet) */
+  dalsiEtapaCislo?: number | null
 }
 
 const fmtKc = formatKc
 
 type NewRow = { nazev: string; mnozstvi: string; jednotka: string; prodejniCena: string; nakupniCena: string; dphSazba: number }
 
-export default function VyuctovaniDetailClient({ vyuctovani: initial, canApprove, canDelete, showNakupky, defaultDph }: Props) {
+export default function VyuctovaniDetailClient({ vyuctovani: initial, canApprove, canDelete, showNakupky, defaultDph, dalsiEtapaCislo }: Props) {
   const router = useRouter()
   const isAdmin = canDelete
   const isManager = canApprove
@@ -175,7 +177,7 @@ export default function VyuctovaniDetailClient({ vyuctovani: initial, canApprove
     }
   }
 
-  async function handleSchvalit() {
+  async function handleSchvalit(zahajitDalsiEtapu = false) {
     setConfirmSchvalit(false)
     setLoading(true)
     try {
@@ -187,13 +189,23 @@ export default function VyuctovaniDetailClient({ vyuctovani: initial, canApprove
           body: JSON.stringify({ poznamka }),
         })
       }
-      const res = await fetch(`/api/vyuctovani/${initial.id}/schvalit`, { method: 'POST' })
+      const res = await fetch(`/api/vyuctovani/${initial.id}/schvalit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ zahajitDalsiEtapu }),
+      })
       if (res.ok) {
         const data = await res.json()
         setStav('SCHVALENO')
-        setToast(data.zakazkaNovyStav === 'VYUCTOVANA'
-          ? 'Vyúčtování schváleno — zakázka automaticky označena jako Vyúčtovaná'
-          : 'Vyúčtování schváleno')
+        if (data.dalsiEtapa) {
+          setToast(`Vyúčtování schváleno — zahájena etapa ${data.dalsiEtapa.cislo}, zakázka pokračuje v realizaci`)
+        } else if (data.dalsiEtapaChyba) {
+          setToast(`Vyúčtování schváleno, ale další etapu se nepodařilo založit: ${data.dalsiEtapaChyba}`)
+        } else {
+          setToast(data.zakazkaNovyStav === 'VYUCTOVANA'
+            ? 'Vyúčtování schváleno — zakázka automaticky označena jako Vyúčtovaná'
+            : 'Vyúčtování schváleno')
+        }
         router.refresh()
         return
       }
@@ -293,11 +305,22 @@ export default function VyuctovaniDetailClient({ vyuctovani: initial, canApprove
             <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Schválit vyúčtování?</h3>
             <p className="text-sm text-gray-600 dark:text-slate-400 mb-5">
               Vyúčtování <strong>{initial.cislo}</strong> na <strong>{fmtKc(celkemSDph)}</strong> s DPH bude uzamčeno proti úpravám a stav zakázky se změní na <strong>Vyúčtována</strong>.
+              {dalsiEtapaCislo != null && (
+                <> Pokud zakázka pokračuje, můžete rovnou zahájit etapu {dalsiEtapaCislo} — zakázka se vrátí do realizace.</>
+              )}
             </p>
-            <div className="flex gap-3 justify-end">
-              <button onClick={() => setConfirmSchvalit(false)} className="px-4 py-2 text-sm text-gray-600 dark:text-slate-400 border border-gray-300 dark:border-slate-600 rounded-lg">Zrušit</button>
-              <button onClick={handleSchvalit} disabled={loading} className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg disabled:opacity-50">Schválit</button>
-            </div>
+            {dalsiEtapaCislo != null ? (
+              <div className="flex flex-col gap-2">
+                <button onClick={() => handleSchvalit(true)} disabled={loading} className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg disabled:opacity-50">Schválit a zahájit etapu {dalsiEtapaCislo}</button>
+                <button onClick={() => handleSchvalit(false)} disabled={loading} className="px-4 py-2 text-sm font-medium text-green-700 dark:text-green-300 border border-green-600 dark:border-green-500 rounded-lg disabled:opacity-50">Jen schválit — zakázka končí</button>
+                <button onClick={() => setConfirmSchvalit(false)} className="px-4 py-2 text-sm text-gray-600 dark:text-slate-400 border border-gray-300 dark:border-slate-600 rounded-lg">Zrušit</button>
+              </div>
+            ) : (
+              <div className="flex gap-3 justify-end">
+                <button onClick={() => setConfirmSchvalit(false)} className="px-4 py-2 text-sm text-gray-600 dark:text-slate-400 border border-gray-300 dark:border-slate-600 rounded-lg">Zrušit</button>
+                <button onClick={() => handleSchvalit(false)} disabled={loading} className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg disabled:opacity-50">Schválit</button>
+              </div>
+            )}
           </div>
         </div>
       )}

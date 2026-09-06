@@ -3,11 +3,18 @@ import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { getPerms, forbidden } from '@/lib/permissions'
+import { zalozDalsiEtapu } from '@/lib/zakazkaEtapyDb'
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (!getPerms(session.user).zakazkySchvalovani) return forbidden()
+  const perms = getPerms(session.user)
+  if (!perms.zakazkySchvalovani) return forbidden()
+
+  // Volitelné tělo — modal "Schválit a zahájit další etapu" (zakládá etapu, proto navíc zakazkyEdit)
+  const body = await req.json().catch(() => null) as { zahajitDalsiEtapu?: unknown } | null
+  const zahajitDalsiEtapu = body?.zahajitDalsiEtapu === true
+  if (zahajitDalsiEtapu && !perms.zakazkyEdit) return forbidden()
 
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)
@@ -64,6 +71,21 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   if (raced) return NextResponse.json({ ok: true, alreadyApproved: true, zakazkaNovyStav: null })
 
+  // Zahájení další etapy až po commitu schválení — schválení je hlavní akce a nesmí
+  // spadnout kvůli etapě; gating uvnitř helperu už vidí tohle vyúčtování jako SCHVALENO.
+  let dalsiEtapa: { id: string; cislo: number } | null = null
+  let dalsiEtapaChyba: string | null = null
+  let zakazkaNovyStav: string | null = posunZakazku ? 'VYUCTOVANA' : null
+  if (zahajitDalsiEtapu) {
+    const r = await zalozDalsiEtapu(db, orgId, v.zakazkaId)
+    if (r.ok) {
+      dalsiEtapa = { id: r.etapa.id, cislo: r.etapa.cislo }
+      if (r.zakazkaNovyStav) zakazkaNovyStav = r.zakazkaNovyStav
+    } else {
+      dalsiEtapaChyba = r.error
+    }
+  }
+
   // Notifikace fire-and-forget — response hned po commitu (aktérovi akce se neposílá)
   if (v.zakazka.vedouciId && v.zakazka.vedouciId !== session.user.id) {
     void db.notification.create({
@@ -77,5 +99,5 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     }).catch(() => {})
   }
 
-  return NextResponse.json({ ok: true, zakazkaNovyStav: posunZakazku ? 'VYUCTOVANA' : null })
+  return NextResponse.json({ ok: true, zakazkaNovyStav, dalsiEtapa, dalsiEtapaChyba })
 }

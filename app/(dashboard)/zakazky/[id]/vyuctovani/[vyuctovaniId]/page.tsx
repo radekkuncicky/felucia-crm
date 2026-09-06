@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation'
 import VyuctovaniDetailClient from './VyuctovaniDetailClient'
 import { getPerms } from '@/lib/permissions'
 import { canAccessZakazka } from '@/lib/zakazkyHelpers'
+import { etapaProgressFromRaw } from '@/lib/zakazkaEtapy'
 
 export default async function VyuctovaniDetailPage({
   params,
@@ -42,6 +43,21 @@ export default async function VyuctovaniDetailPage({
     },
   })
   if (!v) notFound()
+
+  // Nabídka „Schválit a zahájit další etapu" — jen když vyúčtování patří k poslední
+  // etapě zakázky a jeho schválením se etapa uzavře (montáž i předávka už hotové)
+  let dalsiEtapaCislo: number | null = null
+  if (perms.zakazkySchvalovani && perms.zakazkyEdit && v.etapaId) {
+    const posledniEtapa = await prisma.zakazkaEtapa.findFirst({
+      where: { zakazkaId: params.id, orgId },
+      orderBy: { cislo: 'desc' },
+      include: { predavaky: { select: { stav: true } }, vyuctovani: { select: { stav: true } } },
+    })
+    if (posledniEtapa && posledniEtapa.id === v.etapaId) {
+      const progress = etapaProgressFromRaw(posledniEtapa)
+      if (progress.montazDone && progress.predavkaDone) dalsiEtapaCislo = posledniEtapa.cislo + 1
+    }
+  }
 
   const orgSettings = await prisma.orgSettings.findUnique({ where: { orgId }, select: { zakazkyDefaultDph: true } })
   const defaultDph = v.zakazka.op?.quotes?.[0]?.dphSazba != null
@@ -88,6 +104,7 @@ export default async function VyuctovaniDetailPage({
       canDelete={perms.zakazkyMazani}
       showNakupky={perms.financeNakupky}
       defaultDph={defaultDph}
+      dalsiEtapaCislo={dalsiEtapaCislo}
     />
   )
 }
