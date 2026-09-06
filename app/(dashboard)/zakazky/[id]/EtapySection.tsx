@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { EtapaStav } from '@prisma/client'
 import { api } from '@/lib/api'
-import { etapaProgressFromRaw, lzePridatDalsiEtapu } from '@/lib/zakazkaEtapy'
+import { etapaProgressFromRaw, etapaKompletni, lzePridatDalsiEtapu } from '@/lib/zakazkaEtapy'
 
 interface EtapaPredavak { id: string; cislo: string; stav: string }
 interface EtapaVyuctovani { id: string; cislo: string; stav: string }
@@ -75,7 +75,7 @@ export default function EtapySection({ zakazkaId, etapy: initialEtapy, canEdit }
           <h3 className="font-semibold text-gray-900 dark:text-white">Etapy montáže</h3>
           {etapy.length > 0 && (
             <span className="text-xs text-gray-400 dark:text-slate-500">
-              {etapy.filter(e => e.stav === 'PREDANA').length}/{etapy.length} předáno
+              {etapy.filter(e => etapaKompletni(etapaProgressFromRaw(e))).length}/{etapy.length} hotovo
             </span>
           )}
         </div>
@@ -176,6 +176,8 @@ function EtapaRow({
   const od = formatDate(etapa.montazOd)
   const do_ = formatDate(etapa.montazDo)
   const termín = od && do_ ? `${od} – ${do_}` : od ? `Od ${od}` : do_ ? `Do ${do_}` : null
+  // „Hotová" = schválené vyúčtování — odvozeno z dat, stav v DB se automaticky nemění
+  const hotova = etapaKompletni(etapaProgressFromRaw(etapa))
 
   return (
     <div>
@@ -185,20 +187,26 @@ function EtapaRow({
       >
         <div className="flex items-center gap-3 min-w-0">
           <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
-            etapa.stav === 'PREDANA' ? 'bg-green-500 text-white' :
-            etapa.stav === 'PROBIHAJICI' ? 'bg-blue-500 text-white' :
+            hotova ? 'bg-green-500 text-white' :
+            etapa.stav === 'PROBIHAJICI' || etapa.stav === 'PREDANA' ? 'bg-blue-500 text-white' :
             'bg-gray-200 dark:bg-slate-600 text-gray-600 dark:text-slate-300'
           }`}>
-            {etapa.stav === 'PREDANA' ? '✓' : etapa.cislo}
+            {etapa.cislo}
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="font-medium text-gray-900 dark:text-white text-sm">
                 Etapa {etapa.cislo}{etapa.nazev ? ` — ${etapa.nazev}` : ''}
               </span>
-              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${STAV_COLORS[etapa.stav]}`}>
-                {STAV_LABELS[etapa.stav]}
-              </span>
+              {hotova ? (
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300">
+                  ✓ Hotová
+                </span>
+              ) : (
+                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${STAV_COLORS[etapa.stav]}`}>
+                  {STAV_LABELS[etapa.stav]}
+                </span>
+              )}
             </div>
             <div className="flex items-center gap-3 mt-0.5 flex-wrap">
               {termín && <span className="text-xs text-gray-500 dark:text-slate-400">{termín}</span>}

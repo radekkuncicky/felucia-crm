@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ZakazkaStav } from '@prisma/client'
 import { api } from '@/lib/api'
-import { etapaProgressFromRaw, KROK_LABEL, KROK_LABEL_HOTOVO, type EtapaKrok, type EtapaProgressInput } from '@/lib/zakazkaEtapy'
+import { etapaProgressFromRaw, etapaKompletni, KROK_LABEL, KROK_LABEL_HOTOVO, type EtapaKrok, type EtapaProgressInput } from '@/lib/zakazkaEtapy'
 
 const STEPS: { stav: ZakazkaStav; label: string }[] = [
   { stav: 'NOVA', label: 'Nová' },
@@ -29,6 +29,10 @@ interface EtapaNode {
   label: string
   done: boolean
   current: boolean
+  /** Uzel „Etapa N" — v kolečku číslo etapy místo ✓ */
+  cisloEtapy?: number
+  /** Etapa má schválené vyúčtování — číslo v kolečku zezelená */
+  hotova?: boolean
 }
 
 /**
@@ -42,7 +46,7 @@ function buildEtapyNodes(etapy: EtapaChip[]): EtapaNode[] {
   let currentAssigned = false
   for (const raw of etapy) {
     const p = etapaProgressFromRaw(raw)
-    nodes.push({ key: `${raw.id}-etapa`, label: `Etapa ${p.cislo}`, done: true, current: false })
+    nodes.push({ key: `${raw.id}-etapa`, label: `Etapa ${p.cislo}`, done: true, current: false, cisloEtapy: p.cislo, hotova: etapaKompletni(p) })
     const kroky: { krok: EtapaKrok; done: boolean }[] = [
       { krok: 'MONTAZ', done: p.montazDone },
       { krok: 'PREDAVKA', done: p.predavkaDone },
@@ -119,16 +123,17 @@ export default function PipelineBar({ zakazkaId, currentStav, canChange, etapy =
               {etapyNodes.map((n, i) => (
                 <div key={n.key} className="flex items-center">
                   <span className={`flex items-center gap-1.5 text-xs font-medium whitespace-nowrap ${
+                    n.hotova ? 'text-green-600 dark:text-green-400' :
                     n.current ? 'text-green-600 dark:text-green-400' : n.done ? 'text-gray-400 dark:text-slate-500' : 'text-gray-300 dark:text-slate-600'
                   }`}>
                     <span className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] border-2 ${
-                      n.current
+                      n.hotova || n.current
                         ? 'border-green-500 bg-green-500 text-white'
                         : n.done
                         ? 'border-gray-300 dark:border-slate-600 bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400'
                         : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-300 dark:text-slate-600'
                     }`}>
-                      {n.done ? '✓' : ''}
+                      {n.cisloEtapy ?? (n.done ? '✓' : '')}
                     </span>
                     {n.label}
                   </span>
@@ -148,17 +153,18 @@ export default function PipelineBar({ zakazkaId, currentStav, canChange, etapy =
                       style={{ minWidth: 64, fontSize: 10 }}
                       className={`flex flex-col items-center gap-1 px-1.5 py-1.5 rounded-lg ${
                         n.current ? 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400'
+                        : n.hotova ? 'text-green-600 dark:text-green-400'
                         : n.done ? 'text-gray-400 dark:text-slate-500' : 'text-gray-300 dark:text-slate-600'
                       }`}
                     >
                       <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] border-2 flex-shrink-0 ${
-                        n.current
+                        n.hotova || n.current
                           ? 'border-green-500 bg-green-500 text-white'
                           : n.done
                           ? 'border-gray-300 dark:border-slate-600 bg-gray-100 dark:bg-slate-700 text-gray-500'
                           : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-300'
                       }`}>
-                        {n.done ? '✓' : ''}
+                        {n.cisloEtapy ?? (n.done ? '✓' : '')}
                       </span>
                       <span className="whitespace-nowrap">{n.label}</span>
                     </div>
