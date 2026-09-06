@@ -42,11 +42,17 @@ export default async function ZakazkaDetailPage({
         polozky: { orderBy: { poradi: 'asc' } },
         predavaky: {
           orderBy: { vytvoreno: 'desc' },
-          include: { technik: { select: { id: true, jmeno: true } } },
+          include: {
+            technik: { select: { id: true, jmeno: true } },
+            vyuctovani: { select: { id: true, cislo: true } },
+          },
         },
         vyuctovani: {
           orderBy: { vytvoreno: 'desc' },
-          include: { predavak: { select: { cislo: true } } },
+          include: {
+            predavak: { select: { cislo: true } },
+            polozky: { select: { mnozstvi: true, prodejniCena: true, dphSazba: true } },
+          },
         },
         etapy: { orderBy: { cislo: 'asc' as const }, select: { id: true, cislo: true, nazev: true, stav: true } },
         fotky: {
@@ -142,9 +148,12 @@ export default async function ZakazkaDetailPage({
             podpisano: p.podpisano?.toISOString() ?? null,
             upravenoPodpisano: p.upravenoPodpisano,
             etapaId: p.etapaId ?? null,
+            vyuctovaniId: p.vyuctovani?.id ?? null,
+            vyuctovaniCislo: p.vyuctovani?.cislo ?? null,
           }))}
           canCreate={true}
           canApprove={perms.zakazkySchvalovani}
+          showVyuctovani={perms.financeProdejni}
           etapy={zakazka.etapy ?? []}
         />
       )}
@@ -159,6 +168,8 @@ export default async function ZakazkaDetailPage({
             vytvoreno: v.vytvoreno.toISOString(),
             etapaId: v.etapaId ?? null,
             predavakCislo: v.predavak?.cislo ?? null,
+            celkemBezDph: v.polozky.reduce((s, p) => s + Number(p.mnozstvi) * Number(p.prodejniCena), 0),
+            celkemSDph: v.polozky.reduce((s, p) => s + Number(p.mnozstvi) * Number(p.prodejniCena) * (1 + Number(p.dphSazba) / 100), 0),
           }))}
           canCreate={canEdit}
           etapy={zakazka.etapy ?? []}

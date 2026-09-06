@@ -30,6 +30,8 @@ interface Predavak {
   podpisano: string | null
   upravenoPodpisano: boolean
   etapaId: string | null
+  vyuctovaniId: string | null
+  vyuctovaniCislo: string | null
 }
 
 interface EtapaInfo {
@@ -44,10 +46,11 @@ interface Props {
   predavaky: Predavak[]
   canCreate: boolean
   canApprove: boolean
+  showVyuctovani?: boolean
   etapy?: EtapaInfo[]
 }
 
-export default function PredavakyTab({ zakazkaId, predavaky: initialPredavaky, canCreate, canApprove, etapy = [] }: Props) {
+export default function PredavakyTab({ zakazkaId, predavaky: initialPredavaky, canCreate, canApprove, showVyuctovani = false, etapy = [] }: Props) {
   const router = useRouter()
   const [predavaky, setPredavaky] = useState(initialPredavaky)
   const [loading, setLoading] = useState<string | null>(null)
@@ -93,8 +96,10 @@ export default function PredavakyTab({ zakazkaId, predavaky: initialPredavaky, c
     }
   }
 
-  function markSchvalen(predavakId: string) {
-    setPredavaky(prev => prev.map(p => p.id === predavakId ? { ...p, stav: 'SCHVALEN' as PredavakStav } : p))
+  function markSchvalen(predavakId: string, vyuctovaniId?: string, vyuctovaniCislo?: string) {
+    setPredavaky(prev => prev.map(p => p.id === predavakId
+      ? { ...p, stav: 'SCHVALEN' as PredavakStav, vyuctovaniId: vyuctovaniId ?? p.vyuctovaniId, vyuctovaniCislo: vyuctovaniCislo ?? p.vyuctovaniCislo }
+      : p))
     // Refresh kvůli sousednímu tabu Vyúčtování (nově vzniklé vyúčtování čte z props)
     router.refresh()
   }
@@ -106,7 +111,7 @@ export default function PredavakyTab({ zakazkaId, predavaky: initialPredavaky, c
       const res = await fetch(`/api/predavaky/${predavakId}/schvalit`, { method: 'POST' })
       if (res.ok) {
         const data = await res.json().catch(() => ({}))
-        markSchvalen(predavakId)
+        markSchvalen(predavakId, data.vyuctovaniId, data.vyuctovaniCislo)
         if (data.vyuctovaniId) {
           toast.success(
             <span>
@@ -250,6 +255,7 @@ export default function PredavakyTab({ zakazkaId, predavaky: initialPredavaky, c
             zakazkaId={zakazkaId}
             canCreate={canCreate}
             canApprove={canApprove}
+            showVyuctovani={showVyuctovani}
             loading={loading}
             onNovy={handleNovy}
             onSchvalit={handleSchvalit}
@@ -262,8 +268,8 @@ export default function PredavakyTab({ zakazkaId, predavaky: initialPredavaky, c
   )
 }
 
-function PredavakRow({ p, zakazkaId, canApprove, loading, etapy, onSchvalit, onOdmitnout, onAssignEtapa }: {
-  p: Predavak; zakazkaId: string; canApprove: boolean; loading: string | null; etapy: EtapaInfo[]
+function PredavakRow({ p, zakazkaId, canApprove, showVyuctovani, loading, etapy, onSchvalit, onOdmitnout, onAssignEtapa }: {
+  p: Predavak; zakazkaId: string; canApprove: boolean; showVyuctovani: boolean; loading: string | null; etapy: EtapaInfo[]
   onSchvalit: (id: string) => void; onOdmitnout: (id: string) => void
   onAssignEtapa?: (id: string, etapaId: string | null) => void
 }) {
@@ -287,6 +293,18 @@ function PredavakRow({ p, zakazkaId, canApprove, loading, etapy, onSchvalit, onO
             </svg>
             upraveno
           </span>
+        )}
+        {showVyuctovani && p.vyuctovaniId && (
+          <Link
+            href={`/zakazky/${zakazkaId}/vyuctovani/${p.vyuctovaniId}`}
+            title="Přejít na vyúčtování"
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300 border border-green-200 dark:border-green-800 hover:underline"
+          >
+            {p.vyuctovaniCislo ?? 'Vyúčtování'}
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </Link>
         )}
       </div>
       <div className="flex items-center gap-2">
@@ -322,9 +340,9 @@ function PredavakRow({ p, zakazkaId, canApprove, loading, etapy, onSchvalit, onO
   )
 }
 
-function PredavakyList({ predavaky, etapy, zakazkaId, canCreate, canApprove, loading, onNovy, onSchvalit, onOdmitnout, onAssignEtapa }: {
+function PredavakyList({ predavaky, etapy, zakazkaId, canCreate, canApprove, showVyuctovani, loading, onNovy, onSchvalit, onOdmitnout, onAssignEtapa }: {
   predavaky: Predavak[]; etapy: EtapaInfo[]; zakazkaId: string
-  canCreate: boolean; canApprove: boolean; loading: string | null
+  canCreate: boolean; canApprove: boolean; showVyuctovani: boolean; loading: string | null
   onNovy: (etapaId?: string) => void
   onSchvalit: (id: string) => void; onOdmitnout: (id: string) => void
   onAssignEtapa?: (id: string, etapaId: string | null) => void
@@ -333,7 +351,7 @@ function PredavakyList({ predavaky, etapy, zakazkaId, canCreate, canApprove, loa
     return (
       <div className="divide-y divide-gray-100 dark:divide-slate-700">
         {predavaky.map(p => (
-          <PredavakRow key={p.id} p={p} zakazkaId={zakazkaId} canApprove={canApprove} loading={loading} etapy={etapy} onSchvalit={onSchvalit} onOdmitnout={onOdmitnout} onAssignEtapa={onAssignEtapa} />
+          <PredavakRow key={p.id} p={p} zakazkaId={zakazkaId} canApprove={canApprove} showVyuctovani={showVyuctovani} loading={loading} etapy={etapy} onSchvalit={onSchvalit} onOdmitnout={onOdmitnout} onAssignEtapa={onAssignEtapa} />
         ))}
       </div>
     )
@@ -364,7 +382,7 @@ function PredavakyList({ predavaky, etapy, zakazkaId, canCreate, canApprove, loa
               <div className="px-5 py-3 text-xs text-gray-400 dark:text-slate-500 italic">Žádné protokoly</div>
             ) : (
               <div className="divide-y divide-gray-100 dark:divide-slate-700">
-                {pp.map(p => <PredavakRow key={p.id} p={p} zakazkaId={zakazkaId} canApprove={canApprove} loading={loading} etapy={etapy} onSchvalit={onSchvalit} onOdmitnout={onOdmitnout} onAssignEtapa={onAssignEtapa} />)}
+                {pp.map(p => <PredavakRow key={p.id} p={p} zakazkaId={zakazkaId} canApprove={canApprove} showVyuctovani={showVyuctovani} loading={loading} etapy={etapy} onSchvalit={onSchvalit} onOdmitnout={onOdmitnout} onAssignEtapa={onAssignEtapa} />)}
               </div>
             )}
           </div>
@@ -376,7 +394,7 @@ function PredavakyList({ predavaky, etapy, zakazkaId, canCreate, canApprove, loa
             <span className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wide">Bez etapy</span>
           </div>
           <div className="divide-y divide-gray-100 dark:divide-slate-700">
-            {bezEtapy.map(p => <PredavakRow key={p.id} p={p} zakazkaId={zakazkaId} canApprove={canApprove} loading={loading} etapy={etapy} onSchvalit={onSchvalit} onOdmitnout={onOdmitnout} onAssignEtapa={onAssignEtapa} />)}
+            {bezEtapy.map(p => <PredavakRow key={p.id} p={p} zakazkaId={zakazkaId} canApprove={canApprove} showVyuctovani={showVyuctovani} loading={loading} etapy={etapy} onSchvalit={onSchvalit} onOdmitnout={onOdmitnout} onAssignEtapa={onAssignEtapa} />)}
           </div>
         </div>
       )}

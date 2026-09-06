@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { Suspense } from 'react'
 import { techLabels } from '@/lib/constants'
+import { formatKc } from '@/lib/format'
 import { canAccessZakazka } from '@/lib/zakazkyHelpers'
 import { getPerms, isTechnikView } from '@/lib/permissions'
 import { getPlanLimits } from '@/lib/planLimits'
@@ -58,6 +59,7 @@ export default async function ZakazkaDetailLayout({
       vedouci: { select: { id: true, jmeno: true, email: true } },
       op: { select: { id: true, kod: true, predmet: true } },
       polozky: { select: { stav: true, nakupniCena: true, mnozstvi: true } },
+      vyuctovani: { select: { stav: true, polozky: { select: { mnozstvi: true, prodejniCena: true } } } },
       techniciRel: { select: { technikId: true } },
       etapy: {
         orderBy: { cislo: 'asc' as const },
@@ -78,9 +80,10 @@ export default async function ZakazkaDetailLayout({
   zakazka.polozky.forEach(p => { polozkyStats[p.stav as keyof typeof polozkyStats]++ })
   const polozkyReady = polozkyStats.NASKLADNENO + polozkyStats.VYDANO
 
-  // CN marže from linked OP
+  // Cena dle aktivní nabídky OP + CN marže
   let cnMarzeProc: number | null = null
-  if (showNakupky && zakazka.opId) {
+  let cenaOP: number | null = null
+  if ((perms.financeProdejni || showNakupky) && zakazka.opId) {
     const op = await prisma.deal.findFirst({
       where: { id: zakazka.opId, orgId },
       include: {
@@ -100,11 +103,20 @@ export default async function ZakazkaDetailLayout({
       }, 0)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const hasNakupniData = q.items.some((i: any) => i.nakupniCena != null || Number(i.product?.nakladovaCena ?? 0) > 0)
+      if (prodej > 0) cenaOP = prodej
       if (prodej > 0 && hasNakupniData) {
         cnMarzeProc = Math.round((prodej - nakup) / prodej * 1000) / 10
       }
     }
   }
+
+  // Součty vyúčtování (bez DPH) pro finanční přehled
+  const sumVyuctovani = (list: { polozky: { mnozstvi: unknown; prodejniCena: unknown }[] }[]) =>
+    list.reduce((s, v) => s + v.polozky.reduce((t, p) => t + Number(p.mnozstvi) * Number(p.prodejniCena), 0), 0)
+  const vyuctovanoSchvaleno = sumVyuctovani(zakazka.vyuctovani.filter(v => v.stav === 'SCHVALENO'))
+  const vyuctovaniCelkem = sumVyuctovani(zakazka.vyuctovani)
+  const showFinance = perms.financeProdejni && (cenaOP !== null || zakazka.vyuctovani.length > 0)
+  const rozdilVsOP = cenaOP !== null ? vyuctovaniCelkem - cenaOP : null
 
   const nakupniTotal = zakazka.polozky
     .filter(p => p.stav === 'NASKLADNENO' || p.stav === 'VYDANO')
@@ -281,21 +293,56 @@ export default async function ZakazkaDetailLayout({
         canEdit={canEdit}
       />
 
-      {/* Marže panel (jen s oprávněním na nákupky) — zobraz jen pokud jsou data */}
-      {showNakupky && (cnMarzeProc !== null || nakupniTotal > 0) && (
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 px-4 py-3">
-            <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase mb-1">CN marže</p>
-            <p className={`text-lg font-bold ${cnMarzeProc !== null ? (cnMarzeProc >= 30 ? 'text-green-600 dark:text-green-400' : 'text-orange-600 dark:text-orange-400') : 'text-gray-400'}`}>
-              {cnMarzeProc !== null ? `${cnMarzeProc} %` : '—'}
-            </p>
-          </div>
-          <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 px-4 py-3">
-            <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase mb-1">Nák. cena</p>
-            <p className="text-lg font-bold text-gray-900 dark:text-white">
-              {nakupniTotal > 0 ? `${nakupniTotal.toLocaleString('cs-CZ', { maximumFractionDigits: 0 })} Kč` : '—'}
-            </p>
-          </div>
+      {/* Finanční přehled — cena dle OP vs. vyúčtování (bez DPH) + marže z nákupek */}
+      {(showFinance || (showNakupky && (cnMarzeProc !== null || nakupniTotal > 0))) && (
+        <div className="flex flex-wrap gap-3">
+          {showFinance && (
+            <>
+              <div className="flex-1 min-w-[160px] bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 px-4 py-3">
+                <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase mb-1">Cena dle OP</p>
+                <p className="text-lg font-bold text-gray-900 dark:text-white">{cenaOP !== null ? formatKc(cenaOP) : '—'}</p>
+                <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">
+                  {cenaOP !== null ? 'aktivní nabídka · bez DPH' : 'bez aktivní nabídky'}
+                </p>
+              </div>
+              <div className="flex-1 min-w-[160px] bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 px-4 py-3">
+                <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase mb-1">Vyúčtováno</p>
+                <p className="text-lg font-bold text-green-600 dark:text-green-400">{formatKc(vyuctovanoSchvaleno)}</p>
+                <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">
+                  {cenaOP !== null && cenaOP > 0
+                    ? `${Math.round(vyuctovanoSchvaleno / cenaOP * 100)} % ceny OP · bez DPH`
+                    : 'schválená vyúčtování · bez DPH'}
+                </p>
+              </div>
+              <div className="flex-1 min-w-[160px] bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 px-4 py-3">
+                <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase mb-1">Vyúčtování celkem</p>
+                <p className="text-lg font-bold text-gray-900 dark:text-white">{formatKc(vyuctovaniCelkem)}</p>
+                {rozdilVsOP !== null ? (
+                  <p className={`text-xs mt-0.5 font-medium ${rozdilVsOP >= 0 ? 'text-green-600 dark:text-green-400' : 'text-orange-600 dark:text-orange-400'}`}>
+                    {rozdilVsOP >= 0 ? '+' : '−'}{formatKc(Math.abs(rozdilVsOP))} vs OP · vč. návrhů
+                  </p>
+                ) : (
+                  <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">vč. návrhů · bez DPH</p>
+                )}
+              </div>
+            </>
+          )}
+          {showNakupky && (cnMarzeProc !== null || nakupniTotal > 0) && (
+            <>
+              <div className="flex-1 min-w-[160px] bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 px-4 py-3">
+                <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase mb-1">CN marže</p>
+                <p className={`text-lg font-bold ${cnMarzeProc !== null ? (cnMarzeProc >= 30 ? 'text-green-600 dark:text-green-400' : 'text-orange-600 dark:text-orange-400') : 'text-gray-400'}`}>
+                  {cnMarzeProc !== null ? `${cnMarzeProc} %` : '—'}
+                </p>
+              </div>
+              <div className="flex-1 min-w-[160px] bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 px-4 py-3">
+                <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase mb-1">Nák. cena</p>
+                <p className="text-lg font-bold text-gray-900 dark:text-white">
+                  {nakupniTotal > 0 ? formatKc(nakupniTotal) : '—'}
+                </p>
+              </div>
+            </>
+          )}
         </div>
       )}
 
