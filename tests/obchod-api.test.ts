@@ -16,6 +16,9 @@ import { POST as nabidkaPost } from '@/app/api/mobile/obchod/pripady/[id]/nabidk
 import { PATCH as nabidkaPatch } from '@/app/api/mobile/obchod/nabidka/[id]/route'
 import { POST as sodPost } from '@/app/api/mobile/obchod/pripady/[id]/sod/route'
 import { POST as sodPodepsatPost } from '@/app/api/mobile/obchod/sod/[id]/podepsat/route'
+import { POST as aktivityPost, GET as aktivityGet } from '@/app/api/mobile/obchod/aktivity/route'
+import { GET as dnesGet } from '@/app/api/mobile/obchod/dnes/route'
+import { POST as duplicityPost } from '@/app/api/mobile/obchod/klienti/duplicity/route'
 import { quoteCelkemBezDph, quoteCelkemSDph } from '@/lib/quoteMath'
 import { sweepNabidkyFollowUp, FOLLOWUP_PO_DNECH } from '@/worker/followupy'
 
@@ -142,6 +145,72 @@ describe('případy', () => {
   it('neplatný stav (ZNEPLATNENO z mobilu) se odmítne', async () => {
     const res = await stavPost(jsonReq('POST', { stav: 'ZNEPLATNENO' }), { params: { id: dealId } })
     expect(res.status).toBe(400)
+  })
+})
+
+describe('aktivity', () => {
+  const dnes = () => new Date().toISOString()
+
+  it('nová aktivita je plánovaná, vysledek bez splneno se ignoruje', async () => {
+    const res = await aktivityPost(jsonReq('POST', { dealId, typ: 'UKOL', datum: dnes(), popis: 'Poslat podklady', vysledek: 'nemá se uložit' }))
+    expect(res.status).toBe(201)
+    const { id } = await res.json()
+    const a = await prisma.activity.findUnique({ where: { id } })
+    expect(a?.stav).toBe('PLANOVANA')
+    expect(a?.splneno).toBe(false)
+    expect(a?.vysledek).toBeNull()
+  })
+
+  it('splněný hovor v jednom požadavku: DOKONCENA s výsledkem, v Dnes není', async () => {
+    const res = await aktivityPost(jsonReq('POST', { dealId, typ: 'HOVOR', datum: dnes(), cas: '10:15', splneno: true, vysledek: 'Domluven termín' }))
+    expect(res.status).toBe(201)
+    const { id } = await res.json()
+    const a = await prisma.activity.findUnique({ where: { id } })
+    expect(a?.stav).toBe('DOKONCENA')
+    expect(a?.splneno).toBe(true)
+    expect(a?.vysledek).toBe('Domluven termín')
+
+    const feed = await aktivityGet(new Request(`http://localhost/api/mobile/obchod/aktivity?dealId=${dealId}`))
+    const list = await feed.json()
+    expect(list.find((x: { id: string }) => x.id === id)?.vysledek).toBe('Domluven termín')
+
+    const plan = await (await dnesGet(jsonReq('GET'))).json()
+    const vDnes = [...plan.dnesni, ...plan.followUpy].map((x: { id: string }) => x.id)
+    expect(vDnes).not.toContain(id)
+  })
+
+  it('neplatný typ se odmítne', async () => {
+    const res = await aktivityPost(jsonReq('POST', { dealId, typ: 'FAX', datum: dnes() }))
+    expect(res.status).toBe(400)
+  })
+})
+
+describe('duplicity klientů', () => {
+  it('telefon s předvolbou najde Karla a spočítá otevřené případy', async () => {
+    const res = await duplicityPost(jsonReq('POST', { jmeno: 'Jiný', telefon: '+420 601 123 456' }))
+    expect(res.status).toBe(200)
+    const { match } = await res.json()
+    expect(match?.prijmeni).toBe('Zkouška')
+    expect(match?.telefon).toBe('601123456')
+    expect(match?.otevrenePripady).toBeGreaterThanOrEqual(1)
+  })
+
+  it('bez kontaktu stačí podobné jméno bez diakritiky', async () => {
+    const { match } = await (await duplicityPost(jsonReq('POST', { jmeno: 'Karel', prijmeni: 'Zkouska' }))).json()
+    expect(match?.prijmeni).toBe('Zkouška')
+  })
+
+  it('cizí telefon → žádná shoda', async () => {
+    const { match } = await (await duplicityPost(jsonReq('POST', { jmeno: 'Karel', prijmeni: 'Zkouška', telefon: '999000111' }))).json()
+    expect(match).toBeNull()
+  })
+
+  it('TECHNIK → 403, nevalidní tělo → 400', async () => {
+    mockRole('TECHNIK')
+    expect((await duplicityPost(jsonReq('POST', { telefon: '601123456' }))).status).toBe(403)
+    mockRole('OBCHODNIK')
+    const bad = new Request('http://localhost/api/mobile/obchod/klienti/duplicity', { method: 'POST', body: 'x' })
+    expect((await duplicityPost(bad)).status).toBe(400)
   })
 })
 

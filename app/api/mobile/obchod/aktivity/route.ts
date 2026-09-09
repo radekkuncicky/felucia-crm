@@ -43,7 +43,9 @@ export async function GET(req: Request) {
 }
 
 // POST /api/mobile/obchod/aktivity — nová aktivita / follow-up.
-// { dealId, typ, datum, cas?, popis?, cil?, misto?, reminderAt? }
+// { dealId, typ, datum, cas?, popis?, cil?, misto?, reminderAt?, splneno?, vysledek? }
+// splneno: true = aktivita vzniká rovnou jako DOKONCENA (zápis hovoru po zavolání
+// z appky) — jeden požadavek, aby to fungovalo i z offline fronty.
 export async function POST(req: Request) {
   const session = await getMobileOrWebSession(req)
   const authErr = requireObchodnikOrAdmin(session)
@@ -61,6 +63,8 @@ export async function POST(req: Request) {
     cil?: string
     misto?: string
     reminderAt?: string
+    splneno?: boolean
+    vysledek?: string
   }
   try { body = await req.json() } catch {
     return NextResponse.json({ error: 'Neplatný požadavek' }, { status: 400 })
@@ -76,6 +80,7 @@ export async function POST(req: Request) {
   const deal = await db.deal.findFirst({ where: { id: body.dealId }, select: { id: true } })
   if (!deal) return NextResponse.json({ error: 'Případ nenalezen' }, { status: 404 })
 
+  const splneno = body.splneno === true
   const aktivita = await db.activity.create({
     data: {
       dealId: deal.id,
@@ -87,7 +92,9 @@ export async function POST(req: Request) {
       cil: body.cil?.trim() || null,
       misto: body.misto?.trim() || null,
       reminderAt: body.reminderAt ? new Date(body.reminderAt) : null,
-      stav: 'PLANOVANA',
+      splneno,
+      vysledek: splneno ? body.vysledek?.trim() || null : null,
+      stav: splneno ? 'DOKONCENA' : 'PLANOVANA',
     },
   })
 
