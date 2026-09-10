@@ -4,10 +4,13 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { SOD_PLACEHOLDER_LABELS } from '@/lib/sodPlaceholders'
 import { formatKc } from '@/lib/format'
+import DateRangePickerInput from '@/components/DateRangePickerInput'
+import SodPrilohyPicker, { defaultSodPrilohy, type SodPrilohy, type SodPrilohyDostupne } from '@/components/SodPrilohyPicker'
+import { countWorkingDays, formatIsoCz } from '@/lib/workingDays'
 
 // Placeholdery, které mají v modalu vlastní pole (níže). Zbytek prázdných
 // se vypíše dynamicky jako „Doplnit do smlouvy".
-const DEDICATED = new Set(['termin_prevzeti', 'pocet_dni_realizace', 'zmena_term', 'hodnota_zalohy', 'zaloha_splatnost', 'kontaktni_osoba', 'kontaktni_telefon'])
+const DEDICATED = new Set(['termin_prevzeti', 'termin_realizace', 'pocet_dni_realizace', 'zmena_term', 'hodnota_zalohy', 'zaloha_splatnost', 'kontaktni_osoba', 'kontaktni_telefon'])
 
 interface Template {
   id: string
@@ -18,7 +21,10 @@ interface CheckData {
   emptyPlaceholders: string[]
   usedPlaceholders: string[]
   seZalohou: boolean
+  prilohy: SodPrilohyDostupne
   prefill: {
+    realizaceOd: string
+    realizaceDo: string
     terminPrevzeti: string
     pocetDniRealizace: string
     zmenaTerm: string
@@ -68,8 +74,14 @@ export default function GenerateSodModal({ dealId, templates, onClose }: Props) 
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState('')
 
+  // Termín realizace: výběr dnů v kalendáři (od = předání staveniště, do = předání díla),
+  // nebo volný text (např. „Q3/2026") jako dřív.
+  const [terminMode, setTerminMode] = useState<'kalendar' | 'text'>('kalendar')
+  const [realizaceOd, setRealizaceOd] = useState('')
+  const [realizaceDo, setRealizaceDo] = useState('')
   const [terminPrevzeti, setTerminPrevzeti] = useState('')
   const [pocetDniRealizace, setPocetDniRealizace] = useState('')
+  const [prilohy, setPrilohy] = useState<SodPrilohy>(defaultSodPrilohy({ hasVop: false, hasVzsp: false, hasCenik: false }))
   const [zmenaTerm, setZmenaTerm] = useState('')
   const [zalohaKc, setZalohaKc] = useState('')
   const [zalohaSplatnost, setZalohaSplatnost] = useState('14')
@@ -92,8 +104,15 @@ export default function GenerateSodModal({ dealId, templates, onClose }: Props) 
       .then(data => {
         if (data.error) { setError(data.error); return }
         setCheckData(data)
+        setRealizaceOd(data.prefill.realizaceOd ?? '')
+        setRealizaceDo(data.prefill.realizaceDo ?? '')
         setTerminPrevzeti(data.prefill.terminPrevzeti)
-        setPocetDniRealizace(data.prefill.pocetDniRealizace)
+        setPocetDniRealizace(
+          data.prefill.realizaceOd && data.prefill.realizaceDo
+            ? String(countWorkingDays(data.prefill.realizaceOd, data.prefill.realizaceDo) || '')
+            : data.prefill.pocetDniRealizace
+        )
+        setPrilohy(defaultSodPrilohy(data.prilohy ?? { hasVop: false, hasVzsp: false, hasCenik: false }))
         setZmenaTerm(data.prefill.zmenaTerm)
         setZalohaKc(data.prefill.zalohaKc > 0 ? String(data.prefill.zalohaKc) : '')
         setZalohaSplatnost(String(data.prefill.zalohaSplatnost))
@@ -112,9 +131,20 @@ export default function GenerateSodModal({ dealId, templates, onClose }: Props) 
       .finally(() => setCheckLoading(false))
   }, [dealId, templateId])
 
+  function handleRealizaceChange(range: { from: string; to: string }) {
+    setRealizaceOd(range.from)
+    setRealizaceDo(range.to)
+    setTerminPrevzeti(range.from ? formatIsoCz(range.from) : '')
+    if (range.from && range.to) {
+      const n = countWorkingDays(range.from, range.to)
+      if (n > 0) setPocetDniRealizace(String(n))
+    }
+  }
+
   async function handleGenerate() {
     setError('')
     setGenerating(true)
+    const kalendar = terminMode === 'kalendar'
     // Cizí kontaktní osoba jde jako override; „z OP" necháme na datech z OP.
     const allOverrides: Record<string, string> = { ...extra }
     if (kontaktMode === 'jina') {
@@ -128,8 +158,13 @@ export default function GenerateSodModal({ dealId, templates, onClose }: Props) 
         body: JSON.stringify({
           dealId,
           templateId,
-          terminPrevzeti: terminPrevzeti || null,
+          terminPrevzeti: (kalendar ? (realizaceOd ? formatIsoCz(realizaceOd) : '') : terminPrevzeti) || null,
+          // konec realizace → {{termin_realizace}} v šabloně („Termín dokončení a předání díla")
+          ...(kalendar && realizaceDo ? { terminRealizace: formatIsoCz(realizaceDo) } : {}),
+          // ISO od–do → propíše se do termínů OP (kalendář)
+          ...(kalendar ? { terminRealizaceOd: realizaceOd || null, terminRealizaceDo: realizaceDo || null } : {}),
           pocetDniRealizace: pocetDniRealizace ? Number(pocetDniRealizace) : null,
+          ...prilohy,
           zmenaTerm: zmenaTerm || null,
           zalohaKc: checkData?.seZalohou && zalohaKc ? Number(zalohaKc) : null,
           zalohaSplatnost: checkData?.seZalohou ? Number(zalohaSplatnost) : null,
@@ -237,20 +272,45 @@ export default function GenerateSodModal({ dealId, templates, onClose }: Props) 
               {/* Termíny */}
               <div className="space-y-3">
                 <SectionHeading>Termíny</SectionHeading>
+                {terminMode === 'kalendar' ? (
+                  <div>
+                    <Label empty={empty.includes('termin_prevzeti') && !realizaceOd}>Termín realizace (od – do)</Label>
+                    <DateRangePickerInput
+                      from={realizaceOd}
+                      to={realizaceDo}
+                      onChange={handleRealizaceChange}
+                      disabled={generating}
+                      placeholder="Vyberte dny v kalendáři"
+                      className={empty.includes('termin_prevzeti') && !realizaceOd ? inputEmptyCls : inputCls}
+                    />
+                    <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">
+                      První den = předání staveniště, poslední den = předání díla.{' '}
+                      <button type="button" onClick={() => setTerminMode('text')} className="text-primary hover:underline" disabled={generating}>
+                        Zadat volným textem
+                      </button>
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    <Label empty={empty.includes('termin_prevzeti')}>Termín předání staveniště</Label>
+                    <input
+                      type="text"
+                      value={terminPrevzeti}
+                      onChange={e => setTerminPrevzeti(e.target.value)}
+                      placeholder="Q3/2026 nebo 30. 9. 2026"
+                      disabled={generating}
+                      className={empty.includes('termin_prevzeti') ? inputEmptyCls : inputCls}
+                    />
+                    <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">
+                      Volný text.{' '}
+                      <button type="button" onClick={() => setTerminMode('kalendar')} className="text-primary hover:underline" disabled={generating}>
+                        Vybrat dny v kalendáři
+                      </button>
+                    </p>
+                  </div>
+                )}
                 <div>
-                  <Label empty={empty.includes('termin_prevzeti')}>Termín předání</Label>
-                  <input
-                    type="text"
-                    value={terminPrevzeti}
-                    onChange={e => setTerminPrevzeti(e.target.value)}
-                    placeholder="Q3/2026 nebo 30. 9. 2026"
-                    disabled={generating}
-                    className={empty.includes('termin_prevzeti') ? inputEmptyCls : inputCls}
-                  />
-                  <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">Volný text</p>
-                </div>
-                <div>
-                  <Label empty={empty.includes('pocet_dni_realizace')}>Počet dní realizace</Label>
+                  <Label empty={empty.includes('pocet_dni_realizace') && !pocetDniRealizace}>Počet pracovních dní realizace</Label>
                   <input
                     type="number"
                     value={pocetDniRealizace}
@@ -377,6 +437,20 @@ export default function GenerateSodModal({ dealId, templates, onClose }: Props) 
               )}
 
               {/* Ostatní prázdná pole ze šablony (klient_ico, klient_dic…) */}
+              {/* Přílohy PDF */}
+              <div className="space-y-3">
+                <SectionHeading>Přílohy ke smlouvě</SectionHeading>
+                <p className="text-xs text-gray-400 dark:text-slate-500 -mt-1">
+                  Zaškrtnuté dokumenty se připojí za smlouvu do výsledného PDF. Lze změnit i později v úpravě smlouvy.
+                </p>
+                <SodPrilohyPicker
+                  value={prilohy}
+                  dostupne={checkData.prilohy ?? { hasVop: false, hasVzsp: false, hasCenik: false }}
+                  onChange={setPrilohy}
+                  disabled={generating}
+                />
+              </div>
+
               {extraKeys.length > 0 && (
                 <div className="space-y-3">
                   <SectionHeading>Doplnit do smlouvy</SectionHeading>

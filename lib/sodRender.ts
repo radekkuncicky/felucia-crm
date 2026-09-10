@@ -107,6 +107,7 @@ export function applySodFormOverrides(data: SodRenderData, form: Record<string, 
   if (form.pocetDniRealizace != null) out.pocetDniRealizace = String(form.pocetDniRealizace)
   if (form.zmenaTerm != null) out.zmenaTerm = String(form.zmenaTerm)
   if (form.terminPrevzeti != null) out.terminPrevzeti = String(form.terminPrevzeti)
+  if (form.terminRealizace != null) out.terminRealizace = String(form.terminRealizace)
   if (form.zalohaSplatnost != null) out.zalohaSplatnost = String(form.zalohaSplatnost)
   if (form.dphSazba != null) out.dphSazba = String(form.dphSazba)
   if (form.zalohaKc != null) out.hodnotaZalohy = fmtKc(Number(form.zalohaKc))

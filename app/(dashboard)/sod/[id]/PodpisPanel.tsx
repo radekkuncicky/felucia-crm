@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { confirmDialog } from '@/components/ui/confirm'
 import { formatDateTime, formatDate } from '@/lib/format'
 import { SignatureCanvas } from '@/components/SignatureCanvas'
+import PdfNahledModal from '@/components/PdfNahledModal'
 
 export const STAV_LABELS: Record<string, string> = {
   NAVRH: 'Návrh',
@@ -320,6 +321,7 @@ function OdeslatModal({ sodId, email: initEmail, telefon: initTelefon, znovu, po
   const [podpis, setPodpis] = useState<string | null>(null)
   const [odesilam, setOdesilam] = useState(false)
   const [chyba, setChyba] = useState<string | null>(null)
+  const [nahled, setNahled] = useState(false)
 
   async function odeslat() {
     setOdesilam(true)
@@ -358,10 +360,30 @@ function OdeslatModal({ sodId, email: initEmail, telefon: initTelefon, znovu, po
         <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-1">
           {znovu ? 'Odeslat smlouvu znovu' : zadatelMode ? 'Předat smlouvu k podpisu' : 'Odeslat smlouvu k podpisu'}
         </h2>
-        <p className="text-sm text-gray-500 dark:text-slate-400 mb-5">
+        <p className="text-sm text-gray-500 dark:text-slate-400 mb-3">
           Zkontrolujte oba údaje — na e-mail jde odkaz, na telefon ověřovací kód.
           {znovu && ' Předchozí odkaz přestane platit.'}
         </p>
+
+        <button
+          type="button"
+          onClick={() => setNahled(true)}
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-primary dark:text-primary-light hover:underline mb-5"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+          </svg>
+          Zobrazit náhled smlouvy (PDF)
+        </button>
+        {nahled && (
+          <PdfNahledModal
+            src={`/api/sod/${sodId}/pdf?inline=1`}
+            title="Náhled smlouvy před odesláním"
+            downloadHref={`/api/sod/${sodId}/pdf`}
+            onClose={() => setNahled(false)}
+          />
+        )}
 
         <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">E-mail klienta (odkaz na smlouvu)</label>
         <input type="email" value={email} onChange={e => setEmail(e.target.value)} className={`${inputCls} mb-4`} placeholder="jan@novak.cz" />

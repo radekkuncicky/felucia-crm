@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { SodTyp } from '@prisma/client'
 import dynamic from 'next/dynamic'
 import { formatDate } from '@/lib/format'
+import { PdfNahledButton } from '@/components/PdfNahledModal'
 
 const GenerateSodModal = dynamic(() => import('@/components/GenerateSodModal'), { ssr: false })
 
@@ -160,6 +161,14 @@ export default function SmlouvyTab({ dealId, canDelete }: Props) {
                   >
                     Detail
                   </Link>
+                  <PdfNahledButton
+                    src={`/api/sod/${sod.id}/pdf?inline=1`}
+                    title={`Náhled smlouvy ${sod.cislo}`}
+                    downloadHref={`/api/sod/${sod.id}/pdf`}
+                    className="text-xs font-medium text-gray-600 dark:text-slate-400 border border-gray-300 dark:border-slate-600 px-2 py-1 rounded hover:bg-gray-50 dark:hover:bg-slate-700"
+                  >
+                    Náhled
+                  </PdfNahledButton>
                   <a
                     href={`/api/sod/${sod.id}/pdf`}
                     target="_blank"

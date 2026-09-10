@@ -5,6 +5,7 @@ import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { buildSodRenderData, sodPlaceholderValues } from '@/lib/sodRender'
 import { formatDate } from '@/lib/format'
+import { prisma } from '@/lib/prisma'
 
 // Placeholdery, které se nikdy nevyplňují ručně (auto / nemá smysl je
 // ukazovat jako prázdné pole k doplnění).
@@ -22,7 +23,7 @@ export async function GET(req: Request) {
   const templateId = searchParams.get('templateId')
   if (!dealId || !templateId) return NextResponse.json({ error: 'Chybí parametry' }, { status: 400 })
 
-  const [template, deal] = await Promise.all([
+  const [template, deal, org] = await Promise.all([
     db.contractTemplate.findFirst({
       where: { id: templateId, orgId },
       select: { obsah: true, typSablony: true },
@@ -33,6 +34,11 @@ export async function GET(req: Request) {
         client: true,
         quotes: { where: { aktivni: true }, include: { items: true }, take: 1 },
       },
+    }),
+    // vlastní org podle id ze session — mimo tenant scope (Organization není tenant model)
+    prisma.organization.findUnique({
+      where: { id: orgId },
+      select: { prilohaVopPath: true, prilohaVzspPath: true, prilohaCenikPath: true },
     }),
   ])
 
@@ -65,8 +71,16 @@ export async function GET(req: Request) {
     emptyPlaceholders,
     usedPlaceholders: Array.from(usedInTemplate),
     seZalohou,
+    prilohy: {
+      hasVop: !!org?.prilohaVopPath,
+      hasVzsp: !!org?.prilohaVzspPath,
+      hasCenik: !!org?.prilohaCenikPath,
+    },
     prefill: {
-      terminPrevzeti: deal.terminPrevzeti ? formatDate(deal.terminPrevzeti) : '',
+      // OP: terminRealizace = začátek prací, terminPrevzeti = předání díla (konec)
+      realizaceOd: deal.terminRealizace ? deal.terminRealizace.toISOString().slice(0, 10) : '',
+      realizaceDo: deal.terminPrevzeti ? deal.terminPrevzeti.toISOString().slice(0, 10) : '',
+      terminPrevzeti: deal.terminRealizace ? formatDate(deal.terminRealizace) : '',
       pocetDniRealizace: '',
       zmenaTerm: '',
       kontaktniOsoba: values['kontaktni_osoba'] ?? '',

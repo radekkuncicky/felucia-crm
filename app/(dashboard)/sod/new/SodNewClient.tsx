@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { SodTyp } from '@prisma/client'
 import DatePickerInput from '@/components/DatePickerInput'
+import DateRangePickerInput from '@/components/DateRangePickerInput'
+import SodPrilohyPicker, { defaultSodPrilohy, type SodPrilohy, type SodPrilohyDostupne } from '@/components/SodPrilohyPicker'
+import { countWorkingDays, formatIsoCz } from '@/lib/workingDays'
 import { formatKcPresne } from '@/lib/format'
 
 const SE_ZALOHOU: SodTyp[] = ['DPH_12_SE_ZALOHOU', 'DPH_21_SE_ZALOHOU', 'PDP_SE_ZALOHOU']
@@ -61,9 +64,14 @@ export default function SodNewClient({ dealId }: Props) {
   const [predmetDila, setPredmetDila] = useState('')
   const [adresaDila, setAdresaDila] = useState('')
 
-  // Sekce 5 — Termíny
-  const [terminPrevzeti, setTerminPrevzeti] = useState('')
+  // Sekce 5 — Termíny (od = předání staveniště, do = předání díla)
+  const [realizaceOd, setRealizaceOd] = useState('')
+  const [realizaceDo, setRealizaceDo] = useState('')
   const [pocetDniRealizace, setPocetDniRealizace] = useState('')
+
+  // Sekce 8 — Přílohy PDF
+  const [prilohyDostupne, setPrilohyDostupne] = useState<SodPrilohyDostupne>({ hasVop: false, hasVzsp: false, hasCenik: false })
+  const [prilohy, setPrilohy] = useState<SodPrilohy>(defaultSodPrilohy({ hasVop: false, hasVzsp: false, hasCenik: false }))
   const [zmenaTerm, setZmenaTerm] = useState('')
 
   // Sekce 6 — Cena (readonly)
@@ -104,9 +112,27 @@ export default function SodNewClient({ dealId }: Props) {
         setZalohaKc(d.zalohaKc != null ? String(d.zalohaKc) : '')
         setZalohaSplatnost(d.zalohaSplatnost != null ? String(d.zalohaSplatnost) : '14')
         setZalohaKategorie(d.zalohaKategorie ?? '')
+        setRealizaceOd(d.realizaceOd ?? '')
+        setRealizaceDo(d.realizaceDo ?? '')
+        if (d.realizaceOd && d.realizaceDo) {
+          const n = countWorkingDays(d.realizaceOd, d.realizaceDo)
+          if (n > 0) setPocetDniRealizace(String(n))
+        }
+        const dostupne: SodPrilohyDostupne = d.prilohy ?? { hasVop: false, hasVzsp: false, hasCenik: false }
+        setPrilohyDostupne(dostupne)
+        setPrilohy(defaultSodPrilohy(dostupne))
       })
       .finally(() => setPrefillLoading(false))
   }, [dealId])
+
+  function handleRealizaceChange(range: { from: string; to: string }) {
+    setRealizaceOd(range.from)
+    setRealizaceDo(range.to)
+    if (range.from && range.to) {
+      const n = countWorkingDays(range.from, range.to)
+      if (n > 0) setPocetDniRealizace(String(n))
+    }
+  }
 
   function fmtKc(n: number | null) {
     if (n == null) return '—'
@@ -135,8 +161,12 @@ export default function SodNewClient({ dealId }: Props) {
           kontaktniTelefon: kontaktniStejna ? klientTelefon : (kontaktniTelefon || null),
           predmetDila,
           adresaDila: adresaDila || null,
-          terminPrevzeti: terminPrevzeti || null,
+          terminPrevzeti: realizaceOd ? formatIsoCz(realizaceOd) : null,
+          ...(realizaceDo ? { terminRealizace: formatIsoCz(realizaceDo) } : {}),
+          terminRealizaceOd: realizaceOd || null,
+          terminRealizaceDo: realizaceDo || null,
           pocetDniRealizace: pocetDniRealizace ? Number(pocetDniRealizace) : null,
+          ...prilohy,
           zmenaTerm: zmenaTerm || null,
           cenaBezDph,
           cenaSDph,
@@ -331,10 +361,12 @@ export default function SodNewClient({ dealId }: Props) {
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 px-5 py-5">
           <SectionTitle>Termíny</SectionTitle>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <Field label="Termín předání díla" required>
-              <DatePickerInput value={terminPrevzeti} onChange={setTerminPrevzeti} required className={inputCls} />
+            <Field label="Termín realizace (od – do)" required>
+              <DateRangePickerInput from={realizaceOd} to={realizaceDo} onChange={handleRealizaceChange} className={inputCls} placeholder="Vyberte dny v kalendáři" />
+              <input tabIndex={-1} required value={realizaceOd} onChange={() => {}} className="sr-only" aria-hidden />
+              <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">První den = předání staveniště, poslední den = předání díla.</p>
             </Field>
-            <Field label="Počet dní realizace" required>
+            <Field label="Počet pracovních dní realizace" required>
               <input type="number" value={pocetDniRealizace} onChange={e => setPocetDniRealizace(e.target.value)} min="1" required className={inputCls} />
             </Field>
             <Field label="Klient může změnit termín do" required>
@@ -376,6 +408,15 @@ export default function SodNewClient({ dealId }: Props) {
             </div>
           </div>
         )}
+
+        {/* SEKCE 8 — Přílohy PDF */}
+        <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 px-5 py-5">
+          <SectionTitle>Přílohy ke smlouvě</SectionTitle>
+          <p className="text-xs text-gray-500 dark:text-slate-400 mb-3">
+            Zaškrtnuté dokumenty se připojí za smlouvu do výsledného PDF.
+          </p>
+          <SodPrilohyPicker value={prilohy} dostupne={prilohyDostupne} onChange={setPrilohy} />
+        </div>
 
         {/* Akce */}
         <div className="flex items-center justify-end gap-3 pb-6">

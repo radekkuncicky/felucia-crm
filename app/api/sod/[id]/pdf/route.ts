@@ -12,10 +12,14 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   const result = await buildSodPdf(params.id, session.user.orgId)
   if (!result) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
+  // ?inline=1 → náhled přímo v prohlížeči (iframe), jinak stažení souboru
+  const inline = new URL(req.url).searchParams.get('inline') === '1'
+
   return new NextResponse(result.pdf as unknown as BodyInit, {
     headers: {
       'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="${result.cislo}.pdf"`,
+      'Content-Disposition': `${inline ? 'inline' : 'attachment'}; filename="${result.cislo}.pdf"`,
+      'Cache-Control': 'no-store',
     },
   })
 }

@@ -80,8 +80,33 @@ export async function createSodFromDeal(
       zalohaSplatnost: (rest.zalohaSplatnost as number) ?? 14,
       zalohaKategorie: (rest.zalohaKategorie as string) ?? null,
       poznamky: (rest.poznamky as string) ?? null,
+      ...(rest.prilohaNabidka !== undefined ? { prilohaNabidka: Boolean(rest.prilohaNabidka) } : {}),
+      ...(rest.prilohaVop !== undefined ? { prilohaVop: Boolean(rest.prilohaVop) } : {}),
+      ...(rest.prilohaVzsp !== undefined ? { prilohaVzsp: Boolean(rest.prilohaVzsp) } : {}),
+      ...(rest.prilohaCenik !== undefined ? { prilohaCenik: Boolean(rest.prilohaCenik) } : {}),
     },
   })
 
+  // Termín realizace vybraný v kalendáři (ISO od–do) se propíše do OP:
+  // terminRealizace = začátek (předání staveniště), terminPrevzeti = konec (předání díla)
+  // → kalendář pak ukáže realizaci jako pruh od–do.
+  const od = parseIsoDate(rest.terminRealizaceOd)
+  const doo = parseIsoDate(rest.terminRealizaceDo)
+  if (od || doo) {
+    await db.deal.update({
+      where: { id: dealId },
+      data: {
+        ...(od ? { terminRealizace: od } : {}),
+        ...(doo ? { terminPrevzeti: doo } : {}),
+      },
+    })
+  }
+
   return { sod }
+}
+
+function parseIsoDate(v: unknown): Date | null {
+  if (typeof v !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(v)) return null
+  const d = new Date(v)
+  return isNaN(d.getTime()) ? null : d
 }

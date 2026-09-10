@@ -4,6 +4,7 @@ import { getPerms } from '@/lib/permissions'
 import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import { PdfNahledButton } from '@/components/PdfNahledModal'
 import { SodTyp } from '@prisma/client'
 import SodDeleteButton from './SodDeleteButton'
 import PodpisPanel from './PodpisPanel'
@@ -141,6 +142,12 @@ export default async function SodDetailPage({ params }: { params: { id: string }
               </svg>
               Upravit
             </Link>
+            <PdfNahledButton
+              src={`/api/sod/${sod.id}/pdf?inline=1`}
+              title={`Náhled smlouvy ${sod.cislo}`}
+              downloadHref={`/api/sod/${sod.id}/pdf`}
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-700 dark:text-slate-300 border border-gray-300 dark:border-slate-600 px-3 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700"
+            />
             <a
               href={`/api/sod/${sod.id}/pdf`}
               target="_blank"

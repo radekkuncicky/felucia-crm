@@ -4,6 +4,7 @@ import { forbidden, getPerms } from '@/lib/permissions'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { predmetDilaByTechnologie, kategorieByTechnologie } from '@/lib/sodHelpers'
+import { prisma } from '@/lib/prisma'
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
@@ -29,6 +30,11 @@ export async function GET(req: Request) {
   })
 
   if (!deal) return NextResponse.json({ error: 'Deal nenalezen' }, { status: 404 })
+
+  const org = await prisma.organization.findUnique({
+    where: { id: orgId },
+    select: { prilohaVopPath: true, prilohaVzspPath: true, prilohaCenikPath: true },
+  })
 
   const aktivniQuote = deal.quotes[0]
   const cenaBezDph = aktivniQuote?.items.reduce((s, i) =>
@@ -56,5 +62,12 @@ export async function GET(req: Request) {
     dphSazba,
     zalohaKc: Math.round(cenaSDph * 0.70),
     zalohaSplatnost: 14,
+    realizaceOd: deal.terminRealizace ? deal.terminRealizace.toISOString().slice(0, 10) : '',
+    realizaceDo: deal.terminPrevzeti ? deal.terminPrevzeti.toISOString().slice(0, 10) : '',
+    prilohy: {
+      hasVop: !!org?.prilohaVopPath,
+      hasVzsp: !!org?.prilohaVzspPath,
+      hasCenik: !!org?.prilohaCenikPath,
+    },
   })
 }
