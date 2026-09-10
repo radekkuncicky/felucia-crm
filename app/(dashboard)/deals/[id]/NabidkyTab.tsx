@@ -696,7 +696,9 @@ export default function NabidkyTab({
                 mnozstvi: Number(item.mnozstvi),
                 jednotka: item.jednotka,
                 cenaZaKus: Number(item.cenaZaKus),
-                nakupniCena: item.nakupniCena !== undefined ? item.nakupniCena : null,
+                // Nákupku posílej jen když ji uživatel vidí — jinak by se
+                // vynulovaná hodnota ze serveru zapsala zpět a přepsala snapshot.
+                ...(showNakupky ? { nakupniCena: item.nakupniCena !== undefined ? item.nakupniCena : null } : {}),
                 sleva: Number(item.sleva || 0),
                 dphSazba: Number(item.dphSazba),
                 poznamky: item.poznamky ?? null,
@@ -713,7 +715,7 @@ export default function NabidkyTab({
     } catch {
       setSaveStatus('dirty')
     }
-  }, [dealId, refreshServerData])
+  }, [dealId, refreshServerData, showNakupky])
 
   // Odchod ze stránky (klientská navigace zpět do tabulky) — doulož rozdělanou
   // změnu a teprve pak invaliduj cache, ať tabulka nezobrazí starou cenu.

@@ -2,6 +2,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
+import { getPerms } from '@/lib/permissions'
+import { loadProductSnapshots, resolveNakupniCena } from '@/lib/quoteItems'
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
@@ -13,19 +15,25 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   if (!deal) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const body = await req.json()
-  const { nazev, mnozstvi, cenaZaKus, productId, poznamky } = body
+  const { nazev, mnozstvi, cenaZaKus, productId, poznamky, nakupniCena } = body
 
   if (!nazev || !mnozstvi || cenaZaKus === undefined) {
     return NextResponse.json({ error: 'Chybí povinná pole' }, { status: 400 })
   }
 
+  // Snapshot z knihovny produktů (kód, jednotka, nákupní cena pro marži)
+  const product = productId ? (await loadProductSnapshots(db, [productId])).get(productId) : undefined
+
   const item = await db.quoteItem.create({
     data: {
       dealId: params.id,
       productId: productId || null,
+      kod: product?.kod ?? null,
       nazev,
       mnozstvi: Number(mnozstvi),
+      jednotka: product?.jednotka ?? 'ks',
       cenaZaKus: Number(cenaZaKus),
+      nakupniCena: resolveNakupniCena(nakupniCena, product, getPerms(session.user)),
       poznamky: poznamky || null,
     },
     include: { product: true },

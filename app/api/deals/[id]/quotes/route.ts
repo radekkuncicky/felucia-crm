@@ -6,6 +6,8 @@ import { generateQuoteKod } from '@/lib/quoteKod'
 import { createWithUniqueKod } from '@/lib/uniqueKod'
 import { logAction } from '@/lib/auditLog'
 import { createNotification } from '@/lib/createNotification'
+import { getPerms } from '@/lib/permissions'
+import { loadProductSnapshots, resolveNakupniCena } from '@/lib/quoteItems'
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
@@ -52,6 +54,12 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     }
   }
 
+  // Snapshot z knihovny produktů (nákupní cena pro marži, jednotka)
+  const perms = getPerms(session.user)
+  const productMap = Array.isArray(items)
+    ? await loadProductSnapshots(db, items.map((i: { productId?: string }) => i.productId))
+    : new Map()
+
   const count = await db.quote.count({ where: { dealId: params.id } })
   const quoteName = nazev || `Nabídka ${count + 1}`
   const quote = await createWithUniqueKod(() => generateQuoteKod(orgId), kod => db.quote.create({
@@ -65,18 +73,22 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       aktivni: false,
       ...(items && items.length > 0 ? {
         items: {
-          create: items.map((item: { productId?: string; nazev: string; mnozstvi: number; cenaZaKus: number; jednotka?: string; sleva?: number; poznamky?: string; poradi?: number; kod?: string }) => ({
-            dealId: params.id,
-            productId: item.productId || null,
-            kod: item.kod || null,
-            nazev: item.nazev,
-            mnozstvi: Number(item.mnozstvi),
-            jednotka: item.jednotka || 'ks',
-            cenaZaKus: Number(item.cenaZaKus),
-            sleva: Number(item.sleva || 0),
-            poznamky: item.poznamky || null,
-            poradi: Number(item.poradi ?? 0),
-          })),
+          create: items.map((item: { productId?: string; nazev: string; mnozstvi: number; cenaZaKus: number; nakupniCena?: unknown; jednotka?: string; sleva?: number; poznamky?: string; poradi?: number; kod?: string }) => {
+            const product = item.productId ? productMap.get(item.productId) : undefined
+            return {
+              dealId: params.id,
+              productId: item.productId || null,
+              kod: item.kod || null,
+              nazev: item.nazev,
+              mnozstvi: Number(item.mnozstvi),
+              jednotka: item.jednotka || product?.jednotka || 'ks',
+              cenaZaKus: Number(item.cenaZaKus),
+              nakupniCena: resolveNakupniCena(item.nakupniCena, product, perms),
+              sleva: Number(item.sleva || 0),
+              poznamky: item.poznamky || null,
+              poradi: Number(item.poradi ?? 0),
+            }
+          }),
         },
       } : {}),
     },
