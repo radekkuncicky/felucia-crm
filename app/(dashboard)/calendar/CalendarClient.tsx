@@ -6,10 +6,12 @@ import Link from 'next/link'
 export interface CalendarEvent {
   id: string
   kind: 'HOVOR' | 'EMAIL' | 'SCHUZKA' | 'UKOL' | 'POZNAMKA' | 'REALIZACE' | 'PREVZETI' | 'ZALOHA' | 'SERVIS'
-  date: string   // YYYY-MM-DD
+  date: string   // YYYY-MM-DD (začátek)
+  dateTo?: string // YYYY-MM-DD (konec, jen u vícedenních akcí – včetně)
   time?: string  // HH:MM
   trvaniMin?: number
   title: string
+  short?: string // zkrácený název pro úzké buňky (kapacitní pohled)
   subtitle: string
   href: string
   done?: boolean
@@ -78,20 +80,93 @@ function getWeekDays(pivot: Date): Date[] {
   })
 }
 
-function EventChip({ ev, compact = false }: { ev: CalendarEvent; compact?: boolean }) {
+// ─── Vícedenní události (od–do) ──────────────────────────────────────────────
+
+function addDays(dateStr: string, n: number): string {
+  const d = new Date(dateStr + 'T12:00:00')
+  d.setDate(d.getDate() + n)
+  return toDateStr(d)
+}
+
+/** Všechny dny, na které událost připadá (od–do včetně; max. 366 dní jako pojistka). */
+function eventDays(ev: CalendarEvent): string[] {
+  if (!ev.dateTo || ev.dateTo <= ev.date) return [ev.date]
+  const days: string[] = []
+  let d = ev.date
+  while (d <= ev.dateTo && days.length < 366) {
+    days.push(d)
+    d = addDays(d, 1)
+  }
+  return days
+}
+
+function occursOn(ev: CalendarEvent, ds: string): boolean {
+  if (!ev.dateTo) return ev.date === ds
+  return ev.date <= ds && ds <= ev.dateTo
+}
+
+function isRange(ev: CalendarEvent): boolean {
+  return !!ev.dateTo && ev.dateTo > ev.date
+}
+
+type RangePos = 'single' | 'start' | 'middle' | 'end'
+
+function rangePos(ev: CalendarEvent, ds: string): RangePos {
+  if (!isRange(ev)) return 'single'
+  if (ds === ev.date) return 'start'
+  if (ds === ev.dateTo) return 'end'
+  return 'middle'
+}
+
+/** den → události (vícedenní rozepsané na každý den; vícedenní řazeny první, aby pruhy lícovaly) */
+function indexByDate(events: CalendarEvent[]): Record<string, CalendarEvent[]> {
+  const m: Record<string, CalendarEvent[]> = {}
+  const sorted = [...events].sort((a, b) => {
+    const ra = isRange(a) ? 0 : 1, rb = isRange(b) ? 0 : 1
+    if (ra !== rb) return ra - rb
+    if (a.date !== b.date) return a.date.localeCompare(b.date)
+    return (a.time ?? '').localeCompare(b.time ?? '')
+  })
+  for (const e of sorted) {
+    for (const ds of eventDays(e)) {
+      if (!m[ds]) m[ds] = []
+      m[ds].push(e)
+    }
+  }
+  return m
+}
+
+function fmtRange(ev: CalendarEvent): string {
+  return ev.dateTo && ev.dateTo > ev.date ? `${fmtDate(ev.date)} – ${fmtDate(ev.dateTo)}` : fmtDate(ev.date)
+}
+
+const RANGE_SHAPE: Record<RangePos, string> = {
+  single: 'rounded',
+  start:  'rounded-l rounded-r-none -mr-1.5',
+  middle: 'rounded-none -mx-1.5',
+  end:    'rounded-r rounded-l-none -ml-1.5',
+}
+
+function EventChip({ ev, day, compact = false }: { ev: CalendarEvent; day?: string; compact?: boolean }) {
   const s = KIND_STYLE[ev.kind]
+  const pos = day ? rangePos(ev, day) : 'single'
   const statusIcon = ev.done ? '✓' : ev.zruseno ? '✕' : null
+  const title = isRange(ev) ? `${ev.title} (${fmtRange(ev)})` : ev.title
   return (
     <Link
       href={ev.href}
       onClick={e => e.stopPropagation()}
-      className={`flex items-center gap-1 px-1 py-0.5 rounded text-[10px] leading-tight ${ev.zruseno ? 'bg-gray-100 dark:bg-slate-700/50 text-gray-400 dark:text-slate-500 line-through' : s.bg + ' ' + s.text} ${ev.done ? 'opacity-60' : ''} hover:opacity-80 transition-opacity`}
-      title={ev.title}
+      title={title}
+      className={`flex items-center gap-1 px-1.5 py-0.5 text-[10px] leading-tight hover:opacity-80 transition-opacity ${
+        ev.zruseno ? 'bg-gray-100 dark:bg-slate-700/50 text-gray-400 dark:text-slate-500 line-through' : `${s.bg} ${s.text}`
+      } ${ev.done ? 'opacity-60' : ''} ${RANGE_SHAPE[pos]}`}
     >
       <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${ev.zruseno ? 'bg-gray-400' : s.dot}`} />
       {statusIcon && <span className="flex-shrink-0 font-bold">{statusIcon}</span>}
       {ev.time && !compact && <span className="flex-shrink-0 opacity-75">{ev.time}</span>}
+      {(pos === 'middle' || pos === 'end') && <span className="flex-shrink-0 opacity-60">…</span>}
       <span className="truncate">{ev.title}</span>
+      {pos === 'start' && <span className="flex-shrink-0 opacity-60">…</span>}
     </Link>
   )
 }
@@ -115,6 +190,9 @@ function EventCard({ ev }: { ev: CalendarEvent }) {
         {ev.subtitle && <p className="text-xs text-gray-500 dark:text-slate-400 truncate">{ev.subtitle}</p>}
         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
           <span className={`text-xs font-medium ${isZruseno ? 'text-gray-400' : s.text} opacity-70`}>{s.label}</span>
+          {isRange(ev) && (
+            <span className="text-xs text-gray-500 dark:text-slate-400">{fmtRange(ev)}</span>
+          )}
           {ev.time && (
             <span className="text-xs text-gray-500 dark:text-slate-400">
               {ev.time}{ev.trvaniMin ? ` · ${fmtTrvani(ev.trvaniMin)}` : ''}
@@ -137,14 +215,7 @@ function MonthView({ year, month, events, selectedDate, onSelectDate, todayStr }
   todayStr: string
 }) {
   const cells = getMonthCells(year, month)
-  const byDate = useMemo(() => {
-    const m: Record<string, CalendarEvent[]> = {}
-    for (const e of events) {
-      if (!m[e.date]) m[e.date] = []
-      m[e.date].push(e)
-    }
-    return m
-  }, [events])
+  const byDate = useMemo(() => indexByDate(events), [events])
 
   return (
     <div className="flex-1 overflow-hidden">
@@ -184,7 +255,7 @@ function MonthView({ year, month, events, selectedDate, onSelectDate, todayStr }
                 </span>
               </div>
               <div className="space-y-0.5">
-                {dayEvents.slice(0, 3).map(ev => <EventChip key={ev.id} ev={ev} />)}
+                {dayEvents.slice(0, 3).map(ev => <EventChip key={ev.id} ev={ev} day={ds} />)}
                 {dayEvents.length > 3 && (
                   <div className="text-[10px] text-gray-400 dark:text-slate-500 pl-1">+{dayEvents.length - 3} dalších</div>
                 )}
@@ -206,14 +277,7 @@ function WeekView({ pivot, events, onSelectDate, todayStr }: {
   todayStr: string
 }) {
   const days = getWeekDays(pivot)
-  const byDate = useMemo(() => {
-    const m: Record<string, CalendarEvent[]> = {}
-    for (const e of events) {
-      if (!m[e.date]) m[e.date] = []
-      m[e.date].push(e)
-    }
-    return m
-  }, [events])
+  const byDate = useMemo(() => indexByDate(events), [events])
 
   return (
     <div className="flex-1 overflow-auto">
@@ -253,7 +317,7 @@ function WeekView({ pivot, events, onSelectDate, todayStr }: {
               className={`border-r border-gray-100 dark:border-slate-700 p-1.5 min-h-[200px] cursor-pointer hover:bg-gray-50/50 dark:hover:bg-slate-700/20 ${isWeekend ? 'bg-gray-50/30 dark:bg-slate-800/30' : ''}`}
             >
               <div className="space-y-0.5">
-                {dayEvents.map(ev => <EventChip key={ev.id} ev={ev} />)}
+                {dayEvents.map(ev => <EventChip key={ev.id} ev={ev} day={ds} />)}
                 {dayEvents.length === 0 && (
                   <p className="text-[10px] text-gray-300 dark:text-slate-600 text-center mt-4">–</p>
                 )}
@@ -317,10 +381,12 @@ function KapacitaView({ pivot, events, todayStr }: {
   const matrix = useMemo(() => {
     const m: Record<string, Record<string, CalendarEvent[]>> = {}
     for (const e of montazEvents) {
-      if (!m[e.date]) m[e.date] = {}
-      for (const t of e.technici!) {
-        if (!m[e.date][t]) m[e.date][t] = []
-        m[e.date][t].push(e)
+      for (const ds of eventDays(e)) {
+        if (!m[ds]) m[ds] = {}
+        for (const t of e.technici!) {
+          if (!m[ds][t]) m[ds][t] = []
+          m[ds][t].push(e)
+        }
       }
     }
     return m
@@ -392,10 +458,10 @@ function KapacitaView({ pivot, events, todayStr }: {
                             key={ev.id}
                             href={ev.href}
                             className="block px-1.5 py-1 rounded text-[10px] leading-tight bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 hover:opacity-80 transition-opacity"
-                            title={ev.title}
+                            title={isRange(ev) ? `${ev.title} (${fmtRange(ev)})` : ev.title}
                           >
                             {ev.time && <span className="font-semibold">{ev.time} </span>}
-                            <span className="truncate">{ev.title.replace('Montáž: ', '')}</span>
+                            <span className="truncate">{ev.short ?? ev.title}</span>
                           </Link>
                         ))}
                       </div>
@@ -476,7 +542,7 @@ export default function CalendarClient({ events, canDispatch = false }: Props) {
 
   const dayDate = view === 'day' ? toDateStr(pivot) : (selectedDate ?? todayStr)
   const selectedEvents = useMemo(
-    () => events.filter(e => e.date === (selectedDate ?? '')),
+    () => selectedDate ? events.filter(e => occursOn(e, selectedDate)) : [],
     [events, selectedDate]
   )
 
@@ -548,7 +614,7 @@ export default function CalendarClient({ events, canDispatch = false }: Props) {
             />
           )}
           {view === 'day' && (
-            <DayView date={dayDate} events={events.filter(e => e.date === dayDate)} />
+            <DayView date={dayDate} events={events.filter(e => occursOn(e, dayDate))} />
           )}
           {view === 'kapacita' && (
             <KapacitaView pivot={pivot} events={events} todayStr={todayStr} />

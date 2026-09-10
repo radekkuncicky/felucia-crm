@@ -1,6 +1,9 @@
 import { prisma } from '@/lib/prisma'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { verifyCalendarToken } from '@/lib/calendarToken'
+import {
+  AKTIVITA_DOPLNEK, DOPLNEK, SERVIS_DOPLNEK, calendarTitle, dateRange, klientJmeno, servisTechnologie, technologieLabel, utcDateStr,
+} from '@/lib/calendarEvents'
 
 function escapeIcal(text: string): string {
   return text
@@ -33,12 +36,16 @@ function addDay(dateStr: string): string {
   return formatIcalDate(d)
 }
 
-function vevent(uid: string, dateStr: string, summary: string, description: string, url: string, location?: string): string {
+/**
+ * Celodenní událost; `dateTo` (včetně) u vícedenních akcí → DTEND je den po konci
+ * (v iCal je DTEND exkluzivní).
+ */
+function vevent(uid: string, dateStr: string, summary: string, description: string, url: string, location?: string, dateTo?: string): string {
   const lines = [
     'BEGIN:VEVENT',
     foldLine(`UID:${uid}@felucia`),
     `DTSTART;VALUE=DATE:${dateStr.replace(/-/g, '')}`,
-    `DTEND;VALUE=DATE:${addDay(dateStr)}`,
+    `DTEND;VALUE=DATE:${addDay(dateTo && dateTo > dateStr ? dateTo : dateStr)}`,
     foldLine(`SUMMARY:${escapeIcal(summary)}`),
     foldLine(`DESCRIPTION:${escapeIcal(description)}`),
     foldLine(`URL:${url}`),
@@ -46,10 +53,6 @@ function vevent(uid: string, dateStr: string, summary: string, description: stri
   if (location) lines.push(foldLine(`LOCATION:${escapeIcal(location)}`))
   lines.push('END:VEVENT')
   return lines.join('\r\n')
-}
-
-const typLabels: Record<string, string> = {
-  HOVOR: 'Hovor', EMAIL: 'Email', SCHUZKA: 'Schůzka', POZNAMKA: 'Poznámka', UKOL: 'Úkol',
 }
 
 export async function GET(req: Request) {
@@ -76,7 +79,7 @@ export async function GET(req: Request) {
   const proto = host.includes('localhost') ? 'http' : 'https'
   const base = `${proto}://${host}`
 
-  const [activities, deals, servisNavstevy] = await Promise.all([
+  const [activities, deals, servisNavstevy, montazZakazky] = await Promise.all([
     db.activity.findMany({
       where: {
         deal: { orgId },
@@ -88,6 +91,7 @@ export async function GET(req: Request) {
             id: true,
             predmet: true,
             kod: true,
+            technologie: true,
             client: { select: { jmeno: true, prijmeni: true, telefon: true, email: true } },
           },
         },
@@ -107,21 +111,41 @@ export async function GET(req: Request) {
     }),
     db.servisniZakazka.findMany({
       where: { orgId, stav: { in: ['NAPLANOVANA', 'PROBIHA'] }, planovanyTermin: { not: null } },
-      include: { kontrakt: { include: { klient: { select: { jmeno: true, prijmeni: true } } } } },
+      include: {
+        kontrakt: { select: { nazev: true, klient: { select: { jmeno: true, prijmeni: true } }, zarizeni: { select: { nazev: true, typ: true } } } },
+        klient: { select: { jmeno: true, prijmeni: true } },
+        zarizeni: { select: { nazev: true, typ: true } },
+        technik: { select: { jmeno: true } },
+      },
+    }),
+    // Montáže, na které je uživatel přiřazen jako technik
+    db.zakazka.findMany({
+      where: {
+        orgId,
+        techniciRel: { some: { technikId: uid } },
+        OR: [
+          { montazOd: { not: null } },
+          { etapy: { some: { montazOd: { not: null } } } },
+        ],
+      },
+      include: {
+        klient: { select: { jmeno: true, prijmeni: true } },
+        techniciRel: { include: { technik: { select: { jmeno: true } } } },
+        etapy: { where: { montazOd: { not: null } }, orderBy: { cislo: 'asc' } },
+      },
     }),
   ])
 
   const vevents: string[] = []
 
   for (const a of activities) {
-    const dateStr = a.datum.toISOString().split('T')[0]
+    const dateStr = utcDateStr(a.datum)
     const c = a.deal.client
-    const klient = `${c.jmeno} ${c.prijmeni}`
-    const label = typLabels[a.typ] ?? a.typ
+    const klient = klientJmeno(c)
     const dealName = a.deal.predmet ?? a.deal.kod ?? ''
 
-    // Summary: "Hovor - Jan Novák"
-    const summary = `${label} - ${klient}`
+    // Summary: "Jan Novák – Klimatizace – hovor"
+    const summary = calendarTitle(klient, technologieLabel(a.deal.technologie), AKTIVITA_DOPLNEK[a.typ] ?? a.typ.toLowerCase())
 
     // Build description lines
     const descLines: string[] = []
@@ -143,29 +167,62 @@ export async function GET(req: Request) {
   }
 
   for (const d of deals) {
-    const klient = `${d.client.jmeno} ${d.client.prijmeni}`
-    const predmet = d.predmet ?? d.kod ?? 'Případ'
+    const klient = klientJmeno(d.client)
+    const tech = technologieLabel(d.technologie)
+    const predmet = d.predmet ?? d.kod ?? ''
+    const desc = [`Klient: ${klient}`, predmet ? `Případ: ${predmet}` : ''].filter(Boolean).join('\n')
     if (d.terminRealizace) {
-      vevents.push(vevent(`deal-rea-${d.id}`, d.terminRealizace.toISOString().split('T')[0], `Realizace: ${predmet}`, `Klient: ${klient}`, `${base}/deals/${d.id}`))
+      // Realizace od termínu realizace do termínu převzetí (pokud je pozdější) → vícedenní událost
+      const konec = d.terminPrevzeti && d.terminPrevzeti > d.terminRealizace ? d.terminPrevzeti : null
+      const r = dateRange(d.terminRealizace, konec)
+      vevents.push(vevent(`deal-rea-${d.id}`, r.date, calendarTitle(klient, tech, DOPLNEK.REALIZACE), desc, `${base}/deals/${d.id}`, undefined, r.dateTo))
     }
     if (d.terminPrevzeti) {
-      vevents.push(vevent(`deal-pre-${d.id}`, d.terminPrevzeti.toISOString().split('T')[0], `Převzetí: ${predmet}`, `Klient: ${klient}`, `${base}/deals/${d.id}`))
+      vevents.push(vevent(`deal-pre-${d.id}`, utcDateStr(d.terminPrevzeti), calendarTitle(klient, tech, DOPLNEK.PREVZETI), desc, `${base}/deals/${d.id}`))
     }
     if (d.splatnostZalohy) {
-      vevents.push(vevent(`deal-zal-${d.id}`, d.splatnostZalohy.toISOString().split('T')[0], `Záloha: ${predmet}`, `Klient: ${klient}`, `${base}/deals/${d.id}`))
+      vevents.push(vevent(`deal-zal-${d.id}`, utcDateStr(d.splatnostZalohy), calendarTitle(klient, tech, DOPLNEK.ZALOHA), desc, `${base}/deals/${d.id}`))
     }
   }
 
   for (const n of servisNavstevy) {
     if (!n.planovanyTermin) continue
-    const klient = n.kontrakt ? `${n.kontrakt.klient.jmeno} ${n.kontrakt.klient.prijmeni}` : ''
+    const klient = klientJmeno(n.kontrakt?.klient ?? n.klient)
+    const tech = servisTechnologie(n.zarizeni ?? n.kontrakt?.zarizeni)
+    const desc = [
+      `Klient: ${klient}`,
+      n.cislo ? `Servisní zakázka: ${n.cislo}` : '',
+      n.kontrakt?.nazev ? `Kontrakt: ${n.kontrakt.nazev}` : '',
+      n.zarizeni?.nazev ? `Zařízení: ${n.zarizeni.nazev}` : '',
+      n.technik ? `Technik: ${n.technik.jmeno}` : '',
+    ].filter(Boolean).join('\n')
     vevents.push(vevent(
       `servis-${n.id}`,
-      n.planovanyTermin.toISOString().split('T')[0],
-      `Servis: ${n.kontrakt?.nazev ?? 'Servisní návštěva'}`,
-      `Klient: ${klient}`,
-      `${base}/servis/kontrakty`,
+      utcDateStr(n.planovanyTermin),
+      calendarTitle(klient, tech, SERVIS_DOPLNEK[n.typ] ?? DOPLNEK.SERVIS),
+      desc,
+      `${base}/servis/zakazky/${n.id}`,
     ))
+  }
+
+  for (const z of montazZakazky) {
+    const klient = klientJmeno(z.klient)
+    const tech = technologieLabel(z.technologie) || z.nazev
+    const technici = z.techniciRel.map(t => t.technik.jmeno)
+    const desc = [`Klient: ${klient}`, `Zakázka: ${z.cislo}`, technici.length ? `Technici: ${technici.join(', ')}` : ''].filter(Boolean).join('\n')
+    const url = `${base}/zakazky/${z.id}`
+    const etapy = z.etapy.filter(e => e.montazOd)
+    if (etapy.length >= 2 || (etapy.length === 1 && !z.montazOd)) {
+      for (const e of etapy) {
+        const etapaLabel = e.nazev ? `${e.cislo}. etapa – ${e.nazev}` : `${e.cislo}. etapa`
+        const r = dateRange(e.montazOd!, e.montazDo)
+        vevents.push(vevent(`montaz-${z.id}-etapa-${e.id}`, r.date, calendarTitle(klient, tech, `${DOPLNEK.MONTAZ}, ${etapaLabel}`), desc, url, undefined, r.dateTo))
+      }
+      continue
+    }
+    if (!z.montazOd) continue
+    const r = dateRange(z.montazOd, z.montazDo)
+    vevents.push(vevent(`montaz-${z.id}`, r.date, calendarTitle(klient, tech, DOPLNEK.MONTAZ), desc, url, undefined, r.dateTo))
   }
 
   const calendar = [
