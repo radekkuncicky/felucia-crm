@@ -27,7 +27,7 @@ interface Pohyb {
   nakupniCena: number | null
   duvod: string | null
   vytvoreno: string
-  zakazka: { id: string; cislo: string; nazev: string } | null
+  zakazka: { id: string; cislo: string; nazev: string; klient: string; technologie: string | null } | null
   vytvoril: { id: string; jmeno: string }
 }
 
@@ -139,7 +139,11 @@ export default function SkladPageClient({ pohyby: initialPohyby, zakazky, kpi: i
       if (zakazkaFilter && p.zakazka?.id !== zakazkaFilter) return false
       if (search) {
         const q = search.toLowerCase()
-        if (!p.nazev.toLowerCase().includes(q) && !p.zakazka?.cislo.toLowerCase().includes(q)) return false
+        const haystack = [p.nazev, p.zakazka?.cislo, p.zakazka?.klient, p.zakazka?.technologie]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase()
+        if (!haystack.includes(q)) return false
       }
       if (datumOd && p.vytvoreno < datumOd) return false
       if (datumDo && p.vytvoreno.slice(0, 10) > datumDo) return false
@@ -199,7 +203,7 @@ export default function SkladPageClient({ pohyby: initialPohyby, zakazky, kpi: i
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Hledat položku…"
+              placeholder="Hledat položku, zakázku, klienta…"
               className="pl-9 pr-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
@@ -245,11 +249,19 @@ export default function SkladPageClient({ pohyby: initialPohyby, zakazky, kpi: i
                           <p className="truncate">{p.nazev}</p>
                           {p.duvod && <p className="text-xs text-gray-400 dark:text-slate-500 truncate">{p.duvod}</p>}
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3 max-w-[240px]">
                           {p.zakazka ? (
-                            <Link href={`/zakazky/${p.zakazka.id}`} className="text-green-600 dark:text-green-400 font-mono text-xs hover:underline">
-                              {p.zakazka.cislo}
-                            </Link>
+                            <>
+                              <Link href={`/zakazky/${p.zakazka.id}`} className="text-green-600 dark:text-green-400 font-mono text-xs hover:underline">
+                                {p.zakazka.cislo}
+                              </Link>
+                              {p.zakazka.klient && (
+                                <p className="text-xs text-gray-700 dark:text-slate-300 truncate">{p.zakazka.klient}</p>
+                              )}
+                              {p.zakazka.technologie && (
+                                <p className="text-xs text-gray-400 dark:text-slate-500 truncate">{p.zakazka.technologie}</p>
+                              )}
+                            </>
                           ) : <span className="text-gray-400 text-xs">—</span>}
                         </td>
                         <td className="px-4 py-3 text-right text-gray-700 dark:text-slate-300">{p.mnozstvi}</td>

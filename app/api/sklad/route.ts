@@ -34,7 +34,15 @@ export async function GET(req: Request) {
   const pohyby = await db.skladPohyb.findMany({
     where,
     include: {
-      zakazka: { select: { id: true, cislo: true, nazev: true } },
+      zakazka: {
+        select: {
+          id: true,
+          cislo: true,
+          nazev: true,
+          technologie: true,
+          klient: { select: { jmeno: true, prijmeni: true } },
+        },
+      },
       vytvoril: { select: { id: true, jmeno: true } },
     },
     orderBy: { vytvoreno: 'desc' },

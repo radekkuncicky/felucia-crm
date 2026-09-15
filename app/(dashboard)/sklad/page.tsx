@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { getPerms } from '@/lib/permissions'
 import { prisma } from '@/lib/prisma'
+import { klientJmeno } from '@/lib/calendarEvents'
 import { notFound } from 'next/navigation'
 import SkladPageClient from './SkladPageClient'
 
@@ -19,7 +20,15 @@ export default async function SkladPage() {
     prisma.skladPohyb.findMany({
       where: { orgId },
       include: {
-        zakazka: { select: { id: true, cislo: true, nazev: true } },
+        zakazka: {
+          select: {
+            id: true,
+            cislo: true,
+            nazev: true,
+            technologie: true,
+            klient: { select: { jmeno: true, prijmeni: true } },
+          },
+        },
         vytvoril: { select: { id: true, jmeno: true } },
       },
       orderBy: { vytvoreno: 'desc' },
@@ -47,7 +56,15 @@ export default async function SkladPage() {
         nakupniCena: perms.financeNakupky && p.nakupniCena !== null ? Number(p.nakupniCena) : null,
         duvod: p.duvod,
         vytvoreno: p.vytvoreno.toISOString(),
-        zakazka: p.zakazka ? { id: p.zakazka.id, cislo: p.zakazka.cislo, nazev: p.zakazka.nazev } : null,
+        zakazka: p.zakazka
+          ? {
+              id: p.zakazka.id,
+              cislo: p.zakazka.cislo,
+              nazev: p.zakazka.nazev,
+              klient: klientJmeno(p.zakazka.klient),
+              technologie: p.zakazka.technologie,
+            }
+          : null,
         vytvoril: p.vytvoril,
       }))}
       zakazky={zakazky}
