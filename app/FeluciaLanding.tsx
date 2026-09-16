@@ -168,35 +168,6 @@ function Navbar({ isDark }: { isDark: boolean }) {
 // Pozor: /marketing/ musí zůstat ve výjimkách matcheru v middleware.ts,
 // jinak se obrázky přesměrují na login.
 
-function PhoneShot({ src, alt, caption, width, isDark }: { src: string; alt: string; caption?: string; width: number; isDark: boolean }) {
-  return (
-    <figure style={{ margin: 0, width: '100%', maxWidth: width }}>
-      <div style={{
-        borderRadius: 26,
-        border: `2px solid ${isDark ? 'rgba(76,175,80,0.25)' : '#DCEBDC'}`,
-        background: isDark ? '#0A120A' : 'white',
-        padding: 7,
-        boxShadow: isDark ? '0 18px 40px rgba(0,0,0,0.45)' : '0 14px 34px rgba(26,46,27,0.10)',
-      }}>
-        <img
-          src={src}
-          alt={alt}
-          width={780}
-          height={1689}
-          loading="lazy"
-          decoding="async"
-          style={{ display: 'block', width: '100%', height: 'auto', borderRadius: 20 }}
-        />
-      </div>
-      {caption && (
-        <figcaption style={{ fontFamily: 'Inter, sans-serif', fontSize: 11.5, lineHeight: 1.45, color: isDark ? '#6B8F6B' : '#6B8F6B', textAlign: 'center', marginTop: 10 }}>
-          {caption}
-        </figcaption>
-      )}
-    </figure>
-  )
-}
-
 function PhoneCarousel({ shots, width, isDark }: { shots: { src: string; alt: string; caption: string }[]; width: number; isDark: boolean }) {
   const [index, setIndex] = useState(0)
   const current = shots[index]
@@ -287,60 +258,6 @@ function PhoneCarousel({ shots, width, isDark }: { shots: { src: string; alt: st
   )
 }
 
-// ─── Product preview (kancelář schematicky + snímek aplikace) ────────────────
-
-function ProductPreview({ isDark }: { isDark: boolean }) {
-  const cardBg = isDark ? '#0D1A0E' : 'white'
-  const border = isDark ? 'rgba(76,175,80,0.18)' : '#DCEBDC'
-  const heading = isDark ? '#E8F5E9' : '#1A2E1B'
-  const sub = isDark ? '#7AAD7A' : '#6B8F6B'
-
-  const desktopRows = [
-    { label: 'Nabídka schválena', done: true },
-    { label: 'Termín realizace naplánován', done: true },
-    { label: 'Technik: J. Novák', done: true },
-    { label: 'Předávací protokol', done: false },
-  ]
-
-  return (
-    <div style={{ marginTop: 56 }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20, alignItems: 'stretch' }}>
-        {/* Desktop card mock */}
-        <div style={{ borderRadius: 16, border: `1px solid ${border}`, background: cardBg, padding: 20, textAlign: 'left' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-            <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 700, color: heading }}>Zakázka #248 · Klimatizace</span>
-            <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 10, fontWeight: 600, padding: '3px 8px', borderRadius: 999, background: 'rgba(76,175,80,0.15)', color: '#4CAF50' }}>Realizace</span>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {desktopRows.map(r => (
-              <div key={r.label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ width: 15, height: 15, borderRadius: 5, flexShrink: 0, background: r.done ? '#4CAF50' : 'transparent', border: r.done ? 'none' : `1.5px solid ${sub}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  {r.done && <svg width="10" height="10" fill="none" stroke="white" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7"/></svg>}
-                </span>
-                <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: r.done ? sub : heading }}>{r.label}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Snímek mobilní aplikace */}
-        <div style={{ borderRadius: 16, border: `1px solid ${border}`, background: cardBg, padding: 20, display: 'flex', justifyContent: 'center' }}>
-          <PhoneShot
-            isDark={isDark}
-            width={180}
-            src="/marketing/tech-muj-den.jpg"
-            alt="Felucia Tech — obrazovka Můj den s další zastávkou, navigací a dnešními zakázkami"
-            caption="Felucia Tech — Můj den"
-          />
-        </div>
-      </div>
-      <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 11.5, color: sub, marginTop: 12, textAlign: 'center' }}>
-        Kancelář a technik v terénu vidí stejnou zakázku — schéma průběhu zakázky a snímek aplikace Felucia Tech s ukázkovými daty.
-      </p>
-    </div>
-  )
-}
-
 // ─── Hero ─────────────────────────────────────────────────────────────────────
 
 function Hero({ isDark }: { isDark: boolean }) {
@@ -390,8 +307,6 @@ function Hero({ isDark }: { isDark: boolean }) {
             Jak Felucia funguje
           </a>
         </div>
-
-        <ProductPreview isDark={isDark} />
       </div>
     </section>
   )
