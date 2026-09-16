@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { CONTACT, FAQS, OPERATOR, PLANS, formatPrice, type PlanId } from '@/lib/landing'
+import { CONTACT, FAQS, OPERATOR, PLANS, WORKFLOW_HEADING, WORKFLOW_PEREX, WORKFLOW_PHASES, formatPrice, type PlanId } from '@/lib/landing'
 
 // ─── SVG Components ──────────────────────────────────────────────────────────
 
@@ -181,8 +181,8 @@ function PhoneShot({ src, alt, caption, width, isDark }: { src: string; alt: str
         <img
           src={src}
           alt={alt}
-          width={560}
-          height={1212}
+          width={780}
+          height={1689}
           loading="lazy"
           decoding="async"
           style={{ display: 'block', width: '100%', height: 'auto', borderRadius: 20 }}
@@ -194,6 +194,96 @@ function PhoneShot({ src, alt, caption, width, isDark }: { src: string; alt: str
         </figcaption>
       )}
     </figure>
+  )
+}
+
+function PhoneCarousel({ shots, width, isDark }: { shots: { src: string; alt: string; caption: string }[]; width: number; isDark: boolean }) {
+  const [index, setIndex] = useState(0)
+  const current = shots[index]
+  const go = (i: number) => setIndex((i + shots.length) % shots.length)
+
+  const arrowStyle: React.CSSProperties = {
+    width: 36, height: 36, borderRadius: '50%', flexShrink: 0,
+    border: `1px solid ${isDark ? 'rgba(76,175,80,0.3)' : '#C8E6C9'}`,
+    background: isDark ? 'rgba(76,175,80,0.1)' : 'white',
+    color: isDark ? '#81C784' : '#4A6B4A',
+    cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+  }
+
+  return (
+    <div
+      role="group"
+      aria-roledescription="carousel"
+      aria-label="Snímky aplikace Felucia Tech"
+      style={{ width: '100%', maxWidth: width + 96, display: 'flex', flexDirection: 'column', alignItems: 'center' }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, width: '100%', justifyContent: 'center' }}>
+        <button type="button" onClick={() => go(index - 1)} aria-label="Předchozí snímek" style={arrowStyle}>
+          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/>
+          </svg>
+        </button>
+
+        <figure style={{ margin: 0, width: '100%', maxWidth: width }}>
+          <div style={{
+            borderRadius: 30,
+            border: `2px solid ${isDark ? 'rgba(76,175,80,0.25)' : '#DCEBDC'}`,
+            background: isDark ? '#0A120A' : 'white',
+            padding: 8,
+            boxShadow: isDark ? '0 22px 50px rgba(0,0,0,0.5)' : '0 18px 40px rgba(26,46,27,0.12)',
+          }}>
+            <img
+              key={current.src}
+              src={current.src}
+              alt={current.alt}
+              width={780}
+              height={1689}
+              loading="lazy"
+              decoding="async"
+              style={{ display: 'block', width: '100%', height: 'auto', borderRadius: 23 }}
+            />
+          </div>
+          <figcaption
+            aria-live="polite"
+            style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, lineHeight: 1.5, color: isDark ? '#A5C8A5' : '#4A6B4A', textAlign: 'center', marginTop: 16, minHeight: 40 }}
+          >
+            <span style={{ display: 'block', fontFamily: "'Space Grotesk', sans-serif", fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#4CAF50', marginBottom: 4 }}>
+              Krok {index + 1} z {shots.length}
+            </span>
+            {current.caption}
+          </figcaption>
+        </figure>
+
+        <button type="button" onClick={() => go(index + 1)} aria-label="Další snímek" style={arrowStyle}>
+          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/>
+          </svg>
+        </button>
+      </div>
+
+      {/* Puntíky */}
+      <div style={{ display: 'flex', gap: 8, marginTop: 18, justifyContent: 'center' }}>
+        {shots.map((shot, i) => (
+          <button
+            key={shot.src}
+            type="button"
+            onClick={() => go(i)}
+            aria-label={`Snímek ${i + 1}: ${shot.caption}`}
+            aria-current={i === index ? 'true' : undefined}
+            style={{
+              width: i === index ? 26 : 9,
+              height: 9,
+              padding: 0,
+              borderRadius: 999,
+              border: 'none',
+              cursor: 'pointer',
+              background: i === index ? '#4CAF50' : (isDark ? 'rgba(76,175,80,0.28)' : '#C8E6C9'),
+              transition: 'width 0.25s, background 0.25s',
+            }}
+          />
+        ))}
+      </div>
+    </div>
   )
 }
 
@@ -328,61 +418,141 @@ function Marquee({ isDark }: { isDark: boolean }) {
 
 // ─── Workflow steps (jedna zakázka od začátku do konce) ────────────────────────
 
-const WORKFLOW_STEPS = [
-  {
-    n: '1', title: 'Připravíte nabídku',
-    desc: 'Materiál a práce přehledně u obchodního případu.',
-    icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
-  },
-  {
-    n: '2', title: 'Předáte zakázku technikovi',
-    desc: 'Termín, místo montáže, kontakty a podklady k práci.',
-    icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z',
-  },
-  {
-    n: '3', title: 'Technik zaznamená skutečnost',
-    desc: 'Provedená práce, fotografie, použité množství a předávací protokol.',
-    icon: 'M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z M12 17a4 4 0 100-8 4 4 0 000 8z',
-  },
-  {
-    n: '4', title: 'Zkontrolujete podklady a navážete servisem',
-    desc: 'Schválení protokolu, vyúčtování a evidence dalších servisních návštěv.',
-    icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2',
-  },
-]
+// Ikony kroků procesu. Texty kroků žijí v lib/landing.ts (WORKFLOW_PHASES),
+// aby se viditelný obsah, llms.txt a strukturovaná data nerozešly.
+const STEP_ICONS: Record<number, string> = {
+  1: 'M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z',
+  2: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+  3: 'M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z',
+  4: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z',
+  5: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4',
+  6: 'M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z',
+  7: 'M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z',
+  8: 'M9 7h6m-6 4h6m-6 4h4M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z',
+}
+
+function StepBullets({ bullets, isDark, collapsible }: { bullets: string[]; isDark: boolean; collapsible: boolean }) {
+  const sub = isDark ? '#6B8F6B' : '#4A6B4A'
+
+  const list = (
+    <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {bullets.map(b => (
+        <li key={b} style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+          <svg width="14" height="14" fill="none" stroke="#4CAF50" viewBox="0 0 24 24" aria-hidden="true" style={{ flexShrink: 0, marginTop: 2 }}>
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M5 13l4 4L19 7"/>
+          </svg>
+          <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 12.5, lineHeight: 1.55, color: sub }}>{b}</span>
+        </li>
+      ))}
+    </ul>
+  )
+
+  // Na mobilu jsou body schované za nativním <details> (ovladatelné klávesnicí),
+  // na desktopu jsou rovnou vidět. Server renderuje rozbalenou variantu, takže
+  // obsah je dostupný i bez JS.
+  if (!collapsible) return <div style={{ marginTop: 14 }}>{list}</div>
+
+  return (
+    <details style={{ marginTop: 12 }}>
+      <summary style={{ fontFamily: 'Inter, sans-serif', fontSize: 12.5, fontWeight: 600, color: '#4CAF50', cursor: 'pointer', listStyle: 'revert' }}>
+        Co to obnáší
+      </summary>
+      <div style={{ marginTop: 12 }}>{list}</div>
+    </details>
+  )
+}
 
 function WorkflowSteps({ isDark }: { isDark: boolean }) {
   const heading = isDark ? '#E8F5E9' : '#1A2E1B'
   const sub = isDark ? '#6B8F6B' : '#4A6B4A'
   const cardBg = isDark ? '#0D1A0E' : 'white'
   const border = isDark ? 'rgba(76,175,80,0.12)' : '#E0EBE0'
+  const rail = isDark ? 'rgba(76,175,80,0.22)' : '#C8E6C9'
+
+  // Body kroků se na úzkých displejích sbalí, aby sekce nebyla nekonečná.
+  const [isNarrow, setIsNarrow] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)')
+    const apply = () => setIsNarrow(mq.matches)
+    apply()
+    mq.addEventListener('change', apply)
+    return () => mq.removeEventListener('change', apply)
+  }, [])
 
   return (
     <section id="jak-to-funguje" aria-labelledby="jak-heading" style={{ padding: '96px 0', background: isDark ? '#0A120A' : '#F9FBF9' }}>
       <div style={{ maxWidth: 1152, margin: '0 auto', padding: '0 24px' }}>
-        <div style={{ textAlign: 'center', marginBottom: 56 }}>
+        <div style={{ textAlign: 'center', marginBottom: 56, maxWidth: 720, marginLeft: 'auto', marginRight: 'auto' }}>
           <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 600, color: '#4CAF50', marginBottom: 12 }}>✦ Jak to funguje</p>
-          <h2 id="jak-heading" style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 'clamp(28px,4vw,40px)', fontWeight: 700, color: heading, letterSpacing: '-0.02em' }}>
-            Jedna zakázka od nabídky po servis
+          <h2 id="jak-heading" style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 'clamp(28px,4vw,40px)', fontWeight: 700, color: heading, letterSpacing: '-0.02em', marginBottom: 16 }}>
+            {WORKFLOW_HEADING}
           </h2>
+          <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 15, lineHeight: 1.7, color: sub }}>
+            {WORKFLOW_PEREX}
+          </p>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 20, marginBottom: 32 }}>
-          {WORKFLOW_STEPS.map(s => (
-            <div key={s.n} style={{ borderRadius: 16, padding: 24, background: cardBg, border: `0.5px solid ${border}`, position: 'relative' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-                <span style={{ width: 34, height: 34, borderRadius: 10, background: 'rgba(76,175,80,0.12)', color: '#4CAF50', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 14, flexShrink: 0 }}>
-                  {s.n}
-                </span>
-                <svg width="18" height="18" fill="none" stroke="#4CAF50" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d={s.icon}/>
-                </svg>
-              </div>
-              <h3 style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 15, fontWeight: 600, color: heading, marginBottom: 8 }}>{s.title}</h3>
-              <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, lineHeight: 1.6, color: sub }}>{s.desc}</p>
+        {WORKFLOW_PHASES.map((phase, phaseIndex) => (
+          <div key={phase.id} style={{ marginBottom: phaseIndex === WORKFLOW_PHASES.length - 1 ? 40 : 48 }}>
+            {/* Štítek fáze */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
+              <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#4CAF50', padding: '6px 12px', borderRadius: 999, background: 'rgba(76,175,80,0.12)', flexShrink: 0 }}>
+                Fáze {phaseIndex + 1}
+              </span>
+              <h3 style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 18, fontWeight: 700, color: heading, letterSpacing: '-0.01em', margin: 0, flexShrink: 0 }}>
+                {phase.name}
+              </h3>
+              <span aria-hidden="true" style={{ flex: 1, height: 1, background: rail, minWidth: 16 }} />
             </div>
-          ))}
-        </div>
+
+            {/* Kroky fáze - na desktopu vedle sebe, na mobilu pod sebou */}
+            <ol style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20 }}>
+              {phase.steps.map(step => {
+                const highlighted = !!step.badge
+                return (
+                  <li
+                    key={step.n}
+                    style={{
+                      position: 'relative',
+                      borderRadius: 16,
+                      padding: 24,
+                      background: highlighted ? (isDark ? 'rgba(76,175,80,0.08)' : '#F1F9F1') : cardBg,
+                      border: highlighted ? `1px solid ${isDark ? 'rgba(76,175,80,0.45)' : '#A5D6A7'}` : `0.5px solid ${border}`,
+                      display: 'flex',
+                      flexDirection: 'column',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+                      <span aria-hidden="true" style={{ width: 34, height: 34, borderRadius: 10, background: 'rgba(76,175,80,0.12)', color: '#4CAF50', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 14, flexShrink: 0 }}>
+                        {step.n}
+                      </span>
+                      <svg width="18" height="18" fill="none" stroke="#4CAF50" viewBox="0 0 24 24" aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d={STEP_ICONS[step.n]}/>
+                      </svg>
+                    </div>
+
+                    {step.badge && (
+                      <span style={{ display: 'inline-flex', alignSelf: 'flex-start', alignItems: 'center', gap: 5, fontFamily: 'Inter, sans-serif', fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#4CAF50', background: 'rgba(76,175,80,0.15)', padding: '4px 9px', borderRadius: 999, marginBottom: 10 }}>
+                        <svg width="11" height="11" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                        </svg>
+                        {step.badge}
+                      </span>
+                    )}
+
+                    <h4 style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 15, fontWeight: 600, color: heading, marginBottom: 8, lineHeight: 1.35 }}>
+                      <span style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap' }}>{`Krok ${step.n}: `}</span>
+                      {step.title}
+                    </h4>
+                    <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, lineHeight: 1.6, color: sub, margin: 0 }}>{step.desc}</p>
+
+                    <StepBullets bullets={step.bullets} isDark={isDark} collapsible={isNarrow} />
+                  </li>
+                )
+              })}
+            </ol>
+          </div>
+        ))}
 
         {/* Illustrative example */}
         <div style={{ borderRadius: 16, padding: '20px 24px', background: isDark ? 'rgba(76,175,80,0.06)' : '#E8F5E9', border: `1px solid ${isDark ? 'rgba(76,175,80,0.2)' : '#A5D6A7'}`, maxWidth: 820, margin: '0 auto' }}>
@@ -405,27 +575,38 @@ const TECH_BENEFITS = [
   { title: 'Skutečně použitý materiál a podpis zákazníka v protokolu', desc: 'Plánované i skutečně použité množství, protokol s podpisem zákazníka.', icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' },
 ]
 
-// Snímky obrazovek Felucia Tech (iOS, ukázková data) — soubory v public/marketing/
+// Snímky obrazovek Felucia Tech (iOS, ukázková data) - soubory v public/marketing/.
+// Pořadí = průchod zakázkou, používá je carousel v sekci #technici.
 const TECH_SHOTS = [
   {
+    src: '/marketing/tech-muj-den.jpg',
+    alt: 'Felucia Tech - obrazovka Můj den s další zastávkou, navigací a dnešními zakázkami',
+    caption: 'Můj den - další zastávka, navigace a dnešní zakázky',
+  },
+  {
+    src: '/marketing/tech-zakazka-detail.jpg',
+    alt: 'Felucia Tech - detail zakázky s adresou montáže, navigací, kontaktem na klienta a týmem',
+    caption: 'Detail zakázky - adresa montáže, klient i tým na jeden dotyk',
+  },
+  {
     src: '/marketing/tech-zakazka-kontakty.jpg',
-    alt: 'Felucia Tech — kontakty na stavbě a odškrtávání položek zakázky',
+    alt: 'Felucia Tech - kontakty na stavbě a odškrtávání položek zakázky',
     caption: 'Kontakty na stavbě a odškrtávání položek',
   },
   {
     src: '/marketing/tech-zakazka-komentare.jpg',
-    alt: 'Felucia Tech — pokyny od manažera, fotodokumentace a komentáře u zakázky',
-    caption: 'Pokyny z kanceláře, fotky a komentáře',
+    alt: 'Felucia Tech - pokyny od manažera, fotodokumentace a komentáře u zakázky',
+    caption: 'Pokyny z kanceláře, fotodokumentace a komentáře',
   },
   {
     src: '/marketing/tech-predavak-polozky.jpg',
-    alt: 'Felucia Tech — předávací protokol se skutečně použitým množstvím materiálu',
-    caption: 'Předávák se skutečně použitým množstvím',
+    alt: 'Felucia Tech - předávací protokol se skutečně použitým množstvím materiálu',
+    caption: 'Předávací protokol se skutečně použitým množstvím',
   },
   {
     src: '/marketing/tech-predavak-podpis.jpg',
-    alt: 'Felucia Tech — podpis klienta na předávacím protokolu a odeslání do kanceláře',
-    caption: 'Podpis klienta na místě a odeslání',
+    alt: 'Felucia Tech - podpis klienta na předávacím protokolu a odeslání do kanceláře',
+    caption: 'Podpis klienta na místě a odeslání do kanceláře',
   },
 ]
 
@@ -438,15 +619,9 @@ function FeluciaTechSection({ isDark }: { isDark: boolean }) {
       </div>
       <div style={{ position: 'relative', maxWidth: 1152, margin: '0 auto', padding: '0 24px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 56, alignItems: 'center' }}>
-          {/* Snímek aplikace */}
+          {/* Snímky aplikace - carousel */}
           <div style={{ display: 'flex', justifyContent: 'center', order: 2 }}>
-            <PhoneShot
-              isDark
-              width={244}
-              src="/marketing/tech-zakazka-detail.jpg"
-              alt="Felucia Tech — detail zakázky s adresou montáže, navigací, kontaktem na klienta a týmem"
-              caption="Detail zakázky — adresa montáže, navigace, klient i tým na jeden dotyk"
-            />
+            <PhoneCarousel isDark shots={TECH_SHOTS} width={300} />
           </div>
 
           {/* Text */}
@@ -481,20 +656,6 @@ function FeluciaTechSection({ isDark }: { isDark: boolean }) {
           </div>
         </div>
 
-        {/* Průchod zakázkou v telefonu */}
-        <div style={{ marginTop: 72 }}>
-          <p style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 16, fontWeight: 600, color: '#E8F5E9', textAlign: 'center', marginBottom: 8 }}>
-            Od příjezdu na stavbu po podpis klienta
-          </p>
-          <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, lineHeight: 1.6, color: '#6B8F6B', textAlign: 'center', maxWidth: 560, margin: '0 auto 36px' }}>
-            Technik odškrtá položky, nafotí montáž a nechá klienta podepsat protokol. Kancelář to má hned — bez papírů a telefonátů.
-          </p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 28, maxWidth: 880, margin: '0 auto', justifyItems: 'center' }}>
-            {TECH_SHOTS.map(shot => (
-              <PhoneShot key={shot.src} isDark width={190} src={shot.src} alt={shot.alt} caption={shot.caption} />
-            ))}
-          </div>
-        </div>
       </div>
     </section>
   )
@@ -617,24 +778,34 @@ function renderDasaText(text: string) {
   })
 }
 
+// Styly chatu Dáši. POZOR: musí být v komponentě, která je v DOM po celou dobu
+// ukázky. Dřív seděly uvnitř TypingDots - jakmile Dáša dopsala, TypingDots se
+// odmountoval, styly zmizely a tlačítka OP zůstala nenastylovaná (černý text
+// na tmavém pozadí = neviditelná).
+function DasaChatStyles() {
+  return (
+    <style>{`
+      @keyframes dasaTyping {
+        0%,60%,100% { opacity:0.2; transform:translateY(0); }
+        30% { opacity:1; transform:translateY(-4px); }
+      }
+      .dasa-dot { width:6px; height:6px; border-radius:50%; background:#4CAF50; animation:dasaTyping 1.2s infinite; display:inline-block; }
+      .dasa-dot:nth-child(2){animation-delay:0.2s;}
+      .dasa-dot:nth-child(3){animation-delay:0.4s;}
+      .dasa-chat::-webkit-scrollbar{width:4px;}
+      .dasa-chat::-webkit-scrollbar-track{background:transparent;}
+      .dasa-chat::-webkit-scrollbar-thumb{background:rgba(76,175,80,0.3);border-radius:4px;}
+      .dasa-op-btn{background:rgba(76,175,80,0.1);border:1px solid rgba(76,175,80,0.3);color:#81C784;border-radius:8px;padding:8px 12px;font-size:12px;text-align:left;width:100%;cursor:pointer;font-family:Inter,sans-serif;transition:background 0.15s,border-color 0.15s;}
+      .dasa-op-btn:hover{background:rgba(76,175,80,0.2);border-color:#4CAF50;}
+      .dasa-op-btn.selected{background:rgba(76,175,80,0.25);border-color:#4CAF50;}
+      .dasa-op-btn:disabled{cursor:default;opacity:0.85;}
+    `}</style>
+  )
+}
+
 function TypingDots() {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '10px 14px' }}>
-      <style>{`
-        @keyframes dasaTyping {
-          0%,60%,100% { opacity:0.2; transform:translateY(0); }
-          30% { opacity:1; transform:translateY(-4px); }
-        }
-        .dasa-dot { width:6px; height:6px; border-radius:50%; background:#4CAF50; animation:dasaTyping 1.2s infinite; display:inline-block; }
-        .dasa-dot:nth-child(2){animation-delay:0.2s;}
-        .dasa-dot:nth-child(3){animation-delay:0.4s;}
-        .dasa-chat::-webkit-scrollbar{width:4px;}
-        .dasa-chat::-webkit-scrollbar-track{background:transparent;}
-        .dasa-chat::-webkit-scrollbar-thumb{background:rgba(76,175,80,0.3);border-radius:4px;}
-        .dasa-op-btn{background:rgba(76,175,80,0.1);border:1px solid rgba(76,175,80,0.3);color:#81C784;border-radius:8px;padding:8px 12px;font-size:12px;text-align:left;width:100%;cursor:pointer;font-family:Inter,sans-serif;transition:background 0.15s,border-color 0.15s;}
-        .dasa-op-btn:hover{background:rgba(76,175,80,0.2);border-color:#4CAF50;}
-        .dasa-op-btn.selected{background:rgba(76,175,80,0.25);border-color:#4CAF50;}
-      `}</style>
       <span className="dasa-dot"/>
       <span className="dasa-dot"/>
       <span className="dasa-dot"/>
@@ -745,6 +916,8 @@ function DasaChat({ chatBg }: { chatBg: string }) {
         <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 600, color: '#81C784' }}>Dáša · AI asistentka</span>
         <span style={{ marginLeft: 'auto', fontFamily: 'Inter, sans-serif', fontSize: 11, padding: '2px 8px', borderRadius: 999, background: 'rgba(76,175,80,0.15)', color: '#4CAF50' }}>online</span>
       </div>
+
+      <DasaChatStyles />
 
       {/* Messages */}
       <div ref={chatRef} className="dasa-chat" style={{ padding: '16px 16px 8px', display: 'flex', flexDirection: 'column', gap: 12, maxHeight: 380, overflowY: 'auto', scrollBehavior: 'smooth' }}>
