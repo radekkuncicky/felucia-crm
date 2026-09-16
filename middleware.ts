@@ -38,8 +38,13 @@ function makeNonce() {
   return btoa(String.fromCharCode(...Array.from(bytes)))
 }
 
+// Veřejné marketingové stránky na hlavní doméně — jediné, co smí vyhledávače
+// indexovat. Vše ostatní (login, CRM, tenant subdomény, tokenové odkazy,
+// nahrané fotky) dostane X-Robots-Tag: noindex.
+const INDEXABLE_PATHS = new Set(['/', '/terms', '/privacy', '/support'])
+
 // NextResponse.next() s nonce v request headerech + CSP na odpovědi
-function nextWithCsp(req: NextRequest, extraRequestHeaders?: Headers) {
+function nextWithCsp(req: NextRequest, extraRequestHeaders?: Headers, opts: { indexable?: boolean } = {}) {
   const nonce = makeNonce()
   const csp = buildCsp(nonce)
   const requestHeaders = extraRequestHeaders ?? new Headers(req.headers)
@@ -47,12 +52,19 @@ function nextWithCsp(req: NextRequest, extraRequestHeaders?: Headers) {
   requestHeaders.set('Content-Security-Policy', csp)
   const res = NextResponse.next({ request: { headers: requestHeaders } })
   res.headers.set('Content-Security-Policy', csp)
+  if (!opts.indexable) res.headers.set('X-Robots-Tag', 'noindex, nofollow')
   return res
 }
 
 export async function middleware(req: NextRequest) {
   const hostname = req.headers.get('host') || ''
   const url = req.nextUrl.clone()
+
+  // ── Kanonická doména: www → apex (SEO, žádný duplicitní obsah) ────────────
+  if (hostname === `www.${ROOT_DOMAIN}`) {
+    const target = new URL(req.nextUrl.pathname + req.nextUrl.search, `https://${ROOT_DOMAIN}`)
+    return NextResponse.redirect(target, 301)
+  }
 
   // ── Static uploads auth ───────────────────────────────────────────────────
   // Fotky zakázek (/uploads/zakazky/) jsou veřejné — cesty jsou obscurní
@@ -139,7 +151,8 @@ export async function middleware(req: NextRequest) {
     url.pathname.startsWith('/nabidka') ||
     url.pathname.startsWith('/demo') ||
     url.pathname.startsWith('/terms') ||
-    url.pathname.startsWith('/privacy')
+    url.pathname.startsWith('/privacy') ||
+    url.pathname.startsWith('/support')
 
   const isOnboardingPage = url.pathname.startsWith('/onboarding')
 
@@ -183,9 +196,11 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  return nextWithCsp(req)
+  return nextWithCsp(req, undefined, { indexable: INDEXABLE_PATHS.has(url.pathname) })
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|public|robots.txt|sitemap.xml).*)'],
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|public|marketing/|robots.txt|sitemap.xml|llms.txt|manifest.json|icon-192.png|icon-512.png|opengraph-image|twitter-image).*)',
+  ],
 }

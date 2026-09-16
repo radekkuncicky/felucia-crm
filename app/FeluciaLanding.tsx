@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
+import { CONTACT, FAQS, OPERATOR, PLANS, formatPrice, type PlanId } from '@/lib/landing'
 
 // ─── SVG Components ──────────────────────────────────────────────────────────
 
@@ -65,6 +66,8 @@ function AuraSvg() {
 
 // ─── Navbar ───────────────────────────────────────────────────────────────────
 
+const NAV_LINKS: [string, string][] = [['#jak-to-funguje', 'Jak to funguje'], ['#funkce', 'Funkce'], ['#ceny', 'Ceny'], ['#faq', 'FAQ']]
+
 function Navbar({ isDark }: { isDark: boolean }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
@@ -101,8 +104,8 @@ function Navbar({ isDark }: { isDark: boolean }) {
         </Link>
 
         {/* Desktop links */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 28 }} className="hidden md:flex">
-          {[['#funkce','Funkce'],['#ceny','Ceny'],['#faq','FAQ']].map(([href, label]) => (
+        <div style={{ alignItems: 'center', gap: 28 }} className="hidden md:flex">
+          {NAV_LINKS.map(([href, label]) => (
             <a key={href} href={href} style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, fontWeight: 500, color: isDark ? '#7AAD7A' : '#4A6B4A', textDecoration: 'none', transition: 'color 0.15s' }}
               onMouseEnter={e => (e.currentTarget.style.color = '#4CAF50')}
               onMouseLeave={e => (e.currentTarget.style.color = isDark ? '#7AAD7A' : '#4A6B4A')}>
@@ -112,17 +115,18 @@ function Navbar({ isDark }: { isDark: boolean }) {
         </div>
 
         {/* Desktop CTAs */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }} className="hidden md:flex">
+        <div style={{ alignItems: 'center', gap: 10 }} className="hidden md:flex">
           <Link href="/auth/signin" style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, fontWeight: 500, padding: '8px 16px', borderRadius: 10, border: `1px solid ${isDark ? 'rgba(76,175,80,0.4)' : '#C8E6C9'}`, color: isDark ? '#7AAD7A' : '#4A6B4A', textDecoration: 'none' }}>
             Přihlásit se
           </Link>
-          <a href="#beta" style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, fontWeight: 600, padding: '8px 18px', borderRadius: 10, background: '#4CAF50', color: 'white', textDecoration: 'none' }}>
-            Získat přístup
+          <a href="#ukazka" style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, fontWeight: 600, padding: '8px 18px', borderRadius: 10, background: '#4CAF50', color: 'white', textDecoration: 'none' }}>
+            Domluvit ukázku
           </a>
         </div>
 
         {/* Hamburger */}
         <button className="md:hidden" onClick={() => setMenuOpen(o => !o)}
+          aria-label={menuOpen ? 'Zavřít menu' : 'Otevřít menu'} aria-expanded={menuOpen} aria-controls="mobile-menu"
           style={{ background: 'none', border: 'none', cursor: 'pointer', color: isDark ? '#E8F5E9' : '#1A2E1B', padding: 6 }}>
           <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             {menuOpen
@@ -134,9 +138,9 @@ function Navbar({ isDark }: { isDark: boolean }) {
 
       {/* Mobile menu */}
       {menuOpen && (
-        <div className="md:hidden" style={{ background: isDark ? '#0D1A0E' : '#F4FAF4', borderBottom: `1px solid ${isDark ? 'rgba(76,175,80,0.2)' : '#C8E6C9'}`, padding: '12px 24px 16px' }}>
+        <div id="mobile-menu" className="md:hidden" style={{ background: isDark ? '#0D1A0E' : '#F4FAF4', borderBottom: `1px solid ${isDark ? 'rgba(76,175,80,0.2)' : '#C8E6C9'}`, padding: '12px 24px 16px' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {[['#funkce','Funkce'],['#ceny','Ceny'],['#faq','FAQ']].map(([href, label]) => (
+            {NAV_LINKS.map(([href, label]) => (
               <a key={href} href={href} onClick={() => setMenuOpen(false)}
                 style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, fontWeight: 500, color: isDark ? '#7AAD7A' : '#4A6B4A', textDecoration: 'none', padding: '4px 0' }}>
                 {label}
@@ -147,9 +151,9 @@ function Navbar({ isDark }: { isDark: boolean }) {
                 style={{ flex: 1, textAlign: 'center', fontFamily: 'Inter, sans-serif', fontSize: 14, fontWeight: 500, padding: '10px 0', borderRadius: 10, border: '1px solid #4CAF50', color: '#4CAF50', textDecoration: 'none' }}>
                 Přihlásit se
               </Link>
-              <a href="#beta" onClick={() => setMenuOpen(false)}
+              <a href="#ukazka" onClick={() => setMenuOpen(false)}
                 style={{ flex: 1, textAlign: 'center', fontFamily: 'Inter, sans-serif', fontSize: 14, fontWeight: 600, padding: '10px 0', borderRadius: 10, background: '#4CAF50', color: 'white', textDecoration: 'none' }}>
-                Získat přístup
+                Domluvit ukázku
               </a>
             </div>
           </div>
@@ -159,11 +163,99 @@ function Navbar({ isDark }: { isDark: boolean }) {
   )
 }
 
+// ─── Snímky aplikace Felucia Tech ────────────────────────────────────────────
+// Skutečné snímky z iOS aplikace nad ukázkovými daty (public/marketing/*.jpg).
+// Pozor: /marketing/ musí zůstat ve výjimkách matcheru v middleware.ts,
+// jinak se obrázky přesměrují na login.
+
+function PhoneShot({ src, alt, caption, width, isDark }: { src: string; alt: string; caption?: string; width: number; isDark: boolean }) {
+  return (
+    <figure style={{ margin: 0, width: '100%', maxWidth: width }}>
+      <div style={{
+        borderRadius: 26,
+        border: `2px solid ${isDark ? 'rgba(76,175,80,0.25)' : '#DCEBDC'}`,
+        background: isDark ? '#0A120A' : 'white',
+        padding: 7,
+        boxShadow: isDark ? '0 18px 40px rgba(0,0,0,0.45)' : '0 14px 34px rgba(26,46,27,0.10)',
+      }}>
+        <img
+          src={src}
+          alt={alt}
+          width={560}
+          height={1212}
+          loading="lazy"
+          decoding="async"
+          style={{ display: 'block', width: '100%', height: 'auto', borderRadius: 20 }}
+        />
+      </div>
+      {caption && (
+        <figcaption style={{ fontFamily: 'Inter, sans-serif', fontSize: 11.5, lineHeight: 1.45, color: isDark ? '#6B8F6B' : '#6B8F6B', textAlign: 'center', marginTop: 10 }}>
+          {caption}
+        </figcaption>
+      )}
+    </figure>
+  )
+}
+
+// ─── Product preview (kancelář schematicky + snímek aplikace) ────────────────
+
+function ProductPreview({ isDark }: { isDark: boolean }) {
+  const cardBg = isDark ? '#0D1A0E' : 'white'
+  const border = isDark ? 'rgba(76,175,80,0.18)' : '#DCEBDC'
+  const heading = isDark ? '#E8F5E9' : '#1A2E1B'
+  const sub = isDark ? '#7AAD7A' : '#6B8F6B'
+
+  const desktopRows = [
+    { label: 'Nabídka schválena', done: true },
+    { label: 'Termín realizace naplánován', done: true },
+    { label: 'Technik: J. Novák', done: true },
+    { label: 'Předávací protokol', done: false },
+  ]
+
+  return (
+    <div style={{ marginTop: 56 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 20, alignItems: 'stretch' }}>
+        {/* Desktop card mock */}
+        <div style={{ borderRadius: 16, border: `1px solid ${border}`, background: cardBg, padding: 20, textAlign: 'left' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+            <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 13, fontWeight: 700, color: heading }}>Zakázka #248 · Klimatizace</span>
+            <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 10, fontWeight: 600, padding: '3px 8px', borderRadius: 999, background: 'rgba(76,175,80,0.15)', color: '#4CAF50' }}>Realizace</span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {desktopRows.map(r => (
+              <div key={r.label} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ width: 15, height: 15, borderRadius: 5, flexShrink: 0, background: r.done ? '#4CAF50' : 'transparent', border: r.done ? 'none' : `1.5px solid ${sub}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {r.done && <svg width="10" height="10" fill="none" stroke="white" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7"/></svg>}
+                </span>
+                <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: r.done ? sub : heading }}>{r.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Snímek mobilní aplikace */}
+        <div style={{ borderRadius: 16, border: `1px solid ${border}`, background: cardBg, padding: 20, display: 'flex', justifyContent: 'center' }}>
+          <PhoneShot
+            isDark={isDark}
+            width={180}
+            src="/marketing/tech-muj-den.jpg"
+            alt="Felucia Tech — obrazovka Můj den s další zastávkou, navigací a dnešními zakázkami"
+            caption="Felucia Tech — Můj den"
+          />
+        </div>
+      </div>
+      <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 11.5, color: sub, marginTop: 12, textAlign: 'center' }}>
+        Kancelář a technik v terénu vidí stejnou zakázku — schéma průběhu zakázky a snímek aplikace Felucia Tech s ukázkovými daty.
+      </p>
+    </div>
+  )
+}
+
 // ─── Hero ─────────────────────────────────────────────────────────────────────
 
 function Hero({ isDark }: { isDark: boolean }) {
   return (
-    <section style={{ position: 'relative', overflow: 'hidden', paddingTop: 128, paddingBottom: 96, background: isDark ? '#0D1A0E' : '#F4FAF4', borderBottom: `1px solid ${isDark ? 'rgba(76,175,80,0.12)' : '#C8E6C9'}` }}>
+    <section style={{ position: 'relative', overflow: 'hidden', paddingTop: 128, paddingBottom: 80, background: isDark ? '#0D1A0E' : '#F4FAF4', borderBottom: `1px solid ${isDark ? 'rgba(76,175,80,0.12)' : '#C8E6C9'}` }}>
       {/* Rays */}
       <div style={{ position: 'absolute', top: 0, right: 60, pointerEvents: 'none', opacity: isDark ? 0.08 : 0.15 }}>
         <RaysSvg color={isDark ? '#81C784' : '#C8E6C9'} />
@@ -177,39 +269,39 @@ function Hero({ isDark }: { isDark: boolean }) {
         <TreeSvg color={isDark ? '#81C784' : '#2E7D32'} />
       </div>
 
-      <div style={{ position: 'relative', maxWidth: 1152, margin: '0 auto', padding: '0 24px', textAlign: 'center' }}>
+      <div style={{ position: 'relative', maxWidth: 900, margin: '0 auto', padding: '0 24px', textAlign: 'center' }}>
         {/* Badge */}
         <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
           <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 600, padding: '8px 16px', borderRadius: 999, background: isDark ? 'rgba(76,175,80,0.12)' : '#E8F5E9', border: `1px solid ${isDark ? 'rgba(76,175,80,0.35)' : '#A5D6A7'}`, color: '#4CAF50', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: '#4CAF50', boxShadow: '0 0 6px #4CAF50' }}/>
-            Spouštíme brzy · Přijímáme první testery
+            <span style={{ display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: '#4CAF50' }}/>
+            Systém pro montážní a servisní firmy
           </span>
         </div>
 
         {/* Heading */}
-        <h1 style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 'clamp(36px, 5vw, 60px)', fontWeight: 700, lineHeight: 1.15, color: isDark ? '#E8F5E9' : '#1A2E1B', maxWidth: 700, margin: '0 auto 24px', letterSpacing: '-0.02em' }}>
-          CRM který roste{' '}
-          <span style={{ color: '#4CAF50' }}>s vaším</span>{' '}
-          <span style={{ color: isDark ? '#C8A97A' : '#A0845C' }}>byznysem.</span>
+        <h1 style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 'clamp(32px, 4.6vw, 54px)', fontWeight: 700, lineHeight: 1.2, color: isDark ? '#E8F5E9' : '#1A2E1B', maxWidth: 760, margin: '0 auto 24px', letterSpacing: '-0.02em' }}>
+          Od nabídky přes <span style={{ color: '#4CAF50' }}>montáž</span> až po pravidelný <span style={{ color: isDark ? '#C8A97A' : '#A0845C' }}>servis.</span>
         </h1>
 
-        <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 18, color: isDark ? '#7AAD7A' : '#4A6B4A', maxWidth: 540, margin: '0 auto 40px', lineHeight: 1.6 }}>
-          Specializovaný CRM pro HVAC firmy — zakázky, nabídky, servis a AI asistentka Dáša na jednom místě. Hledáme první testery, kteří nám pomůžou produkt vyladit.
+        <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 18, color: isDark ? '#7AAD7A' : '#4A6B4A', maxWidth: 600, margin: '0 auto 16px', lineHeight: 1.6 }}>
+          Felucia propojí kancelář a techniky v jednom systému. Nabídky, podklady k montáži, skutečně použitý materiál i předávací protokoly najdete u konkrétní zakázky.
+        </p>
+
+        <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, fontStyle: 'italic', color: isDark ? '#4A6B4A' : '#6B8F6B', maxWidth: 520, margin: '0 auto 36px' }}>
+          Vyvinuto z každodenní praxe montáží a servisu.
         </p>
 
         {/* CTAs */}
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center', marginBottom: 20 }}>
-          <a href="#beta" style={{ fontFamily: 'Inter, sans-serif', fontSize: 16, fontWeight: 600, padding: '14px 28px', borderRadius: 12, background: '#4CAF50', color: 'white', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 8, boxShadow: '0 4px 20px rgba(76,175,80,0.4)' }}>
-            Chci být tester →
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center' }}>
+          <a href="#ukazka" style={{ fontFamily: 'Inter, sans-serif', fontSize: 16, fontWeight: 600, padding: '14px 28px', borderRadius: 12, background: '#4CAF50', color: 'white', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 8, boxShadow: '0 4px 20px rgba(76,175,80,0.4)' }}>
+            Domluvit 20minutovou ukázku →
           </a>
-          <a href="#demo" style={{ fontFamily: 'Inter, sans-serif', fontSize: 16, fontWeight: 500, padding: '14px 28px', borderRadius: 12, border: `1px solid ${isDark ? 'rgba(76,175,80,0.3)' : '#C8E6C9'}`, color: isDark ? '#7AAD7A' : '#4A6B4A', background: 'transparent', cursor: 'pointer', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
-            Zájem o demo
+          <a href="#jak-to-funguje" style={{ fontFamily: 'Inter, sans-serif', fontSize: 16, fontWeight: 500, padding: '14px 28px', borderRadius: 12, border: `1px solid ${isDark ? 'rgba(76,175,80,0.3)' : '#C8E6C9'}`, color: isDark ? '#7AAD7A' : '#4A6B4A', background: 'transparent', cursor: 'pointer', textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>
+            Jak Felucia funguje
           </a>
         </div>
 
-        <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: isDark ? '#4A6B4A' : '#6B8F6B', fontWeight: 500 }}>
-          Prvních 50 testerů dostane Professional plán <span style={{ color: '#4CAF50', fontWeight: 600 }}>zdarma na celý rok</span>
-        </p>
+        <ProductPreview isDark={isDark} />
       </div>
     </section>
   )
@@ -221,7 +313,7 @@ function Marquee({ isDark }: { isDark: boolean }) {
   const items = ['Tepelná čerpadla', 'Klimatizace', 'Rekuperace', 'Podlahové vytápění', 'Vzduchotechnika', 'Servisní kontrakty']
   const repeated = [...items, ...items]
   return (
-    <div style={{ overflow: 'hidden', background: isDark ? 'rgba(76,175,80,0.05)' : 'rgba(76,175,80,0.04)', borderBottom: `1px solid ${isDark ? 'rgba(76,175,80,0.1)' : '#E8F5E9'}`, padding: '14px 0' }}>
+    <div aria-hidden="true" style={{ overflow: 'hidden', background: isDark ? 'rgba(76,175,80,0.05)' : 'rgba(76,175,80,0.04)', borderBottom: `1px solid ${isDark ? 'rgba(76,175,80,0.1)' : '#E8F5E9'}`, padding: '14px 0' }}>
       <div className="fl-marquee-track">
         {repeated.map((item, i) => (
           <span key={i} style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '0 20px', fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 500, color: isDark ? '#4CAF50' : '#2E7D32', whiteSpace: 'nowrap' }}>
@@ -231,6 +323,220 @@ function Marquee({ isDark }: { isDark: boolean }) {
         ))}
       </div>
     </div>
+  )
+}
+
+// ─── Workflow steps (jedna zakázka od začátku do konce) ────────────────────────
+
+const WORKFLOW_STEPS = [
+  {
+    n: '1', title: 'Připravíte nabídku',
+    desc: 'Materiál a práce přehledně u obchodního případu.',
+    icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+  },
+  {
+    n: '2', title: 'Předáte zakázku technikovi',
+    desc: 'Termín, místo montáže, kontakty a podklady k práci.',
+    icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z',
+  },
+  {
+    n: '3', title: 'Technik zaznamená skutečnost',
+    desc: 'Provedená práce, fotografie, použité množství a předávací protokol.',
+    icon: 'M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z M12 17a4 4 0 100-8 4 4 0 000 8z',
+  },
+  {
+    n: '4', title: 'Zkontrolujete podklady a navážete servisem',
+    desc: 'Schválení protokolu, vyúčtování a evidence dalších servisních návštěv.',
+    icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2',
+  },
+]
+
+function WorkflowSteps({ isDark }: { isDark: boolean }) {
+  const heading = isDark ? '#E8F5E9' : '#1A2E1B'
+  const sub = isDark ? '#6B8F6B' : '#4A6B4A'
+  const cardBg = isDark ? '#0D1A0E' : 'white'
+  const border = isDark ? 'rgba(76,175,80,0.12)' : '#E0EBE0'
+
+  return (
+    <section id="jak-to-funguje" aria-labelledby="jak-heading" style={{ padding: '96px 0', background: isDark ? '#0A120A' : '#F9FBF9' }}>
+      <div style={{ maxWidth: 1152, margin: '0 auto', padding: '0 24px' }}>
+        <div style={{ textAlign: 'center', marginBottom: 56 }}>
+          <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 600, color: '#4CAF50', marginBottom: 12 }}>✦ Jak to funguje</p>
+          <h2 id="jak-heading" style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 'clamp(28px,4vw,40px)', fontWeight: 700, color: heading, letterSpacing: '-0.02em' }}>
+            Jedna zakázka od nabídky po servis
+          </h2>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: 20, marginBottom: 32 }}>
+          {WORKFLOW_STEPS.map(s => (
+            <div key={s.n} style={{ borderRadius: 16, padding: 24, background: cardBg, border: `0.5px solid ${border}`, position: 'relative' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+                <span style={{ width: 34, height: 34, borderRadius: 10, background: 'rgba(76,175,80,0.12)', color: '#4CAF50', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 14, flexShrink: 0 }}>
+                  {s.n}
+                </span>
+                <svg width="18" height="18" fill="none" stroke="#4CAF50" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d={s.icon}/>
+                </svg>
+              </div>
+              <h3 style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 15, fontWeight: 600, color: heading, marginBottom: 8 }}>{s.title}</h3>
+              <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, lineHeight: 1.6, color: sub }}>{s.desc}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Illustrative example */}
+        <div style={{ borderRadius: 16, padding: '20px 24px', background: isDark ? 'rgba(76,175,80,0.06)' : '#E8F5E9', border: `1px solid ${isDark ? 'rgba(76,175,80,0.2)' : '#A5D6A7'}`, maxWidth: 820, margin: '0 auto' }}>
+          <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: '#4CAF50' }}>Ilustrační příklad</span>
+          <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, lineHeight: 1.7, color: isDark ? '#A5C8A5' : '#2E4A2E', marginTop: 8 }}>
+            V nabídce je 10 metrů potrubí. Při montáži se použije 12. Technik skutečné množství zaznamená do protokolu a kancelář má podklad ke kontrole vyúčtování.
+          </p>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// ─── Felucia Tech (aplikace pro techniky) ──────────────────────────────────────
+
+const TECH_BENEFITS = [
+  { title: 'Kam jede a koho kontaktovat', desc: 'Adresa montáže, navigace a kontakty na stavbě přímo u zakázky.', icon: 'M17.657 16.657L13.414 20.9a2 2 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z M15 11a3 3 0 11-6 0 3 3 0 016 0z' },
+  { title: 'Co má namontovat a jaké má podklady', desc: 'Pokyny, dokumenty a rozpis prací k dané zakázce.', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
+  { title: 'Fotky a záznam provedené práce přímo u zakázky', desc: 'Odškrtávání položek, komentáře a fotografie z místa montáže.', icon: 'M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z' },
+  { title: 'Skutečně použitý materiál a podpis zákazníka v protokolu', desc: 'Plánované i skutečně použité množství, protokol s podpisem zákazníka.', icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' },
+]
+
+// Snímky obrazovek Felucia Tech (iOS, ukázková data) — soubory v public/marketing/
+const TECH_SHOTS = [
+  {
+    src: '/marketing/tech-zakazka-kontakty.jpg',
+    alt: 'Felucia Tech — kontakty na stavbě a odškrtávání položek zakázky',
+    caption: 'Kontakty na stavbě a odškrtávání položek',
+  },
+  {
+    src: '/marketing/tech-zakazka-komentare.jpg',
+    alt: 'Felucia Tech — pokyny od manažera, fotodokumentace a komentáře u zakázky',
+    caption: 'Pokyny z kanceláře, fotky a komentáře',
+  },
+  {
+    src: '/marketing/tech-predavak-polozky.jpg',
+    alt: 'Felucia Tech — předávací protokol se skutečně použitým množstvím materiálu',
+    caption: 'Předávák se skutečně použitým množstvím',
+  },
+  {
+    src: '/marketing/tech-predavak-podpis.jpg',
+    alt: 'Felucia Tech — podpis klienta na předávacím protokolu a odeslání do kanceláře',
+    caption: 'Podpis klienta na místě a odeslání',
+  },
+]
+
+function FeluciaTechSection({ isDark }: { isDark: boolean }) {
+  const bg = isDark ? '#0D1A0E' : '#1A2E1B'
+  return (
+    <section id="technici" aria-labelledby="technici-heading" style={{ position: 'relative', overflow: 'hidden', padding: '96px 0', background: bg }}>
+      <div style={{ position: 'absolute', left: -60, top: -40, pointerEvents: 'none', opacity: 0.06, transform: 'scaleX(-1)' }}>
+        <TreeSvg color="#81C784" />
+      </div>
+      <div style={{ position: 'relative', maxWidth: 1152, margin: '0 auto', padding: '0 24px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 56, alignItems: 'center' }}>
+          {/* Snímek aplikace */}
+          <div style={{ display: 'flex', justifyContent: 'center', order: 2 }}>
+            <PhoneShot
+              isDark
+              width={244}
+              src="/marketing/tech-zakazka-detail.jpg"
+              alt="Felucia Tech — detail zakázky s adresou montáže, navigací, kontaktem na klienta a týmem"
+              caption="Detail zakázky — adresa montáže, navigace, klient i tým na jeden dotyk"
+            />
+          </div>
+
+          {/* Text */}
+          <div style={{ order: 1 }}>
+            <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 600, padding: '6px 12px', borderRadius: 999, background: 'rgba(76,175,80,0.15)', color: '#81C784', display: 'inline-block', marginBottom: 20 }}>
+              ✦ Felucia Tech
+            </span>
+            <h2 id="technici-heading" style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 'clamp(26px,3.5vw,38px)', fontWeight: 700, color: '#E8F5E9', lineHeight: 1.25, marginBottom: 20, letterSpacing: '-0.02em' }}>
+              Technik má podklady v telefonu. Vy máte přehled o zakázce.
+            </h2>
+            <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, lineHeight: 1.7, color: '#A5C8A5', marginBottom: 28 }}>
+              Vyplněný protokol technik odešle vedoucímu ke schválení — kancelář tak má podklad k vyúčtování bez přepisování papírů.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+              {TECH_BENEFITS.map(b => (
+                <div key={b.title} style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                  <div style={{ width: 30, height: 30, borderRadius: 9, background: 'rgba(76,175,80,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
+                    <svg width="15" height="15" fill="none" stroke="#4CAF50" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d={b.icon}/>
+                    </svg>
+                  </div>
+                  <div>
+                    <p style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 13.5, fontWeight: 600, color: '#E8F5E9', marginBottom: 3 }}>{b.title}</p>
+                    <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 12.5, lineHeight: 1.5, color: '#6B8F6B' }}>{b.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 11.5, color: '#4A6B4A', marginTop: 24, lineHeight: 1.6 }}>
+              Snímky jsou ze skutečné aplikace Felucia Tech nad ukázkovými daty. Ostrý provoz s technikem v terénu doplňujeme postupně s prvními firmami.
+            </p>
+          </div>
+        </div>
+
+        {/* Průchod zakázkou v telefonu */}
+        <div style={{ marginTop: 72 }}>
+          <p style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 16, fontWeight: 600, color: '#E8F5E9', textAlign: 'center', marginBottom: 8 }}>
+            Od příjezdu na stavbu po podpis klienta
+          </p>
+          <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, lineHeight: 1.6, color: '#6B8F6B', textAlign: 'center', maxWidth: 560, margin: '0 auto 36px' }}>
+            Technik odškrtá položky, nafotí montáž a nechá klienta podepsat protokol. Kancelář to má hned — bez papírů a telefonátů.
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 28, maxWidth: 880, margin: '0 auto', justifyItems: 'center' }}>
+            {TECH_SHOTS.map(shot => (
+              <PhoneShot key={shot.src} isDark width={190} src={shot.src} alt={shot.alt} caption={shot.caption} />
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// ─── Servis ──────────────────────────────────────────────────────────────────
+
+function ServisSection({ isDark }: { isDark: boolean }) {
+  const bg = isDark ? '#0A120A' : '#F4FAF4'
+  const heading = isDark ? '#E8F5E9' : '#1A2E1B'
+  const sub = isDark ? '#7AAD7A' : '#4A6B4A'
+  const cardBg = isDark ? '#0D1A0E' : 'white'
+  const border = isDark ? 'rgba(76,175,80,0.12)' : '#E0EBE0'
+
+  const items = [
+    { label: 'Evidence zařízení', icon: 'M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2z' },
+    { label: 'Servisní kontrakty', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z' },
+    { label: 'Plánované návštěvy', icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z' },
+  ]
+
+  return (
+    <section id="servis" aria-labelledby="servis-heading" style={{ padding: '88px 0', background: bg, borderTop: `1px solid ${isDark ? 'rgba(76,175,80,0.1)' : '#E8F5E9'}` }}>
+      <div style={{ maxWidth: 860, margin: '0 auto', padding: '0 24px', textAlign: 'center' }}>
+        <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 600, color: '#4CAF50', marginBottom: 12 }}>✦ Servis</p>
+        <h2 id="servis-heading" style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 'clamp(26px,4vw,38px)', fontWeight: 700, color: heading, letterSpacing: '-0.02em', marginBottom: 16 }}>
+          Montáží vztah se zákazníkem nekončí.
+        </h2>
+        <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 15, color: sub, maxWidth: 560, margin: '0 auto 36px', lineHeight: 1.7 }}>
+          Evidujte zařízení, servisní kontrakty a plánované návštěvy. U servisního zásahu zaznamenejte závady, provedenou práci, fotografie a podklady k vyúčtování — vše navázané na původního zákazníka a jeho obchodní případ.
+        </p>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, justifyContent: 'center' }}>
+          {items.map(it => (
+            <div key={it.label} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 18px', borderRadius: 12, background: cardBg, border: `0.5px solid ${border}` }}>
+              <svg width="17" height="17" fill="none" stroke="#4CAF50" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d={it.icon}/>
+              </svg>
+              <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 500, color: heading }}>{it.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
   )
 }
 
@@ -248,11 +554,11 @@ const FEATURES = [
 
 function Features({ isDark }: { isDark: boolean }) {
   return (
-    <section id="funkce" style={{ padding: '96px 0', background: isDark ? '#0A120A' : '#F9FBF9' }}>
+    <section id="funkce" aria-labelledby="funkce-heading" style={{ padding: '96px 0', background: isDark ? '#0A120A' : '#F9FBF9' }}>
       <div style={{ maxWidth: 1152, margin: '0 auto', padding: '0 24px' }}>
         <div style={{ textAlign: 'center', marginBottom: 56 }}>
           <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 600, color: '#4CAF50', marginBottom: 12 }}>✦ Funkce</p>
-          <h2 style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 'clamp(28px,4vw,40px)', fontWeight: 700, color: isDark ? '#E8F5E9' : '#1A2E1B', letterSpacing: '-0.02em' }}>
+          <h2 id="funkce-heading" style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 'clamp(28px,4vw,40px)', fontWeight: 700, color: isDark ? '#E8F5E9' : '#1A2E1B', letterSpacing: '-0.02em' }}>
             Vše co potřebujete. Nic navíc.
           </h2>
         </div>
@@ -279,133 +585,6 @@ function Features({ isDark }: { isDark: boolean }) {
   )
 }
 
-// ─── Early Access ─────────────────────────────────────────────────────────────
-
-function EarlyAccess({ isDark }: { isDark: boolean }) {
-  const [form, setForm] = useState({ jmeno: '', email: '', firma: '', telefon: '' })
-  const [status, setStatus] = useState<'idle' | 'sending' | 'ok' | 'err'>('idle')
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
-    setStatus('sending')
-    try {
-      const zprava = `ŽÁDOST O BETA PŘÍSTUP\n\nFirma: ${form.firma || 'neuvedena'}\nTelefon: ${form.telefon || 'neuvedeno'}\n\nChci být jedním z prvních testerů Felucia CRM a získat Professional plán zdarma na rok.`
-      const res = await fetch('/api/contact', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jmeno: form.jmeno, email: form.email, zprava }),
-      })
-      setStatus(res.ok ? 'ok' : 'err')
-    } catch { setStatus('err') }
-  }
-
-  const bg = isDark ? '#0A120A' : '#F4FAF4'
-  const cardBg = isDark ? '#0D1A0E' : 'white'
-  const heading = isDark ? '#E8F5E9' : '#1A2E1B'
-  const sub = isDark ? '#7AAD7A' : '#4A6B4A'
-  const inputStyle: React.CSSProperties = {
-    width: '100%', padding: '11px 14px', borderRadius: 10,
-    border: `1px solid ${isDark ? 'rgba(76,175,80,0.2)' : '#C8E6C9'}`,
-    background: isDark ? 'rgba(76,175,80,0.04)' : '#F4FAF4',
-    color: isDark ? '#E8F5E9' : '#1A2E1B',
-    fontFamily: 'Inter, sans-serif', fontSize: 14, outline: 'none', boxSizing: 'border-box',
-  }
-
-  return (
-    <section id="beta" style={{ padding: '96px 0', background: bg, borderTop: `1px solid ${isDark ? 'rgba(76,175,80,0.1)' : '#E8F5E9'}` }}>
-      <div style={{ maxWidth: 860, margin: '0 auto', padding: '0 24px' }}>
-        {/* Header */}
-        <div style={{ textAlign: 'center', marginBottom: 48 }}>
-          <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 600, padding: '6px 14px', borderRadius: 999, background: isDark ? 'rgba(76,175,80,0.12)' : '#E8F5E9', border: `1px solid ${isDark ? 'rgba(76,175,80,0.3)' : '#A5D6A7'}`, color: '#4CAF50', display: 'inline-block', marginBottom: 20 }}>
-            ✦ Uzavřená beta · Limitovaná místa
-          </span>
-          <h2 style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 'clamp(28px,4vw,44px)', fontWeight: 700, color: heading, letterSpacing: '-0.02em', lineHeight: 1.2, marginBottom: 16 }}>
-            Staňte se prvním testerem.<br/>
-            <span style={{ color: '#4CAF50' }}>Celý rok Professional zdarma.</span>
-          </h2>
-          <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 16, color: sub, maxWidth: 520, margin: '0 auto', lineHeight: 1.7 }}>
-            Hledáme HVAC firmy, které chtějí pomoci vyladit Felucii do finální podoby. Výměnou za zpětnou vazbu dostanete plný přístup ke všemu — včetně servisního modulu a AI Dáši — na 12 měsíců zdarma.
-          </p>
-        </div>
-
-        {/* Perks */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 48 }}>
-          {[
-            { icon: 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z', title: 'Professional plán', desc: '12 měsíců zdarma — servis, AI Dáša, white-label, vše.' },
-            { icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z', title: 'Přímý kontakt', desc: 'Váš feedback jde přímo k nám. Tvoříme produkt spolu.' },
-            { icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z', title: 'Jen 50 míst', desc: 'Uzavřená skupina — žádné čekání, prioritní onboarding.' },
-          ].map((p, i) => (
-            <div key={i} style={{ borderRadius: 16, padding: '20px 22px', background: cardBg, border: `1px solid ${isDark ? 'rgba(76,175,80,0.12)' : '#E0EBE0'}`, display: 'flex', gap: 14, alignItems: 'flex-start' }}>
-              <div style={{ width: 38, height: 38, borderRadius: 10, background: isDark ? 'rgba(76,175,80,0.12)' : '#E8F5E9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <svg width="18" height="18" fill="none" stroke="#4CAF50" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d={p.icon}/>
-                </svg>
-              </div>
-              <div>
-                <p style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 600, color: heading, marginBottom: 4 }}>{p.title}</p>
-                <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 12.5, color: sub, lineHeight: 1.5 }}>{p.desc}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Form */}
-        <div style={{ borderRadius: 20, padding: '36px', background: cardBg, border: `1.5px solid ${isDark ? 'rgba(76,175,80,0.25)' : '#A5D6A7'}`, boxShadow: isDark ? '0 20px 60px rgba(0,0,0,0.5)' : '0 8px 40px rgba(76,175,80,0.1)' }}>
-          {status === 'ok' ? (
-            <div style={{ textAlign: 'center', padding: '32px 0' }}>
-              <div style={{ width: 56, height: 56, borderRadius: '50%', background: isDark ? 'rgba(76,175,80,0.15)' : '#E8F5E9', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
-                <svg width="28" height="28" fill="none" stroke="#4CAF50" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7"/>
-                </svg>
-              </div>
-              <p style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 20, fontWeight: 700, color: '#4CAF50', marginBottom: 8 }}>Žádost přijata!</p>
-              <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, color: sub, lineHeight: 1.6 }}>
-                Ozveme se vám do 24 hodin s přihlašovacími údaji a průvodcem onboardingem.<br/>Jsme moc rádi, že s námi jdete od začátku.
-              </p>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit}>
-              <p style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 16, fontWeight: 600, color: heading, marginBottom: 24 }}>Požádat o beta přístup</p>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, marginBottom: 14 }}>
-                <div>
-                  <label style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 500, color: sub, marginBottom: 6 }}>Jméno a příjmení *</label>
-                  <input required type="text" placeholder="Jan Novák" value={form.jmeno}
-                    onChange={e => setForm(f => ({ ...f, jmeno: e.target.value }))} style={inputStyle}/>
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 500, color: sub, marginBottom: 6 }}>Email *</label>
-                  <input required type="email" placeholder="jan@vasefirma.cz" value={form.email}
-                    onChange={e => setForm(f => ({ ...f, email: e.target.value }))} style={inputStyle}/>
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 500, color: sub, marginBottom: 6 }}>Název firmy</label>
-                  <input type="text" placeholder="HVAC s.r.o." value={form.firma}
-                    onChange={e => setForm(f => ({ ...f, firma: e.target.value }))} style={inputStyle}/>
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 500, color: sub, marginBottom: 6 }}>Telefon</label>
-                  <input type="tel" placeholder="+420 777 000 000" value={form.telefon}
-                    onChange={e => setForm(f => ({ ...f, telefon: e.target.value }))} style={inputStyle}/>
-                </div>
-              </div>
-              {status === 'err' && <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: '#ef4444', marginBottom: 12 }}>Chyba při odesílání. Zkuste to prosím znovu.</p>}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-                <button type="submit" disabled={status === 'sending'}
-                  style={{ padding: '13px 32px', borderRadius: 12, background: '#4CAF50', color: 'white', fontFamily: 'Inter, sans-serif', fontSize: 15, fontWeight: 600, border: 'none', cursor: 'pointer', opacity: status === 'sending' ? 0.7 : 1, boxShadow: '0 4px 16px rgba(76,175,80,0.35)' }}>
-                  {status === 'sending' ? 'Odesílám…' : 'Chci být tester →'}
-                </button>
-                <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: isDark ? '#4A6B4A' : '#6B8F6B' }}>
-                  Žádná platební karta · Ozveme se do 24 hodin
-                </p>
-              </div>
-            </form>
-          )}
-        </div>
-      </div>
-    </section>
-  )
-}
-
 // ─── Dáša Section ─────────────────────────────────────────────────────────────
 
 type ChatMsg =
@@ -419,9 +598,9 @@ interface OpButton {
 }
 
 const OP_BUTTONS: OpButton[] = [
-  { id: 'OP-26-118', label: 'OP-26-118 · Martin Dvořák · Klimatizace · 98\u00a0400\u00a0Kč' },
-  { id: 'OP-26-115', label: 'OP-26-115 · Jana Horáková · Klimatizace · 134\u00a0200\u00a0Kč' },
-  { id: 'OP-26-112', label: 'OP-26-112 · Tomáš Beneš · Klimatizace · 87\u00a0600\u00a0Kč' },
+  { id: 'OP-26-118', label: 'OP-26-118 · Martin Dvořák · Klimatizace · 98 400 Kč' },
+  { id: 'OP-26-115', label: 'OP-26-115 · Jana Horáková · Klimatizace · 134 200 Kč' },
+  { id: 'OP-26-112', label: 'OP-26-112 · Tomáš Beneš · Klimatizace · 87 600 Kč' },
 ]
 
 function renderDasaText(text: string) {
@@ -519,7 +698,7 @@ function DasaChat({ chatBg }: { chatBg: string }) {
     t(3000, () => addMsg({
       id: 5,
       role: 'dasa',
-      text: 'Díky za upřesnění! 🌿\n\nVytvořila jsem klienta: **Jan Novák** s kategorií Klimatizace\nVložila nabídku zkopírovanou z OP-26-115 od Jany Horákové\n\nNabídka obsahuje:\n- Mitsubishi MSZ-AP35VG × 2 ks — 69\u00a0400\u00a0Kč\n- Montážní práce — 18\u00a0000\u00a0Kč\n- Spojovací materiál a potrubí 40m — 12\u00a0800\u00a0Kč\n- Uvedení do provozu — 4\u00a0000\u00a0Kč\n\nCelkem bez DPH: **104\u00a0200\u00a0Kč**\n\nMáš ji připravenou k revizi. Dej mi vědět jestli mám něco změnit.',
+      text: 'Díky za upřesnění! 🌿\n\nVytvořila jsem klienta: **Jan Novák** s kategorií Klimatizace\nVložila nabídku zkopírovanou z OP-26-115 od Jany Horákové\n\nNabídka obsahuje:\n- Mitsubishi MSZ-AP35VG × 2 ks — 69 400 Kč\n- Montážní práce — 18 000 Kč\n- Spojovací materiál a potrubí 40m — 12 800 Kč\n- Uvedení do provozu — 4 000 Kč\n\nCelkem bez DPH: **104 200 Kč**\n\nMáš ji připravenou k revizi. Dej mi vědět jestli mám něco změnit.',
     }))
     t(4200, () => setPhase(4))
     t(5200, () => addMsg({ id: 6, role: 'user', text: 'Ano, bude tam méně potrubí. Dej tam jen 25 metrů.' }))
@@ -528,7 +707,7 @@ function DasaChat({ chatBg }: { chatBg: string }) {
       addMsg({
         id: 7,
         role: 'dasa',
-        text: 'Upravila jsem položku:\nSpojovací materiál a potrubí ~~40m~~ → **25m** — 8\u00a0000\u00a0Kč (-4\u00a0800\u00a0Kč)\n\nCelkem bez DPH: **99\u00a0400\u00a0Kč** ✓\n\nNabídka je připravená k náhledu. Mám ji rovnou odeslat klientovi?',
+        text: 'Upravila jsem položku:\nSpojovací materiál a potrubí ~~40m~~ → **25m** — 8 000 Kč (-4 800 Kč)\n\nCelkem bez DPH: **99 400 Kč** ✓\n\nNabídka je připravená k náhledu. Mám ji rovnou odeslat klientovi?',
       })
       setPhase(5)
     })
@@ -634,7 +813,7 @@ function DasaSection({ isDark }: { isDark: boolean }) {
   const bg = isDark ? '#0D1A0E' : '#1A2E1B'
   const chatBg = isDark ? '#0A120A' : '#111E12'
   return (
-    <section style={{ position: 'relative', overflow: 'hidden', padding: '96px 0', background: bg }}>
+    <section id="dasa" aria-labelledby="dasa-heading" style={{ position: 'relative', overflow: 'hidden', padding: '96px 0', background: bg }}>
       <div style={{ position: 'absolute', right: -20, bottom: 0, pointerEvents: 'none', opacity: isDark ? 0.08 : 0.06 }}>
         <TreeSvg color="#81C784" />
       </div>
@@ -643,15 +822,17 @@ function DasaSection({ isDark }: { isDark: boolean }) {
           {/* Left */}
           <div>
             <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 600, padding: '6px 12px', borderRadius: 999, background: 'rgba(76,175,80,0.15)', color: '#81C784', display: 'inline-block', marginBottom: 20 }}>
-              ✦ Umělá inteligence
+              ✦ Doplňková pomoc
             </span>
-            <h2 style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 'clamp(26px,3.5vw,38px)', fontWeight: 700, color: '#E8F5E9', lineHeight: 1.2, marginBottom: 28, letterSpacing: '-0.02em' }}>
+            <h2 id="dasa-heading" style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 'clamp(26px,3.5vw,38px)', fontWeight: 700, color: '#E8F5E9', lineHeight: 1.2, marginBottom: 20, letterSpacing: '-0.02em' }}>
               Dáša — AI asistentka{' '}
-              <span style={{ color: '#4CAF50' }}>která zná</span>{' '}
-              váš obor
+              <span style={{ color: '#4CAF50' }}>u konkrétní práce</span>
             </h2>
+            <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, lineHeight: 1.7, color: '#A5C8A5', marginBottom: 24 }}>
+              Pracovní postup zakázky a mobilní aplikace pro techniky zůstávají jádrem Felucie. Dáša je pomocník navíc — pomáhá s konkrétní prací u zakázky.
+            </p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {['Navrhuje text nabídek z technické specifikace', 'Automaticky shrne stav zakázky a doporučí kroky', 'Odpoví na HVAC otázky s kontextem vašich dat', 'Připraví zprávu pro klienta jedním klikem'].map((item, i) => (
+              {['Navrhuje text nabídek z technické specifikace', 'Automaticky shrne stav zakázky a doporučí kroky', 'Odpoví na dotazy s kontextem vašich dat', 'Připraví zprávu pro klienta jedním klikem'].map((item, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
                   <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'rgba(76,175,80,0.2)', border: '1px solid rgba(76,175,80,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: 1 }}>
                     <svg width="14" height="14" fill="none" stroke="#4CAF50" viewBox="0 0 24 24">
@@ -673,139 +854,48 @@ function DasaSection({ isDark }: { isDark: boolean }) {
   )
 }
 
-// ─── Demo Section ─────────────────────────────────────────────────────────────
-
-function DemoSection({ isDark }: { isDark: boolean }) {
-  const bg      = isDark ? '#0A120A' : '#F0F7F0'
-  const border  = isDark ? 'rgba(76,175,80,0.15)' : '#D0E8D0'
-  const heading = isDark ? '#E8F5E9' : '#1A2E1B'
-  const sub     = isDark ? '#6B8F6B' : '#4A6B4A'
-  const cardBg  = isDark ? '#0D1A0E' : '#FFFFFF'
-
-  return (
-    <section id="demo" style={{ padding: '80px 0', background: bg, borderBottom: `1px solid ${border}` }}>
-      <div style={{ maxWidth: 720, margin: '0 auto', padding: '0 24px', textAlign: 'center' }}>
-
-        <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 600, color: '#4CAF50', marginBottom: 12 }}>✦ Demo prostředí</p>
-        <h2 style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 'clamp(26px,4vw,38px)', fontWeight: 700, color: heading, letterSpacing: '-0.02em', marginBottom: 16, lineHeight: 1.2 }}>
-          Chcete vidět Felucii v akci?
-        </h2>
-        <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 15, color: sub, maxWidth: 500, margin: '0 auto 36px', lineHeight: 1.7 }}>
-          Připravíme vám přihlašovací údaje do demo prostředí s reálnými vzorovými daty — stačí nám napsat.
-        </p>
-
-        <div style={{ borderRadius: 20, padding: '32px 36px', background: cardBg, border: `1px solid ${isDark ? 'rgba(76,175,80,0.15)' : '#D8EDD8'}`, boxShadow: isDark ? '0 16px 48px rgba(0,0,0,0.4)' : '0 8px 32px rgba(0,0,0,0.07)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20 }}>
-
-          <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap', justifyContent: 'center' }}>
-            {[
-              { icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2', label: 'Plná aplikace', desc: 'Všechny moduly bez omezení' },
-              { icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z', label: 'Vzorová data', desc: 'Zakázky, klienti, analytiky' },
-              { icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z', label: 'Do 24 hodin', desc: 'Přihlašovací údaje obratem' },
-            ].map((f, i) => (
-              <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, maxWidth: 140 }}>
-                <div style={{ width: 44, height: 44, borderRadius: 12, background: isDark ? 'rgba(76,175,80,0.1)' : '#E8F5E9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <svg width="20" height="20" fill="none" stroke="#4CAF50" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d={f.icon} />
-                  </svg>
-                </div>
-                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 600, color: heading }}>{f.label}</div>
-                <div style={{ fontFamily: 'Inter, sans-serif', fontSize: 11.5, color: sub, textAlign: 'center', lineHeight: 1.4 }}>{f.desc}</div>
-              </div>
-            ))}
-          </div>
-
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, justifyContent: 'center' }}>
-            <a
-              href="mailto:info@felucia.io?subject=Zájem%20o%20demo%20Felucia%20CRM&body=Dobrý%20den%2C%0A%0Arád%20bych%20viděl%20demo%20prostředí%20Felucia%20CRM.%0A%0AJméno%3A%20%0ASpolečnost%3A%20%0ATelefon%3A%20"
-              style={{ fontFamily: 'Inter, sans-serif', fontSize: 15, fontWeight: 600, padding: '14px 32px', borderRadius: 12, background: '#4CAF50', color: 'white', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 8, boxShadow: '0 4px 16px rgba(76,175,80,0.35)' }}
-            >
-              <svg width="16" height="16" fill="none" stroke="white" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-              </svg>
-              info@felucia.io
-            </a>
-            <a
-              href="tel:+420724347986"
-              style={{ fontFamily: 'Inter, sans-serif', fontSize: 15, fontWeight: 600, padding: '14px 32px', borderRadius: 12, border: `1.5px solid ${isDark ? 'rgba(76,175,80,0.4)' : '#A8D5A8'}`, color: isDark ? '#7AAD7A' : '#2E6B2E', background: 'transparent', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 8 }}
-            >
-              <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-              </svg>
-              724 347 986
-            </a>
-          </div>
-        </div>
-      </div>
-    </section>
-  )
-}
-
 // ─── Pricing ──────────────────────────────────────────────────────────────────
 
-const PLANS = [
-  {
-    name: 'STARTER', price: '490',
-    badge: { label: 'STARTER', color: '#A0845C', bg: 'rgba(160,132,92,0.12)' },
-    features: ['1 uživatel', '20 obchodních případů', '100 produktů', '1 šablona nabídky', 'Subdoména firma.felucia.io', 'Email podpora 48 h'],
-    cta: 'Vyzkoušet Starter', ctaStyle: 'outline', featured: false,
-  },
-  {
-    name: 'STANDARD', price: '1 490',
-    badge: { label: 'STANDARD', color: '#4CAF50', bg: 'rgba(76,175,80,0.12)' },
-    features: ['2–5 uživatelů', 'Neomezené zakázky', 'Všechny šablony + editace', 'AI Dáša (500/měsíc)', 'Ceníky a analytiky'],
-    cta: 'Vyzkoušet Standard', ctaStyle: 'filled', featured: false,
-  },
-  {
-    name: 'PROFESSIONAL', price: '2 490',
-    badge: { label: 'PROFESSIONAL', color: '#1565C0', bg: 'rgba(21,101,192,0.12)' },
-    features: ['5–20 uživatelů', 'Vše ze Standard', 'Servisní modul', 'AI Dáša neomezená', 'White-label + API'],
-    cta: 'Vyzkoušet Professional', ctaStyle: 'dark', featured: false,
-  },
-  {
-    name: 'ENTERPRISE', price: null,
-    badge: { label: 'ENTERPRISE', color: '#6A1B9A', bg: 'rgba(106,27,154,0.12)' },
-    features: ['20+ uživatelů', 'Vše z Professional', 'Dedikovaný onboarding', 'SLA garance', 'Vlastní integrace + školení'],
-    cta: 'Kontaktujte nás', ctaHref: 'mailto:info@felucia.io', ctaStyle: 'contact', featured: false,
-  },
-]
-
-type PlanItem = typeof PLANS[number]
+const PLAN_STYLE: Record<PlanId, { color: string; bg: string; cta: 'outline' | 'filled' | 'dark' | 'contact' }> = {
+  STARTER:      { color: '#A0845C', bg: 'rgba(160,132,92,0.12)', cta: 'outline' },
+  STANDARD:     { color: '#4CAF50', bg: 'rgba(76,175,80,0.12)',  cta: 'filled' },
+  PROFESSIONAL: { color: '#1565C0', bg: 'rgba(21,101,192,0.12)', cta: 'dark' },
+  ENTERPRISE:   { color: '#6A1B9A', bg: 'rgba(106,27,154,0.12)', cta: 'contact' },
+}
 
 function Pricing({ isDark }: { isDark: boolean }) {
   return (
-    <section id="ceny" style={{ padding: '96px 0', background: isDark ? '#0A120A' : '#F9FBF9' }}>
+    <section id="ceny" aria-labelledby="ceny-heading" style={{ padding: '96px 0', background: isDark ? '#0A120A' : '#F9FBF9' }}>
       <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 24px' }}>
         <div style={{ textAlign: 'center', marginBottom: 56 }}>
           <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 600, color: '#4CAF50', marginBottom: 12 }}>✦ Ceník</p>
-          <h2 style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 'clamp(28px,4vw,40px)', fontWeight: 700, color: isDark ? '#E8F5E9' : '#1A2E1B', letterSpacing: '-0.02em' }}>
+          <h2 id="ceny-heading" style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 'clamp(28px,4vw,40px)', fontWeight: 700, color: isDark ? '#E8F5E9' : '#1A2E1B', letterSpacing: '-0.02em' }}>
             Jednoduché ceny, bez překvapení
           </h2>
+          <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, color: isDark ? '#6B8F6B' : '#4A6B4A', marginTop: 12 }}>
+            Na ukázce probereme, který plán sedí vašemu počtu lidí a provozu.
+          </p>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 20 }}>
-          {PLANS.map((plan: PlanItem) => (
-            <div key={plan.name} style={{
+          {PLANS.map(plan => {
+            const st = PLAN_STYLE[plan.id]
+            return (
+            <div key={plan.id} style={{
               position: 'relative',
               borderRadius: 20,
               padding: '28px 22px',
               display: 'flex',
               flexDirection: 'column',
-              background: plan.featured ? (isDark ? 'rgba(76,175,80,0.07)' : '#E8F5E9') : (isDark ? '#0D1A0E' : 'white'),
-              border: `${plan.featured ? 2 : 1}px solid ${plan.featured ? '#4CAF50' : (isDark ? 'rgba(76,175,80,0.15)' : '#E0EBE0')}`,
+              background: isDark ? '#0D1A0E' : 'white',
+              border: `1px solid ${isDark ? 'rgba(76,175,80,0.15)' : '#E0EBE0'}`,
             }}>
-              {(plan as { pop?: string }).pop && (
-                <div style={{ position: 'absolute', top: -14, left: '50%', transform: 'translateX(-50%)' }}>
-                  <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, padding: '4px 12px', borderRadius: 999, background: '#4CAF50', color: 'white', whiteSpace: 'nowrap' }}>
-                    {(plan as { pop?: string }).pop}
-                  </span>
-                </div>
-              )}
-              <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999, background: plan.badge.bg, color: plan.badge.color, alignSelf: 'flex-start', marginBottom: 20 }}>
-                {plan.badge.label}
+              <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 999, background: st.bg, color: st.color, alignSelf: 'flex-start', marginBottom: 20 }}>
+                {plan.id}
               </span>
               <div style={{ marginBottom: 24 }}>
                 {plan.price !== null ? (
                   <>
-                    <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 36, fontWeight: 700, color: isDark ? '#E8F5E9' : '#1A2E1B' }}>{plan.price} Kč</span>
+                    <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 36, fontWeight: 700, color: isDark ? '#E8F5E9' : '#1A2E1B' }}>{formatPrice(plan.price)} Kč</span>
                     <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: isDark ? '#4A6B4A' : '#6B8F6B', marginLeft: 4 }}>/měsíc</span>
                   </>
                 ) : (
@@ -815,34 +905,35 @@ function Pricing({ isDark }: { isDark: boolean }) {
               <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 28px', display: 'flex', flexDirection: 'column', gap: 10, flex: 1 }}>
                 {plan.features.map(f => (
                   <li key={f} style={{ display: 'flex', alignItems: 'center', gap: 10, fontFamily: 'Inter, sans-serif', fontSize: 13, color: isDark ? '#A5C8A5' : '#4A6B4A' }}>
-                    <svg width="15" height="15" fill="none" stroke="#4CAF50" viewBox="0 0 24 24">
+                    <svg width="15" height="15" fill="none" stroke="#4CAF50" viewBox="0 0 24 24" aria-hidden="true">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7"/>
                     </svg>
                     {f}
                   </li>
                 ))}
               </ul>
-              {plan.ctaStyle === 'contact' ? (
-                <a href={(plan as { ctaHref?: string }).ctaHref ?? 'mailto:info@felucia.io'} style={{
+              {st.cta === 'contact' ? (
+                <a href={`mailto:${CONTACT.email}`} style={{
                   display: 'block', textAlign: 'center', fontFamily: 'Inter, sans-serif', fontSize: 14, fontWeight: 600, padding: '12px 0', borderRadius: 12, textDecoration: 'none',
                   background: isDark ? 'rgba(106,27,154,0.15)' : 'rgba(106,27,154,0.08)', color: '#AB47BC', border: '1px solid rgba(106,27,154,0.3)',
                 }}>
-                  {plan.cta}
+                  Kontaktujte nás
                 </a>
               ) : (
-                <a href="#beta" style={{
+                <a href="#ukazka" style={{
                   display: 'block', textAlign: 'center', fontFamily: 'Inter, sans-serif', fontSize: 14, fontWeight: 600, padding: '12px 0', borderRadius: 12, textDecoration: 'none',
-                  ...(plan.ctaStyle === 'filled'
+                  ...(st.cta === 'filled'
                     ? { background: '#4CAF50', color: 'white' }
-                    : plan.ctaStyle === 'dark'
+                    : st.cta === 'dark'
                     ? { background: isDark ? '#1A2E1B' : '#1565C0', color: 'white' }
                     : { border: `1px solid ${isDark ? 'rgba(76,175,80,0.3)' : '#C8E6C9'}`, color: isDark ? '#7AAD7A' : '#4A6B4A' }),
                 }}>
-                  Získat beta přístup
+                  Domluvit ukázku
                 </a>
               )}
             </div>
-          ))}
+            )
+          })}
         </div>
       </div>
     </section>
@@ -851,23 +942,14 @@ function Pricing({ isDark }: { isDark: boolean }) {
 
 // ─── FAQ ─────────────────────────────────────────────────────────────────────
 
-const FAQS = [
-  { q: 'Kolik stojí Felucia CRM?', a: 'Plán Starter stojí 490 Kč/měsíc a zahrnuje 1 uživatele, 20 obchodních případů a 100 produktů. Standard (1 490 Kč/měs) přidává AI asistentku Dášu a neomezené OP. Professional (2 490 Kč/měs) odemyká servisní modul a white-label. Enterprise je na individuální nabídku.' },
-  { q: 'Pro jaké firmy je Felucia určena?', a: 'Felucia je navržena specificky pro HVAC profesionály — instalatéry tepelných čerpadel, klimatizací, rekuperací a vzduchotechniky. Funguje stejně dobře pro živnostníky i větší týmy.' },
-  { q: 'Jak funguje AI asistentka Dáša?', a: 'Dáša je jazykový model napojený na vaše firemní data. Zná vaše zakázky, produkty a klienty — a pomáhá s psaním nabídek, shrnutím zakázek a odpovídáním na HVAC otázky.' },
-  { q: 'Mohu importovat data z předchozího systému?', a: 'Ano, podporujeme import produktů z Excel exportu ve formátu XLSX. Import probíhá průvodcem v nastavení — celý proces trvá méně než 5 minut.' },
-  { q: 'Jak funguje subdoména?', a: 'Každá firma dostane vlastní adresu, například vasefirma.felucia.io. Přístup je možný z počítače i mobilu — Felucia je plně responzivní a funguje jako PWA aplikace.' },
-  { q: 'Co je plán Professional?', a: 'Professional (2 490 Kč/měs) odemyká servisní modul — evidenci nainstalovaných zařízení, záruky, servisní kontrakty a plánování návštěv. Součástí je také white-label, API přístup a neomezená AI Dáša. Ideální pro firmy poskytující záruční i pozáruční servis.' },
-]
-
 function FAQ({ isDark }: { isDark: boolean }) {
   const [open, setOpen] = useState<number | null>(null)
   return (
-    <section id="faq" style={{ padding: '96px 0', background: isDark ? '#0D1A0E' : '#F4FAF4', borderTop: `1px solid ${isDark ? 'rgba(76,175,80,0.1)' : '#E8F5E9'}` }}>
+    <section id="faq" aria-labelledby="faq-heading" style={{ padding: '96px 0', background: isDark ? '#0D1A0E' : '#F4FAF4', borderTop: `1px solid ${isDark ? 'rgba(76,175,80,0.1)' : '#E8F5E9'}` }}>
       <div style={{ maxWidth: 768, margin: '0 auto', padding: '0 24px' }}>
         <div style={{ textAlign: 'center', marginBottom: 48 }}>
           <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 600, color: '#4CAF50', marginBottom: 12 }}>✦ FAQ</p>
-          <h2 style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 'clamp(28px,4vw,40px)', fontWeight: 700, color: isDark ? '#E8F5E9' : '#1A2E1B', letterSpacing: '-0.02em' }}>
+          <h2 id="faq-heading" style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 'clamp(28px,4vw,40px)', fontWeight: 700, color: isDark ? '#E8F5E9' : '#1A2E1B', letterSpacing: '-0.02em' }}>
             Časté otázky
           </h2>
         </div>
@@ -875,6 +957,7 @@ function FAQ({ isDark }: { isDark: boolean }) {
           {FAQS.map((faq, i) => (
             <div key={i} style={{ borderRadius: 14, overflow: 'hidden', background: isDark ? '#0A120A' : 'white', border: `0.5px solid ${isDark ? 'rgba(76,175,80,0.15)' : '#E0EBE0'}` }}>
               <button onClick={() => setOpen(open === i ? null : i)}
+                aria-expanded={open === i} aria-controls={`faq-a-${i}`}
                 style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', gap: 12 }}>
                 <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 14, fontWeight: 600, color: isDark ? '#C8E6C9' : '#1A2E1B', flex: 1 }}>
                   {faq.q}
@@ -884,12 +967,148 @@ function FAQ({ isDark }: { isDark: boolean }) {
                 </span>
               </button>
               {open === i && (
-                <div style={{ padding: '0 20px 16px' }}>
+                <div id={`faq-a-${i}`} style={{ padding: '0 20px 16px' }}>
                   <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, lineHeight: 1.7, color: isDark ? '#6B8F6B' : '#4A6B4A' }}>{faq.a}</p>
                 </div>
               )}
             </div>
           ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// ─── CTA / Osobní ukázka ────────────────────────────────────────────────────
+
+const NEXT_STEPS = [
+  { n: '1', text: 'Krátká ukázka a rozhovor o vašem provozu.' },
+  { n: '2', text: 'Dohoda na rozsahu a podmínkách zavedení.' },
+  { n: '3', text: 'Začátek na konkrétní zakázce s vaším týmem.' },
+]
+
+function CtaSection({ isDark }: { isDark: boolean }) {
+  const [form, setForm] = useState({ jmeno: '', email: '', firma: '', telefon: '' })
+  const [status, setStatus] = useState<'idle' | 'sending' | 'ok' | 'err'>('idle')
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setStatus('sending')
+    try {
+      const zprava = `ŽÁDOST O UKÁZKU FELUCIA\n\nFirma: ${form.firma}\nTelefon: ${form.telefon || 'neuvedeno'}\n\nMá zájem o 20minutovou ukázku Felucia a probrat zavedení pro svou firmu.`
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ jmeno: form.jmeno, email: form.email, zprava }),
+      })
+      setStatus(res.ok ? 'ok' : 'err')
+    } catch { setStatus('err') }
+  }
+
+  const bg = isDark ? '#0A120A' : '#F4FAF4'
+  const cardBg = isDark ? '#0D1A0E' : 'white'
+  const heading = isDark ? '#E8F5E9' : '#1A2E1B'
+  const sub = isDark ? '#7AAD7A' : '#4A6B4A'
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '11px 14px', borderRadius: 10,
+    border: `1px solid ${isDark ? 'rgba(76,175,80,0.2)' : '#C8E6C9'}`,
+    background: isDark ? 'rgba(76,175,80,0.04)' : '#F4FAF4',
+    color: isDark ? '#E8F5E9' : '#1A2E1B',
+    fontFamily: 'Inter, sans-serif', fontSize: 14, outline: 'none', boxSizing: 'border-box',
+  }
+
+  return (
+    <section id="ukazka" aria-labelledby="ukazka-heading" style={{ padding: '96px 0', background: bg, borderTop: `1px solid ${isDark ? 'rgba(76,175,80,0.1)' : '#E8F5E9'}` }}>
+      <div style={{ maxWidth: 860, margin: '0 auto', padding: '0 24px' }}>
+        {/* Header */}
+        <div style={{ textAlign: 'center', marginBottom: 40 }}>
+          <span style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 600, padding: '6px 14px', borderRadius: 999, background: isDark ? 'rgba(76,175,80,0.12)' : '#E8F5E9', border: `1px solid ${isDark ? 'rgba(76,175,80,0.3)' : '#A5D6A7'}`, color: '#4CAF50', display: 'inline-block', marginBottom: 20 }}>
+            ✦ První firmy zavádíme osobně a postupně
+          </span>
+          <h2 id="ukazka-heading" style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 'clamp(28px,4vw,44px)', fontWeight: 700, color: heading, letterSpacing: '-0.02em', lineHeight: 1.2, marginBottom: 16 }}>
+            Podívejte se, jak by Felucia<br/>
+            <span style={{ color: '#4CAF50' }}>fungovala ve vaší firmě.</span>
+          </h2>
+          <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 16, color: sub, maxWidth: 540, margin: '0 auto', lineHeight: 1.7 }}>
+            Ukážeme vám průchod od nabídky přes práci technika po servis a probereme, jestli Felucia sedí vašemu provozu.
+          </p>
+        </div>
+
+        {/* Next steps */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 48 }}>
+          {NEXT_STEPS.map(s => (
+            <div key={s.n} style={{ borderRadius: 16, padding: '20px 22px', background: cardBg, border: `1px solid ${isDark ? 'rgba(76,175,80,0.12)' : '#E0EBE0'}`, display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+              <span style={{ width: 30, height: 30, borderRadius: 9, background: isDark ? 'rgba(76,175,80,0.15)' : '#E8F5E9', color: '#4CAF50', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Space Grotesk', sans-serif", fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
+                {s.n}
+              </span>
+              <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 13.5, color: heading, lineHeight: 1.5, paddingTop: 4 }}>{s.text}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Form */}
+        <div style={{ borderRadius: 20, padding: '36px', background: cardBg, border: `1.5px solid ${isDark ? 'rgba(76,175,80,0.25)' : '#A5D6A7'}`, boxShadow: isDark ? '0 20px 60px rgba(0,0,0,0.5)' : '0 8px 40px rgba(76,175,80,0.1)' }}>
+          {status === 'ok' ? (
+            <div style={{ textAlign: 'center', padding: '32px 0' }}>
+              <div style={{ width: 56, height: 56, borderRadius: '50%', background: isDark ? 'rgba(76,175,80,0.15)' : '#E8F5E9', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+                <svg width="28" height="28" fill="none" stroke="#4CAF50" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7"/>
+                </svg>
+              </div>
+              <p style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 20, fontWeight: 700, color: '#4CAF50', marginBottom: 8 }}>Žádost přijata!</p>
+              <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, color: sub, lineHeight: 1.6 }}>
+                Díky. Ozveme se vám a domluvíme si termín 20minutové ukázky.
+              </p>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit}>
+              <p style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 16, fontWeight: 600, color: heading, marginBottom: 24 }}>Domluvit 20minutovou ukázku</p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14, marginBottom: 14 }}>
+                <div>
+                  <label style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 500, color: sub, marginBottom: 6 }}>Jméno a příjmení *</label>
+                  <input required type="text" placeholder="Jan Novák" value={form.jmeno}
+                    onChange={e => setForm(f => ({ ...f, jmeno: e.target.value }))} style={inputStyle}/>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 500, color: sub, marginBottom: 6 }}>Název firmy *</label>
+                  <input required type="text" placeholder="Vaše s.r.o." value={form.firma}
+                    onChange={e => setForm(f => ({ ...f, firma: e.target.value }))} style={inputStyle}/>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 500, color: sub, marginBottom: 6 }}>Email *</label>
+                  <input required type="email" placeholder="jan@vasefirma.cz" value={form.email}
+                    onChange={e => setForm(f => ({ ...f, email: e.target.value }))} style={inputStyle}/>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 500, color: sub, marginBottom: 6 }}>Telefon (nepovinně)</label>
+                  <input type="tel" placeholder="+420 777 000 000" value={form.telefon}
+                    onChange={e => setForm(f => ({ ...f, telefon: e.target.value }))} style={inputStyle}/>
+                </div>
+              </div>
+              {status === 'err' && <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: '#ef4444', marginBottom: 12 }}>Chyba při odesílání. Zkuste to prosím znovu, nebo nám napište na info@felucia.io.</p>}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+                <button type="submit" disabled={status === 'sending'}
+                  style={{ padding: '13px 32px', borderRadius: 12, background: '#4CAF50', color: 'white', fontFamily: 'Inter, sans-serif', fontSize: 15, fontWeight: 600, border: 'none', cursor: 'pointer', opacity: status === 'sending' ? 0.7 : 1, boxShadow: '0 4px 16px rgba(76,175,80,0.35)' }}>
+                  {status === 'sending' ? 'Odesílám…' : 'Domluvit 20minutovou ukázku →'}
+                </button>
+                <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: isDark ? '#4A6B4A' : '#6B8F6B' }}>
+                  Bez závazků · Osobní rozhovor o vašem provozu
+                </p>
+              </div>
+            </form>
+          )}
+        </div>
+
+        {/* Direct contact fallback */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20, justifyContent: 'center', marginTop: 28 }}>
+          <a href={`mailto:${CONTACT.email}`} style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 500, color: sub, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+            {CONTACT.email}
+          </a>
+          <a href={`tel:${CONTACT.phone}`} style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 500, color: sub, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <svg width="15" height="15" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
+            {CONTACT.phoneDisplay}
+          </a>
         </div>
       </div>
     </section>
@@ -910,12 +1129,12 @@ function Footer({ isDark }: { isDark: boolean }) {
               <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 18, fontWeight: 700, color: '#E8F5E9' }}>felucia</span>
             </div>
             <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, lineHeight: 1.6, color: '#4A6B4A' }}>
-              Built for the field.<br/>Made to grow.
+              Felucia je software pro řízení montážních a servisních firem — klimatizace, tepelná čerpadla, rekuperace. Od nabídky přes práci technika po servis.
             </p>
           </div>
           {[
-            { title: 'Produkt', links: [['#funkce','Funkce'],['#ceny','Ceny'],['#faq','FAQ']] },
-            { title: 'Účet', links: [['#beta','Beta přístup'],['/auth/signin','Přihlásit se']] },
+            { title: 'Produkt', links: [['#jak-to-funguje','Jak to funguje'],['#funkce','Funkce'],['#ceny','Ceny'],['#faq','FAQ']] },
+            { title: 'Účet', links: [['#ukazka','Domluvit ukázku'],['/auth/signin','Přihlásit se']] },
             { title: 'Společnost', links: [['/terms','Podmínky'],['/privacy','Soukromí'],['/support','Podpora']] },
           ].map(col => (
             <div key={col.title}>
@@ -933,7 +1152,7 @@ function Footer({ isDark }: { isDark: boolean }) {
           ))}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, paddingTop: 24, borderTop: '1px solid rgba(76,175,80,0.1)' }}>
-          <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: '#4A6B4A' }}>© 2026 Felucia · NANTO s.r.o.</p>
+          <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: '#4A6B4A' }}>© 2026 Felucia · Provozuje {OPERATOR.name}, IČO {OPERATOR.ico}, {OPERATOR.city}</p>
           <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: '#4A6B4A' }}>Vše roste. ✦</p>
         </div>
       </div>
@@ -957,14 +1176,18 @@ export default function FeluciaLanding() {
   return (
     <div style={{ background: isDark ? '#0A120A' : '#F9FBF9', minHeight: '100vh', overflowX: 'hidden' }}>
       <Navbar isDark={isDark} />
+      <main>
       <Hero isDark={isDark} />
       <Marquee isDark={isDark} />
-      <EarlyAccess isDark={isDark} />
-      <DemoSection isDark={isDark} />
+      <WorkflowSteps isDark={isDark} />
+      <FeluciaTechSection isDark={isDark} />
+      <ServisSection isDark={isDark} />
       <Features isDark={isDark} />
       <DasaSection isDark={isDark} />
       <Pricing isDark={isDark} />
       <FAQ isDark={isDark} />
+      <CtaSection isDark={isDark} />
+      </main>
       <Footer isDark={isDark} />
     </div>
   )
