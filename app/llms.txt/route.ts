@@ -36,7 +36,7 @@ Felucia (${SITE_URL}) je český software pro montážní a servisní firmy — 
 - Majitel/vedoucí koordinuje obchod, zakázky a několik techniků
 - Primární cesta k produktu: 20minutová osobní ukázka, první firmy se zavádějí osobně a postupně
 
-## Jak Felucia funguje (jedna zakázka od poptávky po vyúčtování)
+## Jak Felucia funguje (jedna zakázka od poptávky po servis)
 
 ${WORKFLOW_PEREX}
 

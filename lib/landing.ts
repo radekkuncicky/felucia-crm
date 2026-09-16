@@ -81,7 +81,7 @@ export function formatAccountingSoftware(list: string[] = ACCOUNTING_SOFTWARE): 
 }
 
 export interface WorkflowStep {
-  /** Pořadí v celém procesu (1-8), ne v rámci fáze. */
+  /** Pořadí v celém procesu (1-9), ne v rámci fáze. */
   n: number
   title: string
   desc: string
@@ -196,12 +196,28 @@ export const WORKFLOW_PHASES: WorkflowPhase[] = [
       },
     ],
   },
+  {
+    id: 'servis',
+    name: 'Servis',
+    steps: [
+      {
+        n: 9,
+        title: 'Namontovaná zařízení přejdou do servisu',
+        desc: 'Zařízení, záruky a servisní kontrakty zůstávají navázané na zákazníka i původní zakázku.',
+        bullets: [
+          'Evidence zařízení se záruční lhůtou a historií zásahů',
+          'Servisní kontrakty a plánované návštěvy v kalendáři',
+          'Servisní zásah technik zapíše v telefonu: závady, práce, podpis',
+        ],
+      },
+    ],
+  },
 ]
 
 /** Plochý seznam všech kroků - pro llms.txt a strukturovaná data. */
 export const WORKFLOW_STEPS: WorkflowStep[] = WORKFLOW_PHASES.flatMap(p => p.steps)
 
-export const WORKFLOW_HEADING = 'Jedna zakázka od poptávky po vyúčtování'
+export const WORKFLOW_HEADING = 'Jedna zakázka od poptávky po servis'
 export const WORKFLOW_PEREX =
   'Celý proces na jednom místě. Obchod, sklad, technici i účetní pracují se stejnými daty, nic se nepřepisuje a nic se neztratí mezi e-mailem, Excelem a papírem.'
 

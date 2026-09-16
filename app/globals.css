@@ -350,3 +350,11 @@ body {
 .scrollbar-none::-webkit-scrollbar {
   display: none;
 }
+
+/* Landing (#jak-to-funguje): krok = text + snímek, na desktopu vedle sebe se střídáním stran */
+.fl-step { display: grid; grid-template-columns: 1fr; gap: 24px; align-items: center; }
+@media (min-width: 900px) {
+  .fl-step { grid-template-columns: 4fr 8fr; gap: 48px; }
+  .fl-step-flip .fl-step-text { order: 2; }
+  .fl-step-flip .fl-step-shot { order: 1; }
+}

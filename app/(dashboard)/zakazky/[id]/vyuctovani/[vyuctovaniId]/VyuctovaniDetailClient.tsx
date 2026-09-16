@@ -466,7 +466,7 @@ export default function VyuctovaniDetailClient({ vyuctovani: initial, canApprove
                   return (
                     <tr key={p.id} className="hover:bg-gray-50 dark:hover:bg-slate-700/30">
                       <td className="px-4 py-3 text-gray-400 text-xs">{idx + 1}</td>
-                      <td className="px-4 py-3 text-gray-900 dark:text-white font-medium">
+                      <td className="px-4 py-3 text-gray-900 dark:text-white font-medium min-w-[300px]">
                         {canEdit ? (
                           <input
                             type="text"

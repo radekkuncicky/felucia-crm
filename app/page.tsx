@@ -84,7 +84,7 @@ function homeJsonLd() {
         })),
       },
       {
-        // Průchod zakázkou ze sekce #jak-to-funguje - 8 kroků ve 3 fázích.
+        // Průchod zakázkou ze sekce #jak-to-funguje - 9 kroků ve 4 fázích.
         // Zdroj textů: WORKFLOW_PHASES v lib/landing.ts.
         '@type': 'HowTo',
         '@id': `${SITE_URL}/#jak-to-funguje`,
