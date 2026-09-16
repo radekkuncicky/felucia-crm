@@ -1,7 +1,8 @@
 import Link from 'next/link'
 
 export const metadata = {
-  title: 'Všeobecné obchodní podmínky | Felucia',
+  title: 'Všeobecné obchodní podmínky',
+  alternates: { canonical: '/terms' },
   description: 'Všeobecné obchodní podmínky služby Felucia CRM provozované společností EFIKU SOLUTIONS s.r.o.',
 }
 

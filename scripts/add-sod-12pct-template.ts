@@ -69,8 +69,11 @@ const HTML_SOD_12PCT = `<!DOCTYPE html>
   }
   .party-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.8px; color: #FFC93C; margin-bottom: 8px; }
   .party-name { font-size: 15px; font-weight: 700; color: #15151F; margin-bottom: 8px; letter-spacing: -0.3px; }
-  .party-row { font-size: 11.5px; color: #3D3D4A; line-height: 1.9; display: flex; gap: 6px; }
-  .party-row .k { color: #999AA8; flex-shrink: 0; min-width: 46px; }
+  /* Hanging indent místo flexu — hodnota teče jako běžný text (dlouhý zástupce
+     se zalomí pod sebe) a telefon se nikdy nerozpadne na dva řádky. */
+  .party-row { font-size: 11.5px; color: #3D3D4A; line-height: 1.9; padding-left: 72px; text-indent: -72px; }
+  .party-row .k { display: inline-block; min-width: 66px; margin-right: 6px; color: #999AA8; text-indent: 0; }
+  .party-row .mono { white-space: nowrap; }
   .party-note { font-size: 10px; color: #999AA8; margin-top: 8px; line-height: 1.6; border-top: 1px solid #F0F0F5; padding-top: 7px; }
   .party-note span { color: #FFC93C; font-weight: 700; }
   .ref { font-size: 9px; font-weight: 700; color: #FFC93C; vertical-align: super; line-height: 0; margin-left: 1px; }

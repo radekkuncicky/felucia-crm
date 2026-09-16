@@ -1,7 +1,8 @@
 import Link from 'next/link'
 
 export const metadata = {
-  title: 'Zásady ochrany osobních údajů | Felucia',
+  title: 'Zásady ochrany osobních údajů',
+  alternates: { canonical: '/privacy' },
   description: 'Zásady ochrany osobních údajů služby Felucia CRM provozované společností EFIKU SOLUTIONS s.r.o.',
 }
 

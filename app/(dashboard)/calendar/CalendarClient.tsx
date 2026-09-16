@@ -29,6 +29,7 @@ type ViewMode = 'month' | 'week' | 'day' | 'kapacita'
 const MONTHS_CS = ['Leden', 'Únor', 'Březen', 'Duben', 'Květen', 'Červen', 'Červenec', 'Srpen', 'Září', 'Říjen', 'Listopad', 'Prosinec']
 const DAYS_CS = ['Po', 'Út', 'St', 'Čt', 'Pá', 'So', 'Ne']
 const DAYS_FULL_CS = ['Pondělí', 'Úterý', 'Středa', 'Čtvrtek', 'Pátek', 'Sobota', 'Neděle']
+const MONTH_MAX_CHIPS = 3
 
 const KIND_STYLE: Record<CalendarEvent['kind'], { dot: string; bg: string; text: string; label: string }> = {
   HOVOR:    { dot: 'bg-blue-500',   bg: 'bg-blue-100 dark:bg-blue-900/40',   text: 'text-blue-700 dark:text-blue-300',   label: 'Hovor' },
@@ -141,10 +142,10 @@ function fmtRange(ev: CalendarEvent): string {
 }
 
 const RANGE_SHAPE: Record<RangePos, string> = {
-  single: 'rounded',
-  start:  'rounded-l rounded-r-none -mr-1.5',
-  middle: 'rounded-none -mx-1.5',
-  end:    'rounded-r rounded-l-none -ml-1.5',
+  single: 'rounded-md',
+  start:  'rounded-l-md rounded-r-none -mr-2',
+  middle: 'rounded-none -mx-2',
+  end:    'rounded-r-md rounded-l-none -ml-2',
 }
 
 function EventChip({ ev, day, compact = false }: { ev: CalendarEvent; day?: string; compact?: boolean }) {
@@ -157,15 +158,15 @@ function EventChip({ ev, day, compact = false }: { ev: CalendarEvent; day?: stri
       href={ev.href}
       onClick={e => e.stopPropagation()}
       title={title}
-      className={`flex items-center gap-1 px-1.5 py-0.5 text-[10px] leading-tight hover:opacity-80 transition-opacity ${
+      className={`flex items-center gap-1.5 px-2 py-1 text-xs leading-snug hover:opacity-80 transition-opacity ${
         ev.zruseno ? 'bg-gray-100 dark:bg-slate-700/50 text-gray-400 dark:text-slate-500 line-through' : `${s.bg} ${s.text}`
       } ${ev.done ? 'opacity-60' : ''} ${RANGE_SHAPE[pos]}`}
     >
-      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${ev.zruseno ? 'bg-gray-400' : s.dot}`} />
+      <span className={`w-2 h-2 rounded-full flex-shrink-0 ${ev.zruseno ? 'bg-gray-400' : s.dot}`} />
       {statusIcon && <span className="flex-shrink-0 font-bold">{statusIcon}</span>}
-      {ev.time && !compact && <span className="flex-shrink-0 opacity-75">{ev.time}</span>}
+      {ev.time && !compact && <span className="flex-shrink-0 font-semibold opacity-80">{ev.time}</span>}
       {(pos === 'middle' || pos === 'end') && <span className="flex-shrink-0 opacity-60">…</span>}
-      <span className="truncate">{ev.title}</span>
+      <span className="truncate font-medium">{ev.title}</span>
       {pos === 'start' && <span className="flex-shrink-0 opacity-60">…</span>}
     </Link>
   )
@@ -178,23 +179,23 @@ function EventCard({ ev }: { ev: CalendarEvent }) {
   return (
     <Link
       href={ev.href}
-      className={`flex items-start gap-3 p-3 rounded-lg ${isZruseno ? 'bg-gray-100 dark:bg-slate-700/30' : s.bg} ${isDone ? 'opacity-70' : ''} hover:opacity-80 transition-opacity`}
+      className={`flex items-start gap-3 p-4 rounded-lg ${isZruseno ? 'bg-gray-100 dark:bg-slate-700/30' : s.bg} ${isDone ? 'opacity-70' : ''} hover:opacity-80 transition-opacity`}
     >
-      <span className={`w-2 h-2 rounded-full flex-shrink-0 mt-1.5 ${isZruseno ? 'bg-gray-400' : s.dot}`} />
+      <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 mt-2 ${isZruseno ? 'bg-gray-400' : s.dot}`} />
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <p className={`text-sm font-medium ${isZruseno ? 'text-gray-400 dark:text-slate-500 line-through' : s.text}`}>{ev.title}</p>
-          {isDone && <span className="text-xs font-semibold text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30 px-1.5 py-0.5 rounded">✓ Hotovo</span>}
-          {isZruseno && <span className="text-xs font-semibold text-gray-500 dark:text-slate-400 bg-gray-100 dark:bg-slate-700 px-1.5 py-0.5 rounded">✕ Zrušeno</span>}
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className={`text-base font-semibold ${isZruseno ? 'text-gray-400 dark:text-slate-500 line-through' : s.text}`}>{ev.title}</p>
+          {isDone && <span className="text-xs font-semibold text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30 px-2 py-0.5 rounded">✓ Hotovo</span>}
+          {isZruseno && <span className="text-xs font-semibold text-gray-500 dark:text-slate-400 bg-gray-100 dark:bg-slate-700 px-2 py-0.5 rounded">✕ Zrušeno</span>}
         </div>
-        {ev.subtitle && <p className="text-xs text-gray-500 dark:text-slate-400 truncate">{ev.subtitle}</p>}
-        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-          <span className={`text-xs font-medium ${isZruseno ? 'text-gray-400' : s.text} opacity-70`}>{s.label}</span>
+        {ev.subtitle && <p className="text-sm text-gray-600 dark:text-slate-400 truncate mt-0.5">{ev.subtitle}</p>}
+        <div className="flex items-center gap-2.5 mt-1 flex-wrap">
+          <span className={`text-sm font-medium ${isZruseno ? 'text-gray-400' : s.text} opacity-70`}>{s.label}</span>
           {isRange(ev) && (
-            <span className="text-xs text-gray-500 dark:text-slate-400">{fmtRange(ev)}</span>
+            <span className="text-sm text-gray-500 dark:text-slate-400">{fmtRange(ev)}</span>
           )}
           {ev.time && (
-            <span className="text-xs text-gray-500 dark:text-slate-400">
+            <span className="text-sm text-gray-500 dark:text-slate-400">
               {ev.time}{ev.trvaniMin ? ` · ${fmtTrvani(ev.trvaniMin)}` : ''}
             </span>
           )}
@@ -222,14 +223,14 @@ function MonthView({ year, month, events, selectedDate, onSelectDate, todayStr }
       {/* Day headers */}
       <div className="grid grid-cols-7 border-b border-gray-100 dark:border-slate-700">
         {DAYS_CS.map((d, i) => (
-          <div key={d} className={`text-center text-xs font-semibold py-2 ${i >= 5 ? 'text-red-400' : 'text-gray-400 dark:text-slate-500'}`}>
+          <div key={d} className={`text-center text-sm font-semibold py-2.5 ${i >= 5 ? 'text-red-400' : 'text-gray-500 dark:text-slate-400'}`}>
             {d}
           </div>
         ))}
       </div>
 
       {/* Grid */}
-      <div className="grid grid-cols-7 flex-1" style={{ gridTemplateRows: `repeat(${cells.length / 7}, minmax(80px, 1fr))` }}>
+      <div className="grid grid-cols-7 flex-1" style={{ gridTemplateRows: `repeat(${cells.length / 7}, minmax(124px, 1fr))` }}>
         {cells.map((day, i) => {
           if (!day) return <div key={`empty-${i}`} className="border-b border-r border-gray-50 dark:border-slate-700/50 bg-gray-50/30 dark:bg-slate-800/30" />
           const ds = toDateStr(day)
@@ -238,26 +239,30 @@ function MonthView({ year, month, events, selectedDate, onSelectDate, todayStr }
           const isSelected = ds === selectedDate
           const colIdx = i % 7
           const isWeekend = colIdx === 5 || colIdx === 6
+          const visibleEvents = dayEvents.length > MONTH_MAX_CHIPS ? dayEvents.slice(0, MONTH_MAX_CHIPS - 1) : dayEvents
+          const hiddenCount = dayEvents.length - visibleEvents.length
 
           return (
             <div
               key={ds}
               onClick={() => onSelectDate(ds)}
-              className={`border-b border-r border-gray-100 dark:border-slate-700/50 p-1.5 cursor-pointer transition-colors overflow-hidden ${
+              className={`border-b border-r border-gray-100 dark:border-slate-700/50 p-2 cursor-pointer transition-colors overflow-hidden ${
                 isSelected ? 'bg-green-50 dark:bg-green-950/30' : 'hover:bg-gray-50 dark:hover:bg-slate-700/30'
               }`}
             >
-              <div className="flex justify-end mb-1">
-                <span className={`text-xs font-medium w-6 h-6 flex items-center justify-center rounded-full ${
-                  isToday ? 'bg-[#4CAF50] text-white font-bold' : isWeekend ? 'text-red-400' : 'text-gray-600 dark:text-slate-400'
+              <div className="flex justify-end mb-1.5">
+                <span className={`text-sm font-medium w-8 h-8 flex items-center justify-center rounded-full ${
+                  isToday ? 'bg-[#4CAF50] text-white font-bold' : isWeekend ? 'text-red-400' : 'text-gray-700 dark:text-slate-300'
                 }`}>
                   {day.getDate()}
                 </span>
               </div>
-              <div className="space-y-0.5">
-                {dayEvents.slice(0, 3).map(ev => <EventChip key={ev.id} ev={ev} day={ds} />)}
-                {dayEvents.length > 3 && (
-                  <div className="text-[10px] text-gray-400 dark:text-slate-500 pl-1">+{dayEvents.length - 3} dalších</div>
+              <div className="space-y-1">
+                {visibleEvents.map(ev => <EventChip key={ev.id} ev={ev} day={ds} />)}
+                {hiddenCount > 0 && (
+                  <div className="text-xs font-medium text-gray-500 dark:text-slate-400 hover:text-gray-800 dark:hover:text-slate-200 pl-2 py-0.5">
+                    +{hiddenCount} {hiddenCount < 5 ? 'další' : 'dalších'}
+                  </div>
                 )}
               </div>
             </div>
@@ -281,7 +286,7 @@ function WeekView({ pivot, events, onSelectDate, todayStr }: {
 
   return (
     <div className="flex-1 overflow-auto">
-      <div className="grid grid-cols-7 min-w-[560px]">
+      <div className="grid grid-cols-7 min-w-[700px]">
         {/* Headers */}
         {days.map((d, i) => {
           const ds = toDateStr(d)
@@ -291,12 +296,12 @@ function WeekView({ pivot, events, onSelectDate, todayStr }: {
             <div
               key={ds}
               onClick={() => onSelectDate(ds)}
-              className={`border-b border-r border-gray-100 dark:border-slate-700 p-2 text-center cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700/30 ${isWeekend ? 'bg-gray-50/50 dark:bg-slate-800/50' : ''}`}
+              className={`border-b border-r border-gray-100 dark:border-slate-700 px-2 py-3 text-center cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700/30 ${isWeekend ? 'bg-gray-50/50 dark:bg-slate-800/50' : ''}`}
             >
-              <div className={`text-xs font-semibold mb-0.5 ${isWeekend ? 'text-red-400' : 'text-gray-400 dark:text-slate-500'}`}>
+              <div className={`text-sm font-semibold mb-1 ${isWeekend ? 'text-red-400' : 'text-gray-500 dark:text-slate-400'}`}>
                 {DAYS_CS[i]}
               </div>
-              <div className={`text-sm font-bold w-7 h-7 flex items-center justify-center rounded-full mx-auto ${
+              <div className={`text-base font-bold w-9 h-9 flex items-center justify-center rounded-full mx-auto ${
                 isToday ? 'bg-[#4CAF50] text-white' : isWeekend ? 'text-red-400' : 'text-gray-800 dark:text-slate-200'
               }`}>
                 {d.getDate()}
@@ -314,12 +319,12 @@ function WeekView({ pivot, events, onSelectDate, todayStr }: {
             <div
               key={`events-${ds}`}
               onClick={() => onSelectDate(ds)}
-              className={`border-r border-gray-100 dark:border-slate-700 p-1.5 min-h-[200px] cursor-pointer hover:bg-gray-50/50 dark:hover:bg-slate-700/20 ${isWeekend ? 'bg-gray-50/30 dark:bg-slate-800/30' : ''}`}
+              className={`border-r border-gray-100 dark:border-slate-700 p-2 min-h-[280px] cursor-pointer hover:bg-gray-50/50 dark:hover:bg-slate-700/20 ${isWeekend ? 'bg-gray-50/30 dark:bg-slate-800/30' : ''}`}
             >
-              <div className="space-y-0.5">
+              <div className="space-y-1">
                 {dayEvents.map(ev => <EventChip key={ev.id} ev={ev} day={ds} />)}
                 {dayEvents.length === 0 && (
-                  <p className="text-[10px] text-gray-300 dark:text-slate-600 text-center mt-4">–</p>
+                  <p className="text-xs text-gray-300 dark:text-slate-600 text-center mt-6">–</p>
                 )}
               </div>
             </div>
@@ -342,15 +347,15 @@ function DayView({ date, events }: { date: string; events: CalendarEvent[] }) {
   const dow = weekdayIdx === 0 ? 6 : weekdayIdx - 1
 
   return (
-    <div className="flex-1 overflow-auto p-4">
-      <div className="mb-4">
-        <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase">{DAYS_FULL_CS[dow]}</p>
-        <p className="text-2xl font-bold text-gray-900 dark:text-white">{parseInt(d)}. {parseInt(m)}. {y}</p>
+    <div className="flex-1 overflow-auto p-5">
+      <div className="mb-5">
+        <p className="text-sm font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide">{DAYS_FULL_CS[dow]}</p>
+        <p className="text-3xl font-bold text-gray-900 dark:text-white">{parseInt(d)}. {parseInt(m)}. {y}</p>
       </div>
       {dayEvents.length === 0 ? (
-        <div className="text-center py-12 text-gray-400 dark:text-slate-500 text-sm">Žádné události</div>
+        <div className="text-center py-12 text-gray-400 dark:text-slate-500 text-base">Žádné události</div>
       ) : (
-        <div className="space-y-2 max-w-lg">
+        <div className="space-y-3 max-w-2xl">
           {dayEvents.map(ev => <EventCard key={ev.id} ev={ev} />)}
         </div>
       )}
@@ -405,10 +410,10 @@ function KapacitaView({ pivot, events, todayStr }: {
 
   return (
     <div className="flex-1 overflow-auto">
-      <table className="w-full min-w-[600px] border-collapse text-sm">
+      <table className="w-full min-w-[760px] border-collapse text-sm">
         <thead>
           <tr>
-            <th className="text-left text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase px-3 py-2 bg-gray-50 dark:bg-slate-800/50 border-b border-r border-gray-100 dark:border-slate-700 w-32 sticky left-0 z-10">
+            <th className="text-left text-sm font-semibold text-gray-500 dark:text-slate-400 uppercase px-4 py-3 bg-gray-50 dark:bg-slate-800/50 border-b border-r border-gray-100 dark:border-slate-700 w-44 sticky left-0 z-10">
               Technik
             </th>
             {days.map((d, i) => {
@@ -416,11 +421,11 @@ function KapacitaView({ pivot, events, todayStr }: {
               const isToday = ds === todayStr
               const isWeekend = i >= 5
               return (
-                <th key={ds} className={`text-center px-2 py-2 border-b border-r border-gray-100 dark:border-slate-700 ${isWeekend ? 'bg-gray-50/50 dark:bg-slate-800/50' : 'bg-gray-50 dark:bg-slate-800/50'}`}>
-                  <div className={`text-xs font-semibold mb-0.5 ${isWeekend ? 'text-red-400' : 'text-gray-400 dark:text-slate-500'}`}>
+                <th key={ds} className={`text-center px-2 py-3 border-b border-r border-gray-100 dark:border-slate-700 ${isWeekend ? 'bg-gray-50/50 dark:bg-slate-800/50' : 'bg-gray-50 dark:bg-slate-800/50'}`}>
+                  <div className={`text-sm font-semibold mb-1 ${isWeekend ? 'text-red-400' : 'text-gray-500 dark:text-slate-400'}`}>
                     {DAYS_CS[i]}
                   </div>
-                  <div className={`text-sm font-bold w-7 h-7 flex items-center justify-center rounded-full mx-auto ${
+                  <div className={`text-base font-bold w-9 h-9 flex items-center justify-center rounded-full mx-auto ${
                     isToday ? 'bg-[#4CAF50] text-white' : isWeekend ? 'text-red-400' : 'text-gray-800 dark:text-slate-200'
                   }`}>
                     {d.getDate()}
@@ -433,12 +438,12 @@ function KapacitaView({ pivot, events, todayStr }: {
         <tbody>
           {technici.map(technik => (
             <tr key={technik} className="border-b border-gray-100 dark:border-slate-700">
-              <td className="px-3 py-2 font-medium text-gray-700 dark:text-slate-300 text-sm border-r border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800 sticky left-0 z-10">
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-700 dark:text-blue-300 text-xs font-bold flex-shrink-0">
+              <td className="px-4 py-3 font-medium text-gray-700 dark:text-slate-300 text-sm border-r border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800 sticky left-0 z-10">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-700 dark:text-blue-300 text-sm font-bold flex-shrink-0">
                     {technik.charAt(0).toUpperCase()}
                   </div>
-                  <span className="truncate max-w-[80px]">{technik.split(' ')[0]}</span>
+                  <span className="truncate max-w-[110px] text-base">{technik.split(' ')[0]}</span>
                 </div>
               </td>
               {days.map((d, i) => {
@@ -446,22 +451,22 @@ function KapacitaView({ pivot, events, todayStr }: {
                 const cellEvents = matrix[ds]?.[technik] ?? []
                 const isWeekend = i >= 5
                 return (
-                  <td key={ds} className={`px-1.5 py-1.5 border-r border-gray-100 dark:border-slate-700 align-top min-w-[90px] ${
+                  <td key={ds} className={`px-2 py-2 border-r border-gray-100 dark:border-slate-700 align-top min-w-[120px] ${
                     isWeekend ? 'bg-gray-50/30 dark:bg-slate-800/30' : ''
                   }`}>
                     {cellEvents.length === 0 ? (
-                      <div className="text-[10px] text-gray-300 dark:text-slate-700 text-center py-2">–</div>
+                      <div className="text-xs text-gray-300 dark:text-slate-700 text-center py-3">–</div>
                     ) : (
-                      <div className="space-y-0.5">
+                      <div className="space-y-1">
                         {cellEvents.map(ev => (
                           <Link
                             key={ev.id}
                             href={ev.href}
-                            className="block px-1.5 py-1 rounded text-[10px] leading-tight bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 hover:opacity-80 transition-opacity"
+                            className="block px-2 py-1.5 rounded-md text-xs leading-snug bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 hover:opacity-80 transition-opacity"
                             title={isRange(ev) ? `${ev.title} (${fmtRange(ev)})` : ev.title}
                           >
                             {ev.time && <span className="font-semibold">{ev.time} </span>}
-                            <span className="truncate">{ev.short ?? ev.title}</span>
+                            <span className="truncate font-medium">{ev.short ?? ev.title}</span>
                           </Link>
                         ))}
                       </div>
@@ -553,14 +558,14 @@ export default function CalendarClient({ events, canDispatch = false }: Props) {
         <div className="flex items-center justify-between px-4 py-3 gap-3 flex-wrap">
           {/* Nav */}
           <div className="flex items-center gap-2">
-            <button onClick={prevPeriod} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-slate-400 transition-colors">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+            <button onClick={prevPeriod} className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-slate-400 transition-colors">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
             </button>
-            <span className="font-semibold text-gray-900 dark:text-white min-w-[180px] text-center text-sm">{headerLabel}</span>
-            <button onClick={nextPeriod} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-slate-400 transition-colors">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
+            <span className="font-bold text-gray-900 dark:text-white min-w-[220px] text-center text-base">{headerLabel}</span>
+            <button onClick={nextPeriod} className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-slate-400 transition-colors">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
             </button>
-            <button onClick={goToday} className="text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200 dark:border-slate-600 text-gray-600 dark:text-slate-400 hover:border-green-400 hover:text-green-600 dark:hover:text-green-400 transition-colors ml-1">
+            <button onClick={goToday} className="text-sm font-medium px-3.5 py-2 rounded-lg border border-gray-200 dark:border-slate-600 text-gray-600 dark:text-slate-400 hover:border-green-400 hover:text-green-600 dark:hover:text-green-400 transition-colors ml-1">
               Dnes
             </button>
           </div>
@@ -571,7 +576,7 @@ export default function CalendarClient({ events, canDispatch = false }: Props) {
               <button
                 key={v}
                 onClick={() => setView(v)}
-                className={`px-3 py-1.5 text-xs font-medium transition-colors ${
+                className={`px-4 py-2 text-sm font-medium transition-colors ${
                   view === v
                     ? 'bg-green-600 text-white'
                     : 'text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700'
@@ -583,7 +588,7 @@ export default function CalendarClient({ events, canDispatch = false }: Props) {
             {canDispatch && (
               <button
                 onClick={() => setView('kapacita')}
-                className={`px-3 py-1.5 text-xs font-medium transition-colors border-l border-gray-200 dark:border-slate-600 ${
+                className={`px-4 py-2 text-sm font-medium transition-colors border-l border-gray-200 dark:border-slate-600 ${
                   view === 'kapacita'
                     ? 'bg-red-600 text-white'
                     : 'text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700'
@@ -623,17 +628,17 @@ export default function CalendarClient({ events, canDispatch = false }: Props) {
 
         {/* Side panel: selected day details (month + week views) */}
         {view !== 'day' && selectedDate && (
-          <div className="lg:w-72 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4 flex flex-col gap-3">
+          <div className="lg:w-96 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4 flex flex-col gap-3">
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-gray-900 dark:text-white text-sm">{fmtDate(selectedDate)}</h3>
-              <button onClick={() => setSelectedDate(null)} className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 p-0.5">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              <h3 className="font-bold text-gray-900 dark:text-white text-base">{fmtDate(selectedDate)}</h3>
+              <button onClick={() => setSelectedDate(null)} className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 p-1">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
             {selectedEvents.length === 0 ? (
-              <p className="text-sm text-gray-400 dark:text-slate-500">Žádné události</p>
+              <p className="text-base text-gray-400 dark:text-slate-500">Žádné události</p>
             ) : (
-              <div className="space-y-2 overflow-y-auto flex-1">
+              <div className="space-y-3 overflow-y-auto flex-1">
                 {selectedEvents.map(ev => <EventCard key={ev.id} ev={ev} />)}
               </div>
             )}
@@ -642,11 +647,11 @@ export default function CalendarClient({ events, canDispatch = false }: Props) {
       </div>
 
       {/* Legend */}
-      <div className="flex flex-wrap gap-x-4 gap-y-1.5 mt-3">
+      <div className="flex flex-wrap gap-x-5 gap-y-2 mt-3 px-1">
         {(Object.entries(KIND_STYLE) as [CalendarEvent['kind'], typeof KIND_STYLE[CalendarEvent['kind']]][]).map(([kind, s]) => (
-          <div key={kind} className="flex items-center gap-1.5">
-            <span className={`w-2 h-2 rounded-full ${s.dot}`} />
-            <span className="text-xs text-gray-500 dark:text-slate-400">{s.label}</span>
+          <div key={kind} className="flex items-center gap-2">
+            <span className={`w-2.5 h-2.5 rounded-full ${s.dot}`} />
+            <span className="text-sm text-gray-600 dark:text-slate-400">{s.label}</span>
           </div>
         ))}
       </div>

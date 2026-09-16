@@ -1,7 +1,8 @@
 import Link from 'next/link'
 
 export const metadata = {
-  title: 'Podpora | Felucia',
+  title: 'Podpora',
+  alternates: { canonical: '/support' },
   description: 'Potřebujete pomoc s Felucia CRM? Kontaktujte naši podporu telefonicky nebo e-mailem.',
 }
 

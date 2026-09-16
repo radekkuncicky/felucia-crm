@@ -1,9 +1,20 @@
 import { prisma } from '@/lib/prisma'
 
+/**
+ * Další volné číslo smlouvy v řadě SOD-RR-NNN pro danou organizaci.
+ * Vychází z posledního existujícího čísla (ne z count) — po smazání/stornu
+ * smlouvy uprostřed řady by count+1 kolidoval s existujícím číslem výš.
+ */
 export async function generateSodCislo(orgId: string): Promise<string> {
   const year = new Date().getFullYear().toString().slice(2)
-  const count = await prisma.sod.count({ where: { orgId } })
-  return `SOD-${year}-${String(count + 1).padStart(3, '0')}`
+  const prefix = `SOD-${year}-`
+  const last = await prisma.sod.findFirst({
+    where: { orgId, cislo: { startsWith: prefix } },
+    orderBy: { cislo: 'desc' },
+    select: { cislo: true },
+  })
+  const lastNum = last?.cislo ? parseInt(last.cislo.slice(prefix.length), 10) : 0
+  return `${prefix}${String((isNaN(lastNum) ? 0 : lastNum) + 1).padStart(3, '0')}`
 }
 
 export function predmetDilaByTechnologie(technologie: string): string {

@@ -1,11 +1,11 @@
 {
-  "name": "Felucia CRM",
+  "name": "Felucia — software pro montážní a servisní firmy",
   "short_name": "Felucia",
-  "description": "CRM pro HVAC profesionály",
+  "description": "CRM pro montážní a servisní firmy — klimatizace, tepelná čerpadla, servis. Nabídky, zakázky, technici v terénu.",
   "start_url": "/dashboard",
   "display": "standalone",
-  "background_color": "#0A0F1E",
-  "theme_color": "#00D4C8",
+  "background_color": "#0A120A",
+  "theme_color": "#4CAF50",
   "orientation": "portrait-primary",
   "icons": [
     {
