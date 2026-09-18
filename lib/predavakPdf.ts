@@ -1,4 +1,5 @@
 import { formatDate } from '@/lib/format'
+import { podpisToImgSrc } from '@/lib/podpisImage'
 function fmt(d: Date | string | null) {
   if (!d) return '—'
   return formatDate(d)
@@ -64,6 +65,7 @@ export function generatePredavakHtml(p: PredavakPdfData): string {
   const org = p.zakazka.organization
   const klient = p.zakazka.klient
   const datum = fmt(p.podpisano ?? new Date().toISOString())
+  const podpisSrc = p.klientPritomen ? podpisToImgSrc(p.podpisSvg) : null
 
   // Header logo or company name
   const logoHtml = org.logo
@@ -120,6 +122,11 @@ export function generatePredavakHtml(p: PredavakPdfData): string {
           <p style="font-size:12px;font-weight:600;color:#111827;margin:0;">${klient.jmeno} ${klient.prijmeni}</p>
           ${klient.telefon ? `<p style="font-size:10px;color:#6b7280;margin:2px 0 0;">${klient.telefon}</p>` : ''}
           <p style="font-size:10px;color:#6b7280;margin:4px 0 0;">${datum}</p>
+          ${podpisSrc ? `
+          <div style="margin-top:8px;padding:6px 8px;background:#ffffff;border:1px solid #bbf7d0;border-radius:6px;">
+            <img src="${podpisSrc}" alt="Podpis klienta" style="display:block;height:56px;max-width:100%;object-fit:contain;object-position:left;" />
+            <p style="margin:4px 0 0;font-size:9px;color:#15803d;">Podepsáno klientem</p>
+          </div>` : ''}
         </div>
       </div>
       ${!p.klientPritomen ? `

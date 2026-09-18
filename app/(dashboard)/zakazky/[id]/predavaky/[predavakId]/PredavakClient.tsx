@@ -1,5 +1,6 @@
 'use client'
 
+import { podpisToImgSrc } from '@/lib/podpisImage'
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { PredavakStav } from '@prisma/client'
@@ -995,10 +996,10 @@ export default function PredavakClient({ predavak: initial, currentUserId, canAp
               <p className="text-sm text-gray-600 dark:text-slate-400">
                 {initial.klientPritomen ? 'Klient byl přítomen' : 'Klient nebyl přítomen'}
               </p>
-              {initial.klientPritomen && initial.podpisSvg ? (
+              {initial.klientPritomen && podpisToImgSrc(initial.podpisSvg) ? (
                 <div className="border border-gray-200 dark:border-slate-700 rounded-xl overflow-hidden bg-white p-2" style={{ maxWidth: 400 }}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={initial.podpisSvg} alt="Podpis klienta" className="w-full" style={{ maxHeight: 160, objectFit: 'contain' }} />
+                  <img src={podpisToImgSrc(initial.podpisSvg) ?? undefined} alt="Podpis klienta" className="w-full" style={{ maxHeight: 160, objectFit: 'contain' }} />
                 </div>
               ) : initial.klientPritomen ? (
                 <p className="text-sm text-gray-400 italic">Podpis chybí</p>

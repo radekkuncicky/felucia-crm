@@ -1,5 +1,6 @@
 'use client'
 
+import { podpisToImgSrc } from '@/lib/podpisImage'
 import { useRef, useEffect, useState, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 
@@ -133,13 +134,14 @@ export function SignatureCanvas({ onChange, existingDataUrl, disabled = false }:
       return
     }
     const canvas = canvasRef.current
-    if (!canvas || !existingDataUrl) return
+    const src = podpisToImgSrc(existingDataUrl)
+    if (!canvas || !src) return
     const ctx = canvas.getContext('2d')
     if (!ctx) return
     ctx.clearRect(0, 0, canvas.width, canvas.height)
     const img = new Image()
     img.onload = () => { ctx.drawImage(img, 0, 0, canvas.width, canvas.height); setIsEmpty(false) }
-    img.src = existingDataUrl
+    img.src = src
   }, [existingDataUrl])
 
   const emitChange = useCallback((canvas: HTMLCanvasElement) => {

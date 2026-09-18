@@ -1,4 +1,5 @@
 import { formatDate } from '@/lib/format'
+import { podpisToImgSrc } from '@/lib/podpisImage'
 const TYP_LABELS: Record<string, string> = {
   TEPELNE_CERPADLO: 'Tepelné čerpadlo',
   KLIMATIZACE: 'Klimatizace',
@@ -141,7 +142,7 @@ export function generateServisniProtokolHtml(
     ? `<img src="${esc(logoSrc)}" alt="Logo" style="height:50px;object-fit:contain;" />`
     : `<span style="font-size:20px;font-weight:800;color:#1a1a2e;">${esc(org.nazev)}</span>`
 
-  const podpisSrc = safeImageSrc(navsteva.podpisKlienta)
+  const podpisSrc = podpisToImgSrc(navsteva.podpisKlienta)
 
   return `<!DOCTYPE html>
 <html lang="cs">
@@ -430,19 +431,19 @@ export function generateServisniProtokolHtml(
     <div class="section-body">
       <div class="signatures">
         <div>
-          <div class="signature-line">
-            ${podpisSrc ? `<img src="${esc(podpisSrc)}" style="height:44px;max-width:100%;object-fit:contain;" />` : ''}
-          </div>
+          <div class="signature-line"></div>
           <div class="signature-name">Technik: ${esc(navsteva.technik?.jmeno ?? '—')}</div>
         </div>
         <div>
-          <div class="signature-line"></div>
+          <div class="signature-line">
+            ${podpisSrc ? `<img src="${esc(podpisSrc)}" alt="Podpis klienta" style="height:44px;max-width:100%;object-fit:contain;object-position:left;" />` : ''}
+          </div>
           <div class="signature-name">Klient: ${klient ? esc(`${klient.jmeno} ${klient.prijmeni}`) : '—'}</div>
         </div>
       </div>
       ${podpisSrc ? `
       <div style="margin-top:12px;font-size:9.5pt;color:#15803d;">
-        ☑ Klient převzal a podepsal
+        Podepsáno klientem
       </div>
       ` : ''}
     </div>
