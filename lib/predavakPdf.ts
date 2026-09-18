@@ -74,6 +74,7 @@ export function generatePredavakHtml(p: PredavakPdfData): string {
 
   // Klient address
   const adresa = [klient.ulice, klient.mesto && klient.psc ? `${klient.psc} ${klient.mesto}` : klient.mesto ?? klient.psc].filter(Boolean).join(', ')
+  const techLabel = p.zakazka.technologie ? (TECH_LABELS[p.zakazka.technologie] ?? p.zakazka.technologie) : null
 
   // Only included items
   const zahrnutePolozky = p.polozky.filter(pol => pol.zahrnuto)
@@ -178,7 +179,7 @@ export function generatePredavakHtml(p: PredavakPdfData): string {
         <p style="font-size:10px;font-weight:700;color:#1B5E20;text-transform:uppercase;letter-spacing:.05em;margin:0 0 6px;">Zakázka</p>
         <p style="margin:0 0 3px;"><strong>${p.zakazka.cislo}</strong></p>
         <p style="margin:0 0 3px;color:#374151;">${p.zakazka.nazev}</p>
-        ${p.zakazka.technologie ? `<span style="display:inline-block;background:#dcfce7;color:#1B5E20;font-size:9px;font-weight:600;padding:2px 8px;border-radius:12px;margin-top:4px;">${TECH_LABELS[p.zakazka.technologie] ?? p.zakazka.technologie}</span>` : ''}
+        ${techLabel && techLabel.trim().toLowerCase() !== p.zakazka.nazev.trim().toLowerCase() ? `<span style="display:inline-block;background:#dcfce7;color:#1B5E20;font-size:9px;font-weight:600;padding:2px 8px;border-radius:12px;margin-top:4px;">${techLabel}</span>` : ''}
         <p style="margin:8px 0 0;font-size:10px;color:#6b7280;"><strong>Technik:</strong> ${p.technik.jmeno}${p.technik.telefon ? ` · ${p.technik.telefon}` : ''}</p>
       </div>
       <div style="background:#fafafa;border:1px solid #e5e7eb;border-radius:8px;padding:10px 12px;">
