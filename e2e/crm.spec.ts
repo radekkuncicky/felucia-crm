@@ -97,3 +97,26 @@ test.describe('nepřihlášený', () => {
     expect(errors).toEqual([])
   })
 })
+
+test('sklad: záložky Zásoby / Dodavatelé / Objednávky se načtou a přepínají', async ({ page }) => {
+  const errors = trackErrors(page)
+  await page.goto('/sklad')
+  await expect(page.locator('body')).toContainText(/Zásoby/)
+  await page.getByRole('button', { name: 'Dodavatelé' }).click()
+  await expect(page.locator('body')).toContainText(/Nový dodavatel|Zatím žádný dodavatel/)
+  await page.getByRole('button', { name: 'Objednávky' }).click()
+  await expect(page.locator('body')).toContainText(/Nové objednávky vznikají ze zakázky/)
+  expect(errors).toEqual([])
+})
+
+test('zakázka: záložka Objednávky a tlačítko Objednat u dodavatele', async ({ page }) => {
+  const errors = trackErrors(page)
+  await page.goto('/zakazky')
+  await page.getByRole('row', { name: /E2E Zakázka/ }).getByRole('link', { name: /Detail/ }).click()
+  await page.waitForURL(/\/zakazky\/[^/]+$/)
+  await page.getByRole('link', { name: 'Objednávky' }).click()
+  await expect(page.locator('body')).toContainText(/Objednávky u dodavatelů/)
+  await page.getByRole('button', { name: /Objednat u dodavatele/ }).click()
+  await expect(page.locator('body')).toContainText(/Vyberte položky a dodavatele/)
+  expect(errors).toEqual([])
+})
