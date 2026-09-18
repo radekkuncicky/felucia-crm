@@ -249,7 +249,7 @@ export default async function ZakazkaDetailLayout({
               <div className="flex rounded-full overflow-hidden h-1.5 w-24 bg-gray-100 dark:bg-slate-700 shrink-0">
                 {polozkyStats.CEKA > 0 && <div style={{ width: `${polozkyStats.CEKA / polozkyTotal * 100}%` }} className="bg-gray-300 dark:bg-slate-600" title={`Čeká: ${polozkyStats.CEKA}`} />}
                 {polozkyStats.OBJEDNANO > 0 && <div style={{ width: `${polozkyStats.OBJEDNANO / polozkyTotal * 100}%` }} className="bg-blue-400" title={`Objednáno: ${polozkyStats.OBJEDNANO}`} />}
-                {polozkyStats.NASKLADNENO > 0 && <div style={{ width: `${polozkyStats.NASKLADNENO / polozkyTotal * 100}%` }} className="bg-green-400" title={`Naskladněno: ${polozkyStats.NASKLADNENO}`} />}
+                {polozkyStats.NASKLADNENO > 0 && <div style={{ width: `${polozkyStats.NASKLADNENO / polozkyTotal * 100}%` }} className="bg-green-400" title={`Rezervováno: ${polozkyStats.NASKLADNENO}`} />}
                 {polozkyStats.VYDANO > 0 && <div style={{ width: `${polozkyStats.VYDANO / polozkyTotal * 100}%` }} className="bg-emerald-500" title={`Vydáno: ${polozkyStats.VYDANO}`} />}
               </div>
               <span className="text-xs text-gray-600 dark:text-slate-300">{polozkyReady}/{polozkyTotal}</span>

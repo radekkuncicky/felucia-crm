@@ -17,6 +17,7 @@ export default function NewProductForm() {
     standardniCena: '',
     nakladovaCena: '',
     jednotka: 'ks',
+    minMnozstvi: '',
   })
 
   const inp = 'w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-slate-800 text-gray-900 dark:text-white'
@@ -37,6 +38,7 @@ export default function NewProductForm() {
           dphSazba: Number(form.dphSazba),
           standardniCena: Number(form.standardniCena),
           nakladovaCena: form.nakladovaCena !== '' ? Number(form.nakladovaCena) : null,
+          minMnozstvi: form.minMnozstvi !== '' ? Number(form.minMnozstvi) : null,
         }),
       })
       if (!res.ok) {
@@ -106,6 +108,11 @@ export default function NewProductForm() {
             <option value="0">0 %</option>
           </select>
         </div>
+      </div>
+
+      <div className="max-w-xs">
+        <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Minimální zásoba ({form.jednotka})</label>
+        <input type="number" min="0" step="any" value={form.minMnozstvi} onChange={e => setForm(f => ({ ...f, minMnozstvi: e.target.value }))} className={inp} placeholder="Bez hlídání skladu" />
       </div>
 
       <div className="flex gap-3 pt-2">

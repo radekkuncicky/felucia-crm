@@ -151,8 +151,11 @@ enum ZakazkaPolozkaStav {
 enum SkladPohybTyp {
   VYDEJ
   REZERVACE
-  STORNO
+  STORNO            // deprecated — historická data, nový kód zapisuje STORNO_REZERVACE / VRATKA_VYDEJE
   PRIJEM_SKLAD
+  STORNO_REZERVACE
+  VRATKA_VYDEJE
+  KOREKCE           // inventura / ruční oprava zůstatku
 }
 
 enum PredavakStav {
@@ -470,6 +473,7 @@ model Product {
   objednaciKod    String?
   dodavatel       String?
   dodaciLhuta     String?
+  minMnozstvi     Decimal? @db.Decimal(12, 3)
   aktivni         Boolean  @default(true)
   vytvoreno       DateTime @default(now())
 
@@ -477,6 +481,8 @@ model Product {
   categories   Category[]    @relation("ProductCategories")
   cenikPolozky CenikPolozka[]
   quoteItems   QuoteItem[]
+  zakazkaPolozky ZakazkaPolozka[]
+  skladPohyby  SkladPohyb[]
 
   @@map("products")
 }
@@ -1174,6 +1180,7 @@ model TechnikZakazka {
 model ZakazkaPolozka {
   id              String              @id @default(cuid())
   zakazkaId       String
+  productId       String?
   nazev           String
   kod             String?
   mnozstvi        Decimal             @default(1)
@@ -1188,9 +1195,11 @@ model ZakazkaPolozka {
   poznamka        String?
 
   zakazka         Zakazka             @relation(fields: [zakazkaId], references: [id], onDelete: Cascade)
+  product         Product?            @relation(fields: [productId], references: [id], onDelete: SetNull)
   skladPohyby     SkladPohyb[]
   predavakPolozky PredavakPolozka[]
 
+  @@index([productId])
   @@map("zakazka_polozky")
 }
 
@@ -1199,6 +1208,7 @@ model SkladPohyb {
   orgId         String
   zakazkaId     String?
   polozkaId     String?
+  productId     String?
   typ           SkladPohybTyp
   nazev         String
   mnozstvi      Decimal
@@ -1211,10 +1221,12 @@ model SkladPohyb {
   organization  Organization    @relation(fields: [orgId], references: [id])
   zakazka       Zakazka?        @relation(fields: [zakazkaId], references: [id])
   polozka       ZakazkaPolozka? @relation(fields: [polozkaId], references: [id])
+  product       Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
   vytvoril      User            @relation("SkladPohybVytvoril", fields: [vytvorilId], references: [id])
   schvalil      User?           @relation("SkladPohybSchvalil", fields: [schvalenoId], references: [id])
 
   @@index([orgId, typ])
+  @@index([orgId, productId])
   @@index([zakazkaId])
   @@map("sklad_pohyby")
 }

@@ -38,6 +38,7 @@ export async function polozkyZAktivniNabidky(dealId: string, orgId: string) {
   return (activeQuote?.items ?? []).map((item, idx) => ({
     nazev: item.nazev ?? '',
     kod: item.kod ?? null,
+    productId: item.productId ?? null,
     mnozstvi: item.mnozstvi,
     jednotka: item.jednotka ?? 'ks',
     prodejniCena: item.cenaZaKus,

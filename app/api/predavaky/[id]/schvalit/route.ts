@@ -4,6 +4,7 @@ import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { generateVyuctovaniCislo } from '@/lib/zakazkyHelpers'
 import { getPerms, forbidden } from '@/lib/permissions'
+import { zkontrolujMinimum } from '@/lib/sklad'
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
@@ -80,6 +81,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
               orgId,
               zakazkaId: predavak.zakazkaId,
               polozkaId: polozka.zakazkaPolozkaId,
+              productId: polozka.zakazkaPolozka.productId,
               typ: 'VYDEJ',
               nazev: polozka.nazev,
               mnozstvi: polozka.mnozstviPouzito,
@@ -167,6 +169,11 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         },
       })
     }
+    // Sklad v2: výdej mohl srazit zásobu pod minimum produktu
+    const vydaneProdukty = new Set(
+      zahrnutePolozky.map(p => p.zakazkaPolozka?.productId).filter((id): id is string => !!id),
+    )
+    for (const productId of Array.from(vydaneProdukty)) await zkontrolujMinimum(orgId, productId)
   })().catch(() => {})
 
   return NextResponse.json({ ok: true, vyuctovaniId, vyuctovaniCislo })

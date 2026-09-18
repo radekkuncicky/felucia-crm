@@ -104,6 +104,7 @@ export default async function ZakazkaDetailPage({
           zakazkaId={zakazka.id}
           polozky={zakazka.polozky.map(p => ({
             id: p.id,
+            productId: p.productId,
             nazev: p.nazev,
             kod: p.kod,
             mnozstvi: Number(p.mnozstvi),

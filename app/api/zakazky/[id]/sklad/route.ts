@@ -3,6 +3,7 @@ import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { getPerms, forbidden } from '@/lib/permissions'
+import { stavProduktu, zkontrolujMinimum } from '@/lib/sklad'
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
@@ -34,6 +35,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         orgId,
         zakazkaId: params.id,
         polozkaId,
+        productId: polozka.productId,
         typ: 'REZERVACE',
         nazev: polozka.nazev,
         mnozstvi,
@@ -76,5 +78,13 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     ] : []),
   ])
 
-  return NextResponse.json({ ok: true, zakazkaNovyStav: shouldAdvanceStav ? 'V_REALIZACI' : null })
+  // Dostupnost po rezervaci — UI ji ukáže; rezervace nad dostupné množství se
+  // neblokuje (materiál se rezervuje dřív, než dorazí), jen se hlásí.
+  let stav = null
+  if (polozka.productId) {
+    stav = await stavProduktu(db, orgId, polozka.productId)
+    await zkontrolujMinimum(orgId, polozka.productId)
+  }
+
+  return NextResponse.json({ ok: true, zakazkaNovyStav: shouldAdvanceStav ? 'V_REALIZACI' : null, stav })
 }

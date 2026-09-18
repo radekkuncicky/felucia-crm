@@ -20,6 +20,7 @@ const PROD_DEFS: ColumnDef[] = [
   { id: 'stdCena', label: 'Stand. cena', defaultVisible: true, defaultWidth: 120 },
   { id: 'marze', label: 'Marže %', defaultVisible: true, defaultWidth: 90 },
   { id: 'dph', label: 'DPH', defaultVisible: true, defaultWidth: 70 },
+  { id: 'sklad', label: 'Na skladě', defaultVisible: true, defaultWidth: 110 },
   { id: 'aktivni', label: 'Aktivní', defaultVisible: true, defaultWidth: 80 },
 ]
 
@@ -30,11 +31,12 @@ interface Product {
   categories: ProductCategory[]; jednotka: string
   popis: string | null; dphSazba: number; nakladovaCena: number | null
   standardniCena: number; aktivni: boolean
+  naSklade: number; dostupne: number; minMnozstvi: number | null
 }
 interface Category { id: string; nazev: string; barva: string }
 interface Cenik { id: string; kod: string; nazev: string; popis: string | null; aktivni: boolean; _count: { polozky: number }; vytvoreno: string }
 
-interface Props { products: Product[]; categories: Category[]; ceniky: Cenik[]; isAdmin: boolean; showNakladoveCeny?: boolean }
+interface Props { products: Product[]; categories: Category[]; ceniky: Cenik[]; isAdmin: boolean; showNakladoveCeny?: boolean; showSklad?: boolean }
 
 function fmt(n: number) { return formatCislo(n) }
 
@@ -57,11 +59,11 @@ function MarzeChip({ value }: { value: number | null }) {
 }
 
 // ─── PRODUCTS TAB ─────────────────────────────────────────────────────────────
-function ProductsTab({ products, categories, showNakladoveCeny = true, userId }: { products: Product[]; categories: Category[]; showNakladoveCeny?: boolean; userId: string }) {
+function ProductsTab({ products, categories, showNakladoveCeny = true, showSklad = false, userId }: { products: Product[]; categories: Category[]; showNakladoveCeny?: boolean; showSklad?: boolean; userId: string }) {
   const router = useRouter()
 
   // Filter defs based on showNakladoveCeny
-  const defs = showNakladoveCeny ? PROD_DEFS : PROD_DEFS.filter(d => d.id !== 'nakCena' && d.id !== 'marze')
+  const defs = PROD_DEFS.filter(d => (showNakladoveCeny || (d.id !== 'nakCena' && d.id !== 'marze')) && (showSklad || d.id !== 'sklad'))
   const { columns, visibleColumns, updateColumn, resizeColumn, resetColumns, reorderColumns } = useTableColumns('products', userId, defs)
 
   const [search, setSearch] = useState('')
@@ -323,6 +325,15 @@ function ProductsTab({ products, categories, showNakladoveCeny = true, userId }:
                           return <td key={col.id} className="px-3 py-3"><MarzeChip value={m} /></td>
                         case 'dph':
                           return <td key={col.id} className="px-3 py-3 text-gray-600 dark:text-slate-400 whitespace-nowrap">{p.dphSazba} %</td>
+                        case 'sklad': {
+                          const podMin = p.minMnozstvi !== null && p.dostupne <= p.minMnozstvi
+                          const cls = p.dostupne < 0 ? 'text-red-600 dark:text-red-400' : podMin ? 'text-amber-600 dark:text-amber-400' : 'text-gray-700 dark:text-slate-300'
+                          return (
+                            <td key={col.id} className={`px-3 py-3 whitespace-nowrap ${cls}`} title={`Na skladě ${p.naSklade.toLocaleString('cs-CZ')} · dostupné ${p.dostupne.toLocaleString('cs-CZ')} ${p.jednotka}`}>
+                              {p.naSklade === 0 && p.dostupne === 0 ? <span className="text-gray-400 dark:text-slate-500">—</span> : `${p.dostupne.toLocaleString('cs-CZ', { maximumFractionDigits: 3 })} ${p.jednotka}`}
+                            </td>
+                          )
+                        }
                         case 'aktivni':
                           return (
                             <td key={col.id} className="px-3 py-3">
@@ -510,7 +521,7 @@ function CenikyTab({ ceniky, products, categories, isAdmin }: { ceniky: Cenik[];
 }
 
 // ─── MAIN ──────────────────────────────────────────────────────────────────────
-export default function ProductsClient({ products, categories, ceniky, isAdmin, showNakladoveCeny = true }: Props) {
+export default function ProductsClient({ products, categories, ceniky, isAdmin, showNakladoveCeny = true, showSklad = false }: Props) {
   const { data: session } = useSession()
   const userId = session?.user?.id ?? 'anon'
   const [tab, setTab] = useState<'produkty' | 'ceniky'>('produkty')
@@ -531,7 +542,7 @@ export default function ProductsClient({ products, categories, ceniky, isAdmin, 
         ))}
       </div>
 
-      {tab === 'produkty' && <ProductsTab products={products} categories={categories} showNakladoveCeny={showNakladoveCeny} userId={userId} />}
+      {tab === 'produkty' && <ProductsTab products={products} categories={categories} showNakladoveCeny={showNakladoveCeny} showSklad={showSklad} userId={userId} />}
       {tab === 'ceniky' && <CenikyTab ceniky={ceniky} products={products} categories={categories} isAdmin={isAdmin} />}
     </div>
   )

@@ -66,7 +66,7 @@ export async function POST(req: Request) {
   const db = orgPrisma(orgId)
 
   const body = await req.json()
-  const { nazev, kod, produktovaRada, popis, dphSazba, nakladovaCena, standardniCena, jednotka, categoryIds } = body
+  const { nazev, kod, produktovaRada, popis, dphSazba, nakladovaCena, standardniCena, jednotka, categoryIds, minMnozstvi } = body
 
   if (!nazev || standardniCena === undefined) {
     return NextResponse.json({ error: 'Název a standardní cena jsou povinné' }, { status: 400 })
@@ -108,6 +108,7 @@ export async function POST(req: Request) {
       nakladovaCena: nakladovaCena !== undefined && nakladovaCena !== '' && getPerms(session.user).financeNakupkyEdit ? Number(nakladovaCena) : null,
       standardniCena: parsedCena,
       jednotka: jednotka || 'ks',
+      minMnozstvi: minMnozstvi !== undefined && minMnozstvi !== null && minMnozstvi !== '' ? Number(minMnozstvi) : null,
       aktivni: true,
       ...(Array.isArray(categoryIds) && categoryIds.length > 0
         ? { categories: { connect: categoryIds.map((id: string) => ({ id })) } }

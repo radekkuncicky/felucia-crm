@@ -52,6 +52,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     objednaciKod: body.objednaciKod !== undefined ? (body.objednaciKod || null) : product.objednaciKod,
     dodavatel: body.dodavatel !== undefined ? (body.dodavatel || null) : product.dodavatel,
     dodaciLhuta: body.dodaciLhuta !== undefined ? (body.dodaciLhuta || null) : product.dodaciLhuta,
+    minMnozstvi: body.minMnozstvi !== undefined ? (body.minMnozstvi !== null && body.minMnozstvi !== '' ? Number(body.minMnozstvi) : null) : product.minMnozstvi,
   }
 
   // Handle M2M category assignment

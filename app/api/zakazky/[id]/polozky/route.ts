@@ -49,6 +49,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       zakazkaId: params.id,
       nazev: body.nazev,
       kod: body.kod ?? null,
+      productId: body.productId ?? null,
       mnozstvi: body.mnozstvi ?? 1,
       jednotka: body.jednotka ?? 'ks',
       prodejniCena: body.prodejniCena ?? null,

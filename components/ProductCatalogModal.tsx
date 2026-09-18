@@ -23,7 +23,7 @@ interface CatalogProduct {
 
 interface Props {
   onClose: () => void
-  onAdd: (items: { productId: string; nazev: string; cenaZaKus: number; mnozstvi: number; jednotka?: string }[]) => void
+  onAdd: (items: { productId: string; kod: string | null; nazev: string; cenaZaKus: number; mnozstvi: number; jednotka?: string }[]) => void
 }
 
 export default function ProductCatalogModal({ onClose, onAdd }: Props) {
@@ -41,7 +41,7 @@ export default function ProductCatalogModal({ onClose, onAdd }: Props) {
   const [totalPages, setTotalPages] = useState(1)
   const [loading, setLoading] = useState(true)
   const [linesMeta, setLinesMeta] = useState<{ produktovaRada: string | null; categoryIds: string[] }[]>([])
-  const [selected, setSelected] = useState<Record<string, { qty: number; price: number; nazev: string; jednotka: string }>>({})
+  const [selected, setSelected] = useState<Record<string, { qty: number; price: number; nazev: string; jednotka: string; kod: string | null }>>({})
   const [categories, setCategories] = useState<CategoryData[]>([])
   const [cenikList, setCenikList] = useState<{ id: string; kod: string; nazev: string }[]>([])
   const [cenikPriceMap, setCenikPriceMap] = useState<Record<string, number>>({})
@@ -160,7 +160,7 @@ export default function ProductCatalogModal({ onClose, onAdd }: Props) {
     setSelected(s => {
       const next = { ...s }
       if (p.id in next) { delete next[p.id] }
-      else { next[p.id] = { qty: 1, price: getPrice(p), nazev: p.nazev, jednotka: p.jednotka } }
+      else { next[p.id] = { qty: 1, price: getPrice(p), nazev: p.nazev, jednotka: p.jednotka, kod: p.kod } }
       return next
     })
   }
@@ -172,7 +172,7 @@ export default function ProductCatalogModal({ onClose, onAdd }: Props) {
     setSelected(s => {
       const next = { ...s }
       if (allPageSelected) { pageIds.forEach(id => delete next[id]) }
-      else { products.forEach(p => { if (!(p.id in next)) next[p.id] = { qty: 1, price: getPrice(p), nazev: p.nazev, jednotka: p.jednotka } }) }
+      else { products.forEach(p => { if (!(p.id in next)) next[p.id] = { qty: 1, price: getPrice(p), nazev: p.nazev, jednotka: p.jednotka, kod: p.kod } }) }
       return next
     })
   }
@@ -188,6 +188,7 @@ export default function ProductCatalogModal({ onClose, onAdd }: Props) {
   function handleAdd() {
     const items = selectedEntries.map(([productId, s]) => ({
       productId,
+      kod: s.kod,
       nazev: s.nazev,
       cenaZaKus: s.price,
       mnozstvi: s.qty,

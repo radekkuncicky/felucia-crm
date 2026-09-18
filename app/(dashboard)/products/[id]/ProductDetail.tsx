@@ -28,6 +28,7 @@ interface ProductDetailProps {
     objednaciKod: string | null
     dodavatel: string | null
     dodaciLhuta: string | null
+    minMnozstvi: number | null
     aktivni: boolean
     vytvoreno: string
     cenikPolozky: CenikPolozka[]
@@ -35,6 +36,8 @@ interface ProductDetailProps {
   }
   allCategories: Category[]
   usage: { totalCount: number; lastUsed: string | null }
+  /** Zůstatek na skladě (null = bez přístupu ke skladu) */
+  sklad: { naSklade: number; rezervovano: number; dostupne: number } | null
 }
 
 function fmt(n: number) {
@@ -58,7 +61,7 @@ function MarzeChip({ nakladova, standardni }: { nakladova: number | null; standa
 const inp = 'w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-slate-900 text-gray-900 dark:text-white'
 const label = 'block text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-1.5'
 
-export default function ProductDetail({ product, allCategories, usage }: ProductDetailProps) {
+export default function ProductDetail({ product, allCategories, usage, sklad }: ProductDetailProps) {
   const router = useRouter()
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -76,6 +79,7 @@ export default function ProductDetail({ product, allCategories, usage }: Product
     objednaciKod: product.objednaciKod ?? '',
     dodavatel: product.dodavatel ?? '',
     dodaciLhuta: product.dodaciLhuta ?? '',
+    minMnozstvi: product.minMnozstvi !== null ? String(product.minMnozstvi) : '',
     aktivni: product.aktivni,
   })
   // Category M2M state — set of currently assigned category IDs
@@ -118,6 +122,7 @@ export default function ProductDetail({ product, allCategories, usage }: Product
           objednaciKod: form.objednaciKod || null,
           dodavatel: form.dodavatel || null,
           dodaciLhuta: form.dodaciLhuta || null,
+          minMnozstvi: form.minMnozstvi !== '' ? Number(form.minMnozstvi) : null,
           aktivni: form.aktivni,
         }),
       })
@@ -396,6 +401,29 @@ export default function ProductDetail({ product, allCategories, usage }: Product
               </div>
             </div>
           </div>
+
+          {sklad && (
+            <div className={sectionCard}>
+              <h2 className={sectionTitle}>Sklad</h2>
+              <div className="grid grid-cols-3 gap-3 mb-4">
+                {[
+                  { l: 'Na skladě', v: sklad.naSklade, c: 'text-gray-900 dark:text-white' },
+                  { l: 'Rezervováno', v: sklad.rezervovano, c: 'text-gray-500 dark:text-slate-400' },
+                  { l: 'Dostupné', v: sklad.dostupne, c: sklad.dostupne < 0 ? 'text-red-600 dark:text-red-400' : form.minMnozstvi !== '' && sklad.dostupne <= Number(form.minMnozstvi) ? 'text-amber-600 dark:text-amber-400' : 'text-green-700 dark:text-green-400' },
+                ].map(k => (
+                  <div key={k.l} className="bg-gray-50 dark:bg-slate-700/50 rounded-lg px-3 py-2">
+                    <p className="text-xs text-gray-500 dark:text-slate-400">{k.l}</p>
+                    <p className={`text-lg font-semibold ${k.c}`}>{k.v.toLocaleString('cs-CZ', { maximumFractionDigits: 3 })} {form.jednotka}</p>
+                  </div>
+                ))}
+              </div>
+              <div>
+                <label className={label}>Minimální zásoba ({form.jednotka})</label>
+                <input type="number" value={form.minMnozstvi} onChange={e => set('minMnozstvi', e.target.value)} min="0" step="any" className={inp} placeholder="Bez hlídání" />
+                <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">Klesne-li dostupné množství na tuto hodnotu, dostanou správci skladu upozornění.</p>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right column */}

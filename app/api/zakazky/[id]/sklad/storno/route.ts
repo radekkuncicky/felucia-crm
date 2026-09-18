@@ -4,6 +4,7 @@ import { listUsersWithPermValue } from '@/lib/zakazkyHelpers'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { getPerms, forbidden } from '@/lib/permissions'
+import { rezervovanoPolozky } from '@/lib/sklad'
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
@@ -26,15 +27,20 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   // Notifikovat všechny s plným přístupem ke skladu (příjem/storno)
   const skladUsers = await listUsersWithPermValue(orgId, 'sklad', 'PLNY')
 
+  // Vrátit přesně rezervované množství (historické položky bez pohybu → mnozstvi položky)
+  const rezervovano = await rezervovanoPolozky(db, orgId, polozkaId)
+  const mnozstvi = rezervovano > 0 ? rezervovano : polozka.mnozstvi
+
   await db.$transaction([
     db.skladPohyb.create({
       data: {
         orgId,
         zakazkaId: params.id,
         polozkaId,
-        typ: 'STORNO',
+        productId: polozka.productId,
+        typ: 'STORNO_REZERVACE',
         nazev: polozka.nazev,
-        mnozstvi: polozka.mnozstvi,
+        mnozstvi,
         duvod,
         vytvorilId: session.user.id,
       },

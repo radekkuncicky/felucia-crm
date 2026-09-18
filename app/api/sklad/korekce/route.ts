@@ -3,50 +3,46 @@ import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { getPerms, forbidden } from '@/lib/permissions'
-import { stavProduktu } from '@/lib/sklad'
+import { stavProduktu, zkontrolujMinimum } from '@/lib/sklad'
 
-/** Příjem na sklad — jen katalogový produkt (sklad v2 vede zásobu na products.id). */
+/** Ruční oprava zůstatku (inventura) — kladné i záporné množství, důvod povinný. */
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const perms = getPerms(session.user)
-  if (perms.sklad !== 'PLNY') return forbidden()
+  if (getPerms(session.user).sklad !== 'PLNY') return forbidden()
 
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)
-  const { productId, mnozstvi, nakupniCena, poznamka } = await req.json()
+  const { productId, mnozstvi, duvod } = await req.json()
 
   const qty = Number(mnozstvi)
-  if (!productId || !Number.isFinite(qty) || qty <= 0) {
-    return NextResponse.json({ error: 'Chybí produkt nebo množství' }, { status: 400 })
+  if (!productId || !Number.isFinite(qty) || qty === 0) {
+    return NextResponse.json({ error: 'Chybí produkt nebo nenulové množství' }, { status: 400 })
+  }
+  if (!duvod?.trim()) {
+    return NextResponse.json({ error: 'Důvod korekce je povinný' }, { status: 400 })
   }
 
   const product = await db.product.findFirst({
     where: { id: productId, orgId },
-    select: { id: true, nazev: true, jednotka: true, nakladovaCena: true },
+    select: { id: true, nazev: true, nakladovaCena: true },
   })
   if (!product) return NextResponse.json({ error: 'Produkt nenalezen' }, { status: 404 })
-
-  const cena = nakupniCena !== undefined && nakupniCena !== null && nakupniCena !== ''
-    ? Number(nakupniCena)
-    : product.nakladovaCena !== null ? Number(product.nakladovaCena) : null
 
   const pohyb = await db.skladPohyb.create({
     data: {
       orgId,
-      typ: 'PRIJEM_SKLAD',
+      typ: 'KOREKCE',
       productId: product.id,
       nazev: product.nazev,
       mnozstvi: qty,
-      nakupniCena: cena,
-      duvod: poznamka?.trim() || null,
+      nakupniCena: product.nakladovaCena,
+      duvod: duvod.trim(),
       vytvorilId: session.user.id,
-    },
-    include: {
-      vytvoril: { select: { jmeno: true } },
     },
   })
 
   const stav = await stavProduktu(db, orgId, product.id)
+  if (qty < 0) await zkontrolujMinimum(orgId, product.id)
   return NextResponse.json({ ...pohyb, stav }, { status: 201 })
 }

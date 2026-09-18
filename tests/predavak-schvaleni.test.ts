@@ -297,7 +297,7 @@ describe('procesní flow — schvalování a vracení stavů', () => {
     const polozka = await prisma.zakazkaPolozka.findUnique({ where: { id: pp!.zakazkaPolozkaId! } })
     expect(polozka?.stav).toBe('NASKLADNENO')
     const storno = await prisma.skladPohyb.findFirst({
-      where: { orgId, polozkaId: pp!.zakazkaPolozkaId!, typ: 'STORNO' },
+      where: { orgId, polozkaId: pp!.zakazkaPolozkaId!, typ: 'VRATKA_VYDEJE' },
     })
     expect(storno).toBeTruthy()
   })

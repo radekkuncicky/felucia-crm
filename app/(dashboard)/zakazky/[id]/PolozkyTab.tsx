@@ -2,14 +2,17 @@
 
 import { confirmDialog } from '@/components/ui/confirm'
 import { toast } from 'sonner'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { ZakazkaPolozkaStav } from '@prisma/client'
 import { formatKcPresne } from '@/lib/format'
+import ProductCatalogModal from '@/components/ProductCatalogModal'
+
+const fmtQty = (n: number) => n.toLocaleString('cs-CZ', { maximumFractionDigits: 3 })
 
 const STAV_LABELS: Record<ZakazkaPolozkaStav, string> = {
   CEKA: 'Čeká',
   OBJEDNANO: 'Objednáno',
-  NASKLADNENO: 'Naskladněno',
+  NASKLADNENO: 'Rezervováno',
   VYDANO: 'Vydáno',
 }
 
@@ -22,6 +25,7 @@ const STAV_COLORS: Record<ZakazkaPolozkaStav, string> = {
 
 interface Polozka {
   id: string
+  productId: string | null
   nazev: string
   kod: string | null
   mnozstvi: number
@@ -38,7 +42,7 @@ interface Props {
   polozky: Polozka[]
   /** zakazkyEdit — přidávání/úprava/mazání položek, Objednáno */
   canEdit: boolean
-  /** sklad PLNY — naskladnění a storno rezervace */
+  /** sklad PLNY — rezervace ze skladu a storno rezervace */
   canSklad: boolean
   /** financeProdejni — prodejní ceny a celkem */
   showCeny: boolean
@@ -67,6 +71,16 @@ function NaskladnitModal({ polozka, zakazkaId, onClose, onDone }: {
   const [rabat, setRabat] = useState(initRabat)
   const [poznamka, setPoznamka] = useState('')
   const [loading, setLoading] = useState(false)
+  // Sklad v2: dostupné množství produktu (jen u položky s vazbou na katalog)
+  const [stav, setStav] = useState<{ naSklade: number; rezervovano: number; dostupne: number } | null>(null)
+  useEffect(() => {
+    if (!polozka.productId) return
+    fetch(`/api/sklad/zasoby?productId=${polozka.productId}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(setStav)
+      .catch(() => {})
+  }, [polozka.productId])
+  const chybi = stav ? Math.max(0, Number(mnozstvi || 0) - stav.dostupne) : 0
 
   const computedFromRabat = prodejni && rabat !== ''
     ? Math.round(prodejni * (1 - Number(rabat) / 100) * 100) / 100
@@ -97,7 +111,9 @@ function NaskladnitModal({ polozka, zakazkaId, onClose, onDone }: {
       if (res.ok) {
         const data = await res.json()
         if (data.zakazkaNovyStav === 'V_REALIZACI') {
-          toast.success('Naskladněno — zakázka automaticky přešla do realizace')
+          toast.success('Rezervováno — zakázka automaticky přešla do realizace')
+        } else if (data.stav && data.stav.dostupne < 0) {
+          toast.warning(`Rezervováno nad dostupné množství — na skladě chybí ${fmtQty(-data.stav.dostupne)} ${polozka.jednotka}`)
         }
         onDone(); onClose()
       }
@@ -126,10 +142,25 @@ function NaskladnitModal({ polozka, zakazkaId, onClose, onDone }: {
             </div>
           )}
 
+          {/* Dostupnost na skladě */}
+          {stav && (
+            <div className={`flex items-center justify-between rounded-lg px-3 py-2 ${chybi > 0 ? 'bg-amber-50 dark:bg-amber-900/20' : 'bg-gray-50 dark:bg-slate-700/50'}`}>
+              <span className="text-xs text-gray-500 dark:text-slate-400">Dostupné na skladě</span>
+              <span className={`text-sm font-semibold ${stav.dostupne <= 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}`}>
+                {fmtQty(stav.dostupne)} {polozka.jednotka}
+              </span>
+            </div>
+          )}
+
           {/* Množství */}
           <div>
             <label className="block text-xs font-medium text-gray-700 dark:text-slate-300 mb-1">Množství ({polozka.jednotka})</label>
             <input type="number" value={mnozstvi} onChange={e => setMnozstvi(e.target.value)} min="0.01" step="0.01" required className={inputCls} style={{ fontSize: 16 }} />
+            {chybi > 0 && (
+              <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
+                Na skladě chybí {fmtQty(chybi)} {polozka.jednotka} — rezervace projde, dostupné množství půjde do minusu.
+              </p>
+            )}
           </div>
 
           {/* Nákupní cena s přepínačem */}
@@ -204,7 +235,7 @@ function NaskladnitModal({ polozka, zakazkaId, onClose, onDone }: {
           <div className="flex gap-3 justify-end pt-1">
             <button type="button" onClick={onClose} className="px-3 py-2 text-sm text-gray-600 dark:text-slate-400 border border-gray-300 dark:border-slate-600 rounded-lg">Zrušit</button>
             <button type="submit" disabled={loading || finalNakupni === null} className="px-3 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg disabled:opacity-50">
-              {loading ? 'Ukládám…' : 'Naskladnit'}
+              {loading ? 'Ukládám…' : 'Rezervovat'}
             </button>
           </div>
         </form>
@@ -338,6 +369,27 @@ export default function PolozkyTab({ zakazkaId, polozky: initialPolozky, canEdit
   const [savingNew, setSavingNew] = useState(false)
   const [upravitModal, setUpravitModal] = useState<Polozka | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [showCatalog, setShowCatalog] = useState(false)
+
+  /** Položky z katalogu produktů — s vazbou productId (sklad v2 podle ní vede zásobu). */
+  async function handleAddFromCatalog(items: { productId: string; kod: string | null; nazev: string; cenaZaKus: number; mnozstvi: number; jednotka?: string }[]) {
+    setShowCatalog(false)
+    for (const it of items) {
+      await fetch(`/api/zakazky/${zakazkaId}/polozky`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productId: it.productId,
+          nazev: it.nazev,
+          kod: it.kod,
+          mnozstvi: it.mnozstvi,
+          jednotka: it.jednotka ?? 'ks',
+          prodejniCena: it.cenaZaKus,
+        }),
+      })
+    }
+    refreshPolozky()
+  }
 
   async function refreshPolozky() {
     const res = await fetch(`/api/zakazky/${zakazkaId}/polozky`)
@@ -400,6 +452,7 @@ export default function PolozkyTab({ zakazkaId, polozky: initialPolozky, canEdit
 
   return (
     <>
+      {showCatalog && <ProductCatalogModal onClose={() => setShowCatalog(false)} onAdd={handleAddFromCatalog} />}
       {naskladnitModal && (
         <NaskladnitModal
           polozka={naskladnitModal}
@@ -429,15 +482,26 @@ export default function PolozkyTab({ zakazkaId, polozky: initialPolozky, canEdit
         <div className="px-5 py-4 border-b border-gray-200 dark:border-slate-700 flex items-center justify-between">
           <h3 className="font-semibold text-gray-900 dark:text-white">Položky ({polozky.length})</h3>
           {canEdit && (
-            <button
-              onClick={startNewRow}
-              className="text-sm font-medium text-primary dark:text-primary-light hover:underline flex items-center gap-1"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Přidat položku
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowCatalog(true)}
+                className="text-sm font-medium text-primary dark:text-primary-light hover:underline flex items-center gap-1"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                </svg>
+                Z katalogu
+              </button>
+              <button
+                onClick={startNewRow}
+                className="text-sm font-medium text-primary dark:text-primary-light hover:underline flex items-center gap-1"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Ručně
+              </button>
+            </div>
           )}
         </div>
 
@@ -477,7 +541,7 @@ export default function PolozkyTab({ zakazkaId, polozky: initialPolozky, canEdit
                           )}
                           {canSklad && (
                           <button onClick={() => setNaskladnitModal(p)} className="text-xs px-2.5 py-1.5 text-green-700 dark:text-green-400 border border-green-300 dark:border-green-700 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/20">
-                            Naskladnit
+                            Rezervovat
                           </button>
                           )}
                           {canEdit && (
@@ -494,7 +558,7 @@ export default function PolozkyTab({ zakazkaId, polozky: initialPolozky, canEdit
                       )}
                       {p.stav === 'OBJEDNANO' && canSklad && (
                         <button onClick={() => setNaskladnitModal(p)} className="text-xs px-2.5 py-1.5 text-green-700 dark:text-green-400 border border-green-300 dark:border-green-700 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/20">
-                          Naskladnit
+                          Rezervovat
                         </button>
                       )}
                       {p.stav === 'NASKLADNENO' && canSklad && (
@@ -636,7 +700,7 @@ export default function PolozkyTab({ zakazkaId, polozky: initialPolozky, canEdit
                                   onClick={() => setNaskladnitModal(p)}
                                   className="text-xs px-2 py-1 text-green-700 dark:text-green-400 border border-green-300 dark:border-green-700 rounded hover:bg-green-50 dark:hover:bg-green-900/20"
                                 >
-                                  Naskladnit
+                                  Rezervovat
                                 </button>
                                 )}
                                 {canEdit && (
@@ -663,7 +727,7 @@ export default function PolozkyTab({ zakazkaId, polozky: initialPolozky, canEdit
                                 onClick={() => setNaskladnitModal(p)}
                                 className="text-xs px-2 py-1 text-green-700 dark:text-green-400 border border-green-300 dark:border-green-700 rounded hover:bg-green-50 dark:hover:bg-green-900/20"
                               >
-                                Naskladnit
+                                Rezervovat
                               </button>
                             )}
                             {p.stav === 'NASKLADNENO' && canSklad && (

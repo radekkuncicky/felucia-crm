@@ -3,12 +3,16 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
 import ProductDetail from './ProductDetail'
+import { getPerms } from '@/lib/permissions'
+import { orgPrisma } from '@/lib/orgPrisma'
+import { stavProduktu } from '@/lib/sklad'
 
 export default async function ProductDetailPage({ params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   const orgId = session!.user.orgId
+  const showSklad = getPerms(session!.user).sklad !== 'ZADNY'
 
-  const [product, allCategories, usageItems, usageCount] = await Promise.all([
+  const [product, allCategories, usageItems, usageCount, sklad] = await Promise.all([
     prisma.product.findFirst({
       where: { id: params.id, orgId },
       include: {
@@ -24,12 +28,14 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
       take: 1,
     }),
     prisma.quoteItem.count({ where: { productId: params.id, deal: { orgId } } }),
+    showSklad ? stavProduktu(orgPrisma(orgId), orgId, params.id) : Promise.resolve(null),
   ])
   if (!product) notFound()
 
   return (
     <div className="max-w-5xl">
       <ProductDetail
+        sklad={sklad}
         product={{
           id: product.id,
           kod: product.kod,
@@ -43,6 +49,7 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
           objednaciKod: product.objednaciKod,
           dodavatel: product.dodavatel,
           dodaciLhuta: product.dodaciLhuta,
+          minMnozstvi: product.minMnozstvi !== null ? Number(product.minMnozstvi) : null,
           aktivni: product.aktivni,
           vytvoreno: product.vytvoreno.toISOString(),
           categories: product.categories.map(c => ({ id: c.id, nazev: c.nazev, barva: c.barva })),
