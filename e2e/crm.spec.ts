@@ -106,6 +106,11 @@ test('sklad: záložky Zásoby / Dodavatelé / Objednávky se načtou a přepín
   await expect(page.locator('body')).toContainText(/Nový dodavatel|Zatím žádný dodavatel/)
   await page.getByRole('button', { name: 'Objednávky' }).click()
   await expect(page.locator('body')).toContainText(/Nové objednávky vznikají ze zakázky/)
+  // dialog nového dodavatele nabízí lustraci přes ARES (našeptávač + tlačítko u IČO)
+  await page.getByRole('button', { name: 'Dodavatelé' }).click()
+  await page.getByRole('button', { name: /Nový dodavatel/ }).click()
+  await expect(page.locator('body')).toContainText(/Vyhledat firmu v ARES/)
+  await expect(page.getByRole('button', { name: 'ARES' })).toBeVisible()
   expect(errors).toEqual([])
 })
 

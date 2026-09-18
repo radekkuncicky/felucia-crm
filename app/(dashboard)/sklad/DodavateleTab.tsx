@@ -3,6 +3,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
+import AresAutocomplete from '@/components/AresAutocomplete'
+import type { AresFirma } from '@/hooks/useAresLookup'
+import { doplnZAres } from '@/lib/ares'
 import { confirmDialog } from '@/components/ui/confirm'
 import { formatDate, formatKcPresne } from '@/lib/format'
 import { OBJ_STAV_LABELS, OBJ_STAV_COLORS } from './objednavkyStav'
@@ -63,12 +66,50 @@ const FIELDS: { key: keyof DodavatelForm; label: string; placeholder?: string; t
 type DodavatelForm = { nazev: string; ico: string; dic: string; email: string; telefon: string; kontaktOsoba: string; ulice: string; mesto: string; psc: string; poznamka: string }
 const emptyForm: DodavatelForm = { nazev: '', ico: '', dic: '', email: '', telefon: '', kontaktOsoba: '', ulice: '', mesto: '', psc: '', poznamka: '' }
 
+/** Které pole formuláře dodavatele bere kterou hodnotu z ARES (doplňují se jen prázdná) */
+const ARES_MAPA = { nazev: 'nazev', ico: 'ico', dic: 'dic', ulice: 'ulice', mesto: 'mesto', psc: 'psc' } as const
+
 function DodavatelModal({ initial, onClose, onSaved }: { initial: Dodavatel | null; onClose: () => void; onSaved: () => void }) {
   const [form, setForm] = useState<DodavatelForm>(initial ? {
     nazev: initial.nazev, ico: initial.ico ?? '', dic: initial.dic ?? '', email: initial.email ?? '', telefon: initial.telefon ?? '',
     kontaktOsoba: initial.kontaktOsoba ?? '', ulice: initial.ulice ?? '', mesto: initial.mesto ?? '', psc: initial.psc ?? '', poznamka: initial.poznamka ?? '',
   } : emptyForm)
   const [saving, setSaving] = useState(false)
+  const [aresLoading, setAresLoading] = useState(false)
+
+  /** Doplní jen prázdná pole; toast řekne, kolik se jich doplnilo (u vyplněného formuláře nic nepřepisuje). */
+  function applyAres(firma: AresFirma) {
+    setForm(prev => {
+      const next = doplnZAres(prev, firma, ARES_MAPA)
+      const doplneno = (Object.keys(ARES_MAPA) as (keyof DodavatelForm)[]).filter(k => prev[k] !== next[k]).length
+      if (doplneno === 0) toast.info(`${firma.nazev}: všechna pole už jsou vyplněná, nic nepřepisuji`)
+      else toast.success(`Doplněno z ARES: ${firma.nazev}`)
+      return next
+    })
+  }
+
+  async function loadFromAres(ico: string, tiche = false) {
+    setAresLoading(true)
+    try {
+      const res = await fetch(`/api/ares?q=${encodeURIComponent(ico)}`)
+      const firmy = res.ok ? await res.json() as AresFirma[] : []
+      if (!firmy.length) { if (!tiche) toast.error('IČO nenalezeno v ARES'); return }
+      applyAres(firmy[0])
+    } catch {
+      if (!tiche) toast.error('Nepodařilo se načíst data z ARES')
+    } finally {
+      setAresLoading(false)
+    }
+  }
+
+  // Auto-lustrace po zadání 8 číslic IČO — jen u nového dodavatele bez názvu (při editaci nic samo nespouštět)
+  const icoCiste = form.ico.replace(/\s/g, '')
+  const autoLookup = !initial && form.nazev.trim() === '' && /^\d{8}$/.test(icoCiste)
+  useEffect(() => {
+    if (!autoLookup) return
+    loadFromAres(icoCiste, true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoLookup, icoCiste])
 
   async function submit(e: React.FormEvent) {
     e.preventDefault()
@@ -95,18 +136,44 @@ function DodavatelModal({ initial, onClose, onSaved }: { initial: Dodavatel | nu
         </div>
         <form onSubmit={submit} className="px-5 py-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="sm:col-span-2">
+              <label className={lbl}>Vyhledat firmu v ARES</label>
+              <AresAutocomplete onSelect={applyAres} placeholder="Název firmy nebo IČO" />
+              <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">Po výběru se doplní název, IČO, DIČ a sídlo — ručně vyplněná pole zůstanou.</p>
+            </div>
             {FIELDS.map(f => (
               <div key={f.key} className={f.wide ? 'sm:col-span-2' : ''}>
                 <label className={lbl}>{f.label}</label>
-                <input
-                  type={f.type ?? 'text'}
-                  value={form[f.key]}
-                  onChange={e => setForm(prev => ({ ...prev, [f.key]: e.target.value }))}
-                  required={f.key === 'nazev'}
-                  placeholder={f.placeholder}
-                  className={inp}
-                  autoFocus={f.key === 'nazev'}
-                />
+                {f.key === 'ico' ? (
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={form.ico}
+                      onChange={e => setForm(prev => ({ ...prev, ico: e.target.value }))}
+                      placeholder="12345678"
+                      className={inp}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => loadFromAres(icoCiste)}
+                      disabled={aresLoading || !icoCiste}
+                      title="Načíst z ARES"
+                      className="flex-shrink-0 px-3 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-600 disabled:opacity-40 whitespace-nowrap"
+                    >
+                      {aresLoading ? '…' : 'ARES'}
+                    </button>
+                  </div>
+                ) : (
+                  <input
+                    type={f.type ?? 'text'}
+                    value={form[f.key]}
+                    onChange={e => setForm(prev => ({ ...prev, [f.key]: e.target.value }))}
+                    required={f.key === 'nazev'}
+                    placeholder={f.placeholder}
+                    className={inp}
+                  />
+                )}
               </div>
             ))}
           </div>

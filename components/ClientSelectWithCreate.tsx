@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { confirmDialog } from '@/components/ui/confirm'
+import type { AresFirma } from '@/hooks/useAresLookup'
 
 interface Client {
   id: string
@@ -51,24 +52,23 @@ function CreateClientModal({
     setForm(f => ({ ...f, [field]: value }))
   }
 
+  // Přes vlastní /api/ares — přímé volání ares.gov.cz z prohlížeče blokuje CSP (connect-src)
   async function loadFromAres() {
     if (!form.ico.trim()) return
     setAresLoading(true)
     setError('')
     try {
-      const res = await fetch(`https://ares.gov.cz/ekonomicke-subjekty-v-be/rest/ekonomicke-subjekty/${form.ico.trim()}`)
-      if (!res.ok) { setError('IČO nenalezeno v ARES'); return }
-      const data = await res.json()
-      const adresa = data.sidlo ?? {}
-      const mestoParsed = adresa.nazevObce ?? ''
-      const nazev: string = data.obchodniJmeno ?? ''
+      const res = await fetch(`/api/ares?q=${encodeURIComponent(form.ico.trim())}`)
+      const firmy = res.ok ? await res.json() as AresFirma[] : []
+      if (!firmy.length) { setError('IČO nenalezeno v ARES'); return }
+      const nazev = firmy[0].nazev
       // Split company name: last word = jmeno, rest = prijmeni (best-effort)
       const nameParts = nazev.trim().split(' ')
       setForm(f => ({
         ...f,
         prijmeni: nameParts.length > 1 ? nameParts.slice(0, -1).join(' ') : nazev,
         jmeno: nameParts.length > 1 ? nameParts[nameParts.length - 1] : '',
-        mesto: mestoParsed || f.mesto,
+        mesto: firmy[0].mesto || f.mesto,
       }))
     } catch {
       setError('Nepodařilo se načíst data z ARES')

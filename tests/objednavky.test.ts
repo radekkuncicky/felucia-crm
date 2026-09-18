@@ -91,8 +91,10 @@ describe('dodavatelé', () => {
     loginAs(adminId, orgId)
     const bad = await dodavateleePost(json('http://t', { nazev: '', email: 'x' }))
     expect(bad.status).toBe(400)
-    const x = await (await dodavateleePost(json('http://t', { nazev: 'Dodavatel X', email: 'x@example.com', ico: '123' }))).json()
+    const x = await (await dodavateleePost(json('http://t', { nazev: 'Dodavatel X', email: 'x@example.com', ico: '123', dic: 'CZ123', ulice: 'Ulice 1', mesto: 'Brno', psc: '602 00' }))).json()
     dodavatelX = x.id
+    // rychlé založení z produktu posílá i údaje z ARES — vše se musí uložit
+    expect(x).toMatchObject({ ico: '123', dic: 'CZ123', ulice: 'Ulice 1', mesto: 'Brno', psc: '602 00' })
     dodavatelY = (await (await dodavateleePost(json('http://t', { nazev: 'Dodavatel Y' }))).json()).id
 
     const list = await (await dodavateleGet(new Request('http://t/api/dodavatele'))).json()

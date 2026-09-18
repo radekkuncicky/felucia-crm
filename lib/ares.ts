@@ -17,22 +17,45 @@ export interface AresFirma {
   pravniForma: string
 }
 
-function formatPsc(raw: string | number | null | undefined): string {
+/**
+ * Doplní z ARES jen pole, která jsou ve formuláři prázdná — co uživatel napsal
+ * ručně, zůstává. `mapa` říká, které pole formuláře bere kterou hodnotu z AresFirma.
+ * Čistá funkce, bezpečná i na klientu.
+ */
+export function doplnZAres<T extends object>(
+  form: T,
+  firma: AresFirma,
+  mapa: Partial<Record<keyof T, keyof AresFirma>>,
+): T {
+  const next = { ...form } as Record<string, unknown>
+  for (const [pole, zdroj] of Object.entries(mapa) as [string, keyof AresFirma][]) {
+    const soucasna = (form as Record<string, unknown>)[pole]
+    const nova = firma[zdroj]
+    if ((typeof soucasna === 'string' && soucasna.trim() === '') || soucasna == null) {
+      if (nova !== null && nova !== undefined && nova !== '') next[pole] = nova
+    }
+  }
+  return next as T
+}
+
+export function formatPsc(raw: string | number | null | undefined): string {
   if (!raw) return ''
   const s = String(raw).replace(/\s/g, '')
   return s.length === 5 ? `${s.slice(0, 3)} ${s.slice(3)}` : s
 }
 
-function buildUlice(sidlo: Record<string, unknown>): string {
-  const ulice = sidlo.nazevUlice as string | undefined
+export function buildUlice(sidlo: Record<string, unknown>): string {
+  // Obce bez ulic (vesnice) mají v ARES jen část obce → použije se jako „ulice"
+  const ulice = (sidlo.nazevUlice as string | undefined) ?? (sidlo.nazevCastiObce as string | undefined)
   const domovni = sidlo.cisloDomovni as string | number | undefined
   const orientacni = sidlo.cisloOrientacni as string | number | undefined
+  const pismeno = (sidlo.cisloOrientacniPismeno as string | undefined) ?? ''
   if (!ulice && !domovni) return ''
-  const cislo = orientacni ? `${domovni}/${orientacni}` : domovni ? String(domovni) : ''
+  const cislo = orientacni ? `${domovni}/${orientacni}${pismeno}` : domovni ? String(domovni) : ''
   return [ulice, cislo].filter(Boolean).join(' ')
 }
 
-function mapSubjekt(data: Record<string, unknown>): AresFirma {
+export function mapSubjekt(data: Record<string, unknown>): AresFirma {
   const sidlo = (data.sidlo as Record<string, unknown>) ?? {}
   return {
     ico: String(data.ico ?? ''),

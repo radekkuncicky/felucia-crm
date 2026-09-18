@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { toast } from 'sonner'
 import { confirmDialog } from '@/components/ui/confirm'
 import { formatKcPresne } from '@/lib/format'
+import AresAutocomplete from '@/components/AresAutocomplete'
+import type { AresFirma } from '@/hooks/useAresLookup'
 
 /**
  * Dodavatelé produktu (M:N s objednacím kódem a nákupní cenou, jeden hlavní).
@@ -34,8 +36,8 @@ interface Props {
 const inp = 'w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-slate-900 text-gray-900 dark:text-white'
 const label = 'block text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-1.5'
 
-type FormState = { dodavatelId: string; novyNazev: string; objednaciKod: string; nakupniCena: string; dodaciLhuta: string }
-const emptyForm: FormState = { dodavatelId: '', novyNazev: '', objednaciKod: '', nakupniCena: '', dodaciLhuta: '' }
+type FormState = { dodavatelId: string; novyNazev: string; novyAres: AresFirma | null; objednaciKod: string; nakupniCena: string; dodaciLhuta: string }
+const emptyForm: FormState = { dodavatelId: '', novyNazev: '', novyAres: null, objednaciKod: '', nakupniCena: '', dodaciLhuta: '' }
 
 export default function ProductDodavateleSection({ productId, showNakupky, canEdit }: Props) {
   const [vazby, setVazby] = useState<Vazba[] | null>(null)
@@ -65,6 +67,7 @@ export default function ProductDodavateleSection({ productId, showNakupky, canEd
     setForm({
       dodavatelId: v.dodavatelId,
       novyNazev: '',
+      novyAres: null,
       objednaciKod: v.objednaciKod ?? '',
       nakupniCena: v.nakupniCena !== null ? String(v.nakupniCena) : '',
       dodaciLhuta: v.dodaciLhuta ?? '',
@@ -79,9 +82,11 @@ export default function ProductDodavateleSection({ productId, showNakupky, canEd
       // Rychlé založení dodavatele přímo z produktu
       if (editing === 'new' && dodavatelId === '__new') {
         if (!form.novyNazev.trim()) { toast.error('Zadejte název dodavatele'); return }
+        // Z ARES rovnou IČO/DIČ/sídlo (uživatel mohl název ještě upravit → bere se z inputu)
+        const a = form.novyAres
         const res = await fetch('/api/dodavatele', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ nazev: form.novyNazev }),
+          body: JSON.stringify({ nazev: form.novyNazev, ...(a ? { ico: a.ico, dic: a.dic ?? '', ulice: a.ulice, mesto: a.mesto, psc: a.psc } : {}) }),
         })
         const d = await res.json().catch(() => ({}))
         if (!res.ok) { toast.error(d.error ?? 'Dodavatele se nepodařilo založit'); return }
@@ -182,11 +187,6 @@ export default function ProductDodavateleSection({ productId, showNakupky, canEd
           )}
         </ul>
       )}
-      {vazby?.length === 0 && editing === 'new' && (
-        <div className="rounded-lg border border-gray-200 dark:border-slate-700 px-3 py-3 bg-gray-50 dark:bg-slate-900/40">
-          <VazbaForm form={form} setForm={setForm} showNakupky={showNakupky} dodavatele={volniDodavatele} mode="new" saving={saving} onSave={save} onCancel={() => setEditing(null)} />
-        </div>
-      )}
     </div>
   )
 }
@@ -218,7 +218,18 @@ function VazbaForm({ form, setForm, showNakupky, dodavatele, mode, dodavatelNaze
             </select>
           )}
           {mode === 'new' && form.dodavatelId === '__new' && (
-            <input type="text" value={form.novyNazev} onChange={e => set('novyNazev', e.target.value)} className={`${inp} mt-2`} placeholder="Název nového dodavatele" autoFocus />
+            <div className="mt-2 space-y-2">
+              <AresAutocomplete
+                onSelect={f => setForm({ ...form, novyNazev: f.nazev, novyAres: f })}
+                placeholder="Hledat v ARES (název nebo IČO)"
+              />
+              <input type="text" value={form.novyNazev} onChange={e => set('novyNazev', e.target.value)} className={inp} placeholder="Název nového dodavatele" />
+              {form.novyAres && (
+                <p className="text-xs text-gray-400 dark:text-slate-500">
+                  Z ARES: IČO {form.novyAres.ico}{form.novyAres.dic ? `, DIČ ${form.novyAres.dic}` : ''}{form.novyAres.mesto ? `, ${form.novyAres.mesto}` : ''} — doplní se k dodavateli.
+                </p>
+              )}
+            </div>
           )}
         </div>
         <div>

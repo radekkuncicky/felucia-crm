@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation'
 import { parseEmailInput } from '@/lib/parseEmail'
 import ConfirmModal from '@/components/ConfirmModal'
 import { formatDate } from '@/lib/format'
+import AresAutocomplete from '@/components/AresAutocomplete'
+import type { AresFirma } from '@/hooks/useAresLookup'
+import { doplnZAres } from '@/lib/ares'
 
 function parseFullAddress(text: string): { ulice: string; psc: string; mesto: string } | null {
   const trimmed = text.trim()
@@ -62,27 +65,22 @@ export default function ClientEditForm({ client, isAdmin }: { client: ClientData
     setForm({ ...client })
   }
 
+  /** Doplní z ARES jen prázdná pole — ručně upravené údaje klienta zůstávají */
+  function applyAres(firma: AresFirma) {
+    setForm(f => doplnZAres(f, firma, { jmeno: 'nazev', ico: 'ico', dic: 'dic', ulice: 'ulice', mesto: 'mesto', psc: 'psc' }))
+  }
+
+  // Přes vlastní /api/ares — přímé volání ares.gov.cz z prohlížeče blokuje CSP (connect-src)
   async function loadFromAres() {
     const ico = form.ico.trim()
     if (!ico) return
     setAresLoading(true)
     setError('')
     try {
-      const res = await fetch(`https://ares.gov.cz/ekonomicke-subjekty-v-be/rest/ekonomicke-subjekty/${ico}`)
-      if (!res.ok) { setError('IČO nenalezeno v ARES'); return }
-      const data = await res.json()
-      const adresa = data.sidlo ?? {}
-      const ulice = [adresa.nazevUlice, adresa.cisloDomovni && adresa.cisloOrientacni
-        ? `${adresa.cisloDomovni}/${adresa.cisloOrientacni}`
-        : adresa.cisloDomovni ?? ''].filter(Boolean).join(' ')
-      setForm(f => ({
-        ...f,
-        jmeno: data.obchodniJmeno ?? f.jmeno,
-        ulice: ulice || f.ulice,
-        mesto: adresa.nazevObce ?? f.mesto,
-        psc: adresa.psc ? String(adresa.psc) : f.psc,
-        dic: data.dic ?? f.dic,
-      }))
+      const res = await fetch(`/api/ares?q=${encodeURIComponent(ico)}`)
+      const firmy = res.ok ? await res.json() as AresFirma[] : []
+      if (!firmy.length) { setError('IČO nenalezeno v ARES'); return }
+      applyAres(firmy[0])
     } catch {
       setError('Nepodařilo se načíst data z ARES')
     } finally {
@@ -236,6 +234,11 @@ export default function ClientEditForm({ client, isAdmin }: { client: ClientData
               </div>
             ) : (
               <div className="space-y-3">
+                <div>
+                  <label className={lbl}>Vyhledat firmu v ARES</label>
+                  <AresAutocomplete onSelect={applyAres} />
+                  <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">Doplní jen prázdná pole (název, IČO, DIČ, sídlo).</p>
+                </div>
                 <div>
                   <label className={lbl}>Název firmy</label>
                   <input value={form.jmeno} onChange={e => set('jmeno', e.target.value)} className={inp} />

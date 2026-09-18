@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { IconImage, IconBox, IconDocument } from '@/components/ui/Icons'
+import type { AresFirma } from '@/hooks/useAresLookup'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -116,26 +117,22 @@ export default function OnboardingWizard({
   }, [])
 
   // ── ARES lookup ──────────────────────────────────────────────────────────────
+  // Přes vlastní /api/ares (parsování sídla řeší lib/ares.ts) — přímé volání
+  // ares.gov.cz z prohlížeče blokuje CSP (connect-src); onboarding už běží za sessionem
   async function loadFromAres() {
     if (ico.length !== 8) { setError('IČO musí mít 8 číslic'); return }
     setAresLoading(true)
     setError(null)
     try {
-      const ctrl = new AbortController()
-      const timeout = setTimeout(() => ctrl.abort(), 5000)
-      const res = await fetch(`https://ares.gov.cz/ekonomicke-subjekty-v-be/rest/ekonomicke-subjekty/${ico}`, { signal: ctrl.signal })
-      clearTimeout(timeout)
-      if (!res.ok) { setError('IČO nenalezeno v ARES'); return }
-      const data = await res.json()
-      setNazev(data.obchodniJmeno ?? nazev)
-      setDic(data.dic ?? '')
-      const s = data.sidlo
-      if (s) {
-        const parts = [s.nazevUlice, s.cisloDomovni ? `${s.cisloDomovni}${s.cisloOrientacni ? '/' + s.cisloOrientacni : ''}` : ''].filter(Boolean)
-        setSidlo(parts.join(' '))
-        setMesto(s.nazevObce ?? '')
-        setPsc(String(s.psc ?? ''))
-      }
+      const res = await fetch(`/api/ares?q=${encodeURIComponent(ico)}`)
+      const firmy = res.ok ? await res.json() as AresFirma[] : []
+      if (!firmy.length) { setError('IČO nenalezeno v ARES'); return }
+      const f = firmy[0]
+      setNazev(f.nazev || nazev)
+      setDic(f.dic ?? '')
+      if (f.ulice) setSidlo(f.ulice)
+      if (f.mesto) setMesto(f.mesto)
+      if (f.psc) setPsc(f.psc)
     } catch {
       setError('Nepodařilo se načíst data z ARES. Vyplňte prosím ručně.')
     } finally {
