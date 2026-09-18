@@ -209,7 +209,7 @@ async function main() {
       data: {
         orgId: org.id, kod: p.kod, nazev: p.nazev, produktovaRada: p.produktovaRada, jednotka: p.jednotka, popis: p.popis,
         dphSazba: p.dphSazba, standardniCena: p.standardniCena, nakladovaCena: p.nakladovaCena,
-        objednaciKod: p.objednaciKod, dodavatel: p.dodavatel, dodaciLhuta: p.dodaciLhuta, aktivni: true,
+        objednaciKod: p.objednaciKod, dodaciLhuta: p.dodaciLhuta, aktivni: true,
         categories: cats.length ? { connect: cats.map(id => ({ id })) } : undefined,
       },
     })

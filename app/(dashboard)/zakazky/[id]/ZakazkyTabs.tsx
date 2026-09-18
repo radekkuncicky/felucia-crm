@@ -13,10 +13,12 @@ const ICONS: Record<string, string> = {
   foto:       'M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z M15 13a3 3 0 11-6 0 3 3 0 016 0z',
   historie:   'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
   kontakty:   'M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z',
+  objednavky: 'M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z',
 }
 
 const TABS = [
   { key: 'polozky',    label: 'Položky' },
+  { key: 'objednavky', label: 'Objednávky' },
   { key: 'technici',   label: 'Technici' },
   { key: 'predavaky',  label: 'Protokoly' },
   { key: 'kontakty',   label: 'Kontakty' },
@@ -34,6 +36,8 @@ interface Props {
   showVyuctovani: boolean
   /** zakazkyEdit */
   showHistorie: boolean
+  /** sklad !== ZADNY */
+  showObjednavky: boolean
 }
 
 function Icon({ path }: { path: string }) {
@@ -44,9 +48,10 @@ function Icon({ path }: { path: string }) {
   )
 }
 
-export default function ZakazkyTabs({ zakazkaId, showTechnici, showVyuctovani, showHistorie }: Props) {
+export default function ZakazkyTabs({ zakazkaId, showTechnici, showVyuctovani, showHistorie, showObjednavky }: Props) {
   const tabs = TABS.filter(t =>
     (t.key !== 'technici' || showTechnici) &&
+    (t.key !== 'objednavky' || showObjednavky) &&
     (t.key !== 'vyuctovani' || showVyuctovani) &&
     (t.key !== 'historie' || showHistorie),
   )
@@ -56,6 +61,7 @@ export default function ZakazkyTabs({ zakazkaId, showTechnici, showVyuctovani, s
   let activeTab = searchParams.get('tab') ?? 'polozky'
   if (pathname.includes('/vyuctovani/')) activeTab = 'vyuctovani'
   if (pathname.includes('/predavaky/')) activeTab = 'predavaky'
+  if (pathname.includes('/objednavky/')) activeTab = 'objednavky'
 
   return (
     <div className="sticky top-0 z-20 relative bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700">

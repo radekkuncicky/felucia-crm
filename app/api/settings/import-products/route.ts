@@ -54,6 +54,19 @@ export async function POST(req: Request) {
     return cat.id
   }
 
+  // Dodavatel z importu = entita Dodavatel (find-or-create podle názvu) + hlavní vazba na produkt
+  const dodavatelCache = new Map<string, string>()
+
+  async function getOrCreateDodavatel(nazev: string): Promise<string | null> {
+    const n = nazev?.trim()
+    if (!n) return null
+    if (dodavatelCache.has(n)) return dodavatelCache.get(n)!
+    let d = await db.dodavatel.findFirst({ where: { orgId, nazev: n } })
+    if (!d) d = await db.dodavatel.create({ data: { orgId, nazev: n } })
+    dodavatelCache.set(n, d.id)
+    return d.id
+  }
+
   // 2. Import products (find by orgId + kod, then create or update)
   const productCache = new Map<string, string>() // effectiveKod → product.id
 
@@ -74,7 +87,6 @@ export async function POST(req: Request) {
         nakladovaCena: p.nakladovaCena ?? null,
         standardniCena: p.standardniCena || 0,
         objednaciKod: p.objednaciKod || null,
-        dodavatel: p.dodavatel || null,
         dodaciLhuta: p.dodaciLhuta || null,
       }
 
@@ -99,6 +111,16 @@ export async function POST(req: Request) {
       }
       productCache.set(effectiveKod, product.id)
       importedProducts++
+
+      const dodavatelId = await getOrCreateDodavatel(p.dodavatel ?? '')
+      if (dodavatelId) {
+        const maHlavniho = await db.productDodavatel.findFirst({ where: { orgId, productId: product.id, hlavni: true, NOT: { dodavatelId } } })
+        await db.productDodavatel.upsert({
+          where: { productId_dodavatelId: { productId: product.id, dodavatelId } },
+          create: { orgId, productId: product.id, dodavatelId, objednaciKod: p.objednaciKod || null, nakupniCena: p.nakladovaCena ?? null, dodaciLhuta: p.dodaciLhuta || null, hlavni: !maHlavniho },
+          update: { objednaciKod: p.objednaciKod || null, nakupniCena: p.nakladovaCena ?? null, dodaciLhuta: p.dodaciLhuta || null },
+        })
+      }
     } catch (e) {
       errors.push(`${p.nazev}: ${String(e)}`)
     }

@@ -60,6 +60,7 @@ export default async function ZakazkaDetailLayout({
       op: { select: { id: true, kod: true, predmet: true } },
       polozky: { select: { stav: true, nakupniCena: true, mnozstvi: true } },
       vyuctovani: { select: { stav: true, polozky: { select: { mnozstvi: true, prodejniCena: true } } } },
+      objednavky: { where: { stav: { in: ['NAVRH', 'ODESLANA', 'CASTECNE_DORUCENA'] } }, select: { id: true } },
       techniciRel: { select: { technikId: true } },
       etapy: {
         orderBy: { cislo: 'asc' as const },
@@ -256,6 +257,11 @@ export default async function ZakazkaDetailLayout({
               {polozkyReady === polozkyTotal && (
                 <span className="text-xs text-green-600 dark:text-green-400 font-medium">vše ready</span>
               )}
+              {perms.sklad !== 'ZADNY' && zakazka.objednavky.length > 0 && (
+                <Link href={`/zakazky/${zakazka.id}?tab=objednavky`} className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 hover:underline whitespace-nowrap">
+                  {zakazka.objednavky.length} {zakazka.objednavky.length === 1 ? 'otevřená objednávka' : zakazka.objednavky.length < 5 ? 'otevřené objednávky' : 'otevřených objednávek'}
+                </Link>
+              )}
             </div>
           )}
         </div>
@@ -348,7 +354,7 @@ export default async function ZakazkaDetailLayout({
 
       {/* Tab bar — always visible, active tab determined from URL */}
       <Suspense fallback={<div className="border-b border-gray-200 dark:border-slate-700 h-10" />}>
-        <ZakazkyTabs zakazkaId={zakazka.id} showTechnici={canEdit} showVyuctovani={perms.financeProdejni} showHistorie={canEdit} />
+        <ZakazkyTabs zakazkaId={zakazka.id} showTechnici={canEdit} showVyuctovani={perms.financeProdejni} showHistorie={canEdit} showObjednavky={perms.sklad !== 'ZADNY'} />
       </Suspense>
 
       {/* Page content */}

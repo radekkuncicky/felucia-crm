@@ -79,6 +79,12 @@ DROP POLICY IF EXISTS org_rls ON "documents";
 CREATE POLICY org_rls ON "documents" FOR ALL TO nanto_app
   USING ("orgId" = current_setting('app.org_id', true)) WITH CHECK ("orgId" = current_setting('app.org_id', true));
 
+-- Dodavatel
+ALTER TABLE "dodavatele" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_rls ON "dodavatele";
+CREATE POLICY org_rls ON "dodavatele" FOR ALL TO nanto_app
+  USING ("orgId" = current_setting('app.org_id', true)) WITH CHECK ("orgId" = current_setting('app.org_id', true));
+
 -- Extension
 ALTER TABLE "extensions" ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS org_rls ON "extensions";
@@ -95,6 +101,18 @@ CREATE POLICY org_rls ON "leady" FOR ALL TO nanto_app
 ALTER TABLE "notifications" ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS org_rls ON "notifications";
 CREATE POLICY org_rls ON "notifications" FOR ALL TO nanto_app
+  USING ("orgId" = current_setting('app.org_id', true)) WITH CHECK ("orgId" = current_setting('app.org_id', true));
+
+-- ObjednavkaPolozka
+ALTER TABLE "objednavka_polozky" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_rls ON "objednavka_polozky";
+CREATE POLICY org_rls ON "objednavka_polozky" FOR ALL TO nanto_app
+  USING ("orgId" = current_setting('app.org_id', true)) WITH CHECK ("orgId" = current_setting('app.org_id', true));
+
+-- Objednavka
+ALTER TABLE "objednavky" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_rls ON "objednavky";
+CREATE POLICY org_rls ON "objednavky" FOR ALL TO nanto_app
   USING ("orgId" = current_setting('app.org_id', true)) WITH CHECK ("orgId" = current_setting('app.org_id', true));
 
 -- OrgEmailSettings
@@ -125,6 +143,12 @@ CREATE POLICY org_rls ON "photos" FOR ALL TO nanto_app
 ALTER TABLE "predavaky" ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS org_rls ON "predavaky";
 CREATE POLICY org_rls ON "predavaky" FOR ALL TO nanto_app
+  USING ("orgId" = current_setting('app.org_id', true)) WITH CHECK ("orgId" = current_setting('app.org_id', true));
+
+-- ProductDodavatel
+ALTER TABLE "product_dodavatele" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_rls ON "product_dodavatele";
+CREATE POLICY org_rls ON "product_dodavatele" FOR ALL TO nanto_app
   USING ("orgId" = current_setting('app.org_id', true)) WITH CHECK ("orgId" = current_setting('app.org_id', true));
 
 -- Product

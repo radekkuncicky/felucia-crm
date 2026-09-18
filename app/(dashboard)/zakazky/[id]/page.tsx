@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { getPerms } from '@/lib/permissions'
 import { notFound } from 'next/navigation'
 import PolozkyTab from './PolozkyTab'
+import ObjednavkyTab from './ObjednavkyTab'
 import TechniciTab from './TechniciTab'
 import PredavakyTab from './PredavakyTab'
 import HistorieTab from './HistorieTab'
@@ -157,6 +158,10 @@ export default async function ZakazkaDetailPage({
           showVyuctovani={perms.financeProdejni}
           etapy={zakazka.etapy ?? []}
         />
+      )}
+
+      {tab === 'objednavky' && perms.sklad !== 'ZADNY' && (
+        <ObjednavkyTab zakazkaId={zakazka.id} canEdit={perms.sklad === 'PLNY'} showNakupky={perms.financeNakupky} />
       )}
 
       {tab === 'vyuctovani' && perms.financeProdejni && (

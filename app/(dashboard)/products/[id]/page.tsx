@@ -10,7 +10,8 @@ import { stavProduktu } from '@/lib/sklad'
 export default async function ProductDetailPage({ params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   const orgId = session!.user.orgId
-  const showSklad = getPerms(session!.user).sklad !== 'ZADNY'
+  const perms = getPerms(session!.user)
+  const showSklad = perms.sklad !== 'ZADNY'
 
   const [product, allCategories, usageItems, usageCount, sklad] = await Promise.all([
     prisma.product.findFirst({
@@ -36,6 +37,8 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
     <div className="max-w-5xl">
       <ProductDetail
         sklad={sklad}
+        showNakupky={perms.financeNakupky}
+        canEditDodavatele={perms.sklad === 'PLNY'}
         product={{
           id: product.id,
           kod: product.kod,
@@ -47,7 +50,6 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
           nakladovaCena: product.nakladovaCena !== null ? Number(product.nakladovaCena) : null,
           standardniCena: Number(product.standardniCena),
           objednaciKod: product.objednaciKod,
-          dodavatel: product.dodavatel,
           dodaciLhuta: product.dodaciLhuta,
           minMnozstvi: product.minMnozstvi !== null ? Number(product.minMnozstvi) : null,
           aktivni: product.aktivni,

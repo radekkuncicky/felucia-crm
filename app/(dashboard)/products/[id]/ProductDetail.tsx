@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { formatDate } from '@/lib/format'
+import ProductDodavateleSection from '@/components/ProductDodavateleSection'
 
 interface CenikPolozka {
   id: string
@@ -26,7 +27,6 @@ interface ProductDetailProps {
     nakladovaCena: number | null
     standardniCena: number
     objednaciKod: string | null
-    dodavatel: string | null
     dodaciLhuta: string | null
     minMnozstvi: number | null
     aktivni: boolean
@@ -38,6 +38,10 @@ interface ProductDetailProps {
   usage: { totalCount: number; lastUsed: string | null }
   /** Zůstatek na skladě (null = bez přístupu ke skladu) */
   sklad: { naSklade: number; rezervovano: number; dostupne: number } | null
+  /** financeNakupky */
+  showNakupky: boolean
+  /** sklad PLNY — správa dodavatelů produktu */
+  canEditDodavatele: boolean
 }
 
 function fmt(n: number) {
@@ -61,7 +65,7 @@ function MarzeChip({ nakladova, standardni }: { nakladova: number | null; standa
 const inp = 'w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-slate-900 text-gray-900 dark:text-white'
 const label = 'block text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-1.5'
 
-export default function ProductDetail({ product, allCategories, usage, sklad }: ProductDetailProps) {
+export default function ProductDetail({ product, allCategories, usage, sklad, showNakupky, canEditDodavatele }: ProductDetailProps) {
   const router = useRouter()
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -77,7 +81,6 @@ export default function ProductDetail({ product, allCategories, usage, sklad }: 
     nakladovaCena: product.nakladovaCena !== null ? String(product.nakladovaCena) : '',
     standardniCena: String(product.standardniCena),
     objednaciKod: product.objednaciKod ?? '',
-    dodavatel: product.dodavatel ?? '',
     dodaciLhuta: product.dodaciLhuta ?? '',
     minMnozstvi: product.minMnozstvi !== null ? String(product.minMnozstvi) : '',
     aktivni: product.aktivni,
@@ -120,7 +123,6 @@ export default function ProductDetail({ product, allCategories, usage, sklad }: 
           nakladovaCena: form.nakladovaCena !== '' ? Number(form.nakladovaCena) : null,
           standardniCena: Number(form.standardniCena),
           objednaciKod: form.objednaciKod || null,
-          dodavatel: form.dodavatel || null,
           dodaciLhuta: form.dodaciLhuta || null,
           minMnozstvi: form.minMnozstvi !== '' ? Number(form.minMnozstvi) : null,
           aktivni: form.aktivni,
@@ -387,18 +389,15 @@ export default function ProductDetail({ product, allCategories, usage, sklad }: 
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className={label}>Objednací kód (u dodavatele)</label>
-                  <input type="text" value={form.objednaciKod} onChange={e => set('objednaciKod', e.target.value)} className={inp} placeholder="Kód u dodavatele" />
+                  <label className={label}>Obecný objednací kód</label>
+                  <input type="text" value={form.objednaciKod} onChange={e => set('objednaciKod', e.target.value)} className={inp} placeholder="Použije se, když dodavatel nemá vlastní" />
                 </div>
                 <div>
-                  <label className={label}>Dodavatel</label>
-                  <input type="text" value={form.dodavatel} onChange={e => set('dodavatel', e.target.value)} className={inp} placeholder="Název dodavatele" />
+                  <label className={label}>Dodací lhůta</label>
+                  <input type="text" value={form.dodaciLhuta} onChange={e => set('dodaciLhuta', e.target.value)} className={inp} placeholder="Např. 3–5 pracovních dní" />
                 </div>
               </div>
-              <div>
-                <label className={label}>Dodací lhůta</label>
-                <input type="text" value={form.dodaciLhuta} onChange={e => set('dodaciLhuta', e.target.value)} className={inp} placeholder="Např. 3–5 pracovních dní" />
-              </div>
+              <ProductDodavateleSection productId={product.id} showNakupky={showNakupky} canEdit={canEditDodavatele} />
             </div>
           </div>
 

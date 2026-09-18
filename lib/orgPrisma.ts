@@ -54,6 +54,10 @@ export const TENANT_MODELS = new Set([
   'Zamereni',
   'ZamereniFoto',
   'ZamereniDefinice',
+  'Dodavatel',
+  'ProductDodavatel',
+  'Objednavka',
+  'ObjednavkaPolozka',
 ])
 
 // where přes AND: pokud volající pošle vlastní orgId, podmínky se sečtou —

@@ -2,6 +2,9 @@
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
+import DodavateleTab from './DodavateleTab'
+import ObjednavkyTab from './ObjednavkyTab'
 import { SkladPohybTyp } from '@prisma/client'
 import { formatDateTime, formatKcPresne, formatCislo } from '@/lib/format'
 import FilterDropdown from '@/components/ui/FilterDropdown'
@@ -254,8 +257,19 @@ function KorekceModal({ zasoba, onClose, onDone }: { zasoba: Zasoba; onClose: ()
 
 const thCls = 'px-4 py-3 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide'
 
+type Tab = 'zasoby' | 'pohyby' | 'dodavatele' | 'objednavky'
+const TABS: Tab[] = ['zasoby', 'pohyby', 'dodavatele', 'objednavky']
+
 export default function SkladPageClient({ pohyby: initialPohyby, zasoby: initialZasoby, zakazky, kpi: initialKpi, canPrijem, showNakupky }: Props) {
-  const [tab, setTab] = useState<'zasoby' | 'pohyby'>('zasoby')
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const urlTab = searchParams.get('tab')
+  const [tab, setTabState] = useState<Tab>(TABS.includes(urlTab as Tab) ? (urlTab as Tab) : 'zasoby')
+  const detailId = searchParams.get('id')
+  function setTab(t: Tab) {
+    setTabState(t)
+    router.replace(t === 'zasoby' ? '/sklad' : `/sklad?tab=${t}`, { scroll: false })
+  }
   const [pohyby, setPohyby] = useState(initialPohyby)
   const [zasoby, setZasoby] = useState(initialZasoby)
   const [kpi, setKpi] = useState(initialKpi)
@@ -338,7 +352,7 @@ export default function SkladPageClient({ pohyby: initialPohyby, zasoby: initial
   const rezervaceHodnota = showNakupky ? zasoby.reduce((s, z) => s + (z.nakladovaCena !== null ? Math.max(z.rezervovano, 0) * z.nakladovaCena : 0), 0) : 0
   const podMinimem = zasoby.filter(z => z.minMnozstvi !== null && z.dostupne <= z.minMnozstvi).length
 
-  const tabBtn = (key: 'zasoby' | 'pohyby', label: string) => (
+  const tabBtn = (key: Tab, label: string) => (
     <button
       type="button"
       onClick={() => setTab(key)}
@@ -396,6 +410,8 @@ export default function SkladPageClient({ pohyby: initialPohyby, zasoby: initial
           <div className="flex gap-1 bg-white dark:bg-slate-800 rounded-full border border-gray-200 dark:border-slate-700 p-1">
             {tabBtn('zasoby', 'Zásoby')}
             {tabBtn('pohyby', 'Pohyby')}
+            {tabBtn('dodavatele', 'Dodavatelé')}
+            {tabBtn('objednavky', 'Objednávky')}
           </div>
           <div className="relative">
             <svg className="absolute left-2.5 top-2.5 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -405,7 +421,7 @@ export default function SkladPageClient({ pohyby: initialPohyby, zasoby: initial
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder={tab === 'zasoby' ? 'Hledat produkt…' : 'Hledat položku, zakázku, klienta…'}
+              placeholder={tab === 'zasoby' ? 'Hledat produkt…' : tab === 'dodavatele' ? 'Hledat dodavatele…' : tab === 'objednavky' ? 'Hledat číslo, dodavatele, zakázku…' : 'Hledat položku, zakázku, klienta…'}
               className="pl-9 pr-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
@@ -414,15 +430,18 @@ export default function SkladPageClient({ pohyby: initialPohyby, zasoby: initial
               <input type="checkbox" checked={jenPodMinimem} onChange={e => setJenPodMinimem(e.target.checked)} className="rounded border-gray-300" />
               Jen pod minimem
             </label>
-          ) : (
+          ) : tab === 'pohyby' ? (
             <>
               <FilterDropdown value={typFilter} onChange={v => setTypFilter(v as SkladPohybTyp | '')} options={typFilterOptions} />
               <FilterDropdown value={zakazkaFilter} onChange={setZakazkaFilter} options={zakazkaFilterOptions} className="max-w-[200px]" />
               <input type="date" value={datumOd} onChange={e => setDatumOd(e.target.value)} className="border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary" />
               <input type="date" value={datumDo} onChange={e => setDatumDo(e.target.value)} className="border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary" />
             </>
-          )}
+          ) : null}
         </div>
+
+        {tab === 'dodavatele' && <DodavateleTab canEdit={canPrijem} showNakupky={showNakupky} search={search} initialId={detailId} />}
+        {tab === 'objednavky' && <ObjednavkyTab showNakupky={showNakupky} search={search} initialId={detailId} />}
 
         {tab === 'zasoby' && (
           <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">

@@ -148,6 +148,14 @@ enum ZakazkaPolozkaStav {
   VYDANO
 }
 
+enum ObjednavkaStav {
+  NAVRH
+  ODESLANA
+  CASTECNE_DORUCENA
+  DORUCENA
+  ZRUSENA
+}
+
 enum SkladPohybTyp {
   VYDEJ
   REZERVACE
@@ -292,6 +300,10 @@ model Organization {
   skladPohyby          SkladPohyb[]
   predavaky            Predavak[]
   vyuctovani           Vyuctovani[]
+  dodavatele           Dodavatel[]
+  productDodavatele    ProductDodavatel[]
+  objednavky           Objednavka[]
+  objednavkaPolozky    ObjednavkaPolozka[]
   sod                  Sod[]
   sodVerze             SodVerze[]
   sodUdalosti          SodUdalost[]
@@ -341,6 +353,7 @@ model User {
   predavakyTechnik    Predavak[]           @relation("PredavakTechnik")
   predavakySchvalil   Predavak[]           @relation("PredavakSchvalil")
   vyuctovaniSchvalil  Vyuctovani[]         @relation("VyuctovaniSchvalil")
+  objednavkyVytvoril  Objednavka[]         @relation("ObjednavkaVytvoril")
   zakazkaKomentare    ZakazkaKomentar[]
   documents           Document[]
   assignedLeady       Lead[]               @relation("LeadAssigned")
@@ -471,7 +484,6 @@ model Product {
   nakladovaCena   Decimal? @db.Decimal(12, 2) @map("nakupniCena")
   standardniCena  Decimal  @db.Decimal(12, 2) @map("cena")
   objednaciKod    String?
-  dodavatel       String?
   dodaciLhuta     String?
   minMnozstvi     Decimal? @db.Decimal(12, 3)
   aktivni         Boolean  @default(true)
@@ -483,6 +495,8 @@ model Product {
   quoteItems   QuoteItem[]
   zakazkaPolozky ZakazkaPolozka[]
   skladPohyby  SkladPohyb[]
+  dodavatele   ProductDodavatel[]
+  objednavkaPolozky ObjednavkaPolozka[]
 
   @@map("products")
 }
@@ -1092,6 +1106,7 @@ model Zakazka {
   polozky       ZakazkaPolozka[]
   predavaky     Predavak[]
   vyuctovani    Vyuctovani[]
+  objednavky    Objednavka[]
   etapy         ZakazkaEtapa[]
   skladPohyby   SkladPohyb[]
   fotky         ZakazkaFoto[]
@@ -1198,6 +1213,7 @@ model ZakazkaPolozka {
   product         Product?            @relation(fields: [productId], references: [id], onDelete: SetNull)
   skladPohyby     SkladPohyb[]
   predavakPolozky PredavakPolozka[]
+  objednavkaPolozky ObjednavkaPolozka[]
 
   @@index([productId])
   @@map("zakazka_polozky")
@@ -1304,6 +1320,107 @@ model ZakazkaFoto {
   nahral      User      @relation(fields: [nahralId], references: [id])
 
   @@map("zakazka_fotky")
+}
+
+/// Dodavatel materiálu (per org) — sklad v2 / objednávky
+model Dodavatel {
+  id            String   @id @default(cuid())
+  orgId         String
+  nazev         String
+  ico           String?
+  dic           String?
+  email         String?
+  telefon       String?
+  kontaktOsoba  String?
+  ulice         String?
+  mesto         String?
+  psc           String?
+  poznamka      String?
+  aktivni       Boolean  @default(true)
+  vytvoreno     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  organization  Organization       @relation(fields: [orgId], references: [id])
+  produkty      ProductDodavatel[]
+  objednavky    Objednavka[]
+
+  @@index([orgId, aktivni])
+  @@map("dodavatele")
+}
+
+/// Vazba produkt ↔ dodavatel s objednacím kódem a nákupní cenou; právě jeden je hlavní
+model ProductDodavatel {
+  id            String   @id @default(cuid())
+  orgId         String
+  productId     String
+  dodavatelId   String
+  objednaciKod  String?
+  nakupniCena   Decimal? @db.Decimal(12, 2)
+  dodaciLhuta   String?
+  hlavni        Boolean  @default(false)
+  vytvoreno     DateTime @default(now())
+
+  organization  Organization @relation(fields: [orgId], references: [id])
+  product       Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  dodavatel     Dodavatel    @relation(fields: [dodavatelId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, dodavatelId])
+  @@index([orgId, dodavatelId])
+  @@map("product_dodavatele")
+}
+
+/// Objednávka materiálu u dodavatele (OBJ-26-001), typicky ze zakázky
+model Objednavka {
+  id               String          @id @default(cuid())
+  orgId            String
+  cislo            String
+  stav             ObjednavkaStav  @default(NAVRH)
+  dodavatelId      String
+  zakazkaId        String?
+  zobrazitCeny     Boolean         @default(false)
+  pozadovanyTermin DateTime?
+  poznamka         String?
+  vytvorilId       String
+  odeslano         DateTime?
+  doruceno         DateTime?
+  vytvoreno        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  organization  Organization        @relation(fields: [orgId], references: [id])
+  dodavatel     Dodavatel           @relation(fields: [dodavatelId], references: [id])
+  zakazka       Zakazka?            @relation(fields: [zakazkaId], references: [id], onDelete: SetNull)
+  vytvoril      User                @relation("ObjednavkaVytvoril", fields: [vytvorilId], references: [id])
+  polozky       ObjednavkaPolozka[]
+
+  @@unique([orgId, cislo])
+  @@index([orgId, zakazkaId])
+  @@index([orgId, dodavatelId])
+  @@index([orgId, stav])
+  @@map("objednavky")
+}
+
+model ObjednavkaPolozka {
+  id               String   @id @default(cuid())
+  orgId            String
+  objednavkaId     String
+  productId        String?
+  zakazkaPolozkaId String?
+  objednaciKod     String?
+  nazev            String
+  mnozstvi         Decimal  @db.Decimal(12, 3)
+  jednotka         String   @default("ks")
+  nakupniCena      Decimal? @db.Decimal(12, 2)
+  mnozstviDoruceno Decimal  @default(0) @db.Decimal(12, 3)
+  poradi           Int      @default(0)
+
+  organization   Organization    @relation(fields: [orgId], references: [id])
+  objednavka     Objednavka      @relation(fields: [objednavkaId], references: [id], onDelete: Cascade)
+  product        Product?        @relation(fields: [productId], references: [id], onDelete: SetNull)
+  zakazkaPolozka ZakazkaPolozka? @relation(fields: [zakazkaPolozkaId], references: [id], onDelete: SetNull)
+
+  @@index([orgId, objednavkaId])
+  @@index([zakazkaPolozkaId])
+  @@map("objednavka_polozky")
 }
 
 model Vyuctovani {

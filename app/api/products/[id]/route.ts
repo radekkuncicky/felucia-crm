@@ -50,7 +50,6 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     jednotka: body.jednotka ?? product.jednotka,
     aktivni: body.aktivni !== undefined ? body.aktivni : product.aktivni,
     objednaciKod: body.objednaciKod !== undefined ? (body.objednaciKod || null) : product.objednaciKod,
-    dodavatel: body.dodavatel !== undefined ? (body.dodavatel || null) : product.dodavatel,
     dodaciLhuta: body.dodaciLhuta !== undefined ? (body.dodaciLhuta || null) : product.dodaciLhuta,
     minMnozstvi: body.minMnozstvi !== undefined ? (body.minMnozstvi !== null && body.minMnozstvi !== '' ? Number(body.minMnozstvi) : null) : product.minMnozstvi,
   }

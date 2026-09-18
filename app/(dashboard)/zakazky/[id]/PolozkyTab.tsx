@@ -6,6 +6,8 @@ import { useState, useEffect } from 'react'
 import { ZakazkaPolozkaStav } from '@prisma/client'
 import { formatKcPresne } from '@/lib/format'
 import ProductCatalogModal from '@/components/ProductCatalogModal'
+import ObjednatModal from '@/components/objednavky/ObjednatModal'
+import { useRouter } from 'next/navigation'
 
 const fmtQty = (n: number) => n.toLocaleString('cs-CZ', { maximumFractionDigits: 3 })
 
@@ -370,6 +372,8 @@ export default function PolozkyTab({ zakazkaId, polozky: initialPolozky, canEdit
   const [upravitModal, setUpravitModal] = useState<Polozka | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [showCatalog, setShowCatalog] = useState(false)
+  const [showObjednat, setShowObjednat] = useState(false)
+  const router = useRouter()
 
   /** Položky z katalogu produktů — s vazbou productId (sklad v2 podle ní vede zásobu). */
   async function handleAddFromCatalog(items: { productId: string; kod: string | null; nazev: string; cenaZaKus: number; mnozstvi: number; jednotka?: string }[]) {
@@ -453,6 +457,7 @@ export default function PolozkyTab({ zakazkaId, polozky: initialPolozky, canEdit
   return (
     <>
       {showCatalog && <ProductCatalogModal onClose={() => setShowCatalog(false)} onAdd={handleAddFromCatalog} />}
+      {showObjednat && <ObjednatModal zakazkaId={zakazkaId} showNakupky={showNakupky} onClose={() => setShowObjednat(false)} onCreated={() => { refreshPolozky(); router.push(`/zakazky/${zakazkaId}?tab=objednavky`) }} />}
       {naskladnitModal && (
         <NaskladnitModal
           polozka={naskladnitModal}
@@ -481,8 +486,18 @@ export default function PolozkyTab({ zakazkaId, polozky: initialPolozky, canEdit
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700">
         <div className="px-5 py-4 border-b border-gray-200 dark:border-slate-700 flex items-center justify-between">
           <h3 className="font-semibold text-gray-900 dark:text-white">Položky ({polozky.length})</h3>
-          {canEdit && (
+          {(canEdit || canSklad) && (
             <div className="flex items-center gap-3">
+              {canSklad && polozky.some(p => p.stav === 'CEKA') && (
+                <button
+                  onClick={() => setShowObjednat(true)}
+                  className="text-sm font-medium text-blue-700 dark:text-blue-400 hover:underline flex items-center gap-1"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                  Objednat u dodavatele
+                </button>
+              )}
+              {canEdit && (
               <button
                 onClick={() => setShowCatalog(true)}
                 className="text-sm font-medium text-primary dark:text-primary-light hover:underline flex items-center gap-1"
@@ -492,6 +507,8 @@ export default function PolozkyTab({ zakazkaId, polozky: initialPolozky, canEdit
                 </svg>
                 Z katalogu
               </button>
+              )}
+              {canEdit && (
               <button
                 onClick={startNewRow}
                 className="text-sm font-medium text-primary dark:text-primary-light hover:underline flex items-center gap-1"
@@ -501,6 +518,7 @@ export default function PolozkyTab({ zakazkaId, polozky: initialPolozky, canEdit
                 </svg>
                 Ručně
               </button>
+              )}
             </div>
           )}
         </div>

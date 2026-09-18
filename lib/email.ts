@@ -452,3 +452,32 @@ export function emailPasswordChanged(jmeno: string) {
     <p style="color:#9aa3b2;font-size:13px;">Pokud jste tuto změnu neprovedli, kontaktujte neprodleně administrátora systému.</p>
   `)
 }
+
+/** Objednávka materiálu dodavateli — PDF v příloze, text volitelně upravený uživatelem */
+export function emailObjednavkaDodavateli(params: {
+  orgNazev: string
+  primaryColor: string
+  cislo: string
+  dodavatelNazev: string
+  kontaktOsoba: string | null
+  zprava: string | null
+  pozadovanyTermin: string | null
+  odpovedEmail: string | null
+}) {
+  const { orgNazev, primaryColor, cislo, dodavatelNazev, kontaktOsoba, zprava, pozadovanyTermin, odpovedEmail } = params
+  const esc = (s: string) =>
+    s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+  const zpravaHtml = zprava
+    ? `<div style="background:#f9fafb;border-left:3px solid ${primaryColor};border-radius:6px;padding:12px 16px;margin:0 0 24px;color:#374151;white-space:pre-wrap;">${esc(zprava)}</div>`
+    : ''
+  return orgEmailLayout(orgNazev, primaryColor, `
+    <h2 style="margin:0 0 8px;color:#1a1a2e;font-size:21px;">Objednávka ${esc(cislo)}</h2>
+    <p style="color:#6b7280;margin:0 0 24px;">Dobrý den${kontaktOsoba ? `, <strong>${esc(kontaktOsoba)}</strong>` : ''}.</p>
+    <p style="color:#374151;margin:0 0 ${zprava ? '12' : '24'}px;">Společnost <strong>${esc(orgNazev)}</strong> vám zasílá objednávku
+    materiálu <strong>${esc(cislo)}</strong> (${esc(dodavatelNazev)}). Položky najdete v přiloženém PDF.</p>
+    ${zpravaHtml}
+    ${pozadovanyTermin ? `<p style="color:#374151;margin:0 0 24px;">Požadovaný termín dodání: <strong>${esc(pozadovanyTermin)}</strong>.</p>` : ''}
+    <p style="color:#374151;margin:0 0 8px;">Prosíme o potvrzení objednávky a termínu${odpovedEmail ? ` na <a href="mailto:${esc(odpovedEmail)}" style="color:${primaryColor};">${esc(odpovedEmail)}</a>` : ''}.
+    Na dodacím listu uveďte číslo objednávky.</p>
+  `)
+}

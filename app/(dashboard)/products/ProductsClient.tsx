@@ -21,6 +21,7 @@ const PROD_DEFS: ColumnDef[] = [
   { id: 'marze', label: 'Marže %', defaultVisible: true, defaultWidth: 90 },
   { id: 'dph', label: 'DPH', defaultVisible: true, defaultWidth: 70 },
   { id: 'sklad', label: 'Na skladě', defaultVisible: true, defaultWidth: 110 },
+  { id: 'dodavatel', label: 'Dodavatel', defaultVisible: false, defaultWidth: 140 },
   { id: 'aktivni', label: 'Aktivní', defaultVisible: true, defaultWidth: 80 },
 ]
 
@@ -32,6 +33,7 @@ interface Product {
   popis: string | null; dphSazba: number; nakladovaCena: number | null
   standardniCena: number; aktivni: boolean
   naSklade: number; dostupne: number; minMnozstvi: number | null
+  dodavatel: string | null
 }
 interface Category { id: string; nazev: string; barva: string }
 interface Cenik { id: string; kod: string; nazev: string; popis: string | null; aktivni: boolean; _count: { polozky: number }; vytvoreno: string }
@@ -325,6 +327,8 @@ function ProductsTab({ products, categories, showNakladoveCeny = true, showSklad
                           return <td key={col.id} className="px-3 py-3"><MarzeChip value={m} /></td>
                         case 'dph':
                           return <td key={col.id} className="px-3 py-3 text-gray-600 dark:text-slate-400 whitespace-nowrap">{p.dphSazba} %</td>
+                        case 'dodavatel':
+                          return <td key={col.id} className="px-3 py-3 text-gray-600 dark:text-slate-400 whitespace-nowrap overflow-hidden text-ellipsis">{p.dodavatel ?? <span className="text-gray-400 dark:text-slate-500">—</span>}</td>
                         case 'sklad': {
                           const podMin = p.minMnozstvi !== null && p.dostupne <= p.minMnozstvi
                           const cls = p.dostupne < 0 ? 'text-red-600 dark:text-red-400' : podMin ? 'text-amber-600 dark:text-amber-400' : 'text-gray-700 dark:text-slate-300'

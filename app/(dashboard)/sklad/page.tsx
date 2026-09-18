@@ -6,6 +6,7 @@ import { klientJmeno } from '@/lib/calendarEvents'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { stavSkladu } from '@/lib/sklad'
 import { notFound } from 'next/navigation'
+import { Suspense } from 'react'
 import SkladPageClient from './SkladPageClient'
 
 export default async function SkladPage() {
@@ -82,6 +83,7 @@ export default async function SkladPage() {
   const vydejMesicHodnota = kpi[0].reduce((sum, p) => sum + Number(p.mnozstvi) * Number(p.nakupniCena ?? 0), 0)
 
   return (
+    <Suspense fallback={null}>
     <SkladPageClient
       pohyby={pohyby.map(p => ({
         id: p.id,
@@ -115,5 +117,6 @@ export default async function SkladPage() {
       canPrijem={perms.sklad === 'PLNY'}
       showNakupky={perms.financeNakupky}
     />
+    </Suspense>
   )
 }

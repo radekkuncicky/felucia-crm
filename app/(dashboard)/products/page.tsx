@@ -18,7 +18,10 @@ export default async function ProductsPage() {
   const [products, categories, ceniky, stav] = await Promise.all([
     prisma.product.findMany({
       where: { orgId },
-      include: { categories: { orderBy: { nazev: 'asc' } } },
+      include: {
+        categories: { orderBy: { nazev: 'asc' } },
+        dodavatele: { where: { hlavni: true }, select: { dodavatel: { select: { nazev: true } } }, take: 1 },
+      },
       orderBy: { nazev: 'asc' },
     }),
     prisma.category.findMany({ where: { orgId }, orderBy: { poradi: 'asc' } }),
@@ -47,6 +50,7 @@ export default async function ProductsPage() {
         nakladovaCena: showNakladoveCeny && p.nakladovaCena !== null ? Number(p.nakladovaCena) : null,
         standardniCena: Number(p.standardniCena),
         aktivni: p.aktivni,
+        dodavatel: p.dodavatele[0]?.dodavatel.nazev ?? null,
         naSklade: stav.get(p.id)?.naSklade ?? 0,
         dostupne: stav.get(p.id)?.dostupne ?? 0,
         minMnozstvi: p.minMnozstvi !== null ? Number(p.minMnozstvi) : null,
