@@ -1,4 +1,5 @@
 import { getPlanLimits } from '@/lib/planLimits'
+import { isOwned, isOwnedOrEmpty } from '@/lib/ownership'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
@@ -41,6 +42,8 @@ export async function POST(req: Request) {
   if (!klientId || !nazev) {
     return NextResponse.json({ error: 'Chybí povinné pole' }, { status: 400 })
   }
+  if (!(await isOwned(db, 'client', klientId))) return NextResponse.json({ error: 'Klient nenalezen' }, { status: 404 })
+  if (!(await isOwnedOrEmpty(db, 'deal', dealId))) return NextResponse.json({ error: 'OP nenalezen' }, { status: 404 })
 
   // Generate QR token
   const secret = new TextEncoder().encode(process.env.NEXTAUTH_SECRET ?? '')

@@ -3,7 +3,8 @@ import type { Session } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { NextResponse } from 'next/server'
 import { ensureQuoteShare, getQuoteShare, revokeQuoteShare, quoteShareUrl, QUOTE_SHARE_DNI } from '@/lib/quoteShare'
-import { getPerms } from '@/lib/permissions'
+import { forbidden, getPerms } from '@/lib/permissions'
+import { canAccessQuote } from '@/lib/zakazkyHelpers'
 
 function auth(session: Session | null): { session: Session; error?: undefined } | { session?: undefined; error: NextResponse } {
   if (!session) return { error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
@@ -17,6 +18,7 @@ function auth(session: Session | null): { session: Session; error?: undefined } 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
   const { session, error } = auth(await getServerSession(authOptions))
   if (error) return error
+  if (!(await canAccessQuote(session!.user, getPerms(session!.user), params.id))) return forbidden()
 
   const share = await getQuoteShare(params.id, session!.user.orgId)
   if (!share) return NextResponse.json({ shared: false })
@@ -31,6 +33,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 export async function POST(_req: Request, { params }: { params: { id: string } }) {
   const { session, error } = auth(await getServerSession(authOptions))
   if (error) return error
+  if (!(await canAccessQuote(session!.user, getPerms(session!.user), params.id))) return forbidden()
 
   const share = await ensureQuoteShare(params.id, session!.user.orgId)
   if (!share) return NextResponse.json({ error: 'Nabídka nenalezena' }, { status: 404 })
@@ -46,6 +49,7 @@ export async function POST(_req: Request, { params }: { params: { id: string } }
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
   const { session, error } = auth(await getServerSession(authOptions))
   if (error) return error
+  if (!(await canAccessQuote(session!.user, getPerms(session!.user), params.id))) return forbidden()
 
   const ok = await revokeQuoteShare(params.id, session!.user.orgId)
   if (!ok) return NextResponse.json({ error: 'Nabídka nenalezena' }, { status: 404 })

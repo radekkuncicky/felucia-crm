@@ -41,5 +41,6 @@ declare module 'next-auth/jwt' {
     isDemo?: boolean
     perms?: Permissions
     permsAt?: number
+    sv?: number
   }
 }

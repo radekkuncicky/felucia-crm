@@ -1,4 +1,5 @@
 import { getServerSession } from 'next-auth'
+import { canAccessQuote } from '@/lib/zakazkyHelpers'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
@@ -14,6 +15,7 @@ import { getPerms, forbidden } from '@/lib/permissions'
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!(await canAccessQuote(session.user, getPerms(session.user), params.id))) return forbidden()
   if (!getPerms(session.user).obchod) return forbidden('Nedostatečná oprávnění')
 
   const { limited } = checkRateLimit(`quote-email:${session.user.id}`, 10, 3600_000)

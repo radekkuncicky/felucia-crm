@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { signUploadUrl } from '@/lib/uploadSign'
 import { checkImageUpload, isImageDataUri } from '@/lib/uploadSafety'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { getMobileOrWebSession, requireTechnikOrAdmin, canAccessZakazka } from '@/lib/mobile-helpers'
@@ -45,7 +46,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
     const url = `/uploads/zakazky/${params.id}/${filename}`
     await db.zakazka.update({ where: { id: params.id }, data: { titulniFotoUrl: url } })
-    return NextResponse.json({ titulniFotoUrl: url })
+    return NextResponse.json({ titulniFotoUrl: signUploadUrl(url) })
   }
 
   // JSON base64 (web)

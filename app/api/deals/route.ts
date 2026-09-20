@@ -1,4 +1,5 @@
 import { getServerSession } from 'next-auth'
+import { isOwned } from '@/lib/ownership'
 import { authOptions } from '@/lib/auth'
 import { getMobileSession } from '@/lib/mobile-auth'
 import { orgPrisma } from '@/lib/orgPrisma'
@@ -76,6 +77,7 @@ export async function POST(req: Request) {
   if (!clientId || !technologie) {
     return NextResponse.json({ error: 'Chybí povinná pole' }, { status: 400 })
   }
+  if (!(await isOwned(db, 'client', clientId))) return NextResponse.json({ error: 'Klient nenalezen' }, { status: 404 })
 
   const canCreate = await checkDealLimit(orgId)
   if (!canCreate) {

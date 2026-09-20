@@ -1,4 +1,5 @@
 import { getServerSession } from 'next-auth'
+import { signUploadUrl } from './uploadSign'
 import { authOptions } from '@/lib/auth'
 import { getMobileSession } from '@/lib/mobile-auth'
 import { prisma } from '@/lib/prisma'
@@ -127,5 +128,6 @@ export function klientAdresa(klient: { ulice?: string | null; mesto?: string | n
 export function toAbsoluteUrl(url: string | null | undefined, origin: string): string | null {
   if (!url) return null
   if (url.startsWith('http') || url.startsWith('data:')) return url
-  return `${origin}${url}`
+  // /uploads/* vyžaduje autorizaci (app/api/uploads) — RN Image cookie nemá, proto podepsaný odkaz
+  return `${origin}${signUploadUrl(url)}`
 }

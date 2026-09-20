@@ -1,8 +1,9 @@
 import { getPlanLimits } from '@/lib/planLimits'
+import { isOwned, isOwnedOrEmpty } from '@/lib/ownership'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
-import { prisma } from '@/lib/prisma'
+import type { Prisma } from '@prisma/client'
 import { NextResponse } from 'next/server'
 import { nextServisniKontraktCislo } from '@/lib/servisniKontraktCislo'
 
@@ -42,10 +43,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Chybí povinné pole' }, { status: 400 })
   }
 
+  // FK z těla requestu musí patřit téže org (RLS FK kontroly neobsahuje)
+  const db = orgPrisma(orgId)
+  if (!(await isOwned(db, 'client', klientId))) return NextResponse.json({ error: 'Klient nenalezen' }, { status: 404 })
+  if (!(await isOwnedOrEmpty(db, 'deal', dealId))) return NextResponse.json({ error: 'OP nenalezen' }, { status: 404 })
+  if (!(await isOwnedOrEmpty(db, 'zarizeni', zarizeniId))) return NextResponse.json({ error: 'Zařízení nenalezeno' }, { status: 404 })
+
   // Číslo kontraktu i čísla vygenerovaných zakázek v jedné transakci pod
   // advisory zámky (bezpečné při souběhu, na rozdíl od dřívějšího COUNT+1).
-  const kontrakt = await prisma.$transaction(async (tx) => {
-    const cisloKontraktu = await nextServisniKontraktCislo(tx, orgId)
+  // Transakce jde přes orgPrisma → RLS jako druhá vrstva i tady.
+  const kontrakt = await db.$transaction(async (tx) => {
+    // orgPrisma tx je strukturálně stejný klient, jen s jiným TS typem (extension)
+    const cisloKontraktu = await nextServisniKontraktCislo(tx as unknown as Prisma.TransactionClient, orgId)
     const k = await tx.servisniKontrakt.create({
       data: {
         orgId,

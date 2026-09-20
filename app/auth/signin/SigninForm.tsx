@@ -43,7 +43,7 @@ export default function SigninForm({ org }: Props) {
     setError('')
     const result = await signIn('credentials', { email, password, redirect: false })
     if (result?.error) {
-      setError('Nesprávný email nebo heslo.')
+      setError(result.error === 'RATE_LIMITED' ? 'Příliš mnoho pokusů o přihlášení. Zkuste to za 15 minut.' : 'Nesprávný email nebo heslo.')
       setLoading(false)
     } else {
       router.push('/dashboard')

@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { invalidatePermsCache } from '@/lib/permsSnapshot'
 import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 
@@ -24,9 +25,10 @@ export async function POST(req: Request) {
   const hesloHash = await bcrypt.hash(newPassword, 12)
 
   await prisma.$transaction([
-    prisma.user.update({ where: { id: record.userId }, data: { hesloHash } }),
+    prisma.user.update({ where: { id: record.userId }, data: { hesloHash, sessionVersion: { increment: 1 } } }),
     prisma.passwordResetToken.update({ where: { id: record.id }, data: { used: true } }),
   ])
+  invalidatePermsCache(record.userId)
 
   return NextResponse.json({ ok: true })
 }

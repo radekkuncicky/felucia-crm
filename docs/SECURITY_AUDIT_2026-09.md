@@ -222,13 +222,17 @@ Pořadí podle poměru riziko/pracnost. Každá vlna = samostatný commit + `dep
 - [x] SEC-47 `ufw delete allow 8083/tcp`; SEC-35 část `chmod 600 .env`; SEC-48 zbytkový E2E server ukončen
 - [x] Testy: `tests/uploadSafety.test.ts`, `tests/security-vlna0.test.ts` (route-level regresní), `tests/rls.test.ts` doplněn o FK-bypass case (SEC-08 dokumentace)
 
-## Vlna 1 — vysoké (1–2 dny)
-- [ ] SEC-04 rate-limit v `authorize()` (IP + e-mail) + nginx `limit_req` na `/api/auth/`
-- [ ] SEC-05 jwt callback: `aktivni`/`orgAktivni`/`isSuperAdmin` → zneplatnit; `User.sessionVersion`
-- [ ] SEC-08 `assertOwned()` helper + použít v kontraktech (přes `orgPrisma.$transaction`), deals, zařízení; SEC-15 productId/templateId
-- [ ] SEC-09 `canAccessDeal()` helper + všechny `deals/[id]/**`, `quotes/[id]/**`, `leady/[id]/notes`
-- [ ] SEC-10 `/uploads` přes route handler s auth (session | Bearer) + orgId; soubory mimo `public/`; odstranit `predavaky` výjimku; **teprve pak** migrace podkladů
-- [ ] SEC-14 nginx catch-all `return 444` pro neznámý Host (80 i 443)
+## Vlna 1 — vysoké (2026-09-20, čeká na deploy)
+- [x] SEC-04 rate-limit v `authorize()` — 20/15 min per IP (`x-real-ip`) + 10/15 min per e-mail, chyba `RATE_LIMITED` s hláškou v loginu; dummy `bcrypt.compare` pro neexistující e-mail (timing). nginx `limit_req` zatím ne (in-memory limit stačí při `instances: 1`)
+- [x] SEC-05 `User.sessionVersion` (migrace `20260920113830`), snapshot nese `aktivni/orgAktivni/isSuperAdmin/sessionVersion`; jwt callback při refreshi (≤60 s) vyhodí `SESSION_INVALID` → NextAuth smaže cookie; mobilní JWT nese `sv`, `getMobileSession` + refresh ho ověřují; bump při resetu/změně hesla (`bumpSessionVersion`)
+- [x] SEC-08 `lib/ownership.ts` (`isOwned`/`isOwnedOrEmpty` přes orgPrisma) — kontrakty (klientId/dealId/zarizeniId, transakce přes `orgPrisma.$transaction`), deals POST (clientId), zařízení (klientId/dealId); SEC-15 `productId` se naváže jen když je produkt v org, `templateId` ověřen
+- [x] SEC-09 `canAccessDeal`/`canAccessQuote` (`lib/zakazkyHelpers.ts`, přes `dealScopeWhere`) ve všech 20 pod-routes `deals/[id]/**` + `quotes/[id]/**`; `leady/[id]/notes` gate `obchod`
+- [x] SEC-10 `/uploads/*` → middleware rewrite na `app/api/uploads/[...path]` — auth session/Bearer + kontrola org podle cesty (zakázky přes `canAccessZakazka`, `<orgId>/…`, `org/<orgId>`, avatary, zaměření); veřejná jen loga (login stránka tenanta); mobil dostává podepsané odkazy (`lib/uploadSign.ts`, HMAC, 7 dní) přes `toAbsoluteUrl` a odpovědi uploadů; whitelist MIME, CSP sandbox, `Content-Disposition` mimo obrázky/PDF. Soubory zůstávají v `public/uploads` (rewrite má přednost před statickým servírováním)
+- [x] SEC-14 `scripts/nginx-default-catchall.conf` + `install-nginx-catchall.sh` — nainstalováno 2026-09-20: neznámý Host na 80/443 → 444, TLS pro neznámý Host s certem felucia.io
+- [x] Testy: `tests/security-vlna1.test.ts` (14), `tests/setup.ts` načítá `NEXTAUTH_SECRET`; test DB synchronizována `prisma db push`
+
+**Po nasazení Vlny 1 lze spustit `scripts/migrate-podklady-to-disk.ts`** (podklady už nejsou veřejné).
+**Ověřit na telefonu:** felucia-tech zobrazuje fotky zakázek (podepsané URL z API) — pokud appka skládá URL sama z relativní cesty bez query, fotky se nezobrazí → dočasně vrátit veřejný prefix nebo opravit appku.
 
 ## Vlna 2 — střední (3–5 dní, po částech)
 - [ ] SEC-16 RLS policy pro dětské tabulky + `organizations` (`generate-rls-sql.ts`) → test DB → prod

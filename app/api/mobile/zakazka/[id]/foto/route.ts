@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { signUploadUrl } from '@/lib/uploadSign'
 import { checkImageUpload, isImageDataUri } from '@/lib/uploadSafety'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { getMobileOrWebSession, requireTechnikOrAdmin, canAccessZakazka } from '@/lib/mobile-helpers'
@@ -54,7 +55,8 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       data: { zakazkaId: params.id, url, popis: popis ?? null, nahralId: session!.user.id },
     })
 
-    return NextResponse.json({ id: foto.id, url, popis: foto.popis, vytvoreno: foto.vytvoreno }, { status: 201 })
+    // Podepsaný odkaz — /uploads vyžaduje autorizaci a RN Image nemá cookie
+    return NextResponse.json({ id: foto.id, url: signUploadUrl(url), popis: foto.popis, vytvoreno: foto.vytvoreno }, { status: 201 })
   }
 
   // JSON base64 fallback (web app compatibility)

@@ -1,6 +1,6 @@
 import { prisma } from './prisma'
 import { orgPrisma } from './orgPrisma'
-import { zakazkyScopeWhere, resolvePermissions, type Permissions, type PermissionKey } from './permissions'
+import { dealScopeWhere, zakazkyScopeWhere, resolvePermissions, type Permissions, type PermissionKey } from './permissions'
 
 export async function generatePredavakCislo(orgId: string): Promise<string> {
   const year = new Date().getFullYear().toString().slice(2)
@@ -94,4 +94,39 @@ export async function listUsersWithPermValue(orgId: string, key: PermissionKey, 
 /** Uživatelé org, kteří mohou být vedoucím zakázky (mají `zakazkySchvalovani`) */
 export function listVedouciKandidati(orgId: string) {
   return listUsersWithPerm(orgId, 'zakazkySchvalovani')
+}
+
+/**
+ * Smí uživatel pracovat s OP? Rozsah podle `obchod`/`obchodCiziOP`
+ * (dealScopeWhere) — stejná logika jako v /api/deals/[id]; používají ji
+ * všechny pod-routes OP (nabídky, položky, aktivity, fotky, duplikace…),
+ * které dřív kontrolovaly jen přihlášení.
+ */
+export async function canAccessDeal(
+  user: { id: string; orgId: string },
+  perms: Permissions,
+  dealId: string,
+): Promise<boolean> {
+  const scope = dealScopeWhere(perms, user.id)
+  if (scope === null) return false
+  const d = await orgPrisma(user.orgId).deal.findFirst({
+    where: { id: dealId, orgId: user.orgId, ...scope },
+    select: { id: true },
+  })
+  return !!d
+}
+
+/** Totéž přes ID nabídky (routes /api/quotes/[id]/**) */
+export async function canAccessQuote(
+  user: { id: string; orgId: string },
+  perms: Permissions,
+  quoteId: string,
+): Promise<boolean> {
+  const scope = dealScopeWhere(perms, user.id)
+  if (scope === null) return false
+  const q = await orgPrisma(user.orgId).quote.findFirst({
+    where: { id: quoteId, deal: { orgId: user.orgId, ...scope } },
+    select: { id: true },
+  })
+  return !!q
 }

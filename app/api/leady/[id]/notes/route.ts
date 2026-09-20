@@ -1,4 +1,5 @@
 import { getServerSession } from 'next-auth'
+import { forbidden, getPerms } from '@/lib/permissions'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
@@ -6,6 +7,7 @@ import { NextResponse } from 'next/server'
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!getPerms(session.user).obchod) return forbidden()
 
   const lead = await orgPrisma(session.user.orgId).lead.findFirst({ where: { id: params.id, orgId: session.user.orgId } })
   if (!lead) return NextResponse.json({ error: 'Nenalezeno' }, { status: 404 })

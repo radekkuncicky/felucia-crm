@@ -1,13 +1,15 @@
 import { getServerSession } from 'next-auth'
+import { canAccessDeal } from '@/lib/zakazkyHelpers'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
-import { getPerms } from '@/lib/permissions'
+import { forbidden, getPerms } from '@/lib/permissions'
 import { loadProductSnapshots, resolveNakupniCena } from '@/lib/quoteItems'
 
 export async function POST(req: Request, { params }: { params: { id: string; quoteId: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!(await canAccessDeal(session.user, getPerms(session.user), params.id))) return forbidden()
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)
   const perms = getPerms(session.user)
@@ -36,7 +38,7 @@ export async function POST(req: Request, { params }: { params: { id: string; quo
           data: {
             dealId: params.id,
             quoteId: params.quoteId,
-            productId: item.productId || null,
+            productId: product ? item.productId : null,
             kod: item.kod || null,
             nazev: item.nazev,
             mnozstvi: Number(item.mnozstvi) || 1,
@@ -71,7 +73,7 @@ export async function POST(req: Request, { params }: { params: { id: string; quo
     data: {
       dealId: params.id,
       quoteId: params.quoteId,
-      productId: productId || null,
+      productId: product ? productId : null,
       kod: kod || null,
       nazev: nazev || '',
       mnozstvi: Number(mnozstvi) || 1,

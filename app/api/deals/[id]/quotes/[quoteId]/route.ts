@@ -1,4 +1,7 @@
 import { getServerSession } from 'next-auth'
+import { canAccessDeal } from '@/lib/zakazkyHelpers'
+import { forbidden, getPerms } from '@/lib/permissions'
+import { isOwned } from '@/lib/ownership'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
@@ -6,6 +9,7 @@ import { NextResponse } from 'next/server'
 export async function PATCH(req: Request, { params }: { params: { id: string; quoteId: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!(await canAccessDeal(session.user, getPerms(session.user), params.id))) return forbidden()
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)
 
@@ -15,6 +19,9 @@ export async function PATCH(req: Request, { params }: { params: { id: string; qu
   if (!quote) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const body = await req.json()
+  if (body.templateId && !(await isOwned(db, 'quoteTemplate', body.templateId))) {
+    return NextResponse.json({ error: 'Šablona nenalezena' }, { status: 404 })
+  }
 
   // If setting as active, deactivate all others first
   if (body.aktivni === true) {
@@ -39,6 +46,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string; qu
 export async function DELETE(req: Request, { params }: { params: { id: string; quoteId: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!(await canAccessDeal(session.user, getPerms(session.user), params.id))) return forbidden()
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)
 

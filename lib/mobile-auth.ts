@@ -1,6 +1,6 @@
 import { jwtVerify, type JWTPayload } from 'jose'
 import { NextRequest } from 'next/server'
-import { loadPermsSnapshot } from './permsSnapshot'
+import { isSessionValid, loadPermsSnapshot } from './permsSnapshot'
 import { resolvePermissions, type Permissions, type RoleName } from './permissions'
 
 const secret = new TextEncoder().encode(process.env.NEXTAUTH_SECRET!)
@@ -11,6 +11,8 @@ interface MobileTokenPayload extends JWTPayload {
   orgSlug: string
   role: string
   plan: string
+  /** User.sessionVersion v době vydání — neshoda = token zneplatněn (změna hesla) */
+  sv?: number
 }
 
 export type MobileSessionUser = {
@@ -39,7 +41,7 @@ export async function getMobileSession(req: NextRequest | Request): Promise<{ us
     const p = payload as MobileTokenPayload
     if (!p.userId || !p.orgId) return null
     const snap = await loadPermsSnapshot(p.userId)
-    if (!snap || !snap.aktivni) return null
+    if (!isSessionValid(snap, p.sv)) return null
     return {
       user: {
         id: p.userId,

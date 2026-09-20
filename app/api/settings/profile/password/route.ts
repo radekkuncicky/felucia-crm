@@ -1,4 +1,5 @@
 import { getServerSession } from 'next-auth'
+import { invalidatePermsCache } from '@/lib/permsSnapshot'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
@@ -27,7 +28,8 @@ export async function PATCH(req: Request) {
   if (sameAsOld) return NextResponse.json({ error: 'Nové heslo musí být jiné než aktuální' }, { status: 400 })
 
   const hesloHash = await bcrypt.hash(newPassword, 12)
-  await orgPrisma(session.user.orgId).user.update({ where: { id: session.user.id }, data: { hesloHash } })
+  await orgPrisma(session.user.orgId).user.update({ where: { id: session.user.id }, data: { hesloHash, sessionVersion: { increment: 1 } } })
+  invalidatePermsCache(session.user.id)
 
   return NextResponse.json({ ok: true })
 }

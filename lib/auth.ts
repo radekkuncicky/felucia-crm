@@ -4,13 +4,38 @@ import bcrypt from 'bcryptjs'
 import { prisma } from './prisma'
 import { cookies } from 'next/headers'
 import { resolvePermissions, ROLE_PRESETS } from './permissions'
+import { checkRateLimit } from './rateLimit'
 
 export { loadPermsSnapshot, invalidatePermsCache } from './permsSnapshot'
-import { loadPermsSnapshot, PERMS_REFRESH_MS } from './permsSnapshot'
+import { isSessionValid, loadPermsSnapshot, PERMS_REFRESH_MS } from './permsSnapshot'
+
+/** Chyba, kterou jwt callback vyhodí pro zneplatněnou session — NextAuth pak smaže cookie */
+const SESSION_INVALID = 'SESSION_INVALID'
+const LOGIN_RATE_LIMITED = 'RATE_LIMITED'
+
+/** IP klienta z NextAuth `req` (plain objekt hlaviček za nginx: x-real-ip = $remote_addr, nespoofovatelné) */
+function loginClientIp(req: { headers?: Record<string, string | string[] | undefined> } | undefined): string {
+  const h = req?.headers ?? {}
+  const pick = (k: string) => { const v = h[k]; return Array.isArray(v) ? v[0] : v }
+  return pick('x-real-ip')?.trim() || pick('x-forwarded-for')?.split(',')[0].trim() || 'unknown'
+}
+
+// bcrypt hash náhodného hesla — porovnání proběhne i pro neexistující účet
+const DUMMY_HASH = bcrypt.hashSync('dummy-' + Math.random().toString(36), 12)
 
 export const authOptions: NextAuthOptions = {
   session: {
     strategy: 'jwt',
+  },
+  logger: {
+    error(code, metadata) {
+      // Zneplatněná session je očekávaný stav, ne chyba
+      const msg = (metadata as { message?: string } | undefined)?.message ?? String(metadata)
+      if (code === 'JWT_SESSION_ERROR' && msg.includes(SESSION_INVALID)) return
+      console.error(`[next-auth][error][${code}]`, metadata)
+    },
+    warn(code) { console.warn(`[next-auth][warn][${code}]`) },
+    debug() {},
   },
   pages: {
     signIn: '/auth/signin',
@@ -24,7 +49,7 @@ export const authOptions: NextAuthOptions = {
         magicToken: { label: 'Magic Token', type: 'text' },
         isDemo: { label: 'Demo', type: 'text' },
       },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
         // Demo auto-login (no password)
         if (credentials?.isDemo === 'true') {
           const demoUser = await prisma.user.findFirst({
@@ -70,15 +95,24 @@ export const authOptions: NextAuthOptions = {
         // Normal password login
         if (!credentials?.email || !credentials?.password) return null
 
+        // Brute-force ochrana: per IP i per e-mail (bcrypt cost 12 = ~300 ms CPU na pokus)
+        const email = String(credentials.email).trim().toLowerCase()
+        const ip = loginClientIp(req)
+        if (
+          checkRateLimit(`login:ip:${ip}`, 20, 15 * 60_000).limited ||
+          checkRateLimit(`login:email:${email}`, 10, 15 * 60_000).limited
+        ) {
+          throw new Error(LOGIN_RATE_LIMITED)
+        }
+
         const user = await prisma.user.findFirst({
           where: { email: credentials.email, aktivni: true },
           include: { organization: { select: { aktivni: true } } },
         })
 
-        if (!user || !user.organization.aktivni) return null
-
-        const passwordMatch = await bcrypt.compare(credentials.password, user.hesloHash)
-        if (!passwordMatch) return null
+        // Konstantní čas i pro neexistující e-mail (enumerace přes timing)
+        const passwordMatch = await bcrypt.compare(credentials.password, user?.hesloHash ?? DUMMY_HASH)
+        if (!user || !user.organization.aktivni || !passwordMatch) return null
 
         await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } })
 
@@ -105,20 +139,24 @@ export const authOptions: NextAuthOptions = {
         const org = await prisma.organization.findUnique({ where: { id: user.orgId } })
         token.orgSlug = org?.slug ?? null
         token.plan = org?.plan ?? 'STARTER'
-        const dbUser = await prisma.user.findUnique({ where: { id: user.id }, select: { permissions: true } })
+        const dbUser = await prisma.user.findUnique({ where: { id: user.id }, select: { permissions: true, sessionVersion: true } })
         token.perms = resolvePermissions(user.role, dbUser?.permissions, token.plan)
+        token.sv = dbUser?.sessionVersion ?? 0
         token.permsAt = Date.now()
         return token
       }
 
-      // Periodický refresh role, oprávnění a plánu — bez toho by se změna projevila až po odhlášení
+      // Periodický refresh role, oprávnění a plánu — bez toho by se změna projevila až po odhlášení.
+      // Zároveň jediné místo, kde se JWT session zneplatní: deaktivace uživatele/org,
+      // změna hesla (sessionVersion), odebrání superadmina.
       if (!token.perms || !token.permsAt || Date.now() - token.permsAt > PERMS_REFRESH_MS) {
         const snap = await loadPermsSnapshot(token.id)
-        if (snap) {
-          token.role = snap.role as typeof token.role
-          token.plan = snap.plan
-          token.perms = resolvePermissions(snap.role, snap.permissions, snap.plan)
-        }
+        if (!isSessionValid(snap, token.sv)) throw new Error(SESSION_INVALID)
+        token.role = snap.role as typeof token.role
+        token.plan = snap.plan
+        token.perms = resolvePermissions(snap.role, snap.permissions, snap.plan)
+        token.isSuperAdmin = snap.isSuperAdmin
+        token.sv = snap.sessionVersion
         token.permsAt = Date.now()
       }
       return token

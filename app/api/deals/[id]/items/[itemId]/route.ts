@@ -1,4 +1,6 @@
 import { getServerSession } from 'next-auth'
+import { canAccessDeal } from '@/lib/zakazkyHelpers'
+import { forbidden, getPerms } from '@/lib/permissions'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
@@ -6,6 +8,7 @@ import { NextResponse } from 'next/server'
 export async function PATCH(req: Request, { params }: { params: { id: string; itemId: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!(await canAccessDeal(session.user, getPerms(session.user), params.id))) return forbidden()
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)
 
@@ -31,6 +34,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string; it
 export async function DELETE(req: Request, { params }: { params: { id: string; itemId: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!(await canAccessDeal(session.user, getPerms(session.user), params.id))) return forbidden()
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)
 

@@ -324,6 +324,8 @@ model User {
   hesloHash    String
   role         Role     @default(OBCHODNIK)
   aktivni      Boolean  @default(true)
+  /// Zvýšit při změně hesla / nuceném odhlášení — session (web JWT i mobilní token) s nižší hodnotou přestane platit
+  sessionVersion Int    @default(0)
   isSuperAdmin  Boolean   @default(false)
   // zmocněnec k podpisu smluv o dílo za zhotovitele (nastavuje ADMIN)
   podepisujeSmlouvy Boolean @default(false)

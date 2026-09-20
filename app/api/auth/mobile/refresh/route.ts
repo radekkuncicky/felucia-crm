@@ -40,6 +40,9 @@ export async function POST(req: Request) {
   if (!user || !user.organization?.aktivni) {
     return NextResponse.json({ error: 'Účet byl deaktivován' }, { status: 401 })
   }
+  if (payload.sv !== undefined && payload.sv !== user.sessionVersion) {
+    return NextResponse.json({ error: 'Token byl zneplatněn, přihlaste se znovu' }, { status: 401 })
+  }
 
   const exp = Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60 // 30 days
 
@@ -49,6 +52,7 @@ export async function POST(req: Request) {
     orgSlug: payload.orgSlug,
     role: user.role,
     plan: user.organization.plan,
+    sv: user.sessionVersion,
   })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()

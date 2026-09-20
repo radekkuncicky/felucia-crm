@@ -68,6 +68,7 @@ export async function POST(req: Request) {
     orgSlug: user.organization.slug,
     role: user.role,
     plan: user.organization.plan,
+    sv: user.sessionVersion,
   })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()

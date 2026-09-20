@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { canAccessDeal } from '@/lib/zakazkyHelpers'
+import { forbidden, getPerms } from '@/lib/permissions'
 import { checkImageUpload } from '@/lib/uploadSafety'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
@@ -9,6 +11,7 @@ import path from 'path'
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!(await canAccessDeal(session.user, getPerms(session.user), params.id))) return forbidden()
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)
 
@@ -25,6 +28,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!(await canAccessDeal(session.user, getPerms(session.user), params.id))) return forbidden()
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)
 
