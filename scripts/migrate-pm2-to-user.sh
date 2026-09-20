@@ -27,7 +27,18 @@ mkdir -p /var/log/pm2 && chown -R "$USER_NAME:$USER_NAME" /var/log/pm2
 git config --global --add safe.directory "$APP" >/dev/null 2>&1 || true
 log "vlastnictví předáno $USER_NAME"
 
-# 3) build pod nanto (z aktuálního pracovního stromu)
+# 3) root PM2 pryč JEŠTĚ PŘED buildem — běžící root next-server zapisuje do .next
+#    (runtime cache app routes) a build pod nanto by narazil na root soubory.
+#    Výpadek = délka buildu (~2 min).
+if pm2 ping >/dev/null 2>&1; then
+  pm2 delete all >/dev/null 2>&1 || true
+  pm2 kill >/dev/null 2>&1 || true
+  pm2 unstartup systemd >/dev/null 2>&1 || true
+  log "root PM2 zastaven"
+fi
+chown -R "$USER_NAME:$USER_NAME" "$APP"
+
+# 3b) build pod nanto (z aktuálního pracovního stromu)
 log "build pod $USER_NAME"
 sudo -u "$USER_NAME" -H bash -c "cd $APP && npm run build" > /tmp/migrate-build.log 2>&1 \
   || { echo "!! build selhal — viz /tmp/migrate-build.log"; tail -20 /tmp/migrate-build.log; exit 1; }
@@ -39,13 +50,7 @@ if [ -f "$APP/scripts/hash-existing-auth-tokens.sql" ] && [ ! -f "$APP/.hash-tok
   log "auth tokeny zahashovány (jednorázově)"
 fi
 
-# 5) přepnutí PM2: root daemon pryč, nanto daemon start
-if pm2 ping >/dev/null 2>&1; then
-  pm2 delete all >/dev/null 2>&1 || true
-  pm2 kill >/dev/null 2>&1 || true
-  pm2 unstartup systemd >/dev/null 2>&1 || true
-  log "root PM2 zastaven"
-fi
+# 5) start pod nanto
 sudo -u "$USER_NAME" -H bash -c "cd $APP && pm2 startOrRestart ecosystem.config.js --update-env" >/dev/null
 sudo -u "$USER_NAME" -H bash -c "pm2 install pm2-logrotate >/dev/null 2>&1; pm2 set pm2-logrotate:max_size 10M >/dev/null; pm2 set pm2-logrotate:retain 14 >/dev/null; pm2 set pm2-logrotate:compress true >/dev/null; pm2 save >/dev/null"
 env PATH="$PATH:/usr/bin" pm2 startup systemd -u "$USER_NAME" --hp "$HOME_DIR" >/dev/null

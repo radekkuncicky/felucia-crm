@@ -45,3 +45,4 @@ next-env.d.ts
 e2e/.auth/
 e2e/.results/
 .claude/settings.local.json
+.hash-tokens-done
