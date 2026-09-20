@@ -45,7 +45,10 @@ export default async function PublicZarizeniPage({ params }: { params: { token: 
   const zarizeni = await prisma.zarizeni.findFirst({
     where: { id: zarizeniId, qrToken: params.token },
     include: {
-      klient: { select: { jmeno: true, prijmeni: true, telefon: true, email: true, ulice: true, mesto: true, psc: true } },
+      // Veřejná stránka (QR nálepka na jednotce) — bez kontaktů a adresy majitele,
+      // kontakt patří servisní firmě
+      klient: { select: { jmeno: true, prijmeni: true } },
+      organization: { select: { nazev: true, telefon: true, email: true } },
       servisniKontrakty: {
         where: { aktivni: true },
         take: 1,
@@ -62,8 +65,9 @@ export default async function PublicZarizeniPage({ params }: { params: { token: 
   if (!zarizeni) notFound()
 
   const klient = zarizeni.klient
-  const adresaKlienta = [klient.ulice, [klient.mesto, klient.psc].filter(Boolean).join(' ')].filter(Boolean).join(', ')
-  const mapsUrl = adresaKlienta ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(adresaKlienta)}` : null
+  // Jen křestní jméno + iniciála — stránku vidí kdokoli, kdo nálepku vyfotí
+  const klientJmeno = `${klient.jmeno} ${klient.prijmeni ? klient.prijmeni[0] + '.' : ''}`.trim()
+  const servis = zarizeni.organization
   const kontrakt = zarizeni.servisniKontrakty[0] ?? null
   const ws = zarukaStatus(zarizeni.zarukaDo)
   const now = new Date()
@@ -147,44 +151,32 @@ export default async function PublicZarizeniPage({ params }: { params: { token: 
           </div>
         </div>
 
-        {/* Klient */}
+        {/* Klient (bez kontaktů) + servisní firma */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="px-5 py-3 bg-gray-50 border-b border-gray-100">
-            <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Klient</h2>
+            <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wider">Servis zajišťuje</h2>
           </div>
           <div className="p-5 space-y-3">
             <div>
-              <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Jméno</p>
-              <p className="text-sm font-semibold text-gray-800">{klient.jmeno} {klient.prijmeni}</p>
+              <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Firma</p>
+              <p className="text-sm font-semibold text-gray-800">{servis.nazev}</p>
             </div>
-            {adresaKlienta && (
-              <div>
-                <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Adresa</p>
-                {mapsUrl ? (
-                  <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className="text-sm font-semibold text-cyan-600 underline underline-offset-2">
-                    {adresaKlienta}
-                  </a>
-                ) : (
-                  <p className="text-sm font-semibold text-gray-800">{adresaKlienta}</p>
-                )}
-              </div>
-            )}
-            {klient.telefon && (
+            {servis.telefon && (
               <div>
                 <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Telefon</p>
-                <a href={`tel:${klient.telefon}`} className="text-sm font-semibold text-cyan-600">
-                  {klient.telefon}
-                </a>
+                <a href={`tel:${servis.telefon}`} className="text-sm font-semibold text-cyan-600">{servis.telefon}</a>
               </div>
             )}
-            {klient.email && (
+            {servis.email && (
               <div>
                 <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Email</p>
-                <a href={`mailto:${klient.email}`} className="text-sm font-semibold text-cyan-600">
-                  {klient.email}
-                </a>
+                <a href={`mailto:${servis.email}`} className="text-sm font-semibold text-cyan-600">{servis.email}</a>
               </div>
             )}
+            <div>
+              <p className="text-xs text-gray-400 font-medium uppercase tracking-wide">Majitel</p>
+              <p className="text-sm font-semibold text-gray-800">{klientJmeno}</p>
+            </div>
           </div>
         </div>
 

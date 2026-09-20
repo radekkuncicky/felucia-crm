@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { dealScopeWhere, resolvePermissions, servisScopeWhere } from '@/lib/permissions'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { verifyCalendarToken } from '@/lib/calendarToken'
 import {
@@ -62,16 +63,26 @@ export async function GET(req: Request) {
 
   if (!uid || !sig) return new Response('Missing params', { status: 400 })
 
-  let valid = false
-  try { valid = verifyCalendarToken(uid, sig) } catch { valid = false }
-  if (!valid) return new Response('Unauthorized', { status: 401 })
-
   // lookup uživatele před znalostí org — záměrně bez tenant scope
   const user = await prisma.user.findUnique({
     where: { id: uid },
-    select: { id: true, orgId: true, jmeno: true, organization: { select: { nazev: true } } },
+    select: {
+      id: true, orgId: true, jmeno: true, aktivni: true, role: true, permissions: true, calendarTokenVersion: true,
+      organization: { select: { nazev: true, aktivni: true, plan: true } },
+    },
   })
-  if (!user) return new Response('Not found', { status: 404 })
+  if (!user) return new Response('Unauthorized', { status: 401 })
+
+  let valid = false
+  try { valid = verifyCalendarToken(uid, user.calendarTokenVersion, sig) } catch { valid = false }
+  if (!valid) return new Response('Unauthorized', { status: 401 })
+  // Deaktivovaný uživatel / org: odkaz v kalendáři přestane fungovat
+  if (!user.aktivni || !user.organization.aktivni) return new Response('Unauthorized', { status: 401 })
+
+  // Stejný rozsah jako v UI — technik nedostane OP celé org, obchodník bez obchodCiziOP jen vlastní
+  const perms = resolvePermissions(user.role, user.permissions, user.organization.plan)
+  const dealScope = dealScopeWhere(perms, uid)
+  const servisScope = servisScopeWhere(perms, uid)
 
   const orgId = user.orgId
   const db = orgPrisma(orgId)
@@ -98,9 +109,10 @@ export async function GET(req: Request) {
       },
       orderBy: { datum: 'asc' },
     }),
-    db.deal.findMany({
+    dealScope === null ? Promise.resolve([]) : db.deal.findMany({
       where: {
         orgId,
+        ...dealScope,
         OR: [
           { terminRealizace: { not: null } },
           { terminPrevzeti: { not: null } },
@@ -109,8 +121,8 @@ export async function GET(req: Request) {
       },
       include: { client: { select: { jmeno: true, prijmeni: true } } },
     }),
-    db.servisniZakazka.findMany({
-      where: { orgId, stav: { in: ['NAPLANOVANA', 'PROBIHA'] }, planovanyTermin: { not: null } },
+    servisScope === null ? Promise.resolve([]) : db.servisniZakazka.findMany({
+      where: { orgId, ...servisScope, stav: { in: ['NAPLANOVANA', 'PROBIHA'] }, planovanyTermin: { not: null } },
       include: {
         kontrakt: { select: { nazev: true, klient: { select: { jmeno: true, prijmeni: true } }, zarizeni: { select: { nazev: true, typ: true } } } },
         klient: { select: { jmeno: true, prijmeni: true } },

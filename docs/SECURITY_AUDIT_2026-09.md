@@ -250,12 +250,14 @@ Pořadí podle poměru riziko/pracnost. Každá vlna = samostatný commit + `dep
 - [x] SEC-31 CSV export: každé pole v uvozovkách + apostrof před `= + - @`
 - [x] Testy `tests/security-vlna2.test.ts` (10); `tests/tenant-isolation.test.ts` upraven na RLS chování organizations
 
-### Dávka 2b (zbývá)
-- [ ] SEC-20 mobilní refresh token v DB + revokace (sessionVersion už mobil zneplatní při změně hesla — částečně vyřešeno)
-- [ ] SEC-25 ICS token v DB + `aktivni` + scope; SEC-26 QR stránka bez PII + rotace tokenu
-- [ ] SEC-29 PDF magic bytes + limit u příloh; SEC-30 xlsx parsování jen na klientovi / cdn.sheetjs.com
-- [ ] SEC-32 Dáša — `<data>` obal + `confirm` u zápisů + validace `history`
-- [ ] SEC-13 nodemailer 10; plán Next 15.5
+### Dávka 2b (2026-09-20, kód — čeká na deploy)
+- [x] SEC-25 ICS token verzovaný (`User.calendarTokenVersion`, migrace `20260920135050`), route vyžaduje `aktivni` uživatele i org a filtruje OP/servis podle `dealScopeWhere`/`servisScopeWhere`; tlačítko „Obnovit odkaz" v profilu (`POST /api/settings/profile/calendar-token`)
+- [x] SEC-26 veřejná QR stránka zařízení bez kontaktů/adresy majitele (jen křestní jméno + iniciála), místo toho kontakt na servisní firmu; `POST /api/servis/zarizeni/[id]/qr-token` = rotace tokenu (`servisDispecink`); UI tlačítko rotace zatím ne
+- [x] SEC-29 příloha VOP/VZSP/ceník: magic bytes `%PDF-` + limit 10 MB
+- [x] SEC-30 xlsx 0.20.3 z cdn.sheetjs.com (ReDoS/prototype pollution opraveno)
+- [x] SEC-32 Dáša: `message` jen string ≤ 4000 znaků, `history` validovaná (role/typ/délka, max 8), kontext OP načten z DB podle ID (ne z klienta), výsledky nástrojů obalené `<data source="crm">` + instrukce v system promptu, `change_deal_status` s potvrzením
+- [ ] SEC-20 mobilní refresh token v DB — odloženo (sessionVersion už zneplatní token při změně hesla/deaktivaci; plná rotace vyžaduje změnu appky)
+- [ ] SEC-13 nodemailer 10 — **nelze**: next-auth 4.24 má peerOptional `nodemailer ^7`, verze 10 rozbíjí `npm install`. Přijaté riziko: advisories se týkají `envelope.size`, EHLO/HELO transport name a List-* hlaviček (u nás jen z konfigurace), `to` validováno regexem. Přehodnotit při přechodu na Next 15 / next-auth 5.
 
 ### Dávka 2c (infra, s Radkem)
 - [ ] SEC-33 PM2 pod userem `nanto`; SEC-34 Node 22; SEC-35 zálohy šifrované + `chmod 700 /root/backups`

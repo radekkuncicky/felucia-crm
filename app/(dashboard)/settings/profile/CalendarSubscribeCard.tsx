@@ -1,6 +1,8 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { confirmDialog } from '@/components/ui/confirm'
 
 export default function CalendarSubscribeCard({
   webcalUrl,
@@ -10,6 +12,19 @@ export default function CalendarSubscribeCard({
   subscribeUrl: string
 }) {
   const [copied, setCopied] = useState<'webcal' | 'https' | null>(null)
+  const [resetting, setResetting] = useState(false)
+  const router = useRouter()
+
+  async function resetLink() {
+    if (!(await confirmDialog('Obnovit odkaz? Kalendáře, kde je aktuální odkaz přidaný, přestanou dostávat aktualizace a bude potřeba je přidat znovu.', { confirmLabel: 'Obnovit' }))) return
+    setResetting(true)
+    try {
+      await fetch('/api/settings/profile/calendar-token', { method: 'POST' })
+      router.refresh()
+    } finally {
+      setResetting(false)
+    }
+  }
 
   function copy(url: string, which: 'webcal' | 'https') {
     navigator.clipboard.writeText(url).then(() => {
@@ -75,6 +90,12 @@ export default function CalendarSubscribeCard({
 
       <p className="text-xs text-gray-400 dark:text-slate-500 mt-3">
         Google Calendar: <span className="font-medium">Další kalendáře → Z URL</span> · Outlook: <span className="font-medium">Přidat kalendář → Z internetu</span>
+      </p>
+      <p className="text-xs text-gray-400 dark:text-slate-500 mt-2">
+        Odkaz funguje jako heslo — kdo ho má, vidí váš kalendář.{' '}
+        <button type="button" onClick={resetLink} disabled={resetting} className="underline hover:text-gray-600 dark:hover:text-slate-300 disabled:opacity-50">
+          {resetting ? 'Obnovuji…' : 'Obnovit odkaz'}
+        </button>
       </p>
     </div>
   )

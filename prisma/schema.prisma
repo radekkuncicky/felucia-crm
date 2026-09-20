@@ -326,6 +326,8 @@ model User {
   aktivni      Boolean  @default(true)
   /// Zvýšit při změně hesla / nuceném odhlášení — session (web JWT i mobilní token) s nižší hodnotou přestane platit
   sessionVersion Int    @default(0)
+  /// Verze odkazu na ICS kalendář — zvýšení zneplatní dřív vydané odkazy (odběr v Google/Apple kalendáři)
+  calendarTokenVersion Int @default(0)
   isSuperAdmin  Boolean   @default(false)
   // zmocněnec k podpisu smluv o dílo za zhotovitele (nastavuje ADMIN)
   podepisujeSmlouvy Boolean @default(false)

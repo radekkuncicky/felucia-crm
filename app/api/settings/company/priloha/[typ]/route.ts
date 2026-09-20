@@ -1,4 +1,5 @@
 import { getServerSession } from 'next-auth'
+import { isPdf } from '@/lib/uploadSafety'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
@@ -30,7 +31,12 @@ export async function POST(req: Request, { params }: { params: { typ: string } }
   const formData = await req.formData()
   const file = formData.get('file') as File | null
   if (!file) return NextResponse.json({ error: 'Chybí soubor' }, { status: 400 })
-  if (file.type !== 'application/pdf') {
+  if (file.size > 10 * 1024 * 1024) {
+    return NextResponse.json({ error: 'Soubor je příliš velký (max 10 MB)' }, { status: 413 })
+  }
+  const buf = Buffer.from(await file.arrayBuffer())
+  // Obsah, ne Content-Type — soubor pak jde do pdfunite/Chromia při generování SOD
+  if (!isPdf(buf)) {
     return NextResponse.json({ error: 'Soubor musí být PDF' }, { status: 400 })
   }
 
@@ -38,7 +44,6 @@ export async function POST(req: Request, { params }: { params: { typ: string } }
   fs.mkdirSync(dir, { recursive: true })
 
   const dest = path.join(dir, `priloha-${typ}.pdf`)
-  const buf = Buffer.from(await file.arrayBuffer())
   fs.writeFileSync(dest, buf)
 
   const relativePath = `/uploads/org/${orgId}/priloha-${typ}.pdf`

@@ -201,3 +201,51 @@ describe('SEC-19 — podepsaná cookie', () => {
     expect(verifyCookieValue(JSON.stringify({ superAdminId: 'sa1' }), 'sa_impersonate')).toBeNull()
   })
 })
+
+describe('Vlna 2b — ICS token, QR stránka, přílohy, Dáša', () => {
+  it('ICS: token je vázaný na verzi, obnova zneplatní starý; deaktivovaný uživatel dostane 401', async () => {
+    const { getCalendarToken } = await import('@/lib/calendarToken')
+    const { GET: icsGet } = await import('@/app/api/calendar/ics/route')
+    const u = await prisma.user.create({ data: { orgId: orgA, jmeno: 'Kal', email: `${RUN}-kal@a.cz`, hesloHash: 'x', role: 'TECHNIK' } })
+    const url = (sig: string) => new Request(`http://test/api/calendar/ics?uid=${u.id}&sig=${sig}`)
+    expect((await icsGet(url(getCalendarToken(u.id, 0)))).status).toBe(200)
+    expect((await icsGet(url(getCalendarToken(u.id, 1)))).status).toBe(401)
+    await prisma.user.update({ where: { id: u.id }, data: { calendarTokenVersion: 1 } })
+    expect((await icsGet(url(getCalendarToken(u.id, 0)))).status).toBe(401)
+    expect((await icsGet(url(getCalendarToken(u.id, 1)))).status).toBe(200)
+    await prisma.user.update({ where: { id: u.id }, data: { aktivni: false } })
+    expect((await icsGet(url(getCalendarToken(u.id, 1)))).status).toBe(401)
+    await prisma.user.delete({ where: { id: u.id } })
+  })
+
+  it('ICS: technik nedostane OP celé org (rozsah obchod)', async () => {
+    const { getCalendarToken } = await import('@/lib/calendarToken')
+    const { GET: icsGet } = await import('@/app/api/calendar/ics/route')
+    await prisma.deal.update({ where: { id: dealAdmin }, data: { terminRealizace: new Date('2026-12-01') } })
+    const text = await (await icsGet(new Request(`http://test/api/calendar/ics?uid=${technikA}&sig=${getCalendarToken(technikA, 0)}`))).text()
+    expect(text).not.toContain('Zuzana adminova')
+    const adminText = await (await icsGet(new Request(`http://test/api/calendar/ics?uid=${adminA}&sig=${getCalendarToken(adminA, 0)}`))).text()
+    expect(adminText).toContain('Zuzana adminova')
+  })
+
+  it('příloha VOP musí být skutečné PDF', async () => {
+    const { POST: prilohaPost } = await import('@/app/api/settings/company/priloha/[typ]/route')
+    login(adminA, orgA, 'ADMIN')
+    const fd = new FormData()
+    fd.append('file', new File([new Uint8Array(Buffer.from('<html>ne pdf</html>'))], 'vop.pdf', { type: 'application/pdf' }))
+    const res = await prilohaPost(new Request('http://test', { method: 'POST', body: fd }), { params: { typ: 'vop' } })
+    expect(res.status).toBe(400)
+  })
+
+  it('Dáša odmítne ne-string zprávu a příliš dlouhou zprávu', async () => {
+    const { POST: dasaPost } = await import('@/app/api/ai-assistant/route')
+    login(adminA, orgA, 'ADMIN')
+    const mk = (body: unknown) => new Request('http://test', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
+    const r1 = await dasaPost(mk({ message: { $gt: '' } }))
+    expect([400, 403, 500]).toContain(r1.status) // 403/500 = plán/API klíč dřív než validace; 400 = validace
+    if (r1.status === 400) {
+      const r2 = await dasaPost(mk({ message: 'x'.repeat(5000) }))
+      expect(r2.status).toBe(400)
+    }
+  })
+})

@@ -12,13 +12,13 @@ export default async function ProfilePage() {
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { id: true, jmeno: true, email: true, telefon: true, role: true, avatar: true, vytvoreno: true,
+    select: { id: true, jmeno: true, email: true, telefon: true, role: true, avatar: true, vytvoreno: true, calendarTokenVersion: true,
       organization: { select: { nazev: true } } },
   })
   if (!user) redirect('/login')
 
   const userId = session.user.id
-  const sig = getCalendarToken(userId)
+  const sig = getCalendarToken(userId, user.calendarTokenVersion)
   const host = process.env.NEXTAUTH_URL
     ? new URL(process.env.NEXTAUTH_URL).host
     : 'app.felucia.io'
