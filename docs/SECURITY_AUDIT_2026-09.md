@@ -259,10 +259,13 @@ Pořadí podle poměru riziko/pracnost. Každá vlna = samostatný commit + `dep
 - [ ] SEC-20 mobilní refresh token v DB — odloženo (sessionVersion už zneplatní token při změně hesla/deaktivaci; plná rotace vyžaduje změnu appky)
 - [ ] SEC-13 nodemailer 10 — **nelze**: next-auth 4.24 má peerOptional `nodemailer ^7`, verze 10 rozbíjí `npm install`. Přijaté riziko: advisories se týkají `envelope.size`, EHLO/HELO transport name a List-* hlaviček (u nás jen z konfigurace), `to` validováno regexem. Přehodnotit při přechodu na Next 15 / next-auth 5.
 
-### Dávka 2c (infra, s Radkem)
-- [ ] SEC-33 PM2 pod userem `nanto`; SEC-34 Node 22; SEC-35 zálohy šifrované + `chmod 700 /root/backups`
+### Dávka 2c (infra, 2026-09-20, HOTOVO)
+- [x] SEC-33 web + worker + PM2 běží pod uživatelem `nanto` (`scripts/migrate-pm2-to-user.sh`, `pm2-nanto.service`; root PM2 odstraněn); `deploy.sh` jako root → `chown` → build a restart přes `sudo -u nanto`. Chromium stále s `--no-sandbox` (Ubuntu 24.04 blokuje userns pro neprivilegované procesy) — ale už ne pod rootem
+- [x] SEC-34 Node 22.23.2 (NodeSource 22.x), procesy restartovány na novém binárku
+- [x] SEC-35 zálohy gpg AES-256 (`/root/.secrets/backup-passphrase`, uloženo Radkem mimo server), `/root/backups` 700, staré dumpy zašifrovány, offsite jen `.gpg`, `restore-db.sh` ověřen obnovou do dočasné DB
+- [ ] SEC-48 e2e kopie `.env` má prod Stripe klíč — `scripts/e2e-env.sh` by měl `STRIPE_SECRET_KEY` nahradit testovacím (drobnost, e2e Stripe nevolá)
 
-## Vlna 3 — nízké / hygiena (2026-09-20, kód — čeká na deploy)
+## Vlna 3 — nízké / hygiena (2026-09-20, NASAZENO s migrací PM2)
 - [x] SEC-36 reset/magic/pozvánkové tokeny v DB jen jako SHA-256 (`lib/authTokens.ts`), při vydání nového se staré zneplatní; **při deployi jednorázově `psql -f scripts/hash-existing-auth-tokens.sql`** (v prod aktuálně 0 nepoužitých tokenů → v podstatě no-op)
 - [x] SEC-37 `check-slug` rate-limit 60/min/IP, rozšířený `FORBIDDEN_SLUGS` (`lib/slug.ts`: crm, support, smtp, cdn…)
 - [x] SEC-38 heslo min. 10 znaků (register, reset, profil, založení uživatele adminem) + typová kontrola

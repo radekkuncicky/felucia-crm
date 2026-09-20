@@ -37,8 +37,13 @@
 
 ## Deploy
 ```
-./scripts/deploy.sh   # typecheck + testy + build + restart + health check
+./scripts/deploy.sh   # typecheck + testy + build + restart + health check (jako root)
 ```
+- Web i worker běží pod uživatelem `nanto` (ne root, od 2026-09-20). PM2 ovládat
+  `sudo -u nanto -H pm2 ls|logs|restart …` — `pm2 ls` jako root je prázdné.
+- `deploy.sh` sám udělá `chown -R nanto` a build/restart pod nanto. NIKDY nebuildit
+  `.next` jako root (aplikace by ho pak nemohla číst/psát).
+- Node 22 LTS (NodeSource), `pm2-nanto.service` autostart.
 
 ## Testy
 - `npm test` (vitest, integrační nad DB `nanto_crm_test`)
@@ -78,7 +83,7 @@ Obnova: `/root/scripts/restore-db.sh <soubor.dump.gpg> [DB_URL]` (dešifruje + p
 - PM2 proces `nanto-crm-worker` (`worker/index.ts`, tsx) — samostatný od Next.js
 - pg-boss nad stejnou DB, schéma `pgboss`; fronty: `reminders-sweep` (cron 1 min), `activity-reminder`
 - Připomínky aktivit: bell notifikace vždy, email jen s nakonfigurovaným SMTP
-- `deploy.sh` restartuje web i worker (`pm2 startOrRestart ecosystem.config.js`)
+- `deploy.sh` restartuje web i worker (`sudo -u nanto pm2 startOrRestart ecosystem.config.js`)
 
 ## CSP
 - Content-Security-Policy nastavuje middleware.ts s per-request nonce
