@@ -210,14 +210,14 @@ Exploity nebyly spouštěny (závěry z kódu + katalogu). RLS FK-bypass neově�
 
 Pořadí podle poměru riziko/pracnost. Každá vlna = samostatný commit + `deploy.sh`. **Vlna 0 nasadit ještě před `scripts/migrate-podklady-to-disk.ts`.**
 
-## Vlna 0 — hotfix (2026-09-20, nasazeno)
+## Vlna 0 — hotfix (2026-09-20, NASAZENO commit 38d373f, heslo DB rotováno)
 - [x] SEC-01 `logo`/`logoBw` z body se nepřebírají (`app/api/settings/company/route.ts`); `orgLogoDataUrl` jde přes `safeUploadPath` (`lib/uploadSafety.ts`)
 - [x] SEC-02 JSON fallback fotek/titulní fotky jen `isImageDataUri`; všechna `unlink`/`readFile` podle cesty z DB přes `safeUploadPath` s prefixem (foto, documents, deals/photos, zamereni, podklady, přílohy SOD)
 - [x] SEC-03 typ souboru výhradně z obsahu (magic bytes) + whitelist přípon: podklady (`checkDocumentUpload`), dokumenty org, fotky OP/zakázek (`checkImageUpload`), loga org/šablon/onboarding (`checkLogoUpload`, SVG jen bez skriptů); middleware pro celé `/uploads/*` posílá `CSP: default-src 'none'; sandbox` (PDF bez sandbox) + `Content-Disposition: attachment` mimo obrázky/PDF; mrtvý prefix `/uploads/predavaky/` odstraněn
 - [x] SEC-06 demo-blok mutací před větvení podle hostu (platí i na subdoménách)
 - [x] SEC-11 `hardenPdfPage` v preview šablony, `htmlContent` přes `sanitizeFullDocumentHtml`, placeholdery escapované (`quoteRenderer.ts`, `quoteHtml.ts`), gate `nastaveniOrg`
 - [x] SEC-07 onboarding routes `nastaveniOrg` / invite `spravaUzivatelu` (status GET zůstává jen session), pozvánka v audit logu, import limit 5 MB; `inviteUrl` v odpovědi ponechán (záměrná funkce pro admina bez SMTP — teď jen s oprávněním)
-- [x] SEC-12 `.claude/settings.local.json` untracked + `.gitignore`; heslo role `nanto` rotováno (viz níže) — historie repa **nepřepsána** (repo bez remote; před prvním pushem `git filter-repo`)
+- [x] SEC-12 `.claude/settings.local.json` untracked + `.gitignore`; heslo role `nanto` rotováno 2026-09-20 (`scripts/rotate-db-password.sh`, záloha `.env` v `/root/.env.bak.*`) — historie repa **nepřepsána** (repo bez remote; před prvním pushem `git filter-repo --path .claude/settings.local.json --invert-paths`)
 - [x] SEC-13 `images: { unoptimized: true }`; next-auth 4.24.15, dompurify 3.4.15, sanitize-html 2.17.7, puppeteer 24.43.1 (+ `setContentAndWait` místo `networkidle0`), tiptap 3.31.3 → `npm audit` 78 → 45 (zbývá next major, nodemailer, xlsx, dev tooling)
 - [x] SEC-47 `ufw delete allow 8083/tcp`; SEC-35 část `chmod 600 .env`; SEC-48 zbytkový E2E server ukončen
 - [x] Testy: `tests/uploadSafety.test.ts`, `tests/security-vlna0.test.ts` (route-level regresní), `tests/rls.test.ts` doplněn o FK-bypass case (SEC-08 dokumentace)
