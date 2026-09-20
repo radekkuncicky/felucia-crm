@@ -222,7 +222,7 @@ Pořadí podle poměru riziko/pracnost. Každá vlna = samostatný commit + `dep
 - [x] SEC-47 `ufw delete allow 8083/tcp`; SEC-35 část `chmod 600 .env`; SEC-48 zbytkový E2E server ukončen
 - [x] Testy: `tests/uploadSafety.test.ts`, `tests/security-vlna0.test.ts` (route-level regresní), `tests/rls.test.ts` doplněn o FK-bypass case (SEC-08 dokumentace)
 
-## Vlna 1 — vysoké (2026-09-20, čeká na deploy)
+## Vlna 1 — vysoké (2026-09-20, NASAZENO commit 095e56b; fotky ve felucia-tech ověřeny Radkem)
 - [x] SEC-04 rate-limit v `authorize()` — 20/15 min per IP (`x-real-ip`) + 10/15 min per e-mail, chyba `RATE_LIMITED` s hláškou v loginu; dummy `bcrypt.compare` pro neexistující e-mail (timing). nginx `limit_req` zatím ne (in-memory limit stačí při `instances: 1`)
 - [x] SEC-05 `User.sessionVersion` (migrace `20260920113830`), snapshot nese `aktivni/orgAktivni/isSuperAdmin/sessionVersion`; jwt callback při refreshi (≤60 s) vyhodí `SESSION_INVALID` → NextAuth smaže cookie; mobilní JWT nese `sv`, `getMobileSession` + refresh ho ověřují; bump při resetu/změně hesla (`bumpSessionVersion`)
 - [x] SEC-08 `lib/ownership.ts` (`isOwned`/`isOwnedOrEmpty` přes orgPrisma) — kontrakty (klientId/dealId/zarizeniId, transakce přes `orgPrisma.$transaction`), deals POST (clientId), zařízení (klientId/dealId); SEC-15 `productId` se naváže jen když je produkt v org, `templateId` ověřen
@@ -236,7 +236,7 @@ Pořadí podle poměru riziko/pracnost. Každá vlna = samostatný commit + `dep
 
 ## Vlna 2 — střední
 
-### Dávka 2a (2026-09-20, kód — čeká na deploy + `psql -f prisma/rls.sql` na prod)
+### Dávka 2a (2026-09-20, NASAZENO, RLS aplikováno na prod)
 - [x] SEC-16 `generate-rls-sql.ts` generuje policy i pro 15 dětských tabulek (EXISTS na rodiče přes první povinnou relaci), `_ProductCategories`, `organizations` (jen vlastní řádek) a odebírá DML na `system_settings`; test DB má nový `rls.sql` přes `tests/setup.ts`; **prod: `psql <DATABASE_URL> -f prisma/rls.sql` po deployi**
 - [x] SEC-21 nákupní ceny: `GET /api/deals/[id]/quotes`, `mobile/obchod/nabidka/[id]`, `mobile/obchod/produkty` vrací `nakupniCena`/`nakladovaCena` jen s `financeNakupky`
 - [x] SEC-22 `clientScopeWhere` (`lib/permissions.ts`) — bez `obchod` jen klienti z vlastních zakázek/servisu; `GET /api/clients` + `/api/search` (klienti i OP dle `dealScopeWhere`)
@@ -250,7 +250,7 @@ Pořadí podle poměru riziko/pracnost. Každá vlna = samostatný commit + `dep
 - [x] SEC-31 CSV export: každé pole v uvozovkách + apostrof před `= + - @`
 - [x] Testy `tests/security-vlna2.test.ts` (10); `tests/tenant-isolation.test.ts` upraven na RLS chování organizations
 
-### Dávka 2b (2026-09-20, kód — čeká na deploy)
+### Dávka 2b (2026-09-20, NASAZENO)
 - [x] SEC-25 ICS token verzovaný (`User.calendarTokenVersion`, migrace `20260920135050`), route vyžaduje `aktivni` uživatele i org a filtruje OP/servis podle `dealScopeWhere`/`servisScopeWhere`; tlačítko „Obnovit odkaz" v profilu (`POST /api/settings/profile/calendar-token`)
 - [x] SEC-26 veřejná QR stránka zařízení bez kontaktů/adresy majitele (jen křestní jméno + iniciála), místo toho kontakt na servisní firmu; `POST /api/servis/zarizeni/[id]/qr-token` = rotace tokenu (`servisDispecink`); UI tlačítko rotace zatím ne
 - [x] SEC-29 příloha VOP/VZSP/ceník: magic bytes `%PDF-` + limit 10 MB
