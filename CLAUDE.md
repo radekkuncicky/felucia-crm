@@ -69,10 +69,10 @@
 postgresql://nanto:***@localhost:5432/nanto_crm
 ```
 Migrace: `npx prisma migrate dev --name název`
-Zálohy: cron 3:00 → `/root/scripts/backup-db.sh` → `/root/backups/*.dump` (14 dní, marker LAST_OK)
+Zálohy: cron 3:00 → `/root/scripts/backup-db.sh` → `/root/backups/*.dump.gpg` (gpg AES-256, passphrase `/root/.secrets/backup-passphrase` — MUSÍ být uložená i mimo server; 14 dní, marker LAST_OK)
 Offsite: cron 3:30 → `/root/scripts/offsite-sync.sh` → rclone copy na B2 remote `b2` (marker LAST_OK_OFFSITE; bez nakonfigurovaného remote se přeskakuje)
 Alert: cron 8:00 → `/root/scripts/check-backup.sh` — markery starší 26 h ⇒ bell notifikace superadminovi (typ SYSTEM, bez SMTP)
-Obnova: `pg_restore --dbname=<URL> --no-owner <soubor.dump>`
+Obnova: `/root/scripts/restore-db.sh <soubor.dump.gpg> [DB_URL]` (dešifruje + pg_restore --no-owner --clean)
 
 ## Worker / fronty (pg-boss)
 - PM2 proces `nanto-crm-worker` (`worker/index.ts`, tsx) — samostatný od Next.js
