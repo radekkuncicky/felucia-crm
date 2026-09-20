@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { orgPrisma } from '@/lib/orgPrisma'
-import { getMobileOrWebSession, requireObchodnikOrAdmin } from '@/lib/mobile-helpers'
+import { mobileDealScope, getMobileOrWebSession, requireObchodnikOrAdmin } from '@/lib/mobile-helpers'
 import { generateQuoteKod } from '@/lib/quoteKod'
 import { createWithUniqueKod } from '@/lib/uniqueKod'
 import { quoteCelkemBezDph } from '@/lib/quoteMath'
@@ -48,7 +48,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const { orgId } = session!.user
   const db = orgPrisma(orgId)
 
-  const deal = await db.deal.findFirst({ where: { id: params.id }, select: { id: true } })
+  const deal = await db.deal.findFirst({ where: { id: params.id, ...mobileDealScope(session!) }, select: { id: true } })
   if (!deal) return NextResponse.json({ error: 'Případ nenalezen' }, { status: 404 })
 
   let body: { nazev?: string; dphSazba?: number; platnostDo?: string; items?: NabidkaItem[] }

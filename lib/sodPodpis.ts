@@ -112,7 +112,7 @@ export async function logSodUdalost(params: {
   req?: Request
 }) {
   const { orgId, sodId, typ, relaceId, userId, meta, req } = params
-  const ip = req?.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null
+  const ip = req?.headers.get('x-real-ip')?.trim() ?? req?.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null
   const userAgent = req?.headers.get('user-agent')?.slice(0, 500) ?? null
   try {
     await orgPrisma(orgId).sodUdalost.create({

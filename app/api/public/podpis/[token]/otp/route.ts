@@ -4,12 +4,12 @@ import { isSmsConfigured, sendSms, maskTelefon } from '@/lib/sms'
 import {
   loadRelaceByToken, generateOtp, otpHash, logSodUdalost, OTP_PLATNOST_MIN,
 } from '@/lib/sodPodpis'
-import { checkRateLimit } from '@/lib/rateLimit'
+import { getClientIp, checkRateLimit } from '@/lib/rateLimit'
 
 // Odeslání OTP kódu SMS — až na explicitní akci klienta na stránce.
 // (Kdyby SMS odcházela při otevření odkazu, spouštěly by ji e-mailové skenery.)
 export async function POST(req: NextRequest, { params }: { params: { token: string } }) {
-  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
+  const ip = getClientIp(req) // x-real-ip z nginx — XFF si klient může podvrhnout
   if (checkRateLimit(`podpis-otp-ip:${ip}`, 10, 3600_000).limited) {
     return NextResponse.json({ error: 'Příliš mnoho požadavků, zkuste to později' }, { status: 429 })
   }

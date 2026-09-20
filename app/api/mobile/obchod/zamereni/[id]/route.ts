@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { rm } from 'fs/promises'
 import { join } from 'path'
 import { orgPrisma } from '@/lib/orgPrisma'
-import { getMobileOrWebSession, requireObchodnikOrAdmin, toAbsoluteUrl } from '@/lib/mobile-helpers'
+import { mobileDealScope, getMobileOrWebSession, requireObchodnikOrAdmin, toAbsoluteUrl } from '@/lib/mobile-helpers'
 import { getDefiniceProZamereni, getAktivniDefinice, chybejiciTagy } from '@/lib/zamereniDefinice'
 import { Technologie } from '@prisma/client'
 
@@ -20,7 +20,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 
   const db = orgPrisma(session!.user.orgId)
   const zamereni = await db.zamereni.findFirst({
-    where: { id: params.id },
+    where: { id: params.id, deal: mobileDealScope(session!) },
     include: {
       fotky: { orderBy: [{ poradi: 'asc' }, { vytvoreno: 'asc' }] },
       autor: { select: { id: true, jmeno: true } },
@@ -66,7 +66,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (authErr) return authErr
 
   const db = orgPrisma(session!.user.orgId)
-  const zamereni = await db.zamereni.findFirst({ where: { id: params.id } })
+  const zamereni = await db.zamereni.findFirst({ where: { id: params.id, deal: mobileDealScope(session!) } })
   if (!zamereni) return NextResponse.json({ error: 'Zaměření nenalezeno' }, { status: 404 })
   if (zamereni.stav === 'UZAVRENE') {
     return NextResponse.json({ error: 'Uzavřené zaměření nelze upravovat' }, { status: 409 })
@@ -113,7 +113,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
   if (authErr) return authErr
 
   const db = orgPrisma(session!.user.orgId)
-  const zamereni = await db.zamereni.findFirst({ where: { id: params.id } })
+  const zamereni = await db.zamereni.findFirst({ where: { id: params.id, deal: mobileDealScope(session!) } })
   if (!zamereni) return NextResponse.json({ error: 'Zaměření nenalezeno' }, { status: 404 })
   if (zamereni.stav === 'UZAVRENE') {
     return NextResponse.json({ error: 'Uzavřené zaměření nelze smazat' }, { status: 409 })

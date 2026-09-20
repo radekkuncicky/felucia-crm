@@ -13,27 +13,28 @@ export async function POST(req: Request) {
   }
 
   const { email } = await req.json()
-  if (!email) return NextResponse.json({ error: 'Email je povinný' }, { status: 400 })
+  // Jen string — objekt by prošel jako Prisma StringFilter (startsWith…) = enumerace
+  if (typeof email !== 'string' || !email.trim()) return NextResponse.json({ error: 'Email je povinný' }, { status: 400 })
 
-  // Always return 200 to prevent email enumeration
-  const user = await prisma.user.findFirst({ where: { email, aktivni: true } })
-  if (!user) return NextResponse.json({ ok: true })
-
-  const token = crypto.randomBytes(32).toString('hex')
-  const expiresAt = new Date(Date.now() + 60 * 60 * 1000) // 1 hour
-
-  await prisma.passwordResetToken.create({
-    data: { userId: user.id, token, expiresAt },
+  // Always return 200 to prevent email enumeration. E-mail je unikátní jen per
+  // org — při shodě ve více org dostane odkaz každý účet (majitel schránky).
+  const users = await prisma.user.findMany({
+    where: { email: email.trim(), aktivni: true, organization: { aktivni: true } },
+    include: { organization: { select: { nazev: true } } },
   })
-
   const baseUrl = process.env.NEXTAUTH_URL ?? 'https://felucia.io'
-  const url = `${baseUrl}/reset-password?token=${token}`
-
-  try {
-    await sendEmail(user.email, 'Obnova hesla – FELUCIA CRM', emailResetPassword(user.jmeno, url))
-  } catch (err) {
-    console.error('Email send error:', err)
-    // Don't fail the request — token is in DB, admin can re-send
+  for (const user of users) {
+    const token = crypto.randomBytes(32).toString('hex')
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000) // 1 hour
+    await prisma.passwordResetToken.create({ data: { userId: user.id, token, expiresAt } })
+    const url = `${baseUrl}/reset-password?token=${token}`
+    const subject = users.length > 1 ? `Obnova hesla – FELUCIA CRM (${user.organization.nazev})` : 'Obnova hesla – FELUCIA CRM'
+    try {
+      await sendEmail(user.email, subject, emailResetPassword(user.jmeno, url))
+    } catch (err) {
+      console.error('Email send error:', err)
+      // Don't fail the request — token is in DB, admin can re-send
+    }
   }
 
   return NextResponse.json({ ok: true })

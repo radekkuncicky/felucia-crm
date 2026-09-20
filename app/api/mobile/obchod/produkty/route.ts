@@ -38,7 +38,8 @@ export async function GET(req: Request) {
     })
     const poradi = new Map(ids.map((id, idx) => [id, idx]))
     produkty.sort((a, b) => (poradi.get(a.id) ?? 99) - (poradi.get(b.id) ?? 99))
-    return NextResponse.json(produkty.map(mapProdukt))
+    const showNakup = session!.user.perms.financeNakupky
+  return NextResponse.json(produkty.map(p => mapProdukt(p, showNakup)))
   }
 
   const produkty = await db.product.findMany({
@@ -58,7 +59,8 @@ export async function GET(req: Request) {
     take: 50,
   })
 
-  return NextResponse.json(produkty.map(mapProdukt))
+  const showNakup = session!.user.perms.financeNakupky
+  return NextResponse.json(produkty.map(p => mapProdukt(p, showNakup)))
 }
 
 function mapProdukt(p: {
@@ -70,7 +72,7 @@ function mapProdukt(p: {
   dphSazba: number
   standardniCena: unknown
   nakladovaCena: unknown
-}) {
+}, showNakup = false) {
   return {
     id: p.id,
     kod: p.kod,
@@ -79,7 +81,7 @@ function mapProdukt(p: {
     jednotka: p.jednotka,
     dphSazba: p.dphSazba,
     cena: Number(p.standardniCena),
-    nakladovaCena: p.nakladovaCena != null ? Number(p.nakladovaCena) : null,
+    nakladovaCena: showNakup && p.nakladovaCena != null ? Number(p.nakladovaCena) : null,
   }
 }
 

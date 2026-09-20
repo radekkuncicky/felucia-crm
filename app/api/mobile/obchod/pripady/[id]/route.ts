@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { orgPrisma } from '@/lib/orgPrisma'
-import { getMobileOrWebSession, requireObchodnikOrAdmin, klientAdresa } from '@/lib/mobile-helpers'
+import { mobileDealScope, getMobileOrWebSession, requireObchodnikOrAdmin, klientAdresa } from '@/lib/mobile-helpers'
 import { quoteCelkemBezDph } from '@/lib/quoteMath'
 import { logAction } from '@/lib/auditLog'
 
@@ -12,7 +12,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 
   const db = orgPrisma(session!.user.orgId)
   const deal = await db.deal.findFirst({
-    where: { id: params.id },
+    where: { id: params.id, ...mobileDealScope(session!) },
     include: {
       client: true,
       user: { select: { id: true, jmeno: true } },
@@ -113,7 +113,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (authErr) return authErr
 
   const db = orgPrisma(session!.user.orgId)
-  const deal = await db.deal.findFirst({ where: { id: params.id } })
+  const deal = await db.deal.findFirst({ where: { id: params.id, ...mobileDealScope(session!) } })
   if (!deal) return NextResponse.json({ error: 'Případ nenalezen' }, { status: 404 })
 
   let body: Record<string, unknown>

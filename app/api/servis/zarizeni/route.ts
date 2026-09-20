@@ -1,4 +1,5 @@
 import { getPlanLimits } from '@/lib/planLimits'
+import { forbidden, getPerms } from '@/lib/permissions'
 import { isOwned, isOwnedOrEmpty } from '@/lib/ownership'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
@@ -32,6 +33,7 @@ export async function GET() {
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!getPerms(session.user).servisDispecink) return forbidden()
   const { orgId, plan } = session.user
   const db = orgPrisma(orgId)
   if (!getPlanLimits(plan).hasServiceModule) return NextResponse.json({ error: 'Vyžadován plán Professional nebo Enterprise' }, { status: 403 })

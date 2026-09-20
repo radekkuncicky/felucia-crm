@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { orgPrisma } from '@/lib/orgPrisma'
-import { getMobileOrWebSession, requireObchodnikOrAdmin } from '@/lib/mobile-helpers'
+import { mobileDealScope, getMobileOrWebSession, requireObchodnikOrAdmin } from '@/lib/mobile-helpers'
 import { TypAktivity } from '@prisma/client'
 
 const TYPY = Object.values(TypAktivity)
@@ -15,7 +15,7 @@ export async function GET(req: Request) {
   const dealId = new URL(req.url).searchParams.get('dealId')
   if (!dealId) return NextResponse.json({ error: 'Chybí dealId' }, { status: 400 })
 
-  const deal = await db.deal.findFirst({ where: { id: dealId }, select: { id: true } })
+  const deal = await db.deal.findFirst({ where: { id: dealId, ...mobileDealScope(session!) }, select: { id: true } })
   if (!deal) return NextResponse.json({ error: 'Případ nenalezen' }, { status: 404 })
 
   const aktivity = await db.activity.findMany({
@@ -77,7 +77,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Neplatný typ aktivity' }, { status: 400 })
   }
 
-  const deal = await db.deal.findFirst({ where: { id: body.dealId }, select: { id: true } })
+  const deal = await db.deal.findFirst({ where: { id: body.dealId, ...mobileDealScope(session!) }, select: { id: true } })
   if (!deal) return NextResponse.json({ error: 'Případ nenalezen' }, { status: 404 })
 
   const splneno = body.splneno === true

@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { loadRelaceByToken, verifyPodpisCookie, podpisCookieName } from '@/lib/sodPodpis'
 import { buildSodPdf } from '@/lib/sodPdf'
-import { checkRateLimit } from '@/lib/rateLimit'
+import { getClientIp, checkRateLimit } from '@/lib/rateLimit'
 
 // Stažení podepsaného PDF klientem hned po podpisu. Vyžaduje OTP cookie
 // (platí 2 h od ověření) — samotný odkaz z e-mailu na stažení nestačí.
 export async function GET(req: NextRequest, { params }: { params: { token: string } }) {
-  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
+  const ip = getClientIp(req) // x-real-ip z nginx — XFF si klient může podvrhnout
   if (checkRateLimit(`podpis-pdf:${ip}`, 10, 3600_000).limited) {
     return NextResponse.json({ error: 'Příliš mnoho požadavků' }, { status: 429 })
   }

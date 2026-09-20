@@ -234,19 +234,31 @@ Pořadí podle poměru riziko/pracnost. Každá vlna = samostatný commit + `dep
 **Po nasazení Vlny 1 lze spustit `scripts/migrate-podklady-to-disk.ts`** (podklady už nejsou veřejné).
 **Ověřit na telefonu:** felucia-tech zobrazuje fotky zakázek (podepsané URL z API) — pokud appka skládá URL sama z relativní cesty bez query, fotky se nezobrazí → dočasně vrátit veřejný prefix nebo opravit appku.
 
-## Vlna 2 — střední (3–5 dní, po částech)
-- [ ] SEC-16 RLS policy pro dětské tabulky + `organizations` (`generate-rls-sql.ts`) → test DB → prod
-- [ ] SEC-21/22/23/24 oprávnění: nákupní ceny, klienti, servis, nastavení org (jeden průchod přes 54 routes bez `getPerms`)
-- [ ] SEC-28 `dealScopeWhere` v mobilním obchodu
-- [ ] SEC-17/18 login/forgot/magic-link: kandidáti per org, `typeof email === 'string'`, e-mail přes worker
-- [ ] SEC-19 impersonátor v session + audit; cookie podepsaná; DELETE s tokenem
-- [ ] SEC-20 mobilní refresh token v DB + revokace
+## Vlna 2 — střední
+
+### Dávka 2a (2026-09-20, kód — čeká na deploy + `psql -f prisma/rls.sql` na prod)
+- [x] SEC-16 `generate-rls-sql.ts` generuje policy i pro 15 dětských tabulek (EXISTS na rodiče přes první povinnou relaci), `_ProductCategories`, `organizations` (jen vlastní řádek) a odebírá DML na `system_settings`; test DB má nový `rls.sql` přes `tests/setup.ts`; **prod: `psql <DATABASE_URL> -f prisma/rls.sql` po deployi**
+- [x] SEC-21 nákupní ceny: `GET /api/deals/[id]/quotes`, `mobile/obchod/nabidka/[id]`, `mobile/obchod/produkty` vrací `nakupniCena`/`nakladovaCena` jen s `financeNakupky`
+- [x] SEC-22 `clientScopeWhere` (`lib/permissions.ts`) — bez `obchod` jen klienti z vlastních zakázek/servisu; `GET /api/clients` + `/api/search` (klienti i OP dle `dealScopeWhere`)
+- [x] SEC-23 servis: kontrakty/zařízení/reaktivní gate `servisDispecink`; `fotky`/`polozky`/`reklamace`/`vyuctovat` přes `canAccessServisniZakazkaWeb` (rozsah `servis`)
+- [x] SEC-24 `nastaveniOrg` na categories/**, ceniky/**/polozky, contract-templates/**, settings/quote-templates POST; dokumenty upload `obchod`, DELETE `obchodMazani || nastaveniOrg`
+- [x] SEC-28 `mobileDealScope` (`lib/mobile-helpers.ts`) ve všech `mobile/obchod/**` čteních i mutacích OP/nabídek/SoD/zaměření/aktivit
+- [x] SEC-17 web login iteruje kandidáty per org (heslo rozhodne), forgot/magic-link pošlou odkaz pro každý účet (předmět s názvem org); oprava URL magic-linku (`/magic-link`)
+- [x] SEC-18 `typeof email === 'string'` ve forgot/magic-link/register; register normalizuje `slug` jako check-slug, validuje e-mail
+- [x] SEC-19 impersonační cookie podepsaná HMAC (`lib/signedCookie.ts`, `lib/impersonate.ts`), session ověřuje podpis + příslušnost admina k org, DELETE vyžaduje JWT superadmina; `logAction` přidává `_impersonator` do každého záznamu během impersonace
+- [x] SEC-27 `getClientIp` (x-real-ip) v public podpis/nabídka routes; audit IP u podpisu preferuje x-real-ip
+- [x] SEC-31 CSV export: každé pole v uvozovkách + apostrof před `= + - @`
+- [x] Testy `tests/security-vlna2.test.ts` (10); `tests/tenant-isolation.test.ts` upraven na RLS chování organizations
+
+### Dávka 2b (zbývá)
+- [ ] SEC-20 mobilní refresh token v DB + revokace (sessionVersion už mobil zneplatní při změně hesla — částečně vyřešeno)
 - [ ] SEC-25 ICS token v DB + `aktivni` + scope; SEC-26 QR stránka bez PII + rotace tokenu
-- [ ] SEC-27 `getClientIp` v public routes
-- [ ] SEC-29/30 PDF magic bytes + limit; xlsx z cdn.sheetjs.com nebo parsování jen na klientovi
-- [ ] SEC-31 CSV escaping; SEC-32 Dáša — `<data>` obal + `confirm` u zápisů + validace `history`
-- [ ] SEC-33 PM2 pod userem `nanto`; SEC-34 Node 22; SEC-35 zálohy šifrované + `chmod 700`
+- [ ] SEC-29 PDF magic bytes + limit u příloh; SEC-30 xlsx parsování jen na klientovi / cdn.sheetjs.com
+- [ ] SEC-32 Dáša — `<data>` obal + `confirm` u zápisů + validace `history`
 - [ ] SEC-13 nodemailer 10; plán Next 15.5
+
+### Dávka 2c (infra, s Radkem)
+- [ ] SEC-33 PM2 pod userem `nanto`; SEC-34 Node 22; SEC-35 zálohy šifrované + `chmod 700 /root/backups`
 
 ## Vlna 3 — nízké / hygiena (průběžně)
 - [ ] SEC-36 hashované reset/magic tokeny · SEC-37/38 enumerace, slug/e-mail/heslo validace · SEC-39 CSP `base-uri`/`form-action`/`frame-ancestors` · SEC-40 maintenance z DB · SEC-41 inquiry webhook → ApiKey · SEC-42 audit log doplnit · SEC-43 změna e-mailu s heslem · SEC-44 `esc()` v e-mailech + `primaryColor` regex · SEC-45 SVG loga · SEC-46 SMTP blocklist · SEC-49 nginx log maskování · SEC-50 `git rm --cached public/uploads` · SEC-51 pm2-logrotate, `filename*=` · SEC-52 dashboard stránky na orgPrisma · INFO: magic-link URL, `.env.example`, org `obsolete`, Sentry DSN, uptime monitoring

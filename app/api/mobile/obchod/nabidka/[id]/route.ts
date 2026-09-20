@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { orgPrisma } from '@/lib/orgPrisma'
-import { getMobileOrWebSession, requireObchodnikOrAdmin } from '@/lib/mobile-helpers'
+import { mobileDealScope, getMobileOrWebSession, requireObchodnikOrAdmin } from '@/lib/mobile-helpers'
 import { quoteCelkemBezDph, quoteCelkemSDph } from '@/lib/quoteMath'
 
 // GET /api/mobile/obchod/nabidka/[id] — detail varianty vč. položek.
@@ -13,7 +13,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 
   const db = orgPrisma(session!.user.orgId)
   const quote = await db.quote.findFirst({
-    where: { id: params.id },
+    where: { id: params.id, deal: mobileDealScope(session!) },
     include: {
       items: { orderBy: { poradi: 'asc' } },
       deal: { select: { id: true, kod: true, predmet: true } },
@@ -41,7 +41,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       mnozstvi: Number(i.mnozstvi),
       jednotka: i.jednotka,
       cenaZaKus: Number(i.cenaZaKus),
-      nakupniCena: i.nakupniCena != null ? Number(i.nakupniCena) : null,
+      nakupniCena: session!.user.perms.financeNakupky && i.nakupniCena != null ? Number(i.nakupniCena) : null,
       sleva: Number(i.sleva),
       poznamky: i.poznamky,
       poradi: i.poradi,
@@ -69,7 +69,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
   const { orgId } = session!.user
   const db = orgPrisma(orgId)
-  const quote = await db.quote.findFirst({ where: { id: params.id } })
+  const quote = await db.quote.findFirst({ where: { id: params.id, deal: mobileDealScope(session!) } })
   if (!quote) return NextResponse.json({ error: 'Nabídka nenalezena' }, { status: 404 })
 
   let body: {
@@ -171,7 +171,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
   if (authErr) return authErr
 
   const db = orgPrisma(session!.user.orgId)
-  const quote = await db.quote.findFirst({ where: { id: params.id } })
+  const quote = await db.quote.findFirst({ where: { id: params.id, deal: mobileDealScope(session!) } })
   if (!quote) return NextResponse.json({ error: 'Nabídka nenalezena' }, { status: 404 })
   if (quote.odeslanoAt) {
     return NextResponse.json({ error: 'Odeslanou nabídku nelze smazat' }, { status: 409 })

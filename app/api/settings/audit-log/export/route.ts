@@ -18,6 +18,12 @@ export async function GET() {
     take: 5000,
   })
 
+  // Každé pole v uvozovkách; hodnoty začínající = + - @ \t \r dostanou apostrof,
+  // aby je Excel nevyhodnotil jako vzorec (CSV/formula injection z názvu klienta)
+  const cell = (v: string) => {
+    const safe = /^[=+\-@\t\r]/.test(v) ? `'${v}` : v
+    return `"${safe.replace(/"/g, '""')}"`
+  }
   const header = 'Datum,Uživatel,Typ akce,Typ záznamu,Záznam\n'
   const rows = logs.map(l =>
     [
@@ -25,8 +31,8 @@ export async function GET() {
       l.user?.jmeno ?? 'Systém',
       l.typAkce,
       l.typZaznamu,
-      `"${l.zaznamNazev.replace(/"/g, '""')}"`,
-    ].join(',')
+      l.zaznamNazev,
+    ].map(cell).join(',')
   ).join('\n')
 
   return new NextResponse(header + rows, {

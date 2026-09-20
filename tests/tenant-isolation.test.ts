@@ -174,9 +174,13 @@ describe('vytváření', () => {
 })
 
 describe('netenant modely', () => {
-  it('Organization extension nefiltruje (potřeba pro auth/superadmin)', async () => {
+  it('Organization: extension nefiltruje, ale RLS pustí jen vlastní org (auth/superadmin jedou přes bare prisma)', async () => {
     const db = orgPrisma(orgA.id)
+    const own = await db.organization.findUnique({ where: { id: orgA.id } })
+    expect(own?.id).toBe(orgA.id)
     const other = await db.organization.findUnique({ where: { id: orgB.id } })
-    expect(other).not.toBeNull()
+    expect(other).toBeNull()
+    const res = await db.organization.updateMany({ where: { id: orgB.id }, data: { nazev: 'Hacknuto' } })
+    expect(res.count).toBe(0)
   })
 })

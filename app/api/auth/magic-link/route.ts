@@ -13,26 +13,26 @@ export async function POST(req: Request) {
   }
 
   const { email } = await req.json()
-  if (!email) return NextResponse.json({ error: 'Email je povinný' }, { status: 400 })
+  if (typeof email !== 'string' || !email.trim()) return NextResponse.json({ error: 'Email je povinný' }, { status: 400 })
 
-  // Always return 200 to prevent enumeration
-  const user = await prisma.user.findFirst({ where: { email, aktivni: true } })
-  if (!user) return NextResponse.json({ ok: true })
-
-  const token = crypto.randomBytes(32).toString('hex')
-  const expiresAt = new Date(Date.now() + 15 * 60 * 1000) // 15 minutes
-
-  await prisma.magicLinkToken.create({
-    data: { userId: user.id, token, expiresAt },
+  // Always return 200 to prevent enumeration; při shodě e-mailu ve více org odkaz pro každý účet
+  const users = await prisma.user.findMany({
+    where: { email: email.trim(), aktivni: true, organization: { aktivni: true } },
+    include: { organization: { select: { nazev: true } } },
   })
-
   const baseUrl = process.env.NEXTAUTH_URL ?? 'https://felucia.io'
-  const url = `${baseUrl}/auth/magic-link?token=${token}`
-
-  try {
-    await sendEmail(user.email, 'Přihlaste se do FELUCIA CRM', emailMagicLink(user.jmeno, url))
-  } catch (err) {
-    console.error('Magic link email error:', err)
+  for (const user of users) {
+    const token = crypto.randomBytes(32).toString('hex')
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000) // 15 minutes
+    await prisma.magicLinkToken.create({ data: { userId: user.id, token, expiresAt } })
+    // Stránka je app/(auth)/magic-link (bez /auth prefixu)
+    const url = `${baseUrl}/magic-link?token=${token}`
+    const subject = users.length > 1 ? `Přihlaste se do FELUCIA CRM (${user.organization.nazev})` : 'Přihlaste se do FELUCIA CRM'
+    try {
+      await sendEmail(user.email, subject, emailMagicLink(user.jmeno, url))
+    } catch (err) {
+      console.error('Magic link email error:', err)
+    }
   }
 
   return NextResponse.json({ ok: true })

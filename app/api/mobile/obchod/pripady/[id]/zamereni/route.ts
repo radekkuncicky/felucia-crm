@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { orgPrisma } from '@/lib/orgPrisma'
-import { getMobileOrWebSession, requireObchodnikOrAdmin, klientAdresa } from '@/lib/mobile-helpers'
+import { mobileDealScope, getMobileOrWebSession, requireObchodnikOrAdmin, klientAdresa } from '@/lib/mobile-helpers'
 import { getAktivniDefinice } from '@/lib/zamereniDefinice'
 import { Technologie } from '@prisma/client'
 
@@ -11,7 +11,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   if (authErr) return authErr
 
   const db = orgPrisma(session!.user.orgId)
-  const deal = await db.deal.findFirst({ where: { id: params.id }, select: { id: true } })
+  const deal = await db.deal.findFirst({ where: { id: params.id, ...mobileDealScope(session!) }, select: { id: true } })
   if (!deal) return NextResponse.json({ error: 'Případ nenalezen' }, { status: 404 })
 
   const zamereni = await db.zamereni.findMany({
@@ -42,7 +42,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const { orgId, id: userId } = session!.user
   const db = orgPrisma(orgId)
   const deal = await db.deal.findFirst({
-    where: { id: params.id },
+    where: { id: params.id, ...mobileDealScope(session!) },
     include: { client: { select: { ulice: true, mesto: true, psc: true } } },
   })
   if (!deal) return NextResponse.json({ error: 'Případ nenalezen' }, { status: 404 })

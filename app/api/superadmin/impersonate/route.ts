@@ -1,9 +1,11 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { NextResponse } from 'next/server'
+import { NextResponse, type NextRequest } from 'next/server'
 import { cookies } from 'next/headers'
+import { getToken } from 'next-auth/jwt'
 import { logAction } from '@/lib/auditLog'
+import { IMPERSONATE_COOKIE, type ImpersonateCookie, signCookieValue, verifyCookieValue } from '@/lib/impersonate'
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
@@ -35,13 +37,15 @@ export async function POST(req: Request) {
   // SECURITY FIX: Store the real superadmin's ID in the cookie so the session callback
   // can verify ownership and the DELETE handler can authenticate without isSuperAdmin flag
   const cookieStore = cookies()
-  cookieStore.set('sa_impersonate', JSON.stringify({
+  const payload: ImpersonateCookie = {
     superAdminId: session.user.id,
     superAdminJmeno: session.user.jmeno,
     orgId: org.id,
     orgNazev: org.nazev,
     impersonatingUserId: adminUser.id,
-  }), {
+  }
+  // Podepsaná — obsah cookie rozhoduje o orgId celé session
+  cookieStore.set('sa_impersonate', signCookieValue(payload, IMPERSONATE_COOKIE), {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
@@ -70,10 +74,10 @@ export async function POST(req: Request) {
   return NextResponse.json({ ok: true, orgId: org.id })
 }
 
-export async function DELETE() {
-  // SECURITY FIX: The session callback sets isSuperAdmin=false during impersonation,
-  // so we cannot rely on session.user.isSuperAdmin here. Instead we verify directly
-  // from the cookie that the caller is a legitimate superadmin.
+export async function DELETE(req: NextRequest) {
+  // Session callback během impersonace nastaví isSuperAdmin=false, proto se
+  // ověřuje přímo JWT (getToken) + podpis cookie: ukončit smí jen ten
+  // superadmin, který impersonaci spustil.
   const cookieStore = cookies()
   const impCookie = cookieStore.get('sa_impersonate')
 
@@ -81,12 +85,15 @@ export async function DELETE() {
     return NextResponse.json({ error: 'Žádná aktivní impersonace' }, { status: 400 })
   }
 
-  let imp: { superAdminId: string; orgId: string; orgNazev: string }
-  try {
-    imp = JSON.parse(impCookie.value)
-  } catch {
+  const imp = verifyCookieValue<ImpersonateCookie>(impCookie.value, IMPERSONATE_COOKIE)
+  if (!imp) {
     cookieStore.delete('sa_impersonate')
     return NextResponse.json({ error: 'Neplatná impersonační cookie' }, { status: 400 })
+  }
+
+  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
+  if (!token?.isSuperAdmin || token.id !== imp.superAdminId) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
   // Verify the superAdminId from the cookie is actually a superadmin in the DB

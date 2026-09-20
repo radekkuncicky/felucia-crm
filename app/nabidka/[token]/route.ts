@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { loadQuoteByShareToken } from '@/lib/quoteShare'
 import { renderQuotePdf } from '@/lib/quoteRenderer'
 import { buildPdfFilename } from '@/lib/quoteKod'
-import { checkRateLimit } from '@/lib/rateLimit'
+import { getClientIp, checkRateLimit } from '@/lib/rateLimit'
 
 // Veřejné zobrazení PDF nabídky klientem (odkaz sdílený obchodníkem).
 // Token ověřujeme přes SHA-256 hash, odkaz má omezenou platnost.
@@ -21,7 +21,7 @@ function htmlNotFound() {
 }
 
 export async function GET(req: NextRequest, { params }: { params: { token: string } }) {
-  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
+  const ip = getClientIp(req) // x-real-ip z nginx — XFF si klient může podvrhnout
   if (checkRateLimit(`nabidka-pdf:${ip}`, 20, 3600_000).limited) {
     return new NextResponse('Příliš mnoho požadavků', { status: 429 })
   }

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { orgPrisma } from '@/lib/orgPrisma'
-import { getMobileOrWebSession, requireObchodnikOrAdmin } from '@/lib/mobile-helpers'
+import { mobileDealScope, getMobileOrWebSession, requireObchodnikOrAdmin } from '@/lib/mobile-helpers'
 import { generateToken, sha256, logSodUdalost } from '@/lib/sodPodpis'
 import { buildSodContentHtml } from '@/lib/sodHtml'
 import { buildSodPdf } from '@/lib/sodPdf'
@@ -27,7 +27,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const db = orgPrisma(orgId)
 
   const sod = await db.sod.findFirst({
-    where: { id: params.id },
+    where: { id: params.id, deal: mobileDealScope(session!) },
     include: {
       organization: {
         select: { nazev: true, sidlo: true, ico: true, dic: true, email: true, telefon: true },
@@ -62,7 +62,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const contentHtml = buildSodContentHtml(sod)
   const textHash = sha256(contentHtml)
   const podepsano = new Date()
-  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null
+  const ip = req.headers.get('x-real-ip')?.trim() ?? req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? null
   const userAgent = req.headers.get('user-agent')?.slice(0, 500) ?? null
 
   await db.$transaction(async tx => {

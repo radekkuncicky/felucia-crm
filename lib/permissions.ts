@@ -339,6 +339,22 @@ export function dealScopeWhere(perms: Permissions, userId: string): Record<strin
   return { userId }
 }
 
+/**
+ * Prisma `where` pro klienty: obchod vidí všechny, jinak jen klienty ze
+ * zakázek / servisních zakázek v rozsahu uživatele (technik nemá vidět celou
+ * databázi kontaktů). `null` = nic.
+ */
+export function clientScopeWhere(perms: Permissions, userId: string): Record<string, unknown> | null {
+  if (perms.obchod) return {}
+  const or: Record<string, unknown>[] = []
+  const z = zakazkyScopeWhere(perms, userId)
+  if (z !== null) or.push({ zakazky: { some: z } })
+  const s = servisScopeWhere(perms, userId)
+  if (s !== null) or.push({ servisniZakazky: { some: s } })
+  if (or.length === 0) return null
+  return { OR: or }
+}
+
 /** Prisma `where` pro servisní zakázky. `null` = nic. */
 export function servisScopeWhere(perms: Permissions, userId: string): Record<string, unknown> | null {
   if (perms.servis === 'ZADNY') return null

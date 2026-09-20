@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { orgPrisma } from '@/lib/orgPrisma'
-import { getMobileOrWebSession, requireObchodnikOrAdmin } from '@/lib/mobile-helpers'
+import { mobileDealScope, getMobileOrWebSession, requireObchodnikOrAdmin } from '@/lib/mobile-helpers'
 import { sha256 } from '@/lib/sodPodpis'
 import { buildSodBaseHtml } from '@/lib/sodHtml'
 
@@ -14,7 +14,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 
   const db = orgPrisma(session!.user.orgId)
   const sod = await db.sod.findFirst({
-    where: { id: params.id },
+    where: { id: params.id, deal: mobileDealScope(session!) },
     include: {
       deal: { select: { id: true, kod: true, stav: true } },
       organization: {

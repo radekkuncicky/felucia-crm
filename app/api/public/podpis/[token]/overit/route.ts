@@ -4,11 +4,11 @@ import { orgPrisma } from '@/lib/orgPrisma'
 import {
   loadRelaceByToken, otpHash, logSodUdalost, makePodpisCookie, podpisCookieName, OTP_MAX_POKUSU,
 } from '@/lib/sodPodpis'
-import { checkRateLimit } from '@/lib/rateLimit'
+import { getClientIp, checkRateLimit } from '@/lib/rateLimit'
 
 // Ověření SMS kódu → krátkodobá HMAC cookie, která odemkne zobrazení a podpis
 export async function POST(req: NextRequest, { params }: { params: { token: string } }) {
-  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
+  const ip = getClientIp(req) // x-real-ip z nginx — XFF si klient může podvrhnout
   if (checkRateLimit(`podpis-overit:${ip}`, 30, 3600_000).limited) {
     return NextResponse.json({ error: 'Příliš mnoho pokusů, zkuste to později' }, { status: 429 })
   }

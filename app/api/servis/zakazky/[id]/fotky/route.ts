@@ -1,4 +1,6 @@
 import { getPlanLimits } from '@/lib/planLimits'
+import { canAccessServisniZakazkaWeb } from '@/lib/zakazkyHelpers'
+import { forbidden, getPerms } from '@/lib/permissions'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
@@ -7,6 +9,7 @@ import { NextResponse } from 'next/server'
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!(await canAccessServisniZakazkaWeb(session.user, getPerms(session.user), params.id))) return forbidden()
   const { orgId, plan } = session.user
   const db = orgPrisma(orgId)
   if (!getPlanLimits(plan).hasServiceModule) return NextResponse.json({ error: 'Vyžadován plán Professional nebo Enterprise' }, { status: 403 })
@@ -41,6 +44,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 export async function DELETE(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!(await canAccessServisniZakazkaWeb(session.user, getPerms(session.user), params.id))) return forbidden()
   const { orgId, plan } = session.user
   const db = orgPrisma(orgId)
   if (!getPlanLimits(plan).hasServiceModule) return NextResponse.json({ error: 'Vyžadován plán Professional nebo Enterprise' }, { status: 403 })

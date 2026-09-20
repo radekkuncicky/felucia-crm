@@ -1,4 +1,5 @@
 import { getServerSession } from 'next-auth'
+import { forbidden, getPerms } from '@/lib/permissions'
 import { checkDocumentUpload } from '@/lib/uploadSafety'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
@@ -12,6 +13,7 @@ const MAX_FILE_SIZE = 100 * 1024 * 1024 // 100 MB per file
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!getPerms(session.user).obchod) return forbidden()
 
   const { orgId, id: userId } = session.user
   const db = orgPrisma(orgId)

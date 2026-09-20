@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { getMobileSession } from '@/lib/mobile-auth'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
-import { getPerms, zakazkyScopeWhere, servisScopeWhere, type Permissions, type RoleName } from '@/lib/permissions'
+import { dealScopeWhere, getPerms, zakazkyScopeWhere, servisScopeWhere, type Permissions, type RoleName } from '@/lib/permissions'
 
 export type MobileSession = {
   user: {
@@ -53,6 +53,15 @@ export async function getMobileOrWebSession(req: Request): Promise<MobileSession
 
 function permsOf(session: MobileSession): Permissions {
   return getPerms(session.user)
+}
+
+/**
+ * Rozsah OP pro mobilní obchod: bez `obchodCiziOP` jen vlastní OP. Vrací
+ * Prisma where fragment pro `deal` (nikdy null — bez obchodu nic nenajde,
+ * requireObchodnikOrAdmin to už dřív odmítl 403).
+ */
+export function mobileDealScope(session: MobileSession): Record<string, unknown> {
+  return dealScopeWhere(permsOf(session), session.user.id) ?? { id: '__none__' }
 }
 
 /** Technický modul (Felucia Tech): kdokoli, kdo vidí aspoň přiřazené zakázky. Returns 401/403 response or null if ok */

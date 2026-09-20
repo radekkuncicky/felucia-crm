@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { writeFile, mkdir } from 'fs/promises'
 import { join } from 'path'
 import { orgPrisma } from '@/lib/orgPrisma'
-import { getMobileOrWebSession, requireObchodnikOrAdmin, toAbsoluteUrl } from '@/lib/mobile-helpers'
+import { mobileDealScope, getMobileOrWebSession, requireObchodnikOrAdmin, toAbsoluteUrl } from '@/lib/mobile-helpers'
 import { ZamereniFotoTag } from '@prisma/client'
 
 const MAX_SIZE = 10 * 1024 * 1024 // 10 MB
@@ -20,7 +20,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   const { orgId } = session!.user
   const db = orgPrisma(orgId)
-  const zamereni = await db.zamereni.findFirst({ where: { id: params.id }, select: { id: true, stav: true } })
+  const zamereni = await db.zamereni.findFirst({ where: { id: params.id, deal: mobileDealScope(session!) }, select: { id: true, stav: true } })
   if (!zamereni) return NextResponse.json({ error: 'Zaměření nenalezeno' }, { status: 404 })
   if (zamereni.stav === 'UZAVRENE') {
     return NextResponse.json({ error: 'Uzavřené zaměření nelze upravovat' }, { status: 409 })

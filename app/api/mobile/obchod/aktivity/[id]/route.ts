@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { orgPrisma } from '@/lib/orgPrisma'
-import { getMobileOrWebSession, requireObchodnikOrAdmin } from '@/lib/mobile-helpers'
+import { mobileDealScope, getMobileOrWebSession, requireObchodnikOrAdmin } from '@/lib/mobile-helpers'
 
 // PATCH /api/mobile/obchod/aktivity/[id] — splnění / úprava aktivity.
 // { splneno?, vysledek?, popis?, datum?, cas?, reminderAt?, zrusit? }
@@ -11,7 +11,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
   const db = orgPrisma(session!.user.orgId)
   const aktivita = await db.activity.findFirst({
-    where: { id: params.id, deal: { orgId: session!.user.orgId } },
+    where: { id: params.id, deal: { orgId: session!.user.orgId, ...mobileDealScope(session!) } },
   })
   if (!aktivita) return NextResponse.json({ error: 'Aktivita nenalezena' }, { status: 404 })
 

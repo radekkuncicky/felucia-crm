@@ -26,7 +26,17 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     orderBy: { vytvoreno: 'asc' },
   })
 
-  return NextResponse.json(quotes)
+  // Nákupní ceny / marže jen s financeNakupky (UI je filtruje, API musí taky)
+  const perms = getPerms(session.user)
+  const safe = perms.financeNakupky ? quotes : quotes.map(q => ({
+    ...q,
+    items: q.items.map(i => ({
+      ...i,
+      nakupniCena: null,
+      product: i.product ? { ...i.product, nakladovaCena: null } : i.product,
+    })),
+  }))
+  return NextResponse.json(safe)
 }
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {

@@ -6,12 +6,12 @@ import { maskTelefon } from '@/lib/sms'
 import {
   loadRelaceByToken, verifyPodpisCookie, podpisCookieName, logSodUdalost,
 } from '@/lib/sodPodpis'
-import { checkRateLimit } from '@/lib/rateLimit'
+import { getClientIp, checkRateLimit } from '@/lib/rateLimit'
 
 // Veřejná stránka podpisu — GET vrací fázi flow podle stavu relace a OTP
 // cookie. Obsah smlouvy se vydá až po ověření SMS kódem (dvoukanálově).
 export async function GET(req: NextRequest, { params }: { params: { token: string } }) {
-  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
+  const ip = getClientIp(req) // x-real-ip z nginx — XFF si klient může podvrhnout
   if (checkRateLimit(`podpis-get:${ip}`, 60, 60_000).limited) {
     return NextResponse.json({ error: 'Příliš mnoho požadavků' }, { status: 429 })
   }

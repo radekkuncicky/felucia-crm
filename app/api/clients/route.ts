@@ -1,6 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { forbidden, getPerms } from '@/lib/permissions'
+import { clientScopeWhere, forbidden, getPerms } from '@/lib/permissions'
 import { getMobileSession } from '@/lib/mobile-auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
@@ -10,12 +10,16 @@ export async function GET(req: Request) {
   const session = await getServerSession(authOptions) ?? await getMobileSession(req)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const orgId = session.user.orgId
+  // Bez obchodu jen klienti z vlastních zakázek (technik nemá celou databázi kontaktů)
+  const clientScope = clientScopeWhere(getPerms(session.user), session.user.id)
+  if (clientScope === null) return forbidden()
 
   const { searchParams } = new URL(req.url)
   const search = searchParams.get('search') ?? ''
 
   const clients = await orgPrisma(orgId).client.findMany({
     where: {
+      AND: [clientScope],
       ...(search ? {
         OR: [
           { jmeno: { contains: search, mode: 'insensitive' } },

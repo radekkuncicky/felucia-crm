@@ -34,11 +34,21 @@ export async function POST(req: Request) {
     if (!nazevFirmy || !jmeno || !prijmeni || !email || !heslo) {
       return NextResponse.json({ error: 'Vyplňte všechna povinná pole.' }, { status: 400 })
     }
+    if ([nazevFirmy, jmeno, prijmeni, email, heslo].some(v => typeof v !== 'string')) {
+      return NextResponse.json({ error: 'Neplatný formát údajů.' }, { status: 400 })
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return NextResponse.json({ error: 'Neplatný e-mail.' }, { status: 400 })
+    }
     if (heslo.length < 8) {
       return NextResponse.json({ error: 'Heslo musí mít alespoň 8 znaků.' }, { status: 400 })
     }
 
-    const slug = rawSlug || generateSlug(nazevFirmy)
+    // Slug z klienta prochází stejnou normalizací jako v check-slug — jde do hostname
+    const slug = generateSlug(typeof rawSlug === 'string' && rawSlug ? rawSlug : nazevFirmy)
+    if (slug.length < 3) {
+      return NextResponse.json({ error: 'Název firmy je příliš krátký pro adresu.' }, { status: 400 })
+    }
 
     if (FORBIDDEN_SLUGS.includes(slug)) {
       return NextResponse.json({ error: 'Tento název firmy není povolen.' }, { status: 400 })

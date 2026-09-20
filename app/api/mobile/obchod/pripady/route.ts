@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { orgPrisma } from '@/lib/orgPrisma'
-import { getMobileOrWebSession, requireObchodnikOrAdmin, klientAdresa } from '@/lib/mobile-helpers'
+import { mobileDealScope, getMobileOrWebSession, requireObchodnikOrAdmin, klientAdresa } from '@/lib/mobile-helpers'
 import { checkDealLimit } from '@/lib/checkPlanLimit'
 import { createWithUniqueKod } from '@/lib/uniqueKod'
 import { generateDealKod } from '@/lib/dealKod'
@@ -27,6 +27,7 @@ export async function GET(req: Request) {
   const deals = await db.deal.findMany({
     where: {
       orgId,
+      ...mobileDealScope(session!),
       ...(moje ? { userId } : {}),
       ...(stavy.length ? { stav: { in: stavy as never } } : { stav: { not: 'ZNEPLATNENO' } }),
       ...(q

@@ -2,7 +2,7 @@ import { NextAuthOptions } from 'next-auth'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import bcrypt from 'bcryptjs'
 import { prisma } from './prisma'
-import { cookies } from 'next/headers'
+import { readImpersonateCookie } from './impersonate'
 import { resolvePermissions, ROLE_PRESETS } from './permissions'
 import { checkRateLimit } from './rateLimit'
 
@@ -105,14 +105,19 @@ export const authOptions: NextAuthOptions = {
           throw new Error(LOGIN_RATE_LIMITED)
         }
 
-        const user = await prisma.user.findFirst({
-          where: { email: credentials.email, aktivni: true },
+        // E-mail je unikátní jen per org — heslo rozhodne, který účet to je
+        // (stejně jako mobilní login). findFirst by vracel nedeterministický záznam.
+        const candidates = await prisma.user.findMany({
+          where: { email: credentials.email, aktivni: true, organization: { aktivni: true } },
           include: { organization: { select: { aktivni: true } } },
         })
-
+        let user: (typeof candidates)[number] | null = null
+        for (const c of candidates) {
+          if (await bcrypt.compare(credentials.password, c.hesloHash)) { user = c; break }
+        }
         // Konstantní čas i pro neexistující e-mail (enumerace přes timing)
-        const passwordMatch = await bcrypt.compare(credentials.password, user?.hesloHash ?? DUMMY_HASH)
-        if (!user || !user.organization.aktivni || !passwordMatch) return null
+        if (candidates.length === 0) await bcrypt.compare(credentials.password, DUMMY_HASH)
+        if (!user) return null
 
         await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } })
 
@@ -179,25 +184,21 @@ export const authOptions: NextAuthOptions = {
       // return NANTO data regardless of which org is being impersonated.
       if (token.isSuperAdmin) {
         try {
-          const cookieStore = cookies()
-          const impCookie = cookieStore.get('sa_impersonate')
-          if (impCookie?.value) {
-            const imp = JSON.parse(impCookie.value) as {
-              superAdminId: string
-              superAdminJmeno: string
-              orgId: string
-              orgNazev: string
-              impersonatingUserId: string
-            }
-
+          // Podepsaná cookie (lib/signedCookie.ts) — nepodepsaná/podvržená se ignoruje
+          const imp = readImpersonateCookie()
+          if (imp) {
             // Verify cookie was set for THIS superadmin (prevents cookie-swap attacks)
+            // + impersonovaný uživatel musí patřit cílové org
             if (imp.orgId && imp.impersonatingUserId && imp.superAdminId === token.id) {
-              const targetOrg = await prisma.organization.findUnique({
-                where: { id: imp.orgId },
-                select: { id: true, slug: true, plan: true, nazev: true },
-              })
+              const [targetOrg, targetUser] = await Promise.all([
+                prisma.organization.findUnique({
+                  where: { id: imp.orgId },
+                  select: { id: true, slug: true, plan: true, nazev: true },
+                }),
+                prisma.user.findFirst({ where: { id: imp.impersonatingUserId, orgId: imp.orgId }, select: { id: true } }),
+              ])
 
-              if (targetOrg) {
+              if (targetOrg && targetUser) {
                 // Override every org-scoped field so all API routes see the target org
                 session.user.id = imp.impersonatingUserId
                 session.user.orgId = targetOrg.id
@@ -210,6 +211,7 @@ export const authOptions: NextAuthOptions = {
                 session.user.isSuperAdmin = false
                 session.user.impersonating = true
                 session.user.impersonatingOrgNazev = targetOrg.nazev
+                session.user.impersonatorId = imp.superAdminId
               }
             }
           }

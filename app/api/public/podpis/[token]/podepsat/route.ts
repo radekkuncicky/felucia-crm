@@ -4,7 +4,7 @@ import { orgPrisma } from '@/lib/orgPrisma'
 import {
   loadRelaceByToken, verifyPodpisCookie, podpisCookieName, sha256, logSodUdalost,
 } from '@/lib/sodPodpis'
-import { checkRateLimit } from '@/lib/rateLimit'
+import { getClientIp, checkRateLimit } from '@/lib/rateLimit'
 import { createNotification } from '@/lib/createNotification'
 import { sendOrgEmail, emailSmlouvaPodepsana } from '@/lib/email'
 import { getOrgSettings } from '@/lib/orgSettings'
@@ -15,7 +15,7 @@ import { prevedDealNaUspechPoPodpisu } from '@/lib/dealUspech'
 // (IP, user-agent, SHA-256 otisk podepsané verze), pošle podepsané PDF
 // klientovi i firmě a upozorní obchodníka.
 export async function POST(req: NextRequest, { params }: { params: { token: string } }) {
-  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown'
+  const ip = getClientIp(req) // x-real-ip z nginx — XFF si klient může podvrhnout
   if (checkRateLimit(`podpis-sign:${ip}`, 10, 3600_000).limited) {
     return NextResponse.json({ error: 'Příliš mnoho požadavků' }, { status: 429 })
   }

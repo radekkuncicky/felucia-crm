@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { orgPrisma } from '@/lib/orgPrisma'
-import { getMobileOrWebSession, requireObchodnikOrAdmin } from '@/lib/mobile-helpers'
+import { mobileDealScope, getMobileOrWebSession, requireObchodnikOrAdmin } from '@/lib/mobile-helpers'
 import { getDefiniceProZamereni, chybejiciOtazky, chybejiciTagy } from '@/lib/zamereniDefinice'
 import { logAction } from '@/lib/auditLog'
 
@@ -16,7 +16,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const db = orgPrisma(orgId)
 
   const zamereni = await db.zamereni.findFirst({
-    where: { id: params.id },
+    where: { id: params.id, deal: mobileDealScope(session!) },
     include: { fotky: { select: { tag: true } }, deal: { select: { kod: true } } },
   })
   if (!zamereni) return NextResponse.json({ error: 'Zaměření nenalezeno' }, { status: 404 })

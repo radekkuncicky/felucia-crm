@@ -16,6 +16,7 @@ declare module 'next-auth' {
       perms: Permissions
       impersonating?: boolean        // true when superadmin is viewing another org
       impersonatingOrgNazev?: string // display name of the impersonated org
+      impersonatorId?: string        // id superadmina, který impersonuje (audit)
     } & DefaultSession['user']
   }
 

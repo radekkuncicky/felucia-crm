@@ -1,4 +1,5 @@
 import { getPlanLimits } from '@/lib/planLimits'
+import { forbidden, getPerms } from '@/lib/permissions'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { NextResponse } from 'next/server'
@@ -9,6 +10,7 @@ import { createServisniZakazka } from '@/lib/servisZakazkaService'
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!getPerms(session.user).servisDispecink) return forbidden()
   const { orgId, plan } = session.user
   if (!getPlanLimits(plan).hasServiceModule) return NextResponse.json({ error: 'Vyžadován plán Professional nebo Enterprise' }, { status: 403 })
 

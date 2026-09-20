@@ -1,6 +1,6 @@
 import { prisma } from './prisma'
 import { orgPrisma } from './orgPrisma'
-import { dealScopeWhere, zakazkyScopeWhere, resolvePermissions, type Permissions, type PermissionKey } from './permissions'
+import { dealScopeWhere, servisScopeWhere, zakazkyScopeWhere, resolvePermissions, type Permissions, type PermissionKey } from './permissions'
 
 export async function generatePredavakCislo(orgId: string): Promise<string> {
   const year = new Date().getFullYear().toString().slice(2)
@@ -129,4 +129,19 @@ export async function canAccessQuote(
     select: { id: true },
   })
   return !!q
+}
+
+/** Servisní zakázka v rozsahu `servis` (VSE / jen přiřazené) — pro web routes */
+export async function canAccessServisniZakazkaWeb(
+  user: { id: string; orgId: string },
+  perms: Permissions,
+  zakazkaId: string,
+): Promise<boolean> {
+  const scope = servisScopeWhere(perms, user.id)
+  if (scope === null) return false
+  const z = await orgPrisma(user.orgId).servisniZakazka.findFirst({
+    where: { id: zakazkaId, orgId: user.orgId, ...scope },
+    select: { id: true },
+  })
+  return !!z
 }

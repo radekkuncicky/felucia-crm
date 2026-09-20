@@ -288,3 +288,109 @@ ALTER TABLE "zarizeni" ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS org_rls ON "zarizeni";
 CREATE POLICY org_rls ON "zarizeni" FOR ALL TO nanto_app
   USING ("orgId" = current_setting('app.org_id', true)) WITH CHECK ("orgId" = current_setting('app.org_id', true));
+
+-- Activity (přes dealId → deals)
+ALTER TABLE "activities" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_rls ON "activities";
+CREATE POLICY org_rls ON "activities" FOR ALL TO nanto_app
+  USING (EXISTS (SELECT 1 FROM "deals" p WHERE p."id" = "dealId" AND p."orgId" = current_setting('app.org_id', true))) WITH CHECK (EXISTS (SELECT 1 FROM "deals" p WHERE p."id" = "dealId" AND p."orgId" = current_setting('app.org_id', true)));
+
+-- CenikPolozka (přes cenikId → ceniky)
+ALTER TABLE "cenik_polozky" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_rls ON "cenik_polozky";
+CREATE POLICY org_rls ON "cenik_polozky" FOR ALL TO nanto_app
+  USING (EXISTS (SELECT 1 FROM "ceniky" p WHERE p."id" = "cenikId" AND p."orgId" = current_setting('app.org_id', true))) WITH CHECK (EXISTS (SELECT 1 FROM "ceniky" p WHERE p."id" = "cenikId" AND p."orgId" = current_setting('app.org_id', true)));
+
+-- LeadNote (přes leadId → leady)
+ALTER TABLE "lead_notes" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_rls ON "lead_notes";
+CREATE POLICY org_rls ON "lead_notes" FOR ALL TO nanto_app
+  USING (EXISTS (SELECT 1 FROM "leady" p WHERE p."id" = "leadId" AND p."orgId" = current_setting('app.org_id', true))) WITH CHECK (EXISTS (SELECT 1 FROM "leady" p WHERE p."id" = "leadId" AND p."orgId" = current_setting('app.org_id', true)));
+
+-- MagicLinkToken (přes userId → users)
+ALTER TABLE "magic_link_tokens" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_rls ON "magic_link_tokens";
+CREATE POLICY org_rls ON "magic_link_tokens" FOR ALL TO nanto_app
+  USING (EXISTS (SELECT 1 FROM "users" p WHERE p."id" = "userId" AND p."orgId" = current_setting('app.org_id', true))) WITH CHECK (EXISTS (SELECT 1 FROM "users" p WHERE p."id" = "userId" AND p."orgId" = current_setting('app.org_id', true)));
+
+-- PasswordResetToken (přes userId → users)
+ALTER TABLE "password_reset_tokens" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_rls ON "password_reset_tokens";
+CREATE POLICY org_rls ON "password_reset_tokens" FOR ALL TO nanto_app
+  USING (EXISTS (SELECT 1 FROM "users" p WHERE p."id" = "userId" AND p."orgId" = current_setting('app.org_id', true))) WITH CHECK (EXISTS (SELECT 1 FROM "users" p WHERE p."id" = "userId" AND p."orgId" = current_setting('app.org_id', true)));
+
+-- PredavakFoto (přes predavakId → predavaky)
+ALTER TABLE "predavak_fotky" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_rls ON "predavak_fotky";
+CREATE POLICY org_rls ON "predavak_fotky" FOR ALL TO nanto_app
+  USING (EXISTS (SELECT 1 FROM "predavaky" p WHERE p."id" = "predavakId" AND p."orgId" = current_setting('app.org_id', true))) WITH CHECK (EXISTS (SELECT 1 FROM "predavaky" p WHERE p."id" = "predavakId" AND p."orgId" = current_setting('app.org_id', true)));
+
+-- PredavakPolozka (přes predavakId → predavaky)
+ALTER TABLE "predavak_polozky" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_rls ON "predavak_polozky";
+CREATE POLICY org_rls ON "predavak_polozky" FOR ALL TO nanto_app
+  USING (EXISTS (SELECT 1 FROM "predavaky" p WHERE p."id" = "predavakId" AND p."orgId" = current_setting('app.org_id', true))) WITH CHECK (EXISTS (SELECT 1 FROM "predavaky" p WHERE p."id" = "predavakId" AND p."orgId" = current_setting('app.org_id', true)));
+
+-- QuoteItem (přes dealId → deals)
+ALTER TABLE "quote_items" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_rls ON "quote_items";
+CREATE POLICY org_rls ON "quote_items" FOR ALL TO nanto_app
+  USING (EXISTS (SELECT 1 FROM "deals" p WHERE p."id" = "dealId" AND p."orgId" = current_setting('app.org_id', true))) WITH CHECK (EXISTS (SELECT 1 FROM "deals" p WHERE p."id" = "dealId" AND p."orgId" = current_setting('app.org_id', true)));
+
+-- QuoteTemplateConfig (přes templateId → quote_templates)
+ALTER TABLE "quote_template_configs" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_rls ON "quote_template_configs";
+CREATE POLICY org_rls ON "quote_template_configs" FOR ALL TO nanto_app
+  USING (EXISTS (SELECT 1 FROM "quote_templates" p WHERE p."id" = "templateId" AND p."orgId" = current_setting('app.org_id', true))) WITH CHECK (EXISTS (SELECT 1 FROM "quote_templates" p WHERE p."id" = "templateId" AND p."orgId" = current_setting('app.org_id', true)));
+
+-- QuoteTemplateHtml (přes templateId → quote_templates)
+ALTER TABLE "quote_template_htmls" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_rls ON "quote_template_htmls";
+CREATE POLICY org_rls ON "quote_template_htmls" FOR ALL TO nanto_app
+  USING (EXISTS (SELECT 1 FROM "quote_templates" p WHERE p."id" = "templateId" AND p."orgId" = current_setting('app.org_id', true))) WITH CHECK (EXISTS (SELECT 1 FROM "quote_templates" p WHERE p."id" = "templateId" AND p."orgId" = current_setting('app.org_id', true)));
+
+-- TechnikZakazka (přes zakazkaId → zakazky)
+ALTER TABLE "technik_zakazky" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_rls ON "technik_zakazky";
+CREATE POLICY org_rls ON "technik_zakazky" FOR ALL TO nanto_app
+  USING (EXISTS (SELECT 1 FROM "zakazky" p WHERE p."id" = "zakazkaId" AND p."orgId" = current_setting('app.org_id', true))) WITH CHECK (EXISTS (SELECT 1 FROM "zakazky" p WHERE p."id" = "zakazkaId" AND p."orgId" = current_setting('app.org_id', true)));
+
+-- VyuctovaniPolozka (přes vyuctovaniId → vyuctovani)
+ALTER TABLE "vyuctovani_polozky" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_rls ON "vyuctovani_polozky";
+CREATE POLICY org_rls ON "vyuctovani_polozky" FOR ALL TO nanto_app
+  USING (EXISTS (SELECT 1 FROM "vyuctovani" p WHERE p."id" = "vyuctovaniId" AND p."orgId" = current_setting('app.org_id', true))) WITH CHECK (EXISTS (SELECT 1 FROM "vyuctovani" p WHERE p."id" = "vyuctovaniId" AND p."orgId" = current_setting('app.org_id', true)));
+
+-- ZakazkaFoto (přes zakazkaId → zakazky)
+ALTER TABLE "zakazka_fotky" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_rls ON "zakazka_fotky";
+CREATE POLICY org_rls ON "zakazka_fotky" FOR ALL TO nanto_app
+  USING (EXISTS (SELECT 1 FROM "zakazky" p WHERE p."id" = "zakazkaId" AND p."orgId" = current_setting('app.org_id', true))) WITH CHECK (EXISTS (SELECT 1 FROM "zakazky" p WHERE p."id" = "zakazkaId" AND p."orgId" = current_setting('app.org_id', true)));
+
+-- ZakazkaKomentar (přes zakazkaId → zakazky)
+ALTER TABLE "zakazka_komentare" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_rls ON "zakazka_komentare";
+CREATE POLICY org_rls ON "zakazka_komentare" FOR ALL TO nanto_app
+  USING (EXISTS (SELECT 1 FROM "zakazky" p WHERE p."id" = "zakazkaId" AND p."orgId" = current_setting('app.org_id', true))) WITH CHECK (EXISTS (SELECT 1 FROM "zakazky" p WHERE p."id" = "zakazkaId" AND p."orgId" = current_setting('app.org_id', true)));
+
+-- ZakazkaPolozka (přes zakazkaId → zakazky)
+ALTER TABLE "zakazka_polozky" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_rls ON "zakazka_polozky";
+CREATE POLICY org_rls ON "zakazka_polozky" FOR ALL TO nanto_app
+  USING (EXISTS (SELECT 1 FROM "zakazky" p WHERE p."id" = "zakazkaId" AND p."orgId" = current_setting('app.org_id', true))) WITH CHECK (EXISTS (SELECT 1 FROM "zakazky" p WHERE p."id" = "zakazkaId" AND p."orgId" = current_setting('app.org_id', true)));
+
+-- _ProductCategories (implicitní m:n, B → products)
+ALTER TABLE "_ProductCategories" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_rls ON "_ProductCategories";
+CREATE POLICY org_rls ON "_ProductCategories" FOR ALL TO nanto_app
+  USING (EXISTS (SELECT 1 FROM "products" p WHERE p."id" = "B" AND p."orgId" = current_setting('app.org_id', true)))
+  WITH CHECK (EXISTS (SELECT 1 FROM "products" p WHERE p."id" = "B" AND p."orgId" = current_setting('app.org_id', true)));
+
+-- Organization (jen vlastní řádek)
+ALTER TABLE "organizations" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_rls ON "organizations";
+CREATE POLICY org_rls ON "organizations" FOR ALL TO nanto_app
+  USING ("id" = current_setting('app.org_id', true)) WITH CHECK ("id" = current_setting('app.org_id', true));
+
+-- SystemSettings (nanto_app jen čte)
+REVOKE INSERT, UPDATE, DELETE ON "system_settings" FROM nanto_app;
