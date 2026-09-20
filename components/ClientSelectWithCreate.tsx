@@ -1,19 +1,28 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { confirmDialog } from '@/components/ui/confirm'
 import type { AresFirma } from '@/hooks/useAresLookup'
 
-interface Client {
+export interface Client {
   id: string
   jmeno: string
   prijmeni: string
+  // Volitelné — vrací je API po založení; servis/nova z nich předvyplní místo zásahu.
+  telefon?: string | null
+  ulice?: string | null
+  mesto?: string | null
+  psc?: string | null
 }
 
 interface Props {
   clients: Client[]
   value: string
   onChange: (clientId: string) => void
+  /** Celý objekt vybraného/založeného klienta (null při odznačení). */
+  onSelect?: (client: Client | null) => void
+  placeholder?: string
 }
 
 interface CreateForm {
@@ -22,7 +31,9 @@ interface CreateForm {
   telefon: string
   email: string
   ico: string
+  ulice: string
   mesto: string
+  psc: string
 }
 
 function CreateClientModal({
@@ -42,7 +53,9 @@ function CreateClientModal({
     telefon: '',
     email: '',
     ico: '',
+    ulice: '',
     mesto: '',
+    psc: '',
   })
   const [saving, setSaving] = useState(false)
   const [aresLoading, setAresLoading] = useState(false)
@@ -68,7 +81,9 @@ function CreateClientModal({
         ...f,
         prijmeni: nameParts.length > 1 ? nameParts.slice(0, -1).join(' ') : nazev,
         jmeno: nameParts.length > 1 ? nameParts[nameParts.length - 1] : '',
+        ulice: firmy[0].ulice || f.ulice,
         mesto: firmy[0].mesto || f.mesto,
+        psc: firmy[0].psc || f.psc,
       }))
     } catch {
       setError('Nepodařilo se načíst data z ARES')
@@ -79,6 +94,10 @@ function CreateClientModal({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    // Modal bývá uvnitř jiného formuláře (nová OP, servis/nova). Portál ho drží
+    // mimo DOM rodiče (vnořený <form> se jinak odešle nativně) a stopPropagation
+    // brání tomu, aby React probublal submit do vnějšího formuláře.
+    e.stopPropagation()
     if (!form.prijmeni.trim()) { setError('Příjmení je povinné'); return }
     setSaving(true)
     setError('')
@@ -99,7 +118,7 @@ function CreateClientModal({
             danger: false,
           })
           if (pouzitStavajiciho) {
-            onCreated({ id: match.id, jmeno: match.jmeno, prijmeni: match.prijmeni })
+            onCreated({ ...match, id: match.id, jmeno: match.jmeno, prijmeni: match.prijmeni })
             return
           }
         }
@@ -114,7 +133,9 @@ function CreateClientModal({
           telefon: form.telefon || null,
           email: form.email || null,
           ico: form.ico || null,
+          ulice: form.ulice || null,
           mesto: form.mesto || null,
+          psc: form.psc || null,
         }),
       })
       if (!res.ok) {
@@ -123,7 +144,15 @@ function CreateClientModal({
         return
       }
       const client = await res.json()
-      onCreated({ id: client.id, jmeno: client.jmeno, prijmeni: client.prijmeni })
+      onCreated({
+        id: client.id,
+        jmeno: client.jmeno,
+        prijmeni: client.prijmeni,
+        telefon: client.telefon ?? null,
+        ulice: client.ulice ?? null,
+        mesto: client.mesto ?? null,
+        psc: client.psc ?? null,
+      })
     } catch {
       setError('Chyba při vytváření klienta')
     } finally {
@@ -185,6 +214,17 @@ function CreateClientModal({
             </div>
           </div>
 
+          <div className="grid grid-cols-3 gap-3">
+            <div className="col-span-2">
+              <label className="block text-xs font-medium text-gray-600 dark:text-slate-400 mb-1">Ulice a č. p.</label>
+              <input type="text" value={form.ulice} onChange={e => set('ulice', e.target.value)} className={inp} placeholder="Dlouhá 12" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 dark:text-slate-400 mb-1">PSČ</label>
+              <input type="text" value={form.psc} onChange={e => set('psc', e.target.value)} className={inp} placeholder="110 00" />
+            </div>
+          </div>
+
           <div className="flex gap-3 pt-2">
             <button
               type="submit"
@@ -207,7 +247,7 @@ function CreateClientModal({
   )
 }
 
-export default function ClientSelectWithCreate({ clients, value, onChange }: Props) {
+export default function ClientSelectWithCreate({ clients, value, onChange, onSelect, placeholder }: Props) {
   const [inputVal, setInputVal] = useState('')
   const [open, setOpen] = useState(false)
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -255,6 +295,7 @@ export default function ClientSelectWithCreate({ clients, value, onChange }: Pro
 
   function selectClient(c: Client) {
     onChange(c.id)
+    onSelect?.(c)
     setInputVal(`${c.prijmeni} ${c.jmeno}`.trim())
     setOpen(false)
   }
@@ -262,7 +303,7 @@ export default function ClientSelectWithCreate({ clients, value, onChange }: Pro
   function handleInput(e: React.ChangeEvent<HTMLInputElement>) {
     setInputVal(e.target.value)
     setOpen(true)
-    if (e.target.value === '') onChange('')
+    if (e.target.value === '') { onChange(''); onSelect?.(null) }
   }
 
   return (
@@ -277,14 +318,14 @@ export default function ClientSelectWithCreate({ clients, value, onChange }: Pro
           value={inputVal}
           onChange={handleInput}
           onFocus={() => setOpen(true)}
-          placeholder="Vyhledat klienta…"
+          placeholder={placeholder ?? 'Vyhledat klienta…'}
           autoComplete="off"
           className="w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400 pr-8"
         />
         {value && (
           <button
             type="button"
-            onClick={() => { onChange(''); setInputVal(''); setOpen(false); inputRef.current?.focus() }}
+            onClick={() => { onChange(''); onSelect?.(null); setInputVal(''); setOpen(false); inputRef.current?.focus() }}
             className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-0.5"
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -334,7 +375,7 @@ export default function ClientSelectWithCreate({ clients, value, onChange }: Pro
         </div>
       )}
 
-      {showCreateModal && (
+      {showCreateModal && typeof document !== 'undefined' && createPortal(
         <CreateClientModal
           initialText={createText}
           onCreated={client => {
@@ -344,7 +385,8 @@ export default function ClientSelectWithCreate({ clients, value, onChange }: Pro
             setShowCreateModal(false)
           }}
           onCancel={() => { setShowCreateModal(false); setOpen(false) }}
-        />
+        />,
+        document.body,
       )}
     </div>
   )

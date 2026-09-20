@@ -101,3 +101,61 @@ export function jeProsla(stav: string, planovanyTermin: string | Date | null): b
   if (stav !== 'NAPLANOVANA' || !planovanyTermin) return false
   return new Date(planovanyTermin) < new Date()
 }
+
+// Priorita servisní akce (ServisPriorita). Urgentní = nahoře na nástěnce i v plánu.
+export type ServisPriorita = 'BEZNA' | 'URGENTNI'
+
+export const PRIORITA_LABELS: Record<ServisPriorita, string> = {
+  BEZNA: 'Běžná',
+  URGENTNI: 'Urgentní',
+}
+
+export function jeUrgentni(priorita: string | null | undefined): boolean {
+  return priorita === 'URGENTNI'
+}
+
+// ---------------------------------------------------------------------------
+// Pohledy nad zakázkami: „práce" vs. „budoucí návštěvy ze smluv".
+//
+// Kontrakty generují plánované návštěvy roky dopředu (na produ 75 z 78 zakázek
+// je PLANOVANY_SERVIS s termínem 2027+). Ty nesmí zaplavit nástěnku ani
+// výchozí seznam — reálná práce (porucha dnes) by se v nich ztratila.
+// ---------------------------------------------------------------------------
+
+/** Kolik dní dopředu se plánované kontraktní návštěvy ještě počítají za „aktuální". */
+export const SERVIS_HORIZONT_DNI = 60
+
+export type ServisPohledRow = {
+  stav: string
+  typ: string
+  kontraktId?: string | null
+  planovanyTermin: string | Date | null
+}
+
+/** Reaktivní = není to rutinní návštěva ze smlouvy (porucha, oprava, kontrola, nebo bez kontraktu). */
+export function jeReaktivni(z: Pick<ServisPohledRow, 'typ' | 'kontraktId'>): boolean {
+  return z.typ !== 'PLANOVANY_SERVIS' || !z.kontraktId
+}
+
+function dniDoTerminu(termin: string | Date | null, now: Date): number | null {
+  if (!termin) return null
+  return (new Date(termin).getTime() - now.getTime()) / 86_400_000
+}
+
+/**
+ * Aktuální = aktivní stav a zároveň buď reaktivní, nebo bez termínu, nebo
+ * termín do SERVIS_HORIZONT_DNI. Výchozí pohled seznamu.
+ */
+export function jeAktualni(z: ServisPohledRow, now: Date = new Date()): boolean {
+  if (!jeAktivni(z.stav) && z.stav !== 'REKLAMACE') return false
+  if (jeReaktivni(z)) return true
+  const dni = dniDoTerminu(z.planovanyTermin, now)
+  return dni === null || dni <= SERVIS_HORIZONT_DNI
+}
+
+/** Budoucí plánovaná návštěva ze smlouvy za horizontem — patří do pohledu „Plánované ze smluv". */
+export function jeBudouciPlanovana(z: ServisPohledRow, now: Date = new Date()): boolean {
+  if (z.stav !== 'NAPLANOVANA' || jeReaktivni(z)) return false
+  const dni = dniDoTerminu(z.planovanyTermin, now)
+  return dni !== null && dni > SERVIS_HORIZONT_DNI
+}

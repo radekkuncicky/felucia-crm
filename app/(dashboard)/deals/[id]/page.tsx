@@ -470,6 +470,7 @@ export default async function DealDetailPage({
 
       {tab === 'servis' && isPlatinum && (
         <ServisTab
+          klientId={deal.client.id}
           zarizeni={dealZarizeni.map(z => ({
             ...z,
             datumInstalace: z.datumInstalace ? z.datumInstalace.toISOString() : null,

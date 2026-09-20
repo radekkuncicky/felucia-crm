@@ -28,7 +28,7 @@ interface Props {
 
 
 interface SearchResult {
-  type: 'client' | 'deal'
+  type: 'client' | 'deal' | 'servis'
   id: string
   label: string
   sub: string
@@ -97,8 +97,8 @@ function SidebarSearch() {
               onClick={() => { router.push(r.href); setOpen(false); setQuery('') }}
               className="w-full px-3 py-2 flex items-start gap-2 hover:bg-green-900/30 text-left transition-colors"
             >
-              <span className={`text-xs mt-0.5 px-1.5 py-0.5 rounded font-medium flex-shrink-0 ${r.type === 'client' ? 'bg-green-900/60 text-green-300' : 'bg-[#4CAF50]/20 text-[#4CAF50]'}`}>
-                {r.type === 'client' ? 'KL' : 'OP'}
+              <span className={`text-xs mt-0.5 px-1.5 py-0.5 rounded font-medium flex-shrink-0 ${r.type === 'client' ? 'bg-green-900/60 text-green-300' : r.type === 'servis' ? 'bg-purple-900/60 text-purple-300' : 'bg-[#4CAF50]/20 text-[#4CAF50]'}`}>
+                {r.type === 'client' ? 'KL' : r.type === 'servis' ? 'SZ' : 'OP'}
               </span>
               <div className="min-w-0">
                 <p className="text-sm text-green-100 truncate">{r.label}</p>
@@ -364,8 +364,6 @@ export default function Sidebar({ user, orgNazev }: Props) {
                       <>
                         <SubNavItem href="/servis" label="Přehled" exact />
                         <SubNavItem href="/servis/zakazky" label="Zakázky" />
-                        <SubNavItem href="/servis/zarizeni" label="Zařízení" />
-                        <SubNavItem href="/servis/kontrakty" label="Kontrakty" />
                         <SubNavItem href="/servis/plan" label="Plán servisů" />
                       </>
                     )}

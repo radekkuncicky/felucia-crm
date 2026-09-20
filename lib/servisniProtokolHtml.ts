@@ -74,6 +74,12 @@ type Navsteva = {
   id: string
   cislo: string | null
   typ: string
+  // Zadání (servis/nova) — u starších zakázek chybí, sekce se pak nevykreslí
+  popis?: string | null
+  priorita?: string | null
+  adresaZasahu?: string | null
+  kontaktJmeno?: string | null
+  kontaktTelefon?: string | null
   planovanyTermin: Date | string | null
   skutecnyTermin: Date | string | null
   trvaniMinut: number | null
@@ -328,8 +334,8 @@ export function generateServisniProtokolHtml(
           <div class="field-value">${esc(`${klient.jmeno} ${klient.prijmeni}`)}</div>
         </div>
         <div class="field">
-          <div class="field-label">Adresa</div>
-          <div class="field-value">${esc(adresaKlienta)}</div>
+          <div class="field-label">${navsteva.adresaZasahu && navsteva.adresaZasahu !== adresaKlienta ? 'Místo zásahu' : 'Adresa'}</div>
+          <div class="field-value">${esc(navsteva.adresaZasahu || adresaKlienta)}</div>
         </div>
         <div class="field">
           <div class="field-label">Telefon</div>
@@ -340,6 +346,27 @@ export function generateServisniProtokolHtml(
           <div class="field-value">${klient.email ? `<a href="mailto:${esc(klient.email)}">${esc(klient.email)}</a>` : '—'}</div>
         </div>
       </div>
+    </div>
+  </div>
+  ` : ''}
+
+  <!-- HLÁŠENÁ ZÁVADA / ZADÁNÍ -->
+  ${navsteva.popis || navsteva.kontaktJmeno || navsteva.kontaktTelefon || navsteva.priorita === 'URGENTNI' ? `
+  <div class="section">
+    <div class="section-title">Hlášená závada / požadavek${navsteva.priorita === 'URGENTNI' ? ' — URGENTNÍ' : ''}</div>
+    <div class="section-body">
+      <div class="${navsteva.popis ? 'text-block' : 'text-block empty'}">${navsteva.popis ? esc(navsteva.popis) : 'Bez popisu'}</div>
+      ${navsteva.kontaktJmeno || navsteva.kontaktTelefon ? `
+      <div class="grid2" style="margin-top:8px">
+        <div class="field">
+          <div class="field-label">Kontakt na místě</div>
+          <div class="field-value">${esc(navsteva.kontaktJmeno ?? '—')}</div>
+        </div>
+        <div class="field">
+          <div class="field-label">Telefon na místě</div>
+          <div class="field-value">${navsteva.kontaktTelefon ? `<a href="tel:${esc(navsteva.kontaktTelefon)}">${esc(navsteva.kontaktTelefon)}</a>` : '—'}</div>
+        </div>
+      </div>` : ''}
     </div>
   </div>
   ` : ''}

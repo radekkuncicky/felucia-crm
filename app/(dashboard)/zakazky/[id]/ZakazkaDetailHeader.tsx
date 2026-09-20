@@ -204,7 +204,7 @@ function ServisModal({ zakazkaId, onClose }: { zakazkaId: string; onClose: () =>
             <div className="flex gap-3 justify-center">
               <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 dark:text-slate-400 border border-gray-300 dark:border-slate-600 rounded-lg">Zavřít</button>
               <button
-                onClick={() => { router.push(`/servis/zarizeni/${done.zarizeniId}`); onClose() }}
+                onClick={() => { router.push(`/servis/portfolio?zarizeni=${done.zarizeniId}`); onClose() }}
                 className="px-4 py-2 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-lg"
               >
                 → Přejít na servisní modul

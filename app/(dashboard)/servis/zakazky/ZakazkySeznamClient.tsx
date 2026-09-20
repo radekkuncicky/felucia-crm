@@ -2,17 +2,19 @@
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { api } from '@/lib/api'
 import FilterDropdown from '@/components/ui/FilterDropdown'
 import {
-  type NavstevaTyp,
   SERVIS_STAV_LABELS,
   TYP_LABELS,
   stavLabel,
   stavColor,
   typLabel,
   jeProsla,
+  jeUrgentni,
+  jeAktualni,
+  jeBudouciPlanovana,
+  jeReaktivni,
+  SERVIS_HORIZONT_DNI,
 } from '@/lib/servisStav'
 
 interface Row {
@@ -23,6 +25,9 @@ interface Row {
   planovanyTermin: string | null
   skutecnyTermin: string | null
   vyfakturovano: boolean
+  popis: string | null
+  priorita: string
+  kontraktId: string | null
   technik: { id: string; jmeno: string } | null
   klientNazev: string | null
   predmet: string | null
@@ -33,93 +38,93 @@ interface OrgUser {
   jmeno: string
 }
 
-interface ZarizeniListItem {
-  id: string
-  nazev: string
-  typ: string
-  klient: { id: string; jmeno: string; prijmeni: string }
-  kontraktyId: string | null
-}
-
 interface Props {
   zakazky: Row[]
   orgUsers: OrgUser[]
-  zarizeniList: ZarizeniListItem[]
   canCreate: boolean
 }
 
-const emptyForm = {
-  zarizeniId: '',
-  zarizeniSearch: '',
-  klientId: '',
-  kontraktId: '',
-  typ: 'PLANOVANY_SERVIS' as NavstevaTyp,
-  planovanyTermin: '',
-  cas: '09:00',
-  technikId: '',
-  poznamka: '',
-}
-
-// Aktivní = dá se na nich pracovat; Hotové = práce skončila (vč. čekání na
-// platbu/uzavření). ZRUSENA jen ve „Vše". Stejný vzor jako montážní zakázky.
-const AKTIVNI_STAVY = ['NOVA', 'NAPLANOVANA', 'PROBIHA', 'CEKA', 'REKLAMACE']
+// Pohledy: Aktuální = reálná práce + smluvní návštěvy do horizontu; Plánované
+// ze smluv = generované návštěvy za horizontem (seskupené po měsících);
+// Hotové = práce skončila (vč. čekání na platbu/uzavření); ZRUSENA jen ve „Vše".
+type Pohled = 'aktualni' | 'smlouvy' | 'hotove' | 'vse'
 const HOTOVE_STAVY = ['DOKONCENA', 'VYUCTOVANA', 'UZAVRENA']
 
-export default function ZakazkySeznamClient({ zakazky, orgUsers, zarizeniList, canCreate }: Props) {
-  const router = useRouter()
-  const [pohled, setPohled] = useState<'aktivni' | 'hotove' | 'vse'>('aktivni')
+// Řazení v Aktuální: urgentní → bez termínu (nejnovější nahoře = pořadí ze serveru) → podle termínu.
+function porovnejAktualni(a: Row, b: Row): number {
+  const ua = jeUrgentni(a.priorita) ? 0 : 1
+  const ub = jeUrgentni(b.priorita) ? 0 : 1
+  if (ua !== ub) return ua - ub
+  if (!a.planovanyTermin && b.planovanyTermin) return -1
+  if (a.planovanyTermin && !b.planovanyTermin) return 1
+  if (a.planovanyTermin && b.planovanyTermin) return a.planovanyTermin.localeCompare(b.planovanyTermin)
+  return 0
+}
+
+function mesicKlic(iso: string): string {
+  const d = new Date(iso)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+
+function mesicLabel(klic: string): string {
+  const [y, m] = klic.split('-').map(Number)
+  const label = new Date(y, m - 1, 1).toLocaleDateString('cs-CZ', { month: 'long', year: 'numeric' })
+  return label.charAt(0).toUpperCase() + label.slice(1)
+}
+
+export default function ZakazkySeznamClient({ zakazky, orgUsers, canCreate }: Props) {
+  const [pohled, setPohled] = useState<Pohled>('aktualni')
   const [fStav, setFStav] = useState<string>('')
   const [fTechnik, setFTechnik] = useState<string>('')
   const [fTyp, setFTyp] = useState<string>('')
-  const [modalOpen, setModalOpen] = useState(false)
-  const [form, setForm] = useState(emptyForm)
-  const [saving, setSaving] = useState(false)
+  const [hledat, setHledat] = useState('')
+
+  const now = useMemo(() => new Date(), [])
+
+  const counts = useMemo(() => ({
+    aktualni: zakazky.filter(z => jeAktualni(z, now)).length,
+    smlouvy: zakazky.filter(z => jeBudouciPlanovana(z, now)).length,
+    hotove: zakazky.filter(z => HOTOVE_STAVY.includes(z.stav)).length,
+  }), [zakazky, now])
 
   const filtered = useMemo(() => {
-    return zakazky.filter(z => {
-      // Explicitní filtr stavu má přednost před pohledem Aktivní/Hotové.
+    const q = hledat.trim().toLowerCase()
+    const rows = zakazky.filter(z => {
+      // Explicitní filtr stavu má přednost před pohledem.
       if (fStav) {
         if (z.stav !== fStav) return false
-      } else {
-        if (pohled === 'aktivni' && !AKTIVNI_STAVY.includes(z.stav)) return false
-        if (pohled === 'hotove' && !HOTOVE_STAVY.includes(z.stav)) return false
+      } else if (pohled === 'aktualni') {
+        if (!jeAktualni(z, now)) return false
+      } else if (pohled === 'smlouvy') {
+        if (!jeBudouciPlanovana(z, now)) return false
+      } else if (pohled === 'hotove') {
+        if (!HOTOVE_STAVY.includes(z.stav)) return false
       }
       if (fTechnik && z.technik?.id !== fTechnik) return false
       if (fTyp && z.typ !== fTyp) return false
+      if (q) {
+        const hay = [z.cislo, z.klientNazev, z.popis, z.predmet, z.technik?.jmeno].filter(Boolean).join(' ').toLowerCase()
+        if (!hay.includes(q)) return false
+      }
       return true
     })
-  }, [zakazky, pohled, fStav, fTechnik, fTyp])
+    if (pohled === 'aktualni' && !fStav) rows.sort(porovnejAktualni)
+    return rows
+  }, [zakazky, pohled, fStav, fTechnik, fTyp, hledat, now])
 
-  const hotoveCount = useMemo(() => zakazky.filter(z => HOTOVE_STAVY.includes(z.stav)).length, [zakazky])
-
-  const filteredZarizeni = zarizeniList.filter(z =>
-    !form.zarizeniSearch || `${z.nazev} ${z.klient.jmeno} ${z.klient.prijmeni}`.toLowerCase().includes(form.zarizeniSearch.toLowerCase())
-  )
-
-  async function createZakazka() {
-    setSaving(true)
-    try {
-      const planovanyTermin = form.planovanyTermin ? `${form.planovanyTermin}T${form.cas}:00` : null
-      const res = await api.post<{ id: string }>('/api/servis/zakazky', {
-        typ: form.typ,
-        planovanyTermin,
-        technikId: form.technikId || null,
-        poznamka: form.poznamka || null,
-        zarizeniId: form.zarizeniId || null,
-        klientId: form.klientId || null,
-        kontraktId: form.kontraktId || null,
-      }, { errorMessage: 'Servisní zakázku se nepodařilo vytvořit.' })
-      if (res.ok && res.data) {
-        router.push(`/servis/zakazky/${res.data.id}`)
-      } else {
-        setSaving(false)
-      }
-    } catch {
-      setSaving(false)
+  // Plánované ze smluv seskupené po měsících (ostatní pohledy = jedna skupina bez hlavičky).
+  const skupiny = useMemo(() => {
+    if (pohled !== 'smlouvy' || fStav) return [{ klic: '', label: null as string | null, rows: filtered as Row[] }]
+    const map = new Map<string, Row[]>()
+    for (const z of filtered) {
+      const k = z.planovanyTermin ? mesicKlic(z.planovanyTermin) : 'bez'
+      if (!map.has(k)) map.set(k, [])
+      map.get(k)!.push(z)
     }
-  }
-
-  const inputClass = 'w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500'
+    return Array.from(map.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([klic, rows]) => ({ klic, label: klic === 'bez' ? 'Bez termínu' : mesicLabel(klic), rows }))
+  }, [filtered, pohled, fStav])
 
   const stavFilterOptions = [
     { value: '', label: 'Stav — podle pohledu' },
@@ -138,10 +143,16 @@ export default function ZakazkySeznamClient({ zakazky, orgUsers, zarizeniList, c
     <>
       {/* Filtry + akce */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="flex gap-2">
-          {([['aktivni', 'Aktivní', null], ['hotove', 'Hotové', hotoveCount], ['vse', 'Vše', null]] as const).map(([key, label, count]) => (
+        <div className="flex gap-2 flex-wrap">
+          {([
+            ['aktualni', 'Aktuální', counts.aktualni, `Reaktivní práce + smluvní návštěvy do ${SERVIS_HORIZONT_DNI} dní`],
+            ['smlouvy', 'Plánované ze smluv', counts.smlouvy, `Generované návštěvy za horizontem ${SERVIS_HORIZONT_DNI} dní`],
+            ['hotove', 'Hotové', counts.hotove, 'Dokončené, vyúčtované a uzavřené'],
+            ['vse', 'Vše', null, 'Všechny včetně zrušených'],
+          ] as const).map(([key, label, count, title]) => (
             <button
               key={key}
+              title={title}
               onClick={() => { setPohled(key); setFStav('') }}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 pohled === key && !fStav
@@ -158,28 +169,45 @@ export default function ZakazkySeznamClient({ zakazky, orgUsers, zarizeniList, c
             </button>
           ))}
         </div>
+        <input
+          type="search"
+          value={hledat}
+          onChange={e => setHledat(e.target.value)}
+          placeholder="Hledat číslo, klienta, popis, zařízení…"
+          className="w-full sm:w-64 border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 placeholder-gray-400 dark:placeholder-slate-500"
+        />
         <FilterDropdown value={fStav} onChange={setFStav} options={stavFilterOptions} />
         <FilterDropdown value={fTechnik} onChange={setFTechnik} options={technikFilterOptions} />
         <FilterDropdown value={fTyp} onChange={setFTyp} options={typFilterOptions} />
         {canCreate && (
-          <button
-            onClick={() => { setForm(emptyForm); setModalOpen(true) }}
+          <Link
+            href="/servis/nova"
             className="ml-auto px-4 py-2 rounded-lg text-sm font-semibold bg-green-600 hover:bg-green-700 text-white transition-colors"
           >
-            + Nová zakázka
-          </button>
+            + Nová servisní akce
+          </Link>
         )}
       </div>
 
       {/* Seznam */}
       {filtered.length === 0 ? (
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-12 text-center">
-          <p className="text-gray-500 dark:text-slate-400">Žádné zakázky odpovídající filtru</p>
+          <p className="text-gray-500 dark:text-slate-400">
+            {pohled === 'aktualni' && !fStav && !hledat ? 'Žádná aktuální práce — nic nehoří.' : 'Žádné zakázky odpovídající filtru'}
+          </p>
         </div>
       ) : (
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">
+        <div className="space-y-4">
+        {skupiny.map(skupina => (
+        <div key={skupina.klic} className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">
+          {skupina.label && (
+            <div className="px-5 py-2.5 border-b border-gray-200 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/60 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-slate-200">{skupina.label}</h3>
+              <span className="text-xs text-gray-500 dark:text-slate-400">{skupina.rows.length}</span>
+            </div>
+          )}
           <div className="divide-y divide-gray-100 dark:divide-slate-700">
-            {filtered.map(z => {
+            {skupina.rows.map(z => {
               const prosla = jeProsla(z.stav, z.planovanyTermin)
               return (
                 <Link
@@ -211,10 +239,14 @@ export default function ZakazkySeznamClient({ zakazky, orgUsers, zarizeniList, c
                     <div className="flex items-center gap-2 flex-wrap">
                       {z.cislo && <span className="text-xs font-mono text-gray-400 dark:text-slate-500">{z.cislo}</span>}
                       <p className="font-medium text-gray-900 dark:text-white truncate">{z.klientNazev ?? '—'}</p>
+                      {jeUrgentni(z.priorita) && (
+                        <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">Urgentní</span>
+                      )}
                     </div>
+                    {z.popis && <p className="text-sm text-gray-700 dark:text-slate-300 truncate mt-0.5">{z.popis}</p>}
                     <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                       {z.predmet && <span className="text-xs text-gray-500 dark:text-slate-400">{z.predmet}</span>}
-                      <span className="text-xs text-gray-400 dark:text-slate-500">{typLabel(z.typ)}</span>
+                      <span className="text-xs text-gray-400 dark:text-slate-500">{typLabel(z.typ)}{!jeReaktivni(z) ? ' · ze smlouvy' : ''}</span>
                       {z.stav === 'DOKONCENA' && !z.vyfakturovano && (
                         <span className="text-xs px-1.5 py-0.5 rounded-full font-medium bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">
                           nevyfakturováno
@@ -237,93 +269,15 @@ export default function ZakazkySeznamClient({ zakazky, orgUsers, zarizeniList, c
             })}
           </div>
         </div>
+        ))}
+        </div>
       )}
 
-      {/* Nová zakázka modal */}
-      {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-            <div className="px-6 py-5 border-b border-gray-200 dark:border-slate-700 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Nová servisní zakázka</h3>
-              <button onClick={() => setModalOpen(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-200">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
-            </div>
-            <div className="px-6 py-4 space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 dark:text-slate-400 mb-1">Zařízení / klient</label>
-                <input
-                  type="text"
-                  value={form.zarizeniSearch}
-                  onChange={e => setForm(f => ({ ...f, zarizeniSearch: e.target.value, zarizeniId: '', klientId: '', kontraktId: '' }))}
-                  placeholder="Hledat zařízení nebo klienta..."
-                  className={`${inputClass} mb-2`}
-                />
-                {form.zarizeniSearch && !form.zarizeniId && (
-                  <div className="border border-gray-200 dark:border-slate-700 rounded-lg overflow-hidden max-h-40 overflow-y-auto">
-                    {filteredZarizeni.length === 0 ? (
-                      <p className="px-3 py-2 text-sm text-gray-500 dark:text-slate-400">Nic nenalezeno</p>
-                    ) : filteredZarizeni.slice(0, 6).map(z => (
-                      <button
-                        key={z.id}
-                        onClick={() => setForm(f => ({
-                          ...f,
-                          zarizeniId: z.id,
-                          klientId: z.klient.id,
-                          kontraktId: z.kontraktyId ?? '',
-                          zarizeniSearch: `${z.nazev} (${z.klient.jmeno} ${z.klient.prijmeni})`,
-                        }))}
-                        className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 dark:hover:bg-slate-700 border-b border-gray-100 dark:border-slate-700 last:border-0"
-                      >
-                        <span className="font-medium text-gray-900 dark:text-white">{z.nazev}</span>
-                        <span className="text-gray-500 dark:text-slate-400"> · {z.klient.jmeno} {z.klient.prijmeni}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {form.zarizeniId && (
-                  <p className="text-xs text-green-600 dark:text-green-400">✓ Zařízení vybráno{form.kontraktId ? ' · kontrakt nalezen' : ''}</p>
-                )}
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 dark:text-slate-400 mb-1">Typ</label>
-                <select value={form.typ} onChange={e => setForm(f => ({ ...f, typ: e.target.value as NavstevaTyp }))} className={inputClass}>
-                  {Object.entries(TYP_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                </select>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 dark:text-slate-400 mb-1">Datum</label>
-                  <input type="date" value={form.planovanyTermin} onChange={e => setForm(f => ({ ...f, planovanyTermin: e.target.value }))} className={inputClass} />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-600 dark:text-slate-400 mb-1">Čas</label>
-                  <input type="time" value={form.cas} onChange={e => setForm(f => ({ ...f, cas: e.target.value }))} className={inputClass} />
-                </div>
-              </div>
-              <p className="text-xs text-gray-400 dark:text-slate-500 -mt-2">Bez data vznikne nezaplánovaná zakázka (reaktivní).</p>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 dark:text-slate-400 mb-1">Technik</label>
-                <select value={form.technikId} onChange={e => setForm(f => ({ ...f, technikId: e.target.value }))} className={inputClass}>
-                  <option value="">— nepřiřazen —</option>
-                  {orgUsers.map(u => <option key={u.id} value={u.id}>{u.jmeno}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 dark:text-slate-400 mb-1">Poznámka</label>
-                <textarea rows={2} value={form.poznamka} onChange={e => setForm(f => ({ ...f, poznamka: e.target.value }))} placeholder="Volitelná poznámka pro technika..." className={`${inputClass} resize-none`} />
-              </div>
-            </div>
-            <div className="px-6 py-4 border-t border-gray-200 dark:border-slate-700 flex gap-3 justify-end">
-              <button onClick={() => setModalOpen(false)} className="px-4 py-2 text-sm text-gray-600 dark:text-slate-400 border border-gray-300 dark:border-slate-600 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700">
-                Zrušit
-              </button>
-              <button onClick={createZakazka} disabled={saving} className="px-5 py-2 text-sm font-semibold text-white bg-green-600 hover:bg-green-700 rounded-lg disabled:opacity-50">
-                {saving ? 'Ukládám…' : 'Vytvořit'}
-              </button>
-            </div>
-          </div>
-        </div>
+      {pohled === 'aktualni' && !fStav && !hledat && counts.smlouvy > 0 && (
+        <p className="text-xs text-gray-500 dark:text-slate-400 text-center">
+          Dalších {counts.smlouvy} plánovaných návštěv ze smluv za horizontem {SERVIS_HORIZONT_DNI} dní najdeš v pohledu{' '}
+          <button onClick={() => setPohled('smlouvy')} className="underline hover:text-gray-700 dark:hover:text-slate-200">Plánované ze smluv</button>.
+        </p>
       )}
     </>
   )

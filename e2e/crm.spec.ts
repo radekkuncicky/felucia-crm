@@ -54,10 +54,85 @@ test('servis: seznam zakázek a detail', async ({ page }) => {
   expect(errors).toEqual([])
 })
 
+test('servis: nová servisní akce pro klienta z ulice (nový klient + nové zařízení)', async ({ page }) => {
+  const errors = trackErrors(page)
+  const prijmeni = `Zulice${Date.now()}`
+  await page.goto('/servis/nova')
+  await expect(page.locator('h1')).toContainText('Nová servisní akce')
+
+  // 1. Kdo — inline založení klienta
+  await page.getByPlaceholder(/Příjmení, jméno nebo firma/).fill(prijmeni)
+  await page.getByRole('button', { name: /Vytvořit klienta/ }).click()
+  await page.getByPlaceholder('+420 …').first().fill('+420600700800')
+  await page.getByPlaceholder('Dlouhá 12').fill('Testovací 7')
+  await page.getByPlaceholder('Praha', { exact: true }).fill('Brno')
+  await page.getByRole('button', { name: 'Vytvořit a použít' }).click()
+  await expect(page.locator('body')).toContainText(prijmeni)
+
+  // 2. Co — nové zařízení
+  await page.getByRole('button', { name: '+ Nové zařízení' }).click()
+  await page.getByPlaceholder('Daikin Perfera 3,5 kW').fill('Klima E2E')
+
+  // 3. Problém — adresa předvyplněná z klienta
+  await expect(page.getByPlaceholder('Ulice 12, 110 00 Praha')).toHaveValue(/Testovací 7/)
+  await page.getByPlaceholder(/Klimatizace nechladí/).fill('Nechladí, hlásí E7')
+  await page.getByRole('button', { name: 'Urgentní' }).click()
+
+  await page.getByRole('button', { name: 'Založit servisní akci' }).click()
+  await page.waitForURL('**/servis/zakazky/**')
+  await expect(page.locator('body')).toContainText('Nechladí, hlásí E7')
+  await expect(page.locator('body')).toContainText('Klima E2E')
+  await expect(page.locator('body')).toContainText(/Urgentní/)
+  expect(errors).toEqual([])
+})
+
+test('servis: portfolio seskupuje klienta se zařízením; staré routy redirectují', async ({ page }) => {
+  const errors = trackErrors(page)
+  await page.goto('/servis/portfolio')
+  await expect(page.locator('h1')).toContainText('Servisní portfolio')
+  // klient z předchozího testu (klient z ulice) má zařízení „Klima E2E" → rozbalit hledáním
+  await page.getByPlaceholder(/Klient, zařízení/).fill('Klima E2E')
+  await expect(page.locator('body')).toContainText('Klima E2E')
+  await expect(page.locator('body')).toContainText(/Bez servisní smlouvy/)
+
+  await page.goto('/servis/zarizeni')
+  await page.waitForURL('**/servis/portfolio')
+  await page.goto('/servis/kontrakty')
+  await page.waitForURL('**/servis/portfolio')
+  expect(errors).toEqual([])
+})
+
+test('servis: seznam má pohledy Aktuální / Plánované ze smluv a hledání', async ({ page }) => {
+  const errors = trackErrors(page)
+  await page.goto('/servis/zakazky')
+  await expect(page.getByRole('button', { name: /^Aktuální/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: /Plánované ze smluv/ }).first()).toBeVisible()
+  await page.getByPlaceholder(/Hledat číslo, klienta/).fill('9001')
+  await expect(page.locator('body')).toContainText(/SZ-\d\d-9001/)
+  expect(errors).toEqual([])
+})
+
+test('klient: tab Servis ukazuje servisní zakázky klienta', async ({ page }) => {
+  const errors = trackErrors(page)
+  await page.goto('/servis/zakazky')
+  await page.getByText(/SZ-\d\d-9001/).first().click()
+  await page.waitForURL('**/servis/zakazky/**')
+  // z detailu zakázky na kartu klienta
+  await page.getByRole('link', { name: 'Klient E2E' }).first().click()
+  await page.waitForURL('**/clients/**')
+  await page.getByRole('link', { name: /^Servis \(/ }).click()
+  await expect(page.locator('body')).toContainText(/SZ-\d\d-9001/)
+  await expect(page.locator('body')).toContainText('Zařízení a smlouvy')
+  expect(errors).toEqual([])
+})
+
 test('servisní nástěnka /servis se načte', async ({ page }) => {
   const errors = trackErrors(page)
   await page.goto('/servis')
-  await expect(page.locator('body')).toContainText(/servis/i)
+  await expect(page.locator('body')).toContainText('Dnes v terénu')
+  await expect(page.locator('body')).toContainText('Urgentní & nezaplánované')
+  await expect(page.locator('body')).toContainText('Blížící se servisy ze smluv')
+  await expect(page.getByRole('link', { name: '+ Nová servisní akce' })).toBeVisible()
   expect(errors).toEqual([])
 })
 

@@ -2,6 +2,7 @@ import { prisma } from './prisma'
 import { orgPrisma } from './orgPrisma'
 import { nextServisniZakazkaCislo } from './servisniZakazkaCislo'
 import { jePovolenyPrechod, stavLabel } from './servisStav'
+import { signZarizeniQrToken } from './zarizeniQr'
 
 const ZAKAZKA_INCLUDE = {
   kontrakt: {
@@ -54,6 +55,24 @@ export type CreateInput = {
   klientId?: string | null
   kontraktId?: string | null
   stav?: string | null
+  // Zadání akce (servis/nova — klient z ulice)
+  popis?: string | null
+  priorita?: string | null
+  adresaZasahu?: string | null
+  kontaktJmeno?: string | null
+  kontaktTelefon?: string | null
+  /** Nové zařízení klienta založené spolu se zakázkou (výlučné se zarizeniId). */
+  noveZarizeni?: { nazev: string; typ?: string | null; vyrobniCislo?: string | null } | null
+}
+
+const PRIORITY = ['BEZNA', 'URGENTNI'] as const
+
+// Adresa klienta jako jeden řádek (fallback pro adresaZasahu).
+export function formatKlientAdresa(k: { ulice?: string | null; mesto?: string | null; psc?: string | null } | null | undefined) {
+  if (!k) return null
+  const radek2 = [k.psc, k.mesto].filter(Boolean).join(' ')
+  const adresa = [k.ulice, radek2].filter(Boolean).join(', ')
+  return adresa || null
 }
 
 export type ServiceResult<T> =
@@ -76,12 +95,40 @@ export async function createServisniZakazka(
     }
   }
 
+  if (input.priorita && !PRIORITY.includes(input.priorita as never)) {
+    return { ok: false, status: 400, error: 'Neplatná priorita' }
+  }
+  if (input.noveZarizeni && input.zarizeniId) {
+    return { ok: false, status: 400, error: 'Zadej buď existující zařízení, nebo nové — ne obě' }
+  }
+  if (input.noveZarizeni && !input.noveZarizeni.nazev?.trim()) {
+    return { ok: false, status: 400, error: 'Nové zařízení musí mít název' }
+  }
+
   // Cizí ID jen v rámci org (ochrana proti IDOR napříč tenanty).
-  if (input.zarizeniId && !(await db.zarizeni.findFirst({ where: { id: input.zarizeniId, orgId } }))) {
+  const zarizeni = input.zarizeniId
+    ? await db.zarizeni.findFirst({
+        where: { id: input.zarizeniId, orgId },
+        select: {
+          id: true,
+          klientId: true,
+          servisniKontrakty: { where: { aktivni: true }, select: { id: true }, take: 1 },
+        },
+      })
+    : null
+  if (input.zarizeniId && !zarizeni) {
     return { ok: false, status: 400, error: 'Zařízení nebylo nalezeno' }
   }
-  if (input.klientId && !(await db.client.findFirst({ where: { id: input.klientId, orgId } }))) {
+  // Zařízení určuje klienta (zakázka bez klienta u zařízení nedává smysl).
+  const klientId = input.klientId || zarizeni?.klientId || null
+  const klient = klientId
+    ? await db.client.findFirst({ where: { id: klientId, orgId }, select: { id: true, ulice: true, mesto: true, psc: true } })
+    : null
+  if (klientId && !klient) {
     return { ok: false, status: 400, error: 'Klient nebyl nalezen' }
+  }
+  if (input.noveZarizeni && !klient) {
+    return { ok: false, status: 400, error: 'Nové zařízení potřebuje klienta' }
   }
   if (input.kontraktId && !(await db.servisniKontrakt.findFirst({ where: { id: input.kontraktId, orgId } }))) {
     return { ok: false, status: 400, error: 'Kontrakt nebyl nalezen' }
@@ -91,8 +138,31 @@ export async function createServisniZakazka(
   }
 
   const stav = input.stav ?? (parsedTermin ? 'NAPLANOVANA' : 'NOVA')
+  // Kontrakt: explicitní > aktivní kontrakt vybraného zařízení (dřív dopočítával klient v modalu).
+  const kontraktId = input.kontraktId || zarizeni?.servisniKontrakty[0]?.id || null
+  // Místo zásahu: explicitní > adresa klienta (aby ho měl i mobil bez skládání).
+  const adresaZasahu = input.adresaZasahu?.trim() || formatKlientAdresa(klient)
 
   const created = await prisma.$transaction(async (tx) => {
+    let zarizeniId = input.zarizeniId || null
+    if (input.noveZarizeni && klient) {
+      const nove = await tx.zarizeni.create({
+        data: {
+          orgId,
+          klientId: klient.id,
+          nazev: input.noveZarizeni.nazev.trim(),
+          typ: (input.noveZarizeni.typ as never) || 'JINE',
+          vyrobniCislo: input.noveZarizeni.vyrobniCislo?.trim() || null,
+        },
+        select: { id: true },
+      })
+      await tx.zarizeni.update({
+        where: { id: nove.id },
+        data: { qrToken: await signZarizeniQrToken(nove.id, orgId) },
+      })
+      zarizeniId = nove.id
+    }
+
     const cislo = await nextServisniZakazkaCislo(tx, orgId)
     return tx.servisniZakazka.create({
       data: {
@@ -100,12 +170,17 @@ export async function createServisniZakazka(
         cislo,
         typ: (input.typ as never) || 'PLANOVANY_SERVIS',
         stav: stav as never,
+        priorita: (input.priorita as never) || 'BEZNA',
+        popis: input.popis?.trim() || null,
+        adresaZasahu,
+        kontaktJmeno: input.kontaktJmeno?.trim() || null,
+        kontaktTelefon: input.kontaktTelefon?.trim() || null,
         planovanyTermin: parsedTermin,
         technikId: input.technikId || null,
         poznamka: input.poznamka || null,
-        kontraktId: input.kontraktId || null,
-        zarizeniId: input.zarizeniId || null,
-        klientId: input.klientId || null,
+        kontraktId,
+        zarizeniId,
+        klientId,
       },
       include: ZAKAZKA_INCLUDE,
     })
@@ -140,6 +215,10 @@ export async function updateServisniZakazka(
     if (!technik) return { ok: false, status: 400, error: 'Technik nenalezen' }
   }
 
+  if (body.priorita !== undefined && !PRIORITY.includes(body.priorita as never)) {
+    return { ok: false, status: 400, error: 'Neplatná priorita' }
+  }
+
   if (body.zaplaceno === true && !['VYUCTOVANA', 'UZAVRENA'].includes(z.stav)) {
     return { ok: false, status: 422, error: 'Zakázku lze označit jako zaplacenou pouze po vyúčtování.' }
   }
@@ -166,6 +245,11 @@ export async function updateServisniZakazka(
       stav: has('stav') ? (body.stav as never) : z.stav,
       protokolDokoncen,
       typ: has('typ') ? (body.typ as never) : z.typ,
+      priorita: has('priorita') ? (body.priorita as never) : z.priorita,
+      popis: has('popis') ? ((body.popis as string | null) || null) : z.popis,
+      adresaZasahu: has('adresaZasahu') ? ((body.adresaZasahu as string | null) || null) : z.adresaZasahu,
+      kontaktJmeno: has('kontaktJmeno') ? ((body.kontaktJmeno as string | null) || null) : z.kontaktJmeno,
+      kontaktTelefon: has('kontaktTelefon') ? ((body.kontaktTelefon as string | null) || null) : z.kontaktTelefon,
       technikId: has('technikId') ? ((body.technikId as string) || null) : z.technikId,
       poznamka: has('poznamka') ? (body.poznamka as string | null) : z.poznamka,
       zprava: has('zprava') ? (body.zprava as string | null) : z.zprava,

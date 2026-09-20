@@ -18,7 +18,7 @@ export default async function ServisZakazkyPage() {
   const scope = servisScopeWhere(perms, session!.user.id)
   if (!scope) redirect('/')
 
-  const [zakazky, orgUsers, zarizeniList] = await Promise.all([
+  const [zakazky, orgUsers] = await Promise.all([
     prisma.servisniZakazka.findMany({
       where: { orgId, ...scope },
       include: {
@@ -40,14 +40,6 @@ export default async function ServisZakazkyPage() {
       select: { id: true, jmeno: true },
       orderBy: { jmeno: 'asc' },
     }),
-    prisma.zarizeni.findMany({
-      where: { orgId, aktivni: true },
-      include: {
-        klient: { select: { id: true, jmeno: true, prijmeni: true } },
-        servisniKontrakty: { where: { aktivni: true }, select: { id: true }, take: 1 },
-      },
-      orderBy: { vytvoreno: 'desc' },
-    }),
   ])
 
   const rows = zakazky.map(z => ({
@@ -58,6 +50,9 @@ export default async function ServisZakazkyPage() {
     planovanyTermin: z.planovanyTermin ? z.planovanyTermin.toISOString() : null,
     skutecnyTermin: z.skutecnyTermin ? z.skutecnyTermin.toISOString() : null,
     vyfakturovano: z.vyfakturovano,
+    popis: z.popis,
+    priorita: z.priorita,
+    kontraktId: z.kontraktId,
     technik: z.technik,
     klientNazev:
       z.kontrakt?.klient
@@ -66,14 +61,6 @@ export default async function ServisZakazkyPage() {
         ? `${z.klient.jmeno} ${z.klient.prijmeni}`
         : null,
     predmet: z.zarizeni?.nazev ?? z.kontrakt?.nazev ?? null,
-  }))
-
-  const zarizeniSerialized = zarizeniList.map(z => ({
-    id: z.id,
-    nazev: z.nazev,
-    typ: z.typ,
-    klient: z.klient,
-    kontraktyId: z.servisniKontrakty[0]?.id ?? null,
   }))
 
   return (
@@ -85,7 +72,7 @@ export default async function ServisZakazkyPage() {
       <ZakazkySeznamClient
         zakazky={rows}
         orgUsers={orgUsers}
-        zarizeniList={zarizeniSerialized}
+       
         canCreate={perms.servisDispecink}
       />
     </div>

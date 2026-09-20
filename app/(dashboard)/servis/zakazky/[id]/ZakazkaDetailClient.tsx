@@ -15,9 +15,12 @@ import {
   type ServisniZakazkaStav,
   SERVIS_STAV_LABELS,
   TYP_LABELS,
+  type ServisPriorita,
+  PRIORITA_LABELS,
   stavLabel,
   stavColor,
   typLabel,
+  jeUrgentni,
 } from '@/lib/servisStav'
 import { formatDate } from '@/lib/format'
 
@@ -32,6 +35,11 @@ interface Zakazka {
   cislo: string | null
   typ: string
   stav: string
+  popis: string | null
+  priorita: string
+  adresaZasahu: string | null
+  kontaktJmeno: string | null
+  kontaktTelefon: string | null
   planovanyTermin: string | null
   skutecnyTermin: string | null
   trvaniMinut: number | null
@@ -103,6 +111,11 @@ export default function ZakazkaDetailClient({ zakazka, orgUsers, canEdit, isAdmi
 
   const [form, setForm] = useState({
     typ: zakazka.typ,
+    popis: zakazka.popis ?? '',
+    priorita: (zakazka.priorita || 'BEZNA') as ServisPriorita,
+    adresaZasahu: zakazka.adresaZasahu ?? '',
+    kontaktJmeno: zakazka.kontaktJmeno ?? '',
+    kontaktTelefon: zakazka.kontaktTelefon ?? '',
     technikId: zakazka.technikId ?? '',
     planovanyTermin: toLocalInput(zakazka.planovanyTermin),
     skutecnyTermin: toLocalInput(zakazka.skutecnyTermin),
@@ -128,6 +141,11 @@ export default function ZakazkaDetailClient({ zakazka, orgUsers, canEdit, isAdmi
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         typ: form.typ,
+        popis: form.popis || null,
+        priorita: form.priorita,
+        adresaZasahu: form.adresaZasahu || null,
+        kontaktJmeno: form.kontaktJmeno || null,
+        kontaktTelefon: form.kontaktTelefon || null,
         technikId: form.technikId || null,
         planovanyTermin: form.planovanyTermin ? new Date(form.planovanyTermin).toISOString() : null,
         skutecnyTermin: form.skutecnyTermin ? new Date(form.skutecnyTermin).toISOString() : null,
@@ -410,11 +428,18 @@ export default function ZakazkaDetailClient({ zakazka, orgUsers, canEdit, isAdmi
                 {zakazka.cislo ?? 'Servisní zakázka'}
               </h1>
               <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${stavColor(stav)}`}>{stavLabel(stav)}</span>
+              {jeUrgentni(form.priorita) && (
+                <span className="text-xs px-2 py-0.5 rounded-full font-bold uppercase tracking-wide bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">Urgentní</span>
+              )}
               {stav === 'CEKA' && zakazka.cekaDuvod && (
                 <span className="text-xs text-orange-600 dark:text-orange-400">({zakazka.cekaDuvod})</span>
               )}
             </div>
-            <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">{typLabel(zakazka.typ)}</p>
+            <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
+              {typLabel(zakazka.typ)}
+              {zakazka.klient && <> · {zakazka.klient.jmeno}</>}
+            </p>
+            {zakazka.popis && <p className="text-sm text-gray-800 dark:text-slate-200 mt-1 max-w-2xl">{zakazka.popis}</p>}
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {renderAkce()}
@@ -594,14 +619,13 @@ export default function ZakazkaDetailClient({ zakazka, orgUsers, canEdit, isAdmi
                 <div>
                   <dt className="text-xs text-gray-500 dark:text-slate-400">Adresa</dt>
                   <dd className="text-gray-900 dark:text-white">{zakazka.klient.adresa}</dd>
-                  <div className="mt-1"><NavigateButton adresa={zakazka.klient.adresa} label="Navigovat" size="xs" /></div>
                 </div>
               )}
               {zakazka.zarizeni && (
                 <div>
                   <dt className="text-xs text-gray-500 dark:text-slate-400">Zařízení</dt>
                   <dd className="text-gray-900 dark:text-white">
-                    <Link href={`/servis/zarizeni`} className="hover:underline">{zakazka.zarizeni.nazev}</Link>
+                    <Link href={zakazka.klient ? `/servis/portfolio?klient=${zakazka.klient.id}` : '/servis/portfolio'} className="hover:underline">{zakazka.zarizeni.nazev}</Link>
                     {zakazka.zarizeni.vyrobniCislo && <span className="text-gray-500 dark:text-slate-400"> · {zakazka.zarizeni.vyrobniCislo}</span>}
                   </dd>
                 </div>
@@ -616,8 +640,60 @@ export default function ZakazkaDetailClient({ zakazka, orgUsers, canEdit, isAdmi
           </div>
         </div>
 
-        {/* Pravé dva sloupce: protokol, náklady, fotky */}
+        {/* Pravé dva sloupce: zadání, protokol, náklady, fotky */}
         <div className="lg:col-span-2 space-y-4">
+          {/* Zadání — co klient hlásí, kde a s kým (servis/nova; u starých zakázek prázdné) */}
+          <div className={cardClass}>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="font-semibold text-gray-900 dark:text-white">Zadání</h2>
+              <div className="flex rounded-lg border border-gray-300 dark:border-slate-600 overflow-hidden text-xs font-medium">
+                {(Object.keys(PRIORITA_LABELS) as ServisPriorita[]).map(p => (
+                  <button
+                    key={p}
+                    type="button"
+                    disabled={!canEdit}
+                    onClick={() => set('priorita', p)}
+                    className={`px-3 py-1 transition-colors ${
+                      form.priorita === p
+                        ? p === 'URGENTNI' ? 'bg-red-600 text-white' : 'bg-green-600 text-white'
+                        : 'bg-white dark:bg-slate-700 text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-600'
+                    }`}
+                  >
+                    {PRIORITA_LABELS[p]}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className={labelClass}>Popis závady / požadavku</label>
+                <textarea rows={2} value={form.popis} onChange={e => set('popis', e.target.value)} disabled={!canEdit} placeholder="Co klient hlásí…" className={`${inputClass} resize-none`} />
+              </div>
+              <div>
+                <label className={labelClass}>Adresa místa zásahu</label>
+                <div className="flex gap-2 items-start">
+                  <input type="text" value={form.adresaZasahu} onChange={e => set('adresaZasahu', e.target.value)} disabled={!canEdit} placeholder={zakazka.klient?.adresa || 'Ulice 12, 110 00 Praha'} className={inputClass} />
+                  {(form.adresaZasahu || zakazka.klient?.adresa) && (
+                    <NavigateButton adresa={form.adresaZasahu || zakazka.klient?.adresa || ''} label="Navigovat" size="xs" />
+                  )}
+                </div>
+                {!form.adresaZasahu && zakazka.klient?.adresa && (
+                  <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">Nevyplněno — použije se adresa klienta.</p>
+                )}
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className={labelClass}>Kontakt na místě</label>
+                  <input type="text" value={form.kontaktJmeno} onChange={e => set('kontaktJmeno', e.target.value)} disabled={!canEdit} placeholder="jméno (pokud není klient)" className={inputClass} />
+                </div>
+                <div>
+                  <label className={labelClass}>Telefon na místě</label>
+                  <input type="tel" value={form.kontaktTelefon} onChange={e => set('kontaktTelefon', e.target.value)} disabled={!canEdit} placeholder="+420 …" className={inputClass} />
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className={cardClass}>
             <h2 className="font-semibold text-gray-900 dark:text-white mb-3">Výsledek práce</h2>
             <div className="space-y-3">

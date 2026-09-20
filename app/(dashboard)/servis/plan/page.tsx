@@ -50,9 +50,11 @@ export default async function PlanPage() {
       stav: z.stav,
       planovanyTermin: z.planovanyTermin ? z.planovanyTermin.toISOString() : null,
       technikId: z.technikId,
+      popis: z.popis,
+      priorita: z.priorita,
       klientNazev: klientObj ? `${klientObj.jmeno} ${klientObj.prijmeni}` : null,
       predmet: z.zarizeni?.nazev ?? z.kontrakt?.nazev ?? null,
-      adresa: adresa(klientObj),
+      adresa: z.adresaZasahu ?? adresa(klientObj),
     }
   })
 

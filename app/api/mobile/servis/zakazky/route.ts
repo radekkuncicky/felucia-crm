@@ -44,6 +44,8 @@ export async function GET(req: Request) {
         cislo: z.cislo,
         typ: z.typ,
         stav: z.stav,
+        popis: z.popis,
+        priorita: z.priorita,
         planovanyTermin: z.planovanyTermin,
         klient: klient ? `${klient.jmeno} ${klient.prijmeni}` : null,
         zarizeni: z.zarizeni?.nazev ?? null,

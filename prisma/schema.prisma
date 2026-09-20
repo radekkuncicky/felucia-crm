@@ -66,6 +66,12 @@ enum ServisTyp {
   JEDNOURAZOVY
 }
 
+// Priorita servisní akce (urgentní porucha vyskočí na nástěnce i v plánu nahoře).
+enum ServisPriorita {
+  BEZNA
+  URGENTNI
+}
+
 // Sjednocený životní cyklus servisní zakázky.
 // Hlavní cesta: NOVA -> NAPLANOVANA -> PROBIHA -> DOKONCENA -> VYUCTOVANA -> UZAVRENA.
 // "Prošlý termín" není stav, počítá se dynamicky (NAPLANOVANA AND planovanyTermin < now).
@@ -991,6 +997,14 @@ model ServisniZakazka {
   cislo            String?
   typ              NavstevaTyp         @default(PLANOVANY_SERVIS)
   stav             ServisniZakazkaStav @default(NOVA)
+
+  // Zadání akce (co klient hlásí, kde a s kým). adresaZasahu má přednost před
+  // adresou klienta; bez ní se používá adresa klienta (viz servis/nova).
+  popis            String?
+  priorita         ServisPriorita      @default(BEZNA)
+  adresaZasahu     String?
+  kontaktJmeno     String?
+  kontaktTelefon   String?
 
   // Plánování (reaktivní zakázka termín nemá -> nullable)
   planovanyTermin  DateTime?

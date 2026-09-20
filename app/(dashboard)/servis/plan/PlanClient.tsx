@@ -9,7 +9,7 @@ import {
   useDroppable, useDraggable,
 } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
-import { stavLabel, stavColor, typLabel, jeProsla } from '@/lib/servisStav'
+import { stavLabel, stavColor, typLabel, jeProsla, jeUrgentni } from '@/lib/servisStav'
 import { api } from '@/lib/api'
 
 interface Row {
@@ -19,6 +19,8 @@ interface Row {
   stav: string
   planovanyTermin: string | null
   technikId: string | null
+  popis: string | null
+  priorita: string
   klientNazev: string | null
   predmet: string | null
   adresa: string | null
@@ -122,11 +124,13 @@ function Card({ row, users, overlay = false, onAssign }: {
   const style = transform ? { transform: CSS.Translate.toString(transform) } : undefined
   const col = techColor(row.technikId, users)
   const prosla = jeProsla(row.stav, row.planovanyTermin)
+  const urgentni = jeUrgentni(row.priorita)
   const cas = fmtTime(row.planovanyTermin)
 
   const inner = (
     <div className={`flex gap-2 rounded-lg border bg-white dark:bg-slate-800 p-2 select-none
-      ${prosla ? 'border-red-300 dark:border-red-800' : 'border-gray-200 dark:border-slate-700'}
+      ${prosla || urgentni ? 'border-red-300 dark:border-red-800' : 'border-gray-200 dark:border-slate-700'}
+      ${urgentni ? 'ring-1 ring-red-300 dark:ring-red-800' : ''}
       ${isDragging ? 'opacity-40' : ''}
       ${overlay ? 'shadow-2xl rotate-1 scale-105' : 'hover:border-green-400 dark:hover:border-green-600 hover:shadow-sm transition-all'}`}
     >
@@ -135,9 +139,10 @@ function Card({ row, users, overlay = false, onAssign }: {
         <div className="flex items-center gap-1.5">
           {row.cislo && <span className="text-[10px] font-mono text-gray-400 dark:text-slate-500 flex-shrink-0">{row.cislo}</span>}
           {cas && <span className="text-[10px] font-semibold text-gray-500 dark:text-slate-400 flex-shrink-0">{cas}</span>}
+          {urgentni && <span className="text-[9px] font-bold uppercase px-1 rounded bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">Urgent</span>}
         </div>
         <p className="text-xs font-medium text-gray-900 dark:text-white truncate">{row.klientNazev ?? '—'}</p>
-        {row.predmet && <p className="text-[10px] text-gray-500 dark:text-slate-400 truncate">{row.predmet}</p>}
+        {(row.popis || row.predmet) && <p className="text-[10px] text-gray-500 dark:text-slate-400 truncate">{row.popis ?? row.predmet}</p>}
         <div className="flex items-center gap-1 mt-1 flex-wrap">
           <span className={`text-[9px] px-1 py-0.5 rounded-full font-medium ${stavColor(row.stav)}`}>{stavLabel(row.stav)}</span>
           <span className="text-[9px] text-gray-400 dark:text-slate-500">{typLabel(row.typ)}</span>
@@ -418,7 +423,7 @@ export default function DispecinkClient({ rows: initialRows, orgUsers }: Props) 
             </button>
           ))}
         </div>
-        <Link href="/servis/zakazky" className="ml-auto px-4 py-2 rounded-lg text-sm font-semibold bg-green-600 hover:bg-green-700 text-white transition-colors">+ Nová zakázka</Link>
+        <Link href="/servis/nova" className="ml-auto px-4 py-2 rounded-lg text-sm font-semibold bg-green-600 hover:bg-green-700 text-white transition-colors">+ Nová servisní akce</Link>
       </div>
 
       {/* Filtr techniků = zároveň legenda barev */}

@@ -11,6 +11,9 @@ import { stavLabels, stavColors, techLabels, techColors } from '@/lib/constants'
 import TabActivator from './TabActivator'
 import { NavigateButton } from '@/components/NavigateButton'
 import { formatKc } from '@/lib/format'
+import { getPlanLimits } from '@/lib/planLimits'
+import { getOrgSettings } from '@/lib/orgSettings'
+import KlientServisPrehled from '@/components/servis/KlientServisPrehled'
 
 const ZAKAZKA_STAV_LABELS: Record<string, string> = {
   NOVA: 'Nová',
@@ -42,6 +45,11 @@ export default async function ClientDetailPage({
   const session = await getServerSession(authOptions)
   const orgId = session!.user.orgId
   const tab = searchParams.tab ?? 'info'
+
+  // Servis na kartě klienta — stejné gating jako skupina Servis v menu; zakládání = dispečink.
+  const perms = getPerms(session!.user)
+  const servisModul = getPlanLimits(session!.user.plan).hasServiceModule && (await getOrgSettings(orgId)).modulServis && perms.servis !== 'ZADNY'
+  const canServisAkce = servisModul && perms.servisDispecink
 
   const client = await prisma.client.findFirst({
     where: { id: params.id, orgId },
@@ -130,10 +138,33 @@ export default async function ClientDetailPage({
 
   history.sort((a, b) => b.date.getTime() - a.date.getTime())
 
+  const [servisZarizeni, servisZakazky] = servisModul
+    ? await Promise.all([
+        prisma.zarizeni.findMany({
+          where: { orgId, klientId: client.id },
+          select: {
+            id: true, nazev: true, typ: true, vyrobniCislo: true, zarukaDo: true, aktivni: true,
+            servisniKontrakty: { select: { id: true, nazev: true, cisloKontraktu: true, aktivni: true, intervalMesicu: true }, orderBy: { vytvoreno: 'desc' } },
+          },
+          orderBy: { vytvoreno: 'desc' },
+        }),
+        prisma.servisniZakazka.findMany({
+          where: { orgId, OR: [{ klientId: client.id }, { kontrakt: { klientId: client.id } }] },
+          select: {
+            id: true, cislo: true, typ: true, stav: true, popis: true, priorita: true, planovanyTermin: true, skutecnyTermin: true,
+            zarizeni: { select: { nazev: true } }, technik: { select: { jmeno: true } },
+          },
+          orderBy: [{ planovanyTermin: 'desc' }, { vytvoreno: 'desc' }],
+          take: 50,
+        }),
+      ])
+    : [[], []]
+
   const tabs = [
     { key: 'info', label: 'Informace' },
     { key: 'pripady', label: `Obchodní případy (${client.deals.length})` },
     { key: 'zakazky', label: `Zakázky (${client.zakazky.length})` },
+    ...(servisModul ? [{ key: 'servis', label: `Servis (${servisZakazky.length})` }] : []),
     { key: 'historie', label: 'Historie' },
   ]
 
@@ -146,9 +177,16 @@ export default async function ClientDetailPage({
         {client.typKlienta === 'FIRMA' && (
           <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">Firma</span>
         )}
-        <Link href={`/deals/new?clientId=${client.id}`} className="ml-auto bg-primary hover:bg-primary-hover text-white font-medium px-3 py-1.5 rounded-lg text-sm">
-          + Nový případ
-        </Link>
+        <div className="ml-auto flex items-center gap-2">
+          {canServisAkce && (
+            <Link href={`/servis/nova?klientId=${client.id}`} className="bg-white hover:bg-gray-50 border border-gray-300 text-gray-800 font-medium px-3 py-1.5 rounded-lg text-sm dark:bg-slate-800 dark:border-slate-600 dark:text-slate-100 dark:hover:bg-slate-700">
+              + Servisní akce
+            </Link>
+          )}
+          <Link href={`/deals/new?clientId=${client.id}`} className="bg-primary hover:bg-primary-hover text-white font-medium px-3 py-1.5 rounded-lg text-sm">
+            + Nový případ
+          </Link>
+        </div>
       </div>
 
       {/* Finanční souhrn klienta */}
@@ -269,6 +307,25 @@ export default async function ClientDetailPage({
             </tbody>
           </table>
         </div>
+      )}
+
+      {tab === 'servis' && servisModul && (
+        <KlientServisPrehled
+          klientId={client.id}
+          canCreate={canServisAkce}
+          zarizeni={servisZarizeni.map(z => ({
+            id: z.id, nazev: z.nazev, typ: z.typ, vyrobniCislo: z.vyrobniCislo, aktivni: z.aktivni,
+            zarukaDo: z.zarukaDo ? z.zarukaDo.toISOString() : null,
+            kontrakty: z.servisniKontrakty,
+          }))}
+          zakazky={servisZakazky.map(z => ({
+            id: z.id, cislo: z.cislo, typ: z.typ, stav: z.stav, popis: z.popis, priorita: z.priorita,
+            planovanyTermin: z.planovanyTermin ? z.planovanyTermin.toISOString() : null,
+            skutecnyTermin: z.skutecnyTermin ? z.skutecnyTermin.toISOString() : null,
+            zarizeniNazev: z.zarizeni?.nazev ?? null,
+            technikJmeno: z.technik?.jmeno ?? null,
+          }))}
+        />
       )}
 
       {tab === 'zakazky' && (

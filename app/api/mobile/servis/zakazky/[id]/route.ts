@@ -48,6 +48,12 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     cislo: z.cislo,
     typ: z.typ,
     stav: z.stav,
+    // Zadání (servis/nova): adresa zásahu má přednost před adresou klienta
+    popis: z.popis,
+    priorita: z.priorita,
+    adresaZasahu: z.adresaZasahu ?? (klient ? klientAdresa(klient) : null),
+    kontaktJmeno: z.kontaktJmeno,
+    kontaktTelefon: z.kontaktTelefon,
     planovanyTermin: z.planovanyTermin,
     skutecnyTermin: z.skutecnyTermin,
     poznamka: z.poznamka,

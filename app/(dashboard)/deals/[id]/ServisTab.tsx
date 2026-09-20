@@ -56,6 +56,8 @@ interface Props {
   kontrakty: Kontrakt[]
   orgUsers: OrgUser[]
   dealId?: string
+  /** pro odkazy do servisního portfolia (rozbalí kartu klienta) */
+  klientId?: string
 }
 
 const typLabels: Record<ServisTyp, string> = {
@@ -97,7 +99,8 @@ function warrantyStatus(zarukaDo: string | null) {
   return { label: `Záruka do ${formatDate(d)}`, cls: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' }
 }
 
-export default function ServisTab({ zarizeni, kontrakty, orgUsers }: Props) {
+export default function ServisTab({ zarizeni, kontrakty, orgUsers, klientId }: Props) {
+  const portfolioHref = klientId ? `/servis/portfolio?klient=${klientId}` : '/servis/portfolio'
   const router = useRouter()
   const [addNavsteva, setAddNavsteva] = useState<string | null>(null)
   const [addForm, setAddForm] = useState({ planovanyTermin: '', typ: 'PLANOVANY_SERVIS' as NavstevaTyp, technikId: '' })
@@ -167,7 +170,7 @@ export default function ServisTab({ zarizeni, kontrakty, orgUsers }: Props) {
                     )}
                   </div>
                   <Link
-                    href="/servis/zarizeni"
+                    href={portfolioHref}
                     className="flex-shrink-0 text-xs text-primary dark:text-primary-light hover:underline"
                   >
                     Detail →
@@ -190,7 +193,7 @@ export default function ServisTab({ zarizeni, kontrakty, orgUsers }: Props) {
               <p className="text-sm text-gray-600 dark:text-slate-400 mt-0.5">{aktivniKontrakt.nazev}</p>
             </div>
             <Link
-              href="/servis/kontrakty"
+              href={portfolioHref}
               className="flex-shrink-0 text-xs text-primary dark:text-primary-light hover:underline"
             >
               Spravovat →
@@ -385,7 +388,7 @@ export default function ServisTab({ zarizeni, kontrakty, orgUsers }: Props) {
           <IconCog className="w-10 h-10 mx-auto mb-3 text-gray-300 dark:text-slate-600" />
           <p className="text-gray-700 dark:text-slate-300 font-medium mb-1">Zatím žádný servis</p>
           <p className="text-sm text-gray-500 dark:text-slate-400">K tomuto OP není přiřazeno zařízení ani servisní kontrakt.</p>
-          <Link href="/servis/kontrakty" className="inline-block mt-4 text-sm text-green-600 dark:text-green-400 hover:underline font-medium">
+          <Link href={portfolioHref} className="inline-block mt-4 text-sm text-green-600 dark:text-green-400 hover:underline font-medium">
             Spravovat kontrakty →
           </Link>
         </div>
