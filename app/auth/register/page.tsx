@@ -165,7 +165,7 @@ export default function RegisterPage() {
     if (!jmeno.trim()) e.jmeno = 'Jméno je povinné.'
     if (!prijmeni.trim()) e.prijmeni = 'Příjmení je povinné.'
     if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) e.email = 'Zadejte platný email.'
-    if (heslo.length < 8) e.heslo = 'Heslo musí mít alespoň 8 znaků.'
+    if (heslo.length < 10) e.heslo = 'Heslo musí mít alespoň 10 znaků.'
     if (heslo !== hesloConfirm) e.hesloConfirm = 'Hesla se neshodují.'
     setErrors(e)
     return Object.keys(e).length === 0
@@ -312,7 +312,7 @@ export default function RegisterPage() {
               <Field label="Email *" error={errors.email} isDark={isDark}>
                 <input type="email" value={email} onChange={e => setEmail(e.target.value)} style={inputStyle} placeholder="jan@firma.cz" />
               </Field>
-              <Field label="Heslo * (min. 8 znaků)" error={errors.heslo} isDark={isDark}>
+              <Field label="Heslo * (min. 10 znaků)" error={errors.heslo} isDark={isDark}>
                 <input type="password" value={heslo} onChange={e => setHeslo(e.target.value)} style={inputStyle} placeholder="••••••••" />
               </Field>
               <Field label="Potvrdit heslo *" error={errors.hesloConfirm} isDark={isDark}>

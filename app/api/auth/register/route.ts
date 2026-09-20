@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
+import { FORBIDDEN_SLUGS } from '@/lib/slug'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
 import { sendEmail, emailWelcome } from '@/lib/email'
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit'
 import { seedOrgDefaults } from '@/lib/orgDefaults'
 
-const FORBIDDEN_SLUGS = ['www', 'app', 'api', 'admin', 'mail', 'felucia', 'test', 'demo', 'staging']
 
 function generateSlug(name: string): string {
   return name
@@ -40,8 +40,8 @@ export async function POST(req: Request) {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return NextResponse.json({ error: 'Neplatný e-mail.' }, { status: 400 })
     }
-    if (heslo.length < 8) {
-      return NextResponse.json({ error: 'Heslo musí mít alespoň 8 znaků.' }, { status: 400 })
+    if (heslo.length < 10) {
+      return NextResponse.json({ error: 'Heslo musí mít alespoň 10 znaků.' }, { status: 400 })
     }
 
     // Slug z klienta prochází stejnou normalizací jako v check-slug — jde do hostname

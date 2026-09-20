@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma'
+import { issuePasswordResetToken } from '@/lib/authTokens'
 import { NextResponse } from 'next/server'
-import crypto from 'crypto'
 import { sendEmail, emailResetPassword } from '@/lib/email'
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit'
 
@@ -24,9 +24,7 @@ export async function POST(req: Request) {
   })
   const baseUrl = process.env.NEXTAUTH_URL ?? 'https://felucia.io'
   for (const user of users) {
-    const token = crypto.randomBytes(32).toString('hex')
-    const expiresAt = new Date(Date.now() + 60 * 60 * 1000) // 1 hour
-    await prisma.passwordResetToken.create({ data: { userId: user.id, token, expiresAt } })
+    const token = await issuePasswordResetToken(prisma, user.id, 60 * 60 * 1000) // 1 hour
     const url = `${baseUrl}/reset-password?token=${token}`
     const subject = users.length > 1 ? `Obnova hesla – FELUCIA CRM (${user.organization.nazev})` : 'Obnova hesla – FELUCIA CRM'
     try {

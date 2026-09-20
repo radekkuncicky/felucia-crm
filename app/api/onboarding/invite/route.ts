@@ -1,4 +1,5 @@
 import { getServerSession } from 'next-auth'
+import { issueMagicLinkToken } from '@/lib/authTokens'
 import { logAction } from '@/lib/auditLog'
 import { forbidden, getPerms } from '@/lib/permissions'
 import { authOptions } from '@/lib/auth'
@@ -79,11 +80,7 @@ export async function POST(req: Request) {
     })
 
     // Create magic link token
-    const token = crypto.randomBytes(32).toString('hex')
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
-    await prisma.magicLinkToken.create({
-      data: { userId: newUser.id, token, expiresAt },
-    })
+    const token = await issueMagicLinkToken(prisma, newUser.id, 7 * 24 * 60 * 60 * 1000) // 7 days
 
     const loginUrl = process.env.NODE_ENV === 'development'
       ? `http://localhost:3000/magic-link?token=${token}`

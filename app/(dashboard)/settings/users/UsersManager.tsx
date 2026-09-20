@@ -402,7 +402,7 @@ export default function UsersManager({ users: initUsers, maxUsers, activeUserCou
             ) : (
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Heslo *</label>
-                <input type="password" value={addForm.heslo} onChange={e => setAddForm(f => ({ ...f, heslo: e.target.value }))} className={inp} placeholder="min. 8 znaků" />
+                <input type="password" value={addForm.heslo} onChange={e => setAddForm(f => ({ ...f, heslo: e.target.value }))} className={inp} placeholder="min. 10 znaků" />
               </div>
             )}
             <div>

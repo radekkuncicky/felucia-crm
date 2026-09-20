@@ -29,6 +29,11 @@ function buildCsp(nonce: string) {
     "img-src 'self' data: blob: https:",
     "connect-src 'self' https://api.anthropic.com https://api.stripe.com https://*.sentry.io wss:",
     "frame-src 'self' https://js.stripe.com https://hooks.stripe.com",
+    // base-uri: se 'strict-dynamic' by injektovaný <base href> přesměroval načítání chunků na cizí host
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'self'",
+    "object-src 'none'",
   ].join('; ')
 }
 

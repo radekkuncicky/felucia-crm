@@ -27,6 +27,9 @@ export default function ProfileClient({ user: init }: { user: UserData }) {
   const [email, setEmail] = useState(init.email)
   const [telefon, setTelefon] = useState(init.telefon ?? '')
   const [savingProfile, setSavingProfile] = useState(false)
+  // Změna přihlašovacího e-mailu vyžaduje aktuální heslo (API ho ověří)
+  const [emailPassword, setEmailPassword] = useState('')
+  const emailChanged = email.trim().toLowerCase() !== user.email.toLowerCase()
 
   // Password form
   const [current, setCurrent] = useState('')
@@ -49,13 +52,15 @@ export default function ProfileClient({ user: init }: { user: UserData }) {
     e.preventDefault()
     setSavingProfile(true)
     try {
+      if (emailChanged && !emailPassword) { showToast('Pro změnu e-mailu zadejte aktuální heslo', 'err'); return }
       const res = await fetch('/api/settings/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jmeno, email, telefon: telefon || null }),
+        body: JSON.stringify({ jmeno, email, telefon: telefon || null, currentPassword: emailChanged ? emailPassword : undefined }),
       })
       const data = await res.json()
       if (!res.ok) { showToast(data.error || 'Chyba', 'err'); return }
+      setEmailPassword('')
       setUser(u => ({ ...u, ...data }))
       showToast('Profil uložen', 'ok')
     } finally { setSavingProfile(false) }
@@ -63,7 +68,7 @@ export default function ProfileClient({ user: init }: { user: UserData }) {
 
   async function changePassword(e: React.FormEvent) {
     e.preventDefault()
-    if (newPwd.length < 8) { showToast('Heslo musí mít alespoň 8 znaků', 'err'); return }
+    if (newPwd.length < 10) { showToast('Heslo musí mít alespoň 10 znaků', 'err'); return }
     if (newPwd !== confirmPwd) { showToast('Hesla se neshodují', 'err'); return }
     setSavingPwd(true)
     try {
@@ -172,6 +177,12 @@ export default function ProfileClient({ user: init }: { user: UserData }) {
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Email</label>
               <input type="email" value={email} onChange={e => setEmail(e.target.value)} required className={inp} />
+              {emailChanged && (
+                <input
+                  type="password" value={emailPassword} onChange={e => setEmailPassword(e.target.value)}
+                  className={`${inp} mt-2`} placeholder="Aktuální heslo (nutné pro změnu e-mailu)" autoComplete="current-password"
+                />
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Telefon</label>

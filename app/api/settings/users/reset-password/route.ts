@@ -1,8 +1,8 @@
 import { getServerSession } from 'next-auth'
+import { issuePasswordResetToken } from '@/lib/authTokens'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
-import crypto from 'crypto'
 import { sendEmail, emailResetPassword, isEmailConfigured } from '@/lib/email'
 import { getPerms } from '@/lib/permissions'
 
@@ -20,11 +20,8 @@ export async function POST(req: Request) {
   })
   if (!user) return NextResponse.json({ error: 'Uživatel nenalezen' }, { status: 404 })
 
-  const token = crypto.randomBytes(32).toString('hex')
-  const expiresAt = new Date(Date.now() + 60 * 60 * 1000)
-
   const db = orgPrisma(session.user.orgId)
-  await db.passwordResetToken.create({ data: { userId: user.id, token, expiresAt } })
+  const token = await issuePasswordResetToken(db, user.id, 60 * 60 * 1000)
 
   // Odkaz se vrací adminovi do UI vždy — e-mail je jen doručovací kanál navíc;
   // když nedorazí (chybí SMTP, spam/karanténa), admin ho pošle jiným kanálem.

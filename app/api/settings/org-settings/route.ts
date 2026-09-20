@@ -39,6 +39,9 @@ export async function PATCH(req: Request) {
     if (key in body) data[key] = body[key]
   }
 
+  if (data.primaryColor !== undefined && data.primaryColor !== null && !(typeof data.primaryColor === 'string' && /^#[0-9a-f]{6}$/i.test(data.primaryColor))) {
+    return NextResponse.json({ error: 'Barva musí být ve tvaru #rrggbb' }, { status: 400 })
+  }
   if (typeof data.dokumentyStyl === 'string' && !['LINKA', 'PRUH', 'VLASTNI', 'ZADNY'].includes(data.dokumentyStyl)) {
     return NextResponse.json({ error: 'Neplatný styl dokumentů' }, { status: 400 })
   }

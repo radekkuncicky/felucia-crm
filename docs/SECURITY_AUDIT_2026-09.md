@@ -262,5 +262,22 @@ Pořadí podle poměru riziko/pracnost. Každá vlna = samostatný commit + `dep
 ### Dávka 2c (infra, s Radkem)
 - [ ] SEC-33 PM2 pod userem `nanto`; SEC-34 Node 22; SEC-35 zálohy šifrované + `chmod 700 /root/backups`
 
-## Vlna 3 — nízké / hygiena (průběžně)
-- [ ] SEC-36 hashované reset/magic tokeny · SEC-37/38 enumerace, slug/e-mail/heslo validace · SEC-39 CSP `base-uri`/`form-action`/`frame-ancestors` · SEC-40 maintenance z DB · SEC-41 inquiry webhook → ApiKey · SEC-42 audit log doplnit · SEC-43 změna e-mailu s heslem · SEC-44 `esc()` v e-mailech + `primaryColor` regex · SEC-45 SVG loga · SEC-46 SMTP blocklist · SEC-49 nginx log maskování · SEC-50 `git rm --cached public/uploads` · SEC-51 pm2-logrotate, `filename*=` · SEC-52 dashboard stránky na orgPrisma · INFO: magic-link URL, `.env.example`, org `obsolete`, Sentry DSN, uptime monitoring
+## Vlna 3 — nízké / hygiena (2026-09-20, kód — čeká na deploy)
+- [x] SEC-36 reset/magic/pozvánkové tokeny v DB jen jako SHA-256 (`lib/authTokens.ts`), při vydání nového se staré zneplatní; **při deployi jednorázově `psql -f scripts/hash-existing-auth-tokens.sql`** (v prod aktuálně 0 nepoužitých tokenů → v podstatě no-op)
+- [x] SEC-37 `check-slug` rate-limit 60/min/IP, rozšířený `FORBIDDEN_SLUGS` (`lib/slug.ts`: crm, support, smtp, cdn…)
+- [x] SEC-38 heslo min. 10 znaků (register, reset, profil, založení uživatele adminem) + typová kontrola
+- [x] SEC-39 CSP: `base-uri 'self'; form-action 'self'; frame-ancestors 'self'; object-src 'none'`
+- [x] SEC-41 `webhooks/inquiry`: `timingSafeEqual` + 60/h/IP (org natvrdo zůstává — legacy NANTO web)
+- [x] SEC-42 audit log: webový login (s IP), provedený reset hesla, změna e-mailu, superadmin změna plánu/aktivity/smazání org
+- [x] SEC-43 změna přihlašovacího e-mailu vyžaduje aktuální heslo (API + inline pole v profilu), mobil e-mail měnit nemůže
+- [x] SEC-44 `escHtml`/`safeColor` na všech tenant hodnotách v e-mailech; `primaryColor` validován `#rrggbb` (org-settings, PDF chrome)
+- [x] SEC-46 SMTP host nesmí být interní/loopback (`isInternalHost` sdílený s webhooky)
+- [x] SEC-49 nginx `log_format masked` — tokeny v `/podpis/…`, `/nabidka/…`, `?token=`, `?sig=` maskované (`scripts/nginx-log-masked.conf` + `install-nginx-logmask.sh`, **nainstalováno**)
+- [x] SEC-50 `git rm --cached public/uploads` (7 tenant souborů z historie pracovního stromu; v historii commitů zůstávají)
+- [x] SEC-51 `pm2-logrotate` (10 MB, 14 dní, gzip) **nainstalováno**
+- [x] `.env.example` doplněn o RLS/šifrování/SMS/Stripe podpisy
+- [x] Testy `tests/security-vlna3.test.ts` (7)
+- [ ] SEC-40 maintenance z DB (middleware na edge bez DB) — ponecháno env; toggle v superadminu odstranit nebo napojit na env restart
+- [ ] SEC-45 SVG loga — pokryto `checkLogoUpload` (bez skriptů) + CSP sandbox na /uploads (vlna 0/1)
+- [ ] SEC-52 dashboard stránky na orgPrisma — průběžně (`scripts/codemod-orgprisma.js`)
+- [ ] INFO: org `obsolete` deaktivovat, Sentry DSN, uptime monitoring — na Radkovi

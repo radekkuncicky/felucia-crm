@@ -50,6 +50,17 @@ export function signWebhookBody(secret: string, body: string): string {
 }
 
 /** SSRF ochrana: webhook URL musí být https a nesmí mířit do vnitřní sítě. */
+/** Hostname míří do vnitřní sítě / na loopback (SSRF, port scan přes SMTP test apod.) */
+export function isInternalHost(hostname: string): boolean {
+  const host = hostname.toLowerCase().replace(/^\[|\]$/g, '')
+  return (
+    host === 'localhost' || host.endsWith('.local') || host.endsWith('.internal') || host.endsWith('.localhost') ||
+    /^127\.|^10\.|^192\.168\.|^169\.254\.|^0\./.test(host) ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(host) ||
+    host === '::1' || host === '::' || host.startsWith('fd') || host.startsWith('fe80') || host.startsWith('::ffff:')
+  )
+}
+
 export function validateWebhookUrl(raw: string): string | null {
   let u: URL
   try {
@@ -58,13 +69,7 @@ export function validateWebhookUrl(raw: string): string | null {
     return 'Neplatná URL.'
   }
   if (u.protocol !== 'https:') return 'URL musí být https://'
-  const host = u.hostname.toLowerCase()
-  if (
-    host === 'localhost' || host.endsWith('.local') || host.endsWith('.internal') ||
-    /^127\.|^10\.|^192\.168\.|^169\.254\.|^0\./.test(host) ||
-    /^172\.(1[6-9]|2\d|3[01])\./.test(host) ||
-    host === '::1' || host.startsWith('fd') || host.startsWith('fe80')
-  ) {
+  if (isInternalHost(u.hostname)) {
     return 'URL nesmí mířit do vnitřní sítě.'
   }
   return null

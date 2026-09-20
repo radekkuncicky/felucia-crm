@@ -14,8 +14,8 @@ export async function PATCH(req: Request) {
   if (!current || !newPassword) {
     return NextResponse.json({ error: 'Vyplňte všechna pole' }, { status: 400 })
   }
-  if (newPassword.length < 8) {
-    return NextResponse.json({ error: 'Heslo musí mít alespoň 8 znaků' }, { status: 400 })
+  if (typeof newPassword !== 'string' || newPassword.length < 10) {
+    return NextResponse.json({ error: 'Heslo musí mít alespoň 10 znaků' }, { status: 400 })
   }
 
   const user = await orgPrisma(session.user.orgId).user.findUnique({ where: { id: session.user.id } })

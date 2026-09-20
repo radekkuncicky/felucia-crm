@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma'
+import { issueMagicLinkToken } from '@/lib/authTokens'
 import { NextResponse } from 'next/server'
-import crypto from 'crypto'
 import { sendEmail, emailMagicLink } from '@/lib/email'
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit'
 
@@ -22,9 +22,7 @@ export async function POST(req: Request) {
   })
   const baseUrl = process.env.NEXTAUTH_URL ?? 'https://felucia.io'
   for (const user of users) {
-    const token = crypto.randomBytes(32).toString('hex')
-    const expiresAt = new Date(Date.now() + 15 * 60 * 1000) // 15 minutes
-    await prisma.magicLinkToken.create({ data: { userId: user.id, token, expiresAt } })
+    const token = await issueMagicLinkToken(prisma, user.id, 15 * 60 * 1000) // 15 minutes
     // Stránka je app/(auth)/magic-link (bez /auth prefixu)
     const url = `${baseUrl}/magic-link?token=${token}`
     const subject = users.length > 1 ? `Přihlaste se do FELUCIA CRM (${user.organization.nazev})` : 'Přihlaste se do FELUCIA CRM'

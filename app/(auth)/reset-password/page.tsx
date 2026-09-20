@@ -22,7 +22,7 @@ function ResetPasswordForm() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setError('')
-    if (newPassword.length < 8) { setError('Heslo musí mít alespoň 8 znaků'); return }
+    if (newPassword.length < 10) { setError('Heslo musí mít alespoň 10 znaků'); return }
     if (newPassword !== confirm) { setError('Hesla se neshodují'); return }
 
     setLoading(true)
@@ -63,9 +63,9 @@ function ResetPasswordForm() {
               value={newPassword}
               onChange={e => setNewPassword(e.target.value)}
               required
-              minLength={8}
+              minLength={10}
               className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-              placeholder="min. 8 znaků"
+              placeholder="min. 10 znaků"
             />
           </div>
           <div>

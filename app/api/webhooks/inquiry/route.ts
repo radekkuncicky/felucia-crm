@@ -1,4 +1,6 @@
 import { prisma } from '@/lib/prisma'
+import { timingSafeEqual } from 'crypto'
+import { checkRateLimit, getClientIp } from '@/lib/rateLimit'
 import { NextResponse } from 'next/server'
 import { Technologie } from '@prisma/client'
 
@@ -38,9 +40,13 @@ export async function POST(req: Request) {
     console.error('[webhook/inquiry] WEBHOOK_SECRET is not configured — rejecting request')
     return NextResponse.json({ error: 'Webhook not configured' }, { status: 500 })
   }
-  const incoming = req.headers.get('x-webhook-secret')
-  if (incoming !== WEBHOOK_SECRET) {
+  const incoming = req.headers.get('x-webhook-secret') ?? ''
+  const a = Buffer.from(incoming), b = Buffer.from(WEBHOOK_SECRET)
+  if (a.length !== b.length || !timingSafeEqual(a, b)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+  if (checkRateLimit(`webhook-inquiry:${getClientIp(req)}`, 60, 60 * 60 * 1000).limited) {
+    return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
   }
 
   let body: Record<string, string>

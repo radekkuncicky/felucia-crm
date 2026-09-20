@@ -1,4 +1,6 @@
 import { NextAuthOptions } from 'next-auth'
+import { logAction } from './auditLog'
+import { hashAuthToken } from './authTokens'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import bcrypt from 'bcryptjs'
 import { prisma } from './prisma'
@@ -71,7 +73,7 @@ export const authOptions: NextAuthOptions = {
         // Magic link login
         if (credentials?.magicToken) {
           const token = await prisma.magicLinkToken.findUnique({
-            where: { token: credentials.magicToken },
+            where: { token: hashAuthToken(credentials.magicToken) },
             include: {
               user: {
                 include: { organization: { select: { aktivni: true } } },
@@ -120,6 +122,10 @@ export const authOptions: NextAuthOptions = {
         if (!user) return null
 
         await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } })
+        await logAction({
+          orgId: user.orgId, userId: user.id, typAkce: 'CREATE', typZaznamu: 'WebLogin',
+          zaznamId: user.id, zaznamNazev: `Přihlášení: ${user.email}`, zmeny: { ip },
+        })
 
         return {
           id: user.id,

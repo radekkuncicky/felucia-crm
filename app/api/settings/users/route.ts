@@ -1,4 +1,5 @@
 import { getServerSession } from 'next-auth'
+import { issuePasswordResetToken } from '@/lib/authTokens'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
@@ -46,6 +47,9 @@ export async function POST(req: Request) {
   if (!jmeno || !email || !heslo) {
     return NextResponse.json({ error: 'Jméno, email a heslo jsou povinné' }, { status: 400 })
   }
+  if (typeof heslo !== 'string' || heslo.length < 10) {
+    return NextResponse.json({ error: 'Heslo musí mít alespoň 10 znaků' }, { status: 400 })
+  }
 
   const canAdd = await checkUserLimit(orgId)
   if (!canAdd) {
@@ -83,9 +87,7 @@ export async function POST(req: Request) {
     // Odkaz na nastavení hesla se vytváří vždy a vrací se adminovi do UI —
     // e-mail je jen doručovací kanál navíc; když nedorazí (chybí SMTP,
     // spam/karanténa), admin pošle techniku odkaz ručně jiným kanálem.
-    const token = crypto.randomBytes(32).toString('hex')
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-    await db.passwordResetToken.create({ data: { userId: user.id, token, expiresAt } })
+    const token = await issuePasswordResetToken(db, user.id, 7 * 24 * 60 * 60 * 1000)
 
     const org = await db.organization.findUnique({ where: { id: orgId }, select: { slug: true } })
     const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'felucia.io'

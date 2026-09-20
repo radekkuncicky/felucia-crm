@@ -67,7 +67,7 @@ export async function buildDokumentChrome(
   if (styl === 'VLASTNI' && !getPlanLimits(plan).hasWhiteLabel) styl = 'LINKA'
   if (styl === 'ZADNY') return null
 
-  const barva = settings.primaryColor || '#4CAF50'
+  const barva = /^#[0-9a-f]{6}$/i.test(settings.primaryColor ?? '') ? settings.primaryColor! : '#4CAF50'
   const logo = orgLogoDataUrl(org.logoBw ?? org.logo)
   const logoImg = logo ? `<img src="${logo}" style="height:24px;max-width:140px;object-fit:contain" />` : ''
   const cislovani = settings.dokumentyCislovani

@@ -1,4 +1,5 @@
 import { getServerSession } from 'next-auth'
+import { isInternalHost } from '@/lib/webhooks'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
@@ -68,6 +69,10 @@ export async function PUT(req: Request) {
   if (rezim === 'VLASTNI_SMTP') {
     if (!smtpHost || !smtpUser) {
       return NextResponse.json({ error: 'Vyplňte SMTP server a přihlašovací jméno' }, { status: 422 })
+    }
+    // SMTP test by jinak fungoval jako port scan vnitřní sítě serveru
+    if (isInternalHost(smtpHost) || !/^[a-z0-9.-]+$/i.test(smtpHost)) {
+      return NextResponse.json({ error: 'Neplatná adresa SMTP serveru' }, { status: 422 })
     }
     if (!Number.isInteger(smtpPort) || smtpPort < 1 || smtpPort > 65535) {
       return NextResponse.json({ error: 'Neplatný port' }, { status: 422 })

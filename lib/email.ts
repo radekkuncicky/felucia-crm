@@ -137,6 +137,15 @@ export async function sendOrgEmail(
   })
 }
 
+/** Escapování hodnot z tenant dat (jméno klienta, název firmy…) v HTML e-mailu */
+function escHtml(v: unknown): string {
+  return String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+}
+/** Barva do inline CSS jen ve tvaru #rrggbb, jinak výchozí */
+function safeColor(c: unknown, fallback = '#4CAF50'): string {
+  return typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c) ? c : fallback
+}
+
 function emailLayout(content: string) {
   return `<!DOCTYPE html>
 <html lang="cs">
@@ -185,7 +194,7 @@ function emailLayout(content: string) {
 export function emailResetPassword(jmeno: string, url: string) {
   return emailLayout(`
     <h2 style="margin:0 0 8px;color:#1A2744;font-size:22px;">Obnova hesla</h2>
-    <p style="color:#6b7280;margin:0 0 24px;">Dobrý den, <strong>${jmeno}</strong>.</p>
+    <p style="color:#6b7280;margin:0 0 24px;">Dobrý den, <strong>${escHtml(jmeno)}</strong>.</p>
     <p style="color:#374151;margin:0 0 24px;">Obdrželi jsme žádost o obnovu hesla pro váš účet. Klikněte na tlačítko níže pro nastavení nového hesla.</p>
     <div style="text-align:center;margin:32px 0;">
       <a href="${url}" style="display:inline-block;background:#FFC93C;color:#1A2744;font-weight:700;font-size:15px;padding:14px 32px;border-radius:10px;text-decoration:none;">
@@ -199,7 +208,7 @@ export function emailResetPassword(jmeno: string, url: string) {
 export function emailTechnikInvite(jmeno: string, setPasswordUrl: string, appDownloadUrl?: string) {
   return emailLayout(`
     <h2 style="margin:0 0 8px;color:#1A2744;font-size:22px;">Vítejte ve FELUCIA — appka pro techniky</h2>
-    <p style="color:#6b7280;margin:0 0 24px;">Dobrý den, <strong>${jmeno}</strong>.</p>
+    <p style="color:#6b7280;margin:0 0 24px;">Dobrý den, <strong>${escHtml(jmeno)}</strong>.</p>
     <p style="color:#374151;margin:0 0 24px;">Byl vám založen přístup do mobilní aplikace <strong>Felucia Tech</strong> pro techniky v terénu. Nejdřív si nastavte heslo:</p>
     <div style="text-align:center;margin:32px 0;">
       <a href="${setPasswordUrl}" style="display:inline-block;background:#FFC93C;color:#1A2744;font-weight:700;font-size:15px;padding:14px 32px;border-radius:10px;text-decoration:none;">
@@ -223,7 +232,7 @@ export function emailTechnikInvite(jmeno: string, setPasswordUrl: string, appDow
 export function emailMagicLink(jmeno: string, url: string) {
   return emailLayout(`
     <h2 style="margin:0 0 8px;color:#1A2744;font-size:22px;">Přihlásit se do FELUCIA CRM</h2>
-    <p style="color:#6b7280;margin:0 0 24px;">Dobrý den, <strong>${jmeno}</strong>.</p>
+    <p style="color:#6b7280;margin:0 0 24px;">Dobrý den, <strong>${escHtml(jmeno)}</strong>.</p>
     <p style="color:#374151;margin:0 0 24px;">Kliknutím na tlačítko níže se okamžitě přihlásíte do systému — bez zadání hesla.</p>
     <div style="text-align:center;margin:32px 0;">
       <a href="${url}" style="display:inline-block;background:#FFC93C;color:#1A2744;font-weight:700;font-size:15px;padding:14px 32px;border-radius:10px;text-decoration:none;">
@@ -238,7 +247,7 @@ export function emailWelcome(jmeno: string, slug: string, loginUrl: string) {
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'felucia.io'
   return emailLayout(`
     <h2 style="margin:0 0 8px;color:#1A2744;font-size:22px;">Vítejte v FELUCIA CRM! 🎉</h2>
-    <p style="color:#6b7280;margin:0 0 24px;">Dobrý den, <strong>${jmeno}</strong>.</p>
+    <p style="color:#6b7280;margin:0 0 24px;">Dobrý den, <strong>${escHtml(jmeno)}</strong>.</p>
     <p style="color:#374151;margin:0 0 16px;">Váš účet byl úspěšně vytvořen a je připraven k použití.</p>
     <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8f9fc;border-radius:10px;margin:0 0 24px;">
       <tr>
@@ -269,7 +278,7 @@ export function emailWelcome(jmeno: string, slug: string, loginUrl: string) {
 export function emailActivityReminder(jmeno: string, aktivita: string, dealLabel: string, termin: string, url: string) {
   return emailLayout(`
     <h2 style="margin:0 0 8px;color:#1A2744;font-size:22px;">⏰ Připomínka aktivity</h2>
-    <p style="color:#6b7280;margin:0 0 24px;">Dobrý den, <strong>${jmeno}</strong>.</p>
+    <p style="color:#6b7280;margin:0 0 24px;">Dobrý den, <strong>${escHtml(jmeno)}</strong>.</p>
     <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8f9fc;border-radius:10px;margin:0 0 24px;">
       <tr>
         <td style="padding:16px 20px;">
@@ -292,7 +301,9 @@ export function emailActivityReminder(jmeno: string, aktivita: string, dealLabel
 
 // ─── E-maily klientům (branding organizace, ne Felucia) ─────────────────────
 
-function orgEmailLayout(orgNazev: string, primaryColor: string, content: string) {
+function orgEmailLayout(orgNazevRaw: string, primaryColorRaw: string, content: string) {
+  const orgNazev = escHtml(orgNazevRaw)
+  const primaryColor = safeColor(primaryColorRaw)
   return `<!DOCTYPE html>
 <html lang="cs">
 <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
@@ -326,12 +337,13 @@ export function emailPodpisSmlouvy(params: {
   url: string
   platnostDni: number
 }) {
-  const { orgNazev, primaryColor, klientJmeno, cisloSmlouvy, url, platnostDni } = params
+  const { orgNazev, primaryColor: primaryColorRaw, klientJmeno, cisloSmlouvy, url, platnostDni } = params
+  const primaryColor = safeColor(primaryColorRaw)
   return orgEmailLayout(orgNazev, primaryColor, `
     <h2 style="margin:0 0 8px;color:#1a1a2e;font-size:21px;">Smlouva k podpisu</h2>
-    <p style="color:#6b7280;margin:0 0 24px;">Dobrý den, <strong>${klientJmeno}</strong>.</p>
-    <p style="color:#374151;margin:0 0 8px;">Společnost <strong>${orgNazev}</strong> vám zasílá smlouvu
-    <strong>č. ${cisloSmlouvy}</strong> k elektronickému podpisu.</p>
+    <p style="color:#6b7280;margin:0 0 24px;">Dobrý den, <strong>${escHtml(klientJmeno)}</strong>.</p>
+    <p style="color:#374151;margin:0 0 8px;">Společnost <strong>${escHtml(orgNazev)}</strong> vám zasílá smlouvu
+    <strong>č. ${escHtml(cisloSmlouvy)}</strong> k elektronickému podpisu.</p>
     <p style="color:#374151;margin:0 0 24px;">Po kliknutí na tlačítko vám na váš telefon přijde ověřovací kód —
     po jeho zadání si smlouvu přečtete a podepíšete přímo v telefonu nebo počítači. Zabere to jen pár minut.</p>
     <div style="text-align:center;margin:32px 0;">
@@ -352,12 +364,13 @@ export function emailPodpisPripominka(params: {
   url: string
   platnostDo: string
 }) {
-  const { orgNazev, primaryColor, klientJmeno, cisloSmlouvy, url, platnostDo } = params
+  const { orgNazev, primaryColor: primaryColorRaw, klientJmeno, cisloSmlouvy, url, platnostDo } = params
+  const primaryColor = safeColor(primaryColorRaw)
   return orgEmailLayout(orgNazev, primaryColor, `
     <h2 style="margin:0 0 8px;color:#1a1a2e;font-size:21px;">Smlouva stále čeká na podpis</h2>
-    <p style="color:#6b7280;margin:0 0 24px;">Dobrý den, <strong>${klientJmeno}</strong>.</p>
-    <p style="color:#374151;margin:0 0 24px;">Jen připomínáme, že smlouva <strong>č. ${cisloSmlouvy}</strong>
-    od společnosti <strong>${orgNazev}</strong> čeká na váš elektronický podpis. Zabere to jen pár minut.</p>
+    <p style="color:#6b7280;margin:0 0 24px;">Dobrý den, <strong>${escHtml(klientJmeno)}</strong>.</p>
+    <p style="color:#374151;margin:0 0 24px;">Jen připomínáme, že smlouva <strong>č. ${escHtml(cisloSmlouvy)}</strong>
+    od společnosti <strong>${escHtml(orgNazev)}</strong> čeká na váš elektronický podpis. Zabere to jen pár minut.</p>
     <div style="text-align:center;margin:32px 0;">
       <a href="${url}" style="display:inline-block;background:${primaryColor};color:#fff;font-weight:700;font-size:15px;padding:14px 32px;border-radius:10px;text-decoration:none;">
         Zobrazit a podepsat smlouvu
@@ -374,11 +387,12 @@ export function emailSmlouvaPodepsana(params: {
   jmeno: string
   cisloSmlouvy: string
 }) {
-  const { orgNazev, primaryColor, jmeno, cisloSmlouvy } = params
+  const { orgNazev, primaryColor: primaryColorRaw, jmeno, cisloSmlouvy } = params
+  const primaryColor = safeColor(primaryColorRaw)
   return orgEmailLayout(orgNazev, primaryColor, `
     <h2 style="margin:0 0 8px;color:#1a1a2e;font-size:21px;">Smlouva podepsána ✓</h2>
-    <p style="color:#6b7280;margin:0 0 24px;">Dobrý den, <strong>${jmeno}</strong>.</p>
-    <p style="color:#374151;margin:0 0 12px;">Smlouva <strong>č. ${cisloSmlouvy}</strong> byla úspěšně elektronicky podepsána.</p>
+    <p style="color:#6b7280;margin:0 0 24px;">Dobrý den, <strong>${escHtml(jmeno)}</strong>.</p>
+    <p style="color:#374151;margin:0 0 12px;">Smlouva <strong>č. ${escHtml(cisloSmlouvy)}</strong> byla úspěšně elektronicky podepsána.</p>
     <p style="color:#374151;margin:0 0 24px;">Podepsané vyhotovení najdete v příloze tohoto e-mailu. Doporučujeme si ho uložit.</p>
   `)
 }
@@ -392,12 +406,13 @@ export function emailPodpisVyzadan(params: {
   klientJmeno: string
   url: string
 }) {
-  const { orgNazev, primaryColor, zmocnenecJmeno, zadatelJmeno, cisloSmlouvy, klientJmeno, url } = params
+  const { orgNazev, primaryColor: primaryColorRaw, zmocnenecJmeno, zadatelJmeno, cisloSmlouvy, klientJmeno, url } = params
+  const primaryColor = safeColor(primaryColorRaw)
   return orgEmailLayout(orgNazev, primaryColor, `
     <h2 style="margin:0 0 8px;color:#1a1a2e;font-size:21px;">Smlouva čeká na váš podpis</h2>
     <p style="color:#6b7280;margin:0 0 24px;">Dobrý den, <strong>${zmocnenecJmeno}</strong>.</p>
     <p style="color:#374151;margin:0 0 8px;"><strong>${zadatelJmeno}</strong> vás žádá o podpis smlouvy
-    <strong>č. ${cisloSmlouvy}</strong> pro klienta <strong>${klientJmeno}</strong>.</p>
+    <strong>č. ${escHtml(cisloSmlouvy)}</strong> pro klienta <strong>${escHtml(klientJmeno)}</strong>.</p>
     <p style="color:#374151;margin:0 0 24px;">Po vašem podpisu se smlouva automaticky odešle klientovi
     k elektronickému podpisu.</p>
     <div style="text-align:center;margin:32px 0;">
@@ -418,17 +433,18 @@ export function emailCenovaNabidka(params: {
   url: string | null
   platnostDni: number
 }) {
-  const { orgNazev, primaryColor, klientJmeno, kod, zprava, url, platnostDni } = params
+  const { orgNazev, primaryColor: primaryColorRaw, klientJmeno, kod, zprava, url, platnostDni } = params
+  const primaryColor = safeColor(primaryColorRaw)
   const esc = (s: string) =>
     s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
   const zpravaHtml = zprava
     ? `<div style="background:#f9fafb;border-left:3px solid ${primaryColor};border-radius:6px;padding:12px 16px;margin:0 0 24px;color:#374151;white-space:pre-wrap;">${esc(zprava)}</div>`
     : ''
   return orgEmailLayout(orgNazev, primaryColor, `
-    <h2 style="margin:0 0 8px;color:#1a1a2e;font-size:21px;">Cenová nabídka${kod ? ` ${kod}` : ''}</h2>
-    <p style="color:#6b7280;margin:0 0 24px;">Dobrý den, <strong>${klientJmeno}</strong>.</p>
-    <p style="color:#374151;margin:0 0 ${zprava ? '12' : '24'}px;">Společnost <strong>${orgNazev}</strong> vám zasílá
-    cenovou nabídku${kod ? ` <strong>${kod}</strong>` : ''}. Najdete ji v příloze tohoto e-mailu.</p>
+    <h2 style="margin:0 0 8px;color:#1a1a2e;font-size:21px;">Cenová nabídka${kod ? ` ${escHtml(kod)}` : ''}</h2>
+    <p style="color:#6b7280;margin:0 0 24px;">Dobrý den, <strong>${escHtml(klientJmeno)}</strong>.</p>
+    <p style="color:#374151;margin:0 0 ${zprava ? '12' : '24'}px;">Společnost <strong>${escHtml(orgNazev)}</strong> vám zasílá
+    cenovou nabídku${kod ? ` <strong>${escHtml(kod)}</strong>` : ''}. Najdete ji v příloze tohoto e-mailu.</p>
     ${zpravaHtml}
     ${url ? `
     <div style="text-align:center;margin:32px 0;">
@@ -447,7 +463,7 @@ export function emailCenovaNabidka(params: {
 export function emailPasswordChanged(jmeno: string) {
   return emailLayout(`
     <h2 style="margin:0 0 8px;color:#1A2744;font-size:22px;">Heslo bylo změněno</h2>
-    <p style="color:#374151;margin:0 0 24px;">Dobrý den, <strong>${jmeno}</strong>.</p>
+    <p style="color:#374151;margin:0 0 24px;">Dobrý den, <strong>${escHtml(jmeno)}</strong>.</p>
     <p style="color:#374151;margin:0 0 24px;">Heslo k vašemu účtu bylo úspěšně změněno.</p>
     <p style="color:#9aa3b2;font-size:13px;">Pokud jste tuto změnu neprovedli, kontaktujte neprodleně administrátora systému.</p>
   `)
@@ -464,7 +480,8 @@ export function emailObjednavkaDodavateli(params: {
   pozadovanyTermin: string | null
   odpovedEmail: string | null
 }) {
-  const { orgNazev, primaryColor, cislo, dodavatelNazev, kontaktOsoba, zprava, pozadovanyTermin, odpovedEmail } = params
+  const { orgNazev, primaryColor: primaryColorRaw, cislo, dodavatelNazev, kontaktOsoba, zprava, pozadovanyTermin, odpovedEmail } = params
+  const primaryColor = safeColor(primaryColorRaw)
   const esc = (s: string) =>
     s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
   const zpravaHtml = zprava
