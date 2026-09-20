@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { checkLogoUpload } from '@/lib/uploadSafety'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
@@ -30,8 +31,9 @@ export async function POST(req: NextRequest) {
   const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'org', orgId)
   await mkdir(uploadDir, { recursive: true })
 
-  const ext = file.name.split('.').pop()?.toLowerCase() ?? 'jpg'
-  const filename = `logo.${ext}`
+  const logo = checkLogoUpload(buffer)
+  if (!logo) return NextResponse.json({ error: 'Soubor není podporovaný obrázek (PNG, JPG, GIF, WEBP, SVG bez skriptů)' }, { status: 415 })
+  const filename = `logo.${logo.ext}`
   const filePath = path.join(uploadDir, filename)
   await writeFile(filePath, buffer)
 

@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server'
+import { safeUploadPath } from '@/lib/uploadSafety'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { getMobileOrWebSession, requireTechnikOrAdmin, canAccessZakazka } from '@/lib/mobile-helpers'
 import { unlink } from 'fs/promises'
-import { join } from 'path'
 
 export async function DELETE(
   req: Request,
@@ -23,12 +23,9 @@ export async function DELETE(
   if (!foto) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   // Delete physical file
-  try {
-    const filePath = join(process.cwd(), 'public', foto.url)
-    await unlink(filePath)
-  } catch {
-    // File missing on disk is not a fatal error
-  }
+  // Cesta z DB — mazat jen soubory v adresáři této zakázky (traversal guard)
+  const filePath = safeUploadPath(foto.url, `/uploads/zakazky/${params.id}/`)
+  if (filePath) await unlink(filePath).catch(() => { /* soubor na disku chybí — nevadí */ })
 
   await orgPrisma(session!.user.orgId).zakazkaFoto.delete({ where: { id: params.fotoId } })
 

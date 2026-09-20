@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { checkImageUpload } from '@/lib/uploadSafety'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
@@ -48,8 +49,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const uploadDir = path.join(process.cwd(), 'public', 'uploads', orgId, params.id)
   await mkdir(uploadDir, { recursive: true })
 
-  const ext = file.name.split('.').pop() ?? 'jpg'
-  const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+  const img = checkImageUpload(buffer, ['png', 'jpg', 'gif', 'webp', 'heic'])
+  if (!img) return NextResponse.json({ error: 'Soubor není podporovaný obrázek' }, { status: 415 })
+  const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}.${img.ext}`
   const filePath = path.join(uploadDir, filename)
   await writeFile(filePath, buffer)
 

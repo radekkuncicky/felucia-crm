@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { checkImageUpload, isImageDataUri } from '@/lib/uploadSafety'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { getMobileOrWebSession, requireTechnikOrAdmin, canAccessZakazka } from '@/lib/mobile-helpers'
 import { writeFile, mkdir } from 'fs/promises'
@@ -34,7 +35,9 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
-    const ext = file.type.includes('png') ? 'png' : 'jpg'
+    const img = checkImageUpload(buffer, ['png', 'jpg', 'webp', 'heic'])
+    if (!img) return NextResponse.json({ error: 'Soubor není podporovaný obrázek' }, { status: 415 })
+    const ext = img.ext
     const filename = `titulni_${Date.now()}.${ext}`
     const dir = join(process.cwd(), 'public', 'uploads', 'zakazky', params.id)
     await mkdir(dir, { recursive: true })
@@ -49,6 +52,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   if (contentType.includes('application/json')) {
     const { url } = await req.json()
     if (!url) return NextResponse.json({ error: 'Chybí URL' }, { status: 400 })
+    if (!isImageDataUri(url)) return NextResponse.json({ error: 'Neplatný formát obrázku' }, { status: 400 })
     await db.zakazka.update({ where: { id: params.id }, data: { titulniFotoUrl: url } })
     return NextResponse.json({ titulniFotoUrl: url })
   }

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
+import { safeUploadPath } from '@/lib/uploadSafety'
 import { unlink } from 'fs/promises'
-import { join } from 'path'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { getMobileOrWebSession, requireObchodnikOrAdmin } from '@/lib/mobile-helpers'
 import { ZamereniFotoTag } from '@prisma/client'
@@ -66,9 +66,8 @@ export async function DELETE(req: Request, ctx: Ctx) {
   }
 
   await db.zamereniFoto.delete({ where: { id: foto.id } })
-  if (foto.url.startsWith('/uploads/')) {
-    await unlink(join(process.cwd(), 'public', foto.url)).catch(() => {})
-  }
+  const filePath = safeUploadPath(foto.url, '/uploads/zamereni/')
+  if (filePath) await unlink(filePath).catch(() => {})
   return NextResponse.json({ ok: true })
 }
 

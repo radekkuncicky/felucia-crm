@@ -1,4 +1,6 @@
 import { getServerSession } from 'next-auth'
+import { logAction } from '@/lib/auditLog'
+import { forbidden, getPerms } from '@/lib/permissions'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
@@ -10,6 +12,7 @@ import crypto from 'crypto'
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!getPerms(session.user).spravaUzivatelu) return forbidden()
   const { orgId } = session.user
 
   const body = await req.json()
@@ -63,6 +66,16 @@ export async function POST(req: Request) {
         hesloHash,
         role: 'OBCHODNIK',
       },
+    })
+
+    await logAction({
+      orgId,
+      userId: session.user.id,
+      typAkce: 'CREATE',
+      typZaznamu: 'User',
+      zaznamId: newUser.id,
+      zaznamNazev: `${newUser.jmeno} (${newUser.email})`,
+      zmeny: { email: trimmed, role: newUser.role, zdroj: 'onboarding-invite' },
     })
 
     // Create magic link token

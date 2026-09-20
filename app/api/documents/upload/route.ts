@@ -1,4 +1,5 @@
 import { getServerSession } from 'next-auth'
+import { checkDocumentUpload } from '@/lib/uploadSafety'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
@@ -37,12 +38,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Překročen limit úložiště', storageExceeded: true }, { status: 413 })
   }
 
-  const ext = path.extname(file.name) || ''
-  const uniqueName = randomBytes(12).toString('hex') + ext
+  const buffer = Buffer.from(await file.arrayBuffer())
+  // Přípona jen z whitelistu a podle obsahu — /uploads se servíruje podle přípony (XSS přes .html/.svg)
+  const check = checkDocumentUpload(buffer, file.name)
+  if (!check) return NextResponse.json({ error: 'Nepodporovaný typ souboru' }, { status: 415 })
+  const uniqueName = randomBytes(12).toString('hex') + '.' + check.ext
   const uploadDir = path.join(process.cwd(), 'public', 'uploads', orgId, 'documents')
   await mkdir(uploadDir, { recursive: true })
 
-  const buffer = Buffer.from(await file.arrayBuffer())
   await writeFile(path.join(uploadDir, uniqueName), buffer)
 
   const cesta = `/uploads/${orgId}/documents/${uniqueName}`

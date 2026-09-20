@@ -3,6 +3,7 @@
 import { confirmDialog } from '@/components/ui/confirm'
 import { useState, useRef } from 'react'
 import { formatDate } from '@/lib/format'
+import { apiFetch } from '@/lib/api'
 
 interface Dokument {
   id: string
@@ -59,18 +60,14 @@ export default function PodkladyTab({ zakazkaId, pokyny: initialPokyny, dokument
     setUploading(true)
     try {
       for (const file of Array.from(files)) {
-        const reader = new FileReader()
-        const dataUrl: string = await new Promise(resolve => {
-          reader.onload = e => resolve(e.target?.result as string)
-          reader.readAsDataURL(file)
-        })
-        const res = await fetch(`/api/zakazky/${zakazkaId}/podklady`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url: dataUrl, nazev: file.name, mime: file.type || 'application/octet-stream' }),
-        })
-        if (res.ok) {
-          const dok = await res.json()
+        // Soubor jde jako multipart a ukládá se na disk — ne base64 do DB,
+        // to rozbíjelo mobilní appku (několik MB JSON, data: URI nejde otevřít).
+        const formData = new FormData()
+        formData.append('soubor', file)
+        const res = await apiFetch<Dokument>(`/api/zakazky/${zakazkaId}/podklady`,
+          { method: 'POST', body: formData })
+        if (res.ok && res.data) {
+          const dok = res.data
           setDokumenty(prev => [dok, ...prev])
         }
       }

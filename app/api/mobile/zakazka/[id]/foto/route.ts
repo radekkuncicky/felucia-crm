@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { checkImageUpload, isImageDataUri } from '@/lib/uploadSafety'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { getMobileOrWebSession, requireTechnikOrAdmin, canAccessZakazka } from '@/lib/mobile-helpers'
 import { writeFile, mkdir } from 'fs/promises'
@@ -35,7 +36,10 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
 
-    const ext = file.type.includes('png') ? 'png' : file.type.includes('heic') || file.type.includes('heif') ? 'heic' : 'jpg'
+    // Přípona podle skutečného obsahu (magic bytes), ne podle Content-Type od klienta
+    const img = checkImageUpload(buffer, ['png', 'jpg', 'webp', 'heic'])
+    if (!img) return NextResponse.json({ error: 'Soubor není podporovaný obrázek (jpg, png, heic, webp)' }, { status: 415 })
+    const ext = img.ext
     const timestamp = Date.now()
     const filename = `${timestamp}.${ext}`
     const dir = join(process.cwd(), 'public', 'uploads', 'zakazky', params.id)
@@ -58,6 +62,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     let body: { url?: string; popis?: string }
     try { body = await req.json() } catch { return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 }) }
     if (!body.url) return NextResponse.json({ error: 'Chybí url' }, { status: 400 })
+    if (!isImageDataUri(body.url)) return NextResponse.json({ error: 'Neplatný formát obrázku' }, { status: 400 })
 
     const foto = await orgPrisma(session!.user.orgId).zakazkaFoto.create({
       data: { zakazkaId: params.id, url: body.url, popis: body.popis ?? null, nahralId: session!.user.id },

@@ -1,4 +1,5 @@
 import { getServerSession } from 'next-auth'
+import { checkLogoUpload } from '@/lib/uploadSafety'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
@@ -26,12 +27,13 @@ export async function POST(
   if (!file.type.startsWith('image/')) return NextResponse.json({ error: 'Soubor musí být obrázek' }, { status: 400 })
   if (file.size > 2 * 1024 * 1024) return NextResponse.json({ error: 'Logo nesmí být větší než 2 MB' }, { status: 400 })
 
-  const ext = file.name.split('.').pop() ?? 'png'
-  const fileName = `logo-${params.id}.${ext}`
+  const buffer = Buffer.from(await file.arrayBuffer())
+  const logo = checkLogoUpload(buffer)
+  if (!logo) return NextResponse.json({ error: 'Soubor není podporovaný obrázek (PNG, JPG, GIF, WEBP, SVG bez skriptů)' }, { status: 415 })
+  const fileName = `logo-${params.id}.${logo.ext}`
   const dir = path.join(process.cwd(), 'public', 'uploads', 'logos')
   await fs.mkdir(dir, { recursive: true })
   const filePath = path.join(dir, fileName)
-  const buffer = Buffer.from(await file.arrayBuffer())
   await fs.writeFile(filePath, buffer)
 
   const logoUrl = `/uploads/logos/${fileName}`

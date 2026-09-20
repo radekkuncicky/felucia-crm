@@ -43,6 +43,25 @@ function makeNonce() {
 // nahrané fotky) dostane X-Robots-Tag: noindex.
 const INDEXABLE_PATHS = new Set(['/', '/terms', '/privacy', '/support'])
 
+const MUTATING_METHODS = new Set(['POST', 'PATCH', 'PUT', 'DELETE'])
+
+// Soubory z public/uploads: Next je servíruje podle přípony, takže cokoli
+// aktivního (.html/.svg) by běželo v originu aplikace. Restriktivní CSP +
+// sandbox to zablokuje bez ohledu na typ; vše mimo obrázků/PDF se stahuje.
+const INLINE_UPLOAD_EXT = /\.(png|jpe?g|gif|webp|heic|pdf|svg)$/i
+function uploadResponse(pathname: string) {
+  const res = NextResponse.next()
+  // PDF bez `sandbox` — prohlížeče v sandboxovaném kontextu nemusí spustit PDF viewer
+  const csp = /\.pdf$/i.test(pathname)
+    ? "default-src 'none'"
+    : "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; sandbox"
+  res.headers.set('Content-Security-Policy', csp)
+  res.headers.set('X-Content-Type-Options', 'nosniff')
+  res.headers.set('X-Robots-Tag', 'noindex, nofollow')
+  if (!INLINE_UPLOAD_EXT.test(pathname)) res.headers.set('Content-Disposition', 'attachment')
+  return res
+}
+
 // NextResponse.next() s nonce v request headerech + CSP na odpovědi
 function nextWithCsp(req: NextRequest, extraRequestHeaders?: Headers, opts: { indexable?: boolean } = {}) {
   const nonce = makeNonce()
@@ -67,15 +86,28 @@ export async function middleware(req: NextRequest) {
   }
 
   // ── Static uploads auth ───────────────────────────────────────────────────
-  // Fotky zakázek (/uploads/zakazky/) jsou veřejné — cesty jsou obscurní
-  // (CUID ID + timestamp), takže auth není potřeba a Image v RN to zvládne.
-  // Loga org a avatary stále vyžadují přihlášení.
+  // Fotky a podklady zakázek (/uploads/zakazky/) jsou zatím veřejné — cesty
+  // jsou obscurní (CUID ID + timestamp) a Image v RN nemá session cookie
+  // (auth přes route handler je v plánu, viz docs/SECURITY_AUDIT_2026-09.md
+  // SEC-10). Musí se vrátit hned tady, jinak by mobil chytil redirect na
+  // /auth/signin. Loga org, dokumenty a avatary vyžadují přihlášení.
   if (url.pathname.startsWith('/uploads/')) {
-    if (!url.pathname.startsWith('/uploads/zakazky/') && !url.pathname.startsWith('/uploads/predavaky/')) {
-      const uploadToken = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
-      if (!uploadToken) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-      }
+    if (url.pathname.startsWith('/uploads/zakazky/')) {
+      return uploadResponse(url.pathname)
+    }
+    const uploadToken = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
+    if (!uploadToken) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    return uploadResponse(url.pathname)
+  }
+
+  // ── Demo session: read-only ─────────────────────────────────────────────
+  // Musí být před větvením podle hostu — demo se dá přihlásit i na subdoméně.
+  if (url.pathname.startsWith('/api') && !url.pathname.startsWith('/api/auth') && MUTATING_METHODS.has(req.method)) {
+    const demoToken = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
+    if (demoToken?.isDemo) {
+      return NextResponse.json({ ok: true, _demo: true }, { status: 200 })
     }
   }
 
@@ -169,16 +201,6 @@ export async function middleware(req: NextRequest) {
   if (token && !token.isDemo && isLoginOnlyPage) {
     url.pathname = '/dashboard'
     return NextResponse.redirect(url)
-  }
-
-  // ── Demo session write protection ────────────────────────────────────────
-  if (
-    token?.isDemo &&
-    url.pathname.startsWith('/api') &&
-    !url.pathname.startsWith('/api/auth') &&
-    ['POST', 'PATCH', 'PUT', 'DELETE'].includes(req.method)
-  ) {
-    return NextResponse.json({ ok: true, _demo: true }, { status: 200 })
   }
 
   // ── Technický pohled (bez obchodu) — hrubý filtr obchodních stránek ─────────

@@ -23,6 +23,16 @@ export async function hardenPdfPage(page: Page, { allowJs = false } = {}): Promi
   })
 }
 
+/**
+ * Vloží HTML a počká, až dojdou webfonty (Google Fonts .woff2) — jinak se
+ * PDF vyrenderuje s fallback fontem. Puppeteer ≥ 24.43 už u setContent
+ * `networkidle0` nepodporuje, proto explicitní waitForNetworkIdle.
+ */
+export async function setContentAndWait(page: Page, html: string): Promise<void> {
+  await page.setContent(html, { waitUntil: 'load' })
+  await page.waitForNetworkIdle({ idleTime: 500, timeout: 15_000 }).catch(() => {})
+}
+
 export async function generatePdf(html: string, chrome?: DokumentChrome | null): Promise<Buffer> {
   const browser = await puppeteer.launch({
     headless: true,
@@ -31,7 +41,7 @@ export async function generatePdf(html: string, chrome?: DokumentChrome | null):
   try {
     const page = await browser.newPage()
     await hardenPdfPage(page)
-    await page.setContent(html, { waitUntil: 'networkidle0' })
+    await setContentAndWait(page, html)
     const pdf = await page.pdf({
       format: 'A4',
       printBackground: true,

@@ -1,4 +1,5 @@
 import { prisma } from './prisma'
+import { safeUploadPath } from '@/lib/uploadSafety'
 import { orgPrisma } from './orgPrisma'
 import { generatePdf } from './pdf'
 import { buildDokumentChrome } from './dokumentyChrome'
@@ -7,7 +8,6 @@ import { mergePdfs } from './mergePdfs'
 import { sodPodpisBlockHtml, appendPodpisBlock } from './sodPodpis'
 import { buildSodContentHtml } from './sodHtml'
 import fs from 'fs'
-import path from 'path'
 
 // HTML buildery žijí v lib/sodHtml.ts (bez Puppeteeru); re-export pro stávající importy
 export { buildSodContentHtml, buildSodBaseHtml } from './sodHtml'
@@ -80,8 +80,10 @@ export async function buildSodPdf(
   ]
   for (const { flag, pathField } of attachDefs) {
     if (!flag || !pathField) continue
+    const abs = safeUploadPath(pathField, '/uploads/org/')
+    if (!abs) continue
     try {
-      pdfParts.push(fs.readFileSync(path.join(process.cwd(), 'public', pathField)))
+      pdfParts.push(fs.readFileSync(abs))
     } catch { /* file missing — skip */ }
   }
 

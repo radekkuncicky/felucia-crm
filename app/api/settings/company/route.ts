@@ -21,8 +21,8 @@ export async function PATCH(req: Request) {
       telefon: body.telefon || null,
       email: body.email || null,
       web: body.web || null,
-      logo: body.logo || null,
-      logoBw: body.logoBw || null,
+      // logo/logoBw se z body nepřebírají — nastavují je výhradně upload routes
+      // (company/logo, company/logo-bw); hodnota z klienta by šla do fs cesty.
     },
   })
   return NextResponse.json(updated)

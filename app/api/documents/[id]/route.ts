@@ -1,9 +1,9 @@
 import { getServerSession } from 'next-auth'
+import { safeUploadPath } from '@/lib/uploadSafety'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { unlink } from 'fs/promises'
-import path from 'path'
 
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
@@ -17,12 +17,8 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
   })
   if (!doc) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const filePath = path.join(process.cwd(), 'public', doc.cesta)
-  try {
-    await unlink(filePath)
-  } catch {
-    // File may already be missing — proceed to delete DB record
-  }
+  const filePath = safeUploadPath(doc.cesta, `/uploads/${orgId}/`)
+  if (filePath) await unlink(filePath).catch(() => { /* soubor už chybí — smažeme jen záznam */ })
 
   await db.document.delete({ where: { id: params.id } })
 

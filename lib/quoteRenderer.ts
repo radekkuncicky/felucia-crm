@@ -1,7 +1,9 @@
 import { prisma } from '@/lib/prisma'
+import { safeUploadPath } from './uploadSafety'
 import { buildQuoteHtml } from '@/lib/quoteHtml'
 import puppeteer from 'puppeteer'
-import { hardenPdfPage } from '@/lib/pdf'
+import { hardenPdfPage, setContentAndWait } from '@/lib/pdf'
+import { sanitizeFullDocumentHtml } from '@/lib/sanitizeHtml'
 import fs from 'fs'
 import path from 'path'
 import type { QuoteTemplate, QuoteTemplateConfig, QuoteTemplateHtml } from '@prisma/client'
@@ -122,8 +124,8 @@ async function launchPuppeteer(html: string): Promise<Buffer> {
     await hardenPdfPage(page)
     // Pipe evaluate() console output to Node/PM2 logs for debugging
     page.on('console', msg => console.log('[pdf-scale]', msg.text()))
-    // networkidle0: all Google Font .woff2 files downloaded → correct metrics for layout measurement
-    await page.setContent(html, { waitUntil: 'networkidle0' })
+    // počkat na všechny Google Font .woff2 → správné metriky pro měření layoutu
+    await setContentAndWait(page, html)
     await page.evaluate(() => {
       const pages = document.querySelectorAll('.page')
       const page2 = pages[1] as HTMLElement | undefined
@@ -506,7 +508,9 @@ ${footer ? `<div class="footer">${footer}</div>` : ''}
 export function orgLogoDataUrl(logoPath: string | null | undefined): string | null {
   if (!logoPath) return null
   try {
-    const abs = path.join(process.cwd(), 'public', logoPath)
+    // Cesta pochází z DB — nikdy ji neskládat naslepo, musí zůstat pod public/uploads
+    const abs = safeUploadPath(logoPath)
+    if (!abs) return null
     const buf = fs.readFileSync(abs)
     const ext = path.extname(logoPath).slice(1).toLowerCase()
     const mime = ext === 'png' ? 'image/png' : ext === 'svg' ? 'image/svg+xml' : 'image/jpeg'
@@ -759,9 +763,10 @@ function renderCustomHtmlTemplate(quote: QuoteForRender, tpl: QuoteTemplateHtml,
     html = html.replace('</head>', `<style>${css}</style>\n</head>`)
   }
 
-  // Simple placeholder replacement
+  // Simple placeholder replacement — hodnoty jsou tenant data (jméno klienta…),
+  // dosazují se až po sanitizaci šablony, takže musí být escapované
   for (const [key, val] of Object.entries(data.simple)) {
-    html = html.replaceAll(`{{${key}}}`, val ?? '')
+    html = html.replaceAll(`{{${key}}}`, escHtml(String(val ?? '')))
   }
 
   // Items loop: {{#polozky}}...{{/polozky}}
@@ -1014,7 +1019,7 @@ export async function renderPreviewFromHtmlMock(
   const fakeTpl: QuoteTemplateHtml = {
     id: 'preview',
     templateId: 'preview',
-    htmlContent,
+    htmlContent: sanitizeFullDocumentHtml(htmlContent),
     cssContent: cssContent ?? null,
   }
   const html = renderCustomHtmlTemplate(mock, fakeTpl, cssContent)
@@ -1049,7 +1054,7 @@ export async function renderPreviewFromHtml(
   const fakeTpl: QuoteTemplateHtml = {
     id: 'preview',
     templateId: 'preview',
-    htmlContent,
+    htmlContent: sanitizeFullDocumentHtml(htmlContent),
     cssContent: cssContent ?? null,
   }
 

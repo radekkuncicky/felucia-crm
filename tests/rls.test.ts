@@ -95,6 +95,18 @@ describe('DB vrstva (nanto_app bez aplikačního scopingu)', () => {
     expect(fresh?.jmeno).toBe('Bára')
   })
 
+  it('LIMIT VRSTVY: FK na cizí org RLS nekontroluje — create s clientId org B pod kontextem org A projde', async () => {
+    // Dokumentované chování PostgreSQL: kontroly referenční integrity RLS obcházejí.
+    // Vlastnictví FK z těla requestu proto musí ověřit aplikace (viz SEC-08 v
+    // docs/SECURITY_AUDIT_2026-09.md); tenhle test hlídá, že o tom víme.
+    const [, deal] = await prismaApp.$transaction([
+      prismaApp.$executeRaw`SELECT set_config('app.org_id', ${orgA.id}, true)`,
+      prismaApp.deal.create({ data: { orgId: orgA.id, clientId: clientB.id, technologie: 'KLIMA' } }),
+    ])
+    expect(deal.clientId).toBe(clientB.id)
+    await prisma.deal.delete({ where: { id: deal.id } })
+  })
+
   it('owner klient (bare prisma) RLS nepodléhá — auth/superadmin toky fungují', async () => {
     const rows = await prisma.client.findMany({ where: { orgId: orgB.id } })
     expect(rows.map((r) => r.id)).toEqual([clientB.id])

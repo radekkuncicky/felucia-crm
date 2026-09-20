@@ -1,4 +1,5 @@
 import { getServerSession } from 'next-auth'
+import { isImageDataUri } from '@/lib/uploadSafety'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
@@ -20,6 +21,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   const { url } = await req.json()
   if (!url) return NextResponse.json({ error: 'Chybí URL' }, { status: 400 })
+  if (!isImageDataUri(url)) return NextResponse.json({ error: 'Neplatný formát obrázku' }, { status: 400 })
 
   const updated = await db.zakazka.update({
     where: { id: params.id },

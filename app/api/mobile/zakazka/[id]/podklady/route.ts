@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server'
 import { orgPrisma } from '@/lib/orgPrisma'
-import { getMobileOrWebSession, requireTechnikOrAdmin, canAccessZakazka } from '@/lib/mobile-helpers'
+import { getMobileOrWebSession, requireTechnikOrAdmin, canAccessZakazka, toAbsoluteUrl } from '@/lib/mobile-helpers'
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
+  const host = req.headers.get('host') ?? ''
+  const proto = req.headers.get('x-forwarded-proto') ?? 'https'
+  const origin = host ? `${proto}://${host}` : new URL(req.url).origin
   const session = await getMobileOrWebSession(req)
   const authErr = requireTechnikOrAdmin(session)
   if (authErr) return authErr
@@ -29,7 +32,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       id: d.id,
       nazev: d.nazev,
       mime: d.mime,
-      url: d.url,
+      url: toAbsoluteUrl(d.url, origin) as string,
       vytvoreno: d.vytvoreno.toISOString(),
       nahral: d.nahral.jmeno,
     })),

@@ -1,4 +1,5 @@
 import { getServerSession } from 'next-auth'
+import { forbidden, getPerms } from '@/lib/permissions'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
@@ -32,6 +33,7 @@ function parseExcel(buffer: ArrayBuffer): ParsedProduct[] {
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!getPerms(session.user).nastaveniOrg) return forbidden()
   const { orgId } = session.user
 
   const formData = await req.formData()
@@ -39,6 +41,8 @@ export async function POST(req: Request) {
   const file = formData.get('file') as File | null
 
   if (!file) return NextResponse.json({ error: 'Soubor chybí' }, { status: 400 })
+  // SheetJS parsuje na serveru (známé ReDoS advisory) — limit velikosti je nutný
+  if (file.size > 5 * 1024 * 1024) return NextResponse.json({ error: 'Soubor je příliš velký (max 5 MB)' }, { status: 413 })
 
   const buffer = await file.arrayBuffer()
   const products = parseExcel(buffer)

@@ -89,7 +89,7 @@ export async function buildQuoteHtml(quote: QuoteWithRelations): Promise<string>
   }
 
   for (const [key, val] of Object.entries(replacements)) {
-    html = html.replaceAll(key, val)
+    html = html.replaceAll(key, escHtml(val))
   }
 
   // {{#ma_popis}}...{{/ma_popis}} conditional
@@ -120,4 +120,8 @@ export async function buildQuoteHtml(quote: QuoteWithRelations): Promise<string>
   }
 
   return html
+}
+
+function escHtml(str: string): string {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }

@@ -5,6 +5,8 @@ import { NextResponse } from 'next/server'
 import { renderPreviewFromHtml, renderPreviewFromHtmlMock, renderQuoteHtml, renderTemplateMockPreview } from '@/lib/quoteRenderer'
 import type { QuoteTemplate, QuoteTemplateConfig, QuoteTemplateHtml } from '@prisma/client'
 import puppeteer from 'puppeteer'
+import { hardenPdfPage, setContentAndWait } from '@/lib/pdf'
+import { forbidden, getPerms } from '@/lib/permissions'
 
 export async function POST(
   req: Request,
@@ -12,6 +14,7 @@ export async function POST(
 ) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!getPerms(session.user).nastaveniOrg) return forbidden()
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)
 
@@ -50,7 +53,8 @@ export async function POST(
       })
       try {
         const page = await browser.newPage()
-        await page.setContent(html, { waitUntil: 'networkidle0' })
+        await hardenPdfPage(page)
+        await setContentAndWait(page, html)
         const pdf = await page.pdf({ format: 'A4', printBackground: true, margin: { top: '0', right: '0', bottom: '0', left: '0' } })
         pdfBuffer = Buffer.from(pdf)
       } finally {

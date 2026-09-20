@@ -1,4 +1,6 @@
 import { getServerSession } from 'next-auth'
+import { forbidden, getPerms } from '@/lib/permissions'
+import { checkLogoUpload } from '@/lib/uploadSafety'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
@@ -8,6 +10,7 @@ import fs from 'fs/promises'
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!getPerms(session.user).nastaveniOrg) return forbidden()
   const { orgId } = session.user
 
   const formData = await req.formData()
@@ -19,8 +22,10 @@ export async function POST(req: Request) {
   if (logoFile && logoFile.size > 0) {
     const bytes = await logoFile.arrayBuffer()
     const buf = Buffer.from(bytes)
-    const ext = logoFile.name.split('.').pop()?.toLowerCase() ?? 'png'
-    const filename = `logo-${orgId}-${Date.now()}.${ext}`
+    if (buf.length > 2 * 1024 * 1024) return NextResponse.json({ error: 'Logo nesmí být větší než 2 MB' }, { status: 413 })
+    const logo = checkLogoUpload(buf)
+    if (!logo) return NextResponse.json({ error: 'Soubor není podporovaný obrázek' }, { status: 415 })
+    const filename = `logo-${orgId}-${Date.now()}.${logo.ext}`
     const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'logos')
     await fs.mkdir(uploadDir, { recursive: true })
     await fs.writeFile(path.join(uploadDir, filename), buf)

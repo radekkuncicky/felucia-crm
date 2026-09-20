@@ -3,6 +3,9 @@ import { withSentryConfig } from '@sentry/nextjs'
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   poweredByHeader: false,
+  // next/image se nepoužívá; /_next/image optimizer je neautentizovaný endpoint
+  // s historií CVE (viz docs/SECURITY_AUDIT_2026-09.md SEC-13) — vypnuto.
+  images: { unoptimized: true },
   experimental: {
     instrumentationHook: true,
   },
