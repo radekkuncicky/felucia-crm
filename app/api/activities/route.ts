@@ -70,6 +70,7 @@ export async function POST(req: Request) {
 
   const activity = await db.activity.create({
     data: {
+      orgId,
       dealId,
       userId: session.user.id,
       typ,

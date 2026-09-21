@@ -96,6 +96,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
     await db.activity.create({
       data: {
+        orgId,
         dealId: quote.deal.id,
         userId: session.user.id,
         typ: 'EMAIL',

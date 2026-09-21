@@ -96,6 +96,7 @@ export async function POST(req: Request) {
   if (zprava) {
     await prisma.activity.create({
       data: {
+        orgId: deal.orgId,
         dealId: deal.id,
         typ: 'POZNAMKA',
         popis: zprava,

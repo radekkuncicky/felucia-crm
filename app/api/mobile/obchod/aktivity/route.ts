@@ -83,6 +83,7 @@ export async function POST(req: Request) {
   const splneno = body.splneno === true
   const aktivita = await db.activity.create({
     data: {
+      orgId,
       dealId: deal.id,
       userId,
       typ: body.typ as TypAktivity,

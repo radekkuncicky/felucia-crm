@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { orgPrisma } from '@/lib/orgPrisma'
+import { KONTROLNI_KONTAKT_CIL, KONTROLNI_KONTAKT_DNI, zaPracovnichDni, kontrolniKontaktPopis, type KontrolniKontaktTyp } from '@/lib/kontrolniKontakt'
 import { getMobileOrWebSession, requireObchodnikOrAdmin } from '@/lib/mobile-helpers'
 import { renderQuotePdf } from '@/lib/quoteRenderer'
 import { buildPdfFilename } from '@/lib/quoteKod'
@@ -32,6 +33,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         deal: {
           select: {
             id: true,
+            orgId: true,
             kod: true,
             technologie: true,
             client: { select: { jmeno: true, prijmeni: true, email: true, telefon: true } },
@@ -44,10 +46,12 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   ])
   if (!quote || !org) return NextResponse.json({ error: 'Nabídka nenalezena' }, { status: 404 })
 
-  let body: { kanal?: string; to?: string; zprava?: string }
+  let body: { kanal?: string; to?: string; zprava?: string; kontrola?: KontrolaInput | null }
   try { body = await req.json() } catch { body = {} }
   const kanal = body.kanal === 'SMS' ? 'SMS' : body.kanal === 'EMAIL' ? 'EMAIL' : null
   if (!kanal) return NextResponse.json({ error: 'kanal musí být EMAIL nebo SMS' }, { status: 400 })
+  const kontrola = parseKontrola(body.kontrola)
+  if (kontrola === 'invalid') return NextResponse.json({ error: 'kontrola: neplatný typ nebo datum' }, { status: 400 })
 
   const klientJmeno = `${quote.deal.client.jmeno} ${quote.deal.client.prijmeni ?? ''}`.trim()
 
@@ -95,7 +99,8 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         [{ filename, content: pdf }],
       )
       await zaznamenejOdeslani(db, quote, userId, 'EMAIL', `na ${to}`)
-      return NextResponse.json({ ok: true, kanal, to })
+      const kontrolaId = await naplanujKontrolu(db, quote, userId, kontrola)
+      return NextResponse.json({ ok: true, kanal, to, kontrolaId })
     } catch (err) {
       console.error('[mobile-nabidka-odeslat] email error:', err)
       return NextResponse.json({ error: 'E-mail se nepodařilo odeslat.' }, { status: 502 })
@@ -116,16 +121,65 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     const url = quoteShareUrl(org.slug, share.token)
     await sendSms(telefon, `${org.nazev}: cenová nabídka${quote.kod ? ` ${quote.kod}` : ''} — ${url}`)
     await zaznamenejOdeslani(db, quote, userId, 'SMS', `na +${telefon}`)
-    return NextResponse.json({ ok: true, kanal, to: `+${telefon}` })
+    const kontrolaId = await naplanujKontrolu(db, quote, userId, kontrola)
+    return NextResponse.json({ ok: true, kanal, to: `+${telefon}`, kontrolaId })
   } catch (err) {
     console.error('[mobile-nabidka-odeslat] sms error:', err)
     return NextResponse.json({ error: 'SMS se nepodařilo odeslat.' }, { status: 502 })
   }
 }
 
+/**
+ * Kontrolní kontakt po odeslání (volitelné): { typ: 'HOVOR'|'EMAIL', dni?: number, datum?: ISO }.
+ * Bez `kontrola` se nic neplánuje — dotaz s předvolbou zobrazuje appka.
+ */
+type KontrolaInput = { typ?: string; dni?: number; datum?: string }
+type Kontrola = { typ: KontrolniKontaktTyp; datum: Date }
+
+function parseKontrola(k: KontrolaInput | null | undefined): Kontrola | null | 'invalid' {
+  if (!k || typeof k !== 'object') return null
+  const typ = k.typ === 'EMAIL' ? 'EMAIL' : k.typ === 'HOVOR' || k.typ === undefined ? 'HOVOR' : null
+  if (!typ) return 'invalid'
+  let datum: Date
+  if (typeof k.datum === 'string') {
+    datum = new Date(k.datum)
+    if (Number.isNaN(datum.getTime())) return 'invalid'
+  } else {
+    const dni = typeof k.dni === 'number' && k.dni >= 0 && k.dni <= 60 ? k.dni : KONTROLNI_KONTAKT_DNI
+    datum = zaPracovnichDni(dni)
+  }
+  return { typ, datum }
+}
+
+async function naplanujKontrolu(
+  db: ReturnType<typeof orgPrisma>,
+  quote: { kod: string | null; deal: { id: string; orgId: string } },
+  userId: string,
+  kontrola: Kontrola | null,
+): Promise<string | null> {
+  if (!kontrola) return null
+  const p = (n: number) => String(n).padStart(2, '0')
+  const a = await db.activity.create({
+    data: {
+      orgId: quote.deal.orgId,
+      dealId: quote.deal.id,
+      userId,
+      resitelId: userId,
+      typ: kontrola.typ,
+      datum: kontrola.datum,
+      cas: `${p(kontrola.datum.getHours())}:${p(kontrola.datum.getMinutes())}`,
+      popis: kontrolniKontaktPopis(quote.kod, kontrola.typ),
+      cil: KONTROLNI_KONTAKT_CIL,
+      reminderAt: kontrola.datum,
+    },
+    select: { id: true },
+  })
+  return a.id
+}
+
 async function zaznamenejOdeslani(
   db: ReturnType<typeof orgPrisma>,
-  quote: { id: string; kod: string | null; deal: { id: string; kod: string | null } },
+  quote: { id: string; kod: string | null; deal: { id: string; kod: string | null; orgId: string } },
   userId: string,
   kanal: 'EMAIL' | 'SMS',
   komu: string,
@@ -136,6 +190,7 @@ async function zaznamenejOdeslani(
   })
   await db.activity.create({
     data: {
+      orgId: quote.deal.orgId,
       dealId: quote.deal.id,
       userId,
       typ: kanal === 'EMAIL' ? 'EMAIL' : 'POZNAMKA',

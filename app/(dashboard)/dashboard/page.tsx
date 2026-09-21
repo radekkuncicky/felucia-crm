@@ -3,7 +3,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { StavDealu } from '@prisma/client'
 import Link from 'next/link'
-import ReminderPanel from './ReminderPanel'
+import CoMamDelatPanel from './CoMamDelatPanel'
 import ZakazkyDashboardSection from './ZakazkyDashboardSection'
 import {
   IconClipboard, IconUsers, IconCoins, IconTrophy, IconTarget,
@@ -150,7 +150,7 @@ export default async function DashboardPage() {
   return (
     <div className="max-w-6xl mx-auto w-full">
     <div className="space-y-6">
-      <ReminderPanel />
+      <CoMamDelatPanel />
 
       {/* Header */}
       <div className="flex items-end justify-between">

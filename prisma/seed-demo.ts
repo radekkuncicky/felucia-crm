@@ -153,14 +153,14 @@ async function main() {
   // Activities
   await prisma.activity.createMany({
     data: [
-      { dealId: d1.id, userId: user.id, typ: TypAktivity.HOVOR, popis: 'Úvodní schůzka, zákazník potvrdil zájem o Mitsubishi', datum: new Date(now.getTime() - 3 * 86400000), splneno: true },
-      { dealId: d1.id, userId: user.id, typ: TypAktivity.EMAIL, popis: 'Odeslána cenová nabídka NAB-26-001 (78 400 Kč)', datum: new Date(now.getTime() - 1 * 86400000), splneno: true },
-      { dealId: d1.id, userId: user.id, typ: TypAktivity.UKOL, popis: 'Sledovat vyjádření do 3 pracovních dní', datum: new Date(now.getTime() + 3 * 86400000), splneno: false },
-      { dealId: d2.id, userId: user.id, typ: TypAktivity.SCHUZKA, popis: 'Technická obhlídka objektu, 3 patra, naměřeno', datum: new Date(now.getTime() - 7 * 86400000), splneno: true },
-      { dealId: d2.id, userId: user.id, typ: TypAktivity.EMAIL, popis: 'Zaslán projektový návrh VRF systému', datum: new Date(now.getTime() - 2 * 86400000), splneno: true },
-      { dealId: d3.id, userId: user.id, typ: TypAktivity.HOVOR, popis: 'Zákazník se ptá na dotační program Nová zelená úsporám', datum: new Date(now.getTime() - 5 * 86400000), splneno: true },
-      { dealId: d4.id, userId: user.id, typ: TypAktivity.POZNAMKA, popis: 'Realizace proběhla bez komplikací, zákazník spokojen', datum: new Date(now.getTime() - 15 * 86400000), splneno: true },
-      { dealId: d5.id, userId: user.id, typ: TypAktivity.UKOL, popis: 'Připravit cenovou nabídku rekuperace', datum: new Date(now.getTime() + 2 * 86400000), splneno: false },
+      { orgId: org.id, dealId: d1.id, userId: user.id, typ: TypAktivity.HOVOR, popis: 'Úvodní schůzka, zákazník potvrdil zájem o Mitsubishi', datum: new Date(now.getTime() - 3 * 86400000), splneno: true },
+      { orgId: org.id, dealId: d1.id, userId: user.id, typ: TypAktivity.EMAIL, popis: 'Odeslána cenová nabídka NAB-26-001 (78 400 Kč)', datum: new Date(now.getTime() - 1 * 86400000), splneno: true },
+      { orgId: org.id, dealId: d1.id, userId: user.id, typ: TypAktivity.UKOL, popis: 'Sledovat vyjádření do 3 pracovních dní', datum: new Date(now.getTime() + 3 * 86400000), splneno: false },
+      { orgId: org.id, dealId: d2.id, userId: user.id, typ: TypAktivity.SCHUZKA, popis: 'Technická obhlídka objektu, 3 patra, naměřeno', datum: new Date(now.getTime() - 7 * 86400000), splneno: true },
+      { orgId: org.id, dealId: d2.id, userId: user.id, typ: TypAktivity.EMAIL, popis: 'Zaslán projektový návrh VRF systému', datum: new Date(now.getTime() - 2 * 86400000), splneno: true },
+      { orgId: org.id, dealId: d3.id, userId: user.id, typ: TypAktivity.HOVOR, popis: 'Zákazník se ptá na dotační program Nová zelená úsporám', datum: new Date(now.getTime() - 5 * 86400000), splneno: true },
+      { orgId: org.id, dealId: d4.id, userId: user.id, typ: TypAktivity.POZNAMKA, popis: 'Realizace proběhla bez komplikací, zákazník spokojen', datum: new Date(now.getTime() - 15 * 86400000), splneno: true },
+      { orgId: org.id, dealId: d5.id, userId: user.id, typ: TypAktivity.UKOL, popis: 'Připravit cenovou nabídku rekuperace', datum: new Date(now.getTime() + 2 * 86400000), splneno: false },
     ],
   })
 

@@ -2,6 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { formatDate } from '@/lib/format'
+import {
+  KONTROLNI_KONTAKT_CIL, KONTROLNI_KONTAKT_DNI, zaPracovnichDni, toDateInputValue,
+  kontrolniKontaktPopis, type KontrolniKontaktTyp,
+} from '@/lib/kontrolniKontakt'
 
 interface ShareState {
   url: string
@@ -13,11 +17,18 @@ interface Props {
   quoteKod: string | null
   quoteNazev: string
   clientEmail: string | null
+  /** OP, na které se po odeslání naplánuje kontrolní kontakt */
+  dealId: string
   onClose: () => void
 }
 
-export default function ShareQuoteModal({ quoteId, quoteKod, quoteNazev, clientEmail, onClose }: Props) {
+export default function ShareQuoteModal({ quoteId, quoteKod, quoteNazev, clientEmail, dealId, onClose }: Props) {
   const [share, setShare] = useState<ShareState | null>(null)
+  // kontrolní kontakt: nabídne se po jakémkoli odeslání (e-mail, sdílení, kopie odkazu)
+  const [odeslano, setOdeslano] = useState(false)
+  const [fuTyp, setFuTyp] = useState<KontrolniKontaktTyp>('HOVOR')
+  const [fuDatum, setFuDatum] = useState(() => toDateInputValue(zaPracovnichDni(KONTROLNI_KONTAKT_DNI)))
+  const [fuStav, setFuStav] = useState<'nabidka' | 'ukladam' | 'hotovo' | 'preskoceno'>('nabidka')
   const [loadingShare, setLoadingShare] = useState(true)
   const [working, setWorking] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -80,6 +91,7 @@ export default function ShareQuoteModal({ quoteId, quoteKod, quoteNazev, clientE
     try {
       await navigator.clipboard.writeText(url)
       setCopied(true)
+      setOdeslano(true)
       setTimeout(() => setCopied(false), 2000)
     } catch { /* clipboard nedostupná */ }
   }
@@ -92,6 +104,7 @@ export default function ShareQuoteModal({ quoteId, quoteKod, quoteNazev, clientE
         title: `Cenová nabídka${quoteKod ? ` ${quoteKod}` : ''}`,
         url: s.url,
       })
+      setOdeslano(true)
     } catch { /* uživatel zrušil */ }
   }
 
@@ -111,6 +124,7 @@ export default function ShareQuoteModal({ quoteId, quoteKod, quoteNazev, clientE
         return
       }
       setSentTo(data.to)
+      setOdeslano(true)
       // e-mail vytváří veřejný odkaz automaticky — obnov stav sekce odkazu
       fetch(`/api/quotes/${quoteId}/share`)
         .then(r => (r.ok ? r.json() : null))
@@ -120,6 +134,33 @@ export default function ShareQuoteModal({ quoteId, quoteKod, quoteNazev, clientE
       setError('E-mail se nepodařilo odeslat')
     } finally {
       setSending(false)
+    }
+  }
+
+  async function naplanovatKontrolu() {
+    setFuStav('ukladam')
+    try {
+      const res = await fetch(`/api/deals/${dealId}/activities`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          typ: fuTyp,
+          datum: fuDatum,
+          cas: '09:00',
+          popis: kontrolniKontaktPopis(quoteKod, fuTyp),
+          cil: KONTROLNI_KONTAKT_CIL,
+          reminderAt: new Date(`${fuDatum}T09:00:00`).toISOString(),
+        }),
+      })
+      if (!res.ok) {
+        setFuStav('nabidka')
+        setError('Kontrolní kontakt se nepodařilo naplánovat')
+        return
+      }
+      setFuStav('hotovo')
+    } catch {
+      setFuStav('nabidka')
+      setError('Kontrolní kontakt se nepodařilo naplánovat')
     }
   }
 
@@ -238,6 +279,41 @@ export default function ShareQuoteModal({ quoteId, quoteKod, quoteNazev, clientE
             </>
           )}
         </div>
+
+        {/* Kontrolní kontakt — dotaz s předvolbou po odeslání */}
+        {odeslano && fuStav !== 'preskoceno' && (
+          <div className="px-5 py-4 border-t border-gray-100 dark:border-slate-700 bg-amber-50/60 dark:bg-amber-900/10">
+            {fuStav === 'hotovo' ? (
+              <p className="text-sm text-green-700 dark:text-green-400">
+                ✓ Kontrolní {fuTyp === 'HOVOR' ? 'hovor' : 'e-mail'} naplánován na <strong>{formatDate(new Date(fuDatum))}</strong>
+              </p>
+            ) : (
+              <>
+                <p className="text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-400 mb-1">Kontrolní kontakt</p>
+                <p className="text-sm text-gray-600 dark:text-slate-300 mb-3">Naplánovat, kdy se klientovi ozvete k nabídce?</p>
+                <div className="flex gap-2 mb-3">
+                  <select value={fuTyp} onChange={e => setFuTyp(e.target.value as KontrolniKontaktTyp)} className={`${inputCls} w-auto flex-shrink-0`}>
+                    <option value="HOVOR">Hovor</option>
+                    <option value="EMAIL">E-mail</option>
+                  </select>
+                  <input type="date" value={fuDatum} onChange={e => setFuDatum(e.target.value)} className={inputCls} />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={naplanovatKontrolu}
+                    disabled={fuStav === 'ukladam' || !fuDatum}
+                    className="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-primary hover:bg-primary-hover rounded-xl disabled:opacity-40"
+                  >
+                    {fuStav === 'ukladam' ? 'Ukládám…' : 'Naplánovat'}
+                  </button>
+                  <button onClick={() => setFuStav('preskoceno')} className="px-4 py-2.5 text-sm text-gray-500 dark:text-slate-400 hover:underline">
+                    Teď ne
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
 
         {error && (
           <div className="px-5 pb-4">

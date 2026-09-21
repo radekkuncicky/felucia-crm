@@ -526,7 +526,7 @@ export async function executeDasaTool(
 
         await db.activity.create({
           data: {
-            dealId, userId,
+            orgId, dealId, userId,
             typ: String(input.typ ?? 'POZNAMKA') as TypAktivity,
             datum: new Date(String(input.datum ?? new Date().toISOString())),
             popis: String(input.popis ?? ''),

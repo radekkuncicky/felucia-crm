@@ -297,6 +297,7 @@ async function main() {
   await prisma.activity.createMany({
     data: [
       {
+        orgId: org.id,
         dealId: deal1.id,
         userId: obchodnik.id,
         typ: TypAktivity.HOVOR,
@@ -304,6 +305,7 @@ async function main() {
         datum: new Date('2026-03-10'),
       },
       {
+        orgId: org.id,
         dealId: deal1.id,
         userId: obchodnik.id,
         typ: TypAktivity.SCHUZKA,
@@ -311,6 +313,7 @@ async function main() {
         datum: new Date('2026-03-14'),
       },
       {
+        orgId: org.id,
         dealId: deal2.id,
         userId: obchodnik.id,
         typ: TypAktivity.EMAIL,
@@ -318,6 +321,7 @@ async function main() {
         datum: new Date('2026-03-12'),
       },
       {
+        orgId: org.id,
         dealId: deal3.id,
         userId: admin.id,
         typ: TypAktivity.POZNAMKA,

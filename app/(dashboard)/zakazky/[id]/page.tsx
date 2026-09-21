@@ -12,6 +12,8 @@ import FotoTab from './FotoTab'
 import VyuctovaniTab from './VyuctovaniTab'
 import PodkladyTab from './PodkladyTab'
 import KontaktyTab from './KontaktyTab'
+import UkolyTab from './UkolyTab'
+import { UKOL_ORDER_BY, UKOL_SELECT } from '@/lib/zakazkaUkol'
 
 export default async function ZakazkaDetailPage({
   params,
@@ -29,7 +31,7 @@ export default async function ZakazkaDetailPage({
   const canEdit = perms.zakazkyEdit
   const tab = searchParams.tab ?? 'polozky'
 
-  const [zakazka, vsichniTechnici, komentare, auditLogs] = await Promise.all([
+  const [zakazka, vsichniTechnici, komentare, auditLogs, uzivateleOrg] = await Promise.all([
     prisma.zakazka.findFirst({
       where: { id: params.id, orgId },
       include: {
@@ -65,6 +67,7 @@ export default async function ZakazkaDetailPage({
           include: { nahral: { select: { id: true, jmeno: true } } },
         },
         kontakty: { orderBy: { vytvoreno: 'asc' } },
+        ukoly: { orderBy: UKOL_ORDER_BY, select: UKOL_SELECT },
       },
     }),
     !canEdit
@@ -84,6 +87,12 @@ export default async function ZakazkaDetailPage({
       include: { user: { select: { jmeno: true } } },
       orderBy: { vytvoreno: 'desc' },
       take: 50,
+    }),
+    // řešitelé úkolů — kdokoli aktivní v org
+    prisma.user.findMany({
+      where: { orgId, aktivni: true },
+      select: { id: true, jmeno: true },
+      orderBy: { jmeno: 'asc' },
     }),
   ])
 
@@ -213,6 +222,24 @@ export default async function ZakazkaDetailPage({
             poznamka: k.poznamka,
           }))}
           canEdit={true}
+        />
+      )}
+
+      {tab === 'ukoly' && (
+        <UkolyTab
+          zakazkaId={zakazka.id}
+          currentUserId={session.user.id}
+          uzivatele={uzivateleOrg}
+          ukoly={zakazka.ukoly.map(u => ({
+            id: u.id,
+            text: u.text,
+            poznamka: u.poznamka,
+            termin: u.termin?.toISOString() ?? null,
+            hotovo: u.hotovo,
+            hotovoAt: u.hotovoAt?.toISOString() ?? null,
+            resitelId: u.resitelId,
+            resitel: u.resitel,
+          }))}
         />
       )}
 

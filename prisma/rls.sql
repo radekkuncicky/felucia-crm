@@ -13,6 +13,12 @@ GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO nanto_app;
 ALTER DEFAULT PRIVILEGES FOR ROLE nanto IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO nanto_app;
 ALTER DEFAULT PRIVILEGES FOR ROLE nanto IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO nanto_app;
 
+-- Activity
+ALTER TABLE "activities" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_rls ON "activities";
+CREATE POLICY org_rls ON "activities" FOR ALL TO nanto_app
+  USING ("orgId" = current_setting('app.org_id', true)) WITH CHECK ("orgId" = current_setting('app.org_id', true));
+
 -- AiUsageLog
 ALTER TABLE "ai_usage_logs" ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS org_rls ON "ai_usage_logs";
@@ -259,6 +265,12 @@ DROP POLICY IF EXISTS org_rls ON "zakazka_kontakty";
 CREATE POLICY org_rls ON "zakazka_kontakty" FOR ALL TO nanto_app
   USING ("orgId" = current_setting('app.org_id', true)) WITH CHECK ("orgId" = current_setting('app.org_id', true));
 
+-- ZakazkaUkol
+ALTER TABLE "zakazka_ukoly" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_rls ON "zakazka_ukoly";
+CREATE POLICY org_rls ON "zakazka_ukoly" FOR ALL TO nanto_app
+  USING ("orgId" = current_setting('app.org_id', true)) WITH CHECK ("orgId" = current_setting('app.org_id', true));
+
 -- Zakazka
 ALTER TABLE "zakazky" ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS org_rls ON "zakazky";
@@ -288,12 +300,6 @@ ALTER TABLE "zarizeni" ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS org_rls ON "zarizeni";
 CREATE POLICY org_rls ON "zarizeni" FOR ALL TO nanto_app
   USING ("orgId" = current_setting('app.org_id', true)) WITH CHECK ("orgId" = current_setting('app.org_id', true));
-
--- Activity (přes dealId → deals)
-ALTER TABLE "activities" ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS org_rls ON "activities";
-CREATE POLICY org_rls ON "activities" FOR ALL TO nanto_app
-  USING (EXISTS (SELECT 1 FROM "deals" p WHERE p."id" = "dealId" AND p."orgId" = current_setting('app.org_id', true))) WITH CHECK (EXISTS (SELECT 1 FROM "deals" p WHERE p."id" = "dealId" AND p."orgId" = current_setting('app.org_id', true)));
 
 -- CenikPolozka (přes cenikId → ceniky)
 ALTER TABLE "cenik_polozky" ENABLE ROW LEVEL SECURITY;

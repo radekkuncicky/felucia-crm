@@ -295,11 +295,11 @@ async function main() {
 
   await prisma.activity.createMany({
     data: [
-      { dealId: dealKancelare.id, userId: u.obchodnik.id, resitelId: u.obchodnik.id, typ: TypAktivity.SCHUZKA, popis: 'Prezentace nabídky správní radě', misto: 'Nádražní 200, Ostrava', datum: d(2, 10), cas: '10:00', trvaniMin: 60, stav: ActivityStav.PLANOVANA },
-      { dealId: dealSvoboda.id, userId: u.obchodnik.id, resitelId: u.obchodnik.id, typ: TypAktivity.HOVOR, popis: 'Follow-up k nabídce NAB-26-0106', datum: d(1, 9), cas: '09:00', trvaniMin: 15, stav: ActivityStav.PLANOVANA },
-      { dealId: dealSkolka.id, userId: u.obchodnik.id, resitelId: u.technik.id, typ: TypAktivity.SCHUZKA, popis: 'Zaměření na místě — 2 třídy, rozvody v podhledu', misto: 'Školní 2, Havířov', datum: d(6, 13), cas: '13:00', trvaniMin: 90, stav: ActivityStav.PLANOVANA },
-      { dealId: dealHorak.id, userId: u.obchodnik.id, resitelId: u.obchodnik.id, typ: TypAktivity.HOVOR, popis: 'Potvrzení termínu montáže', vysledek: 'Termín potvrzen, klient bude doma od 8:00.', datum: d(-2, 15), cas: '15:00', trvaniMin: 10, splneno: true, stav: ActivityStav.DOKONCENA },
-      { dealId: dealPenzion.id, userId: u.obchodnik.id, resitelId: u.obchodnik.id, typ: TypAktivity.EMAIL, popis: 'Odeslána nabídka + harmonogram montáže', datum: d(-12, 11), cas: '11:00', splneno: true, stav: ActivityStav.DOKONCENA },
+      { orgId: org.id, dealId: dealKancelare.id, userId: u.obchodnik.id, resitelId: u.obchodnik.id, typ: TypAktivity.SCHUZKA, popis: 'Prezentace nabídky správní radě', misto: 'Nádražní 200, Ostrava', datum: d(2, 10), cas: '10:00', trvaniMin: 60, stav: ActivityStav.PLANOVANA },
+      { orgId: org.id, dealId: dealSvoboda.id, userId: u.obchodnik.id, resitelId: u.obchodnik.id, typ: TypAktivity.HOVOR, popis: 'Follow-up k nabídce NAB-26-0106', datum: d(1, 9), cas: '09:00', trvaniMin: 15, stav: ActivityStav.PLANOVANA },
+      { orgId: org.id, dealId: dealSkolka.id, userId: u.obchodnik.id, resitelId: u.technik.id, typ: TypAktivity.SCHUZKA, popis: 'Zaměření na místě — 2 třídy, rozvody v podhledu', misto: 'Školní 2, Havířov', datum: d(6, 13), cas: '13:00', trvaniMin: 90, stav: ActivityStav.PLANOVANA },
+      { orgId: org.id, dealId: dealHorak.id, userId: u.obchodnik.id, resitelId: u.obchodnik.id, typ: TypAktivity.HOVOR, popis: 'Potvrzení termínu montáže', vysledek: 'Termín potvrzen, klient bude doma od 8:00.', datum: d(-2, 15), cas: '15:00', trvaniMin: 10, splneno: true, stav: ActivityStav.DOKONCENA },
+      { orgId: org.id, dealId: dealPenzion.id, userId: u.obchodnik.id, resitelId: u.obchodnik.id, typ: TypAktivity.EMAIL, popis: 'Odeslána nabídka + harmonogram montáže', datum: d(-12, 11), cas: '11:00', splneno: true, stav: ActivityStav.DOKONCENA },
     ],
   })
   console.log('  ✓ Obchodní případy: 9 (5 s nabídkou), aktivity: 5')

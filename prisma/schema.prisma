@@ -282,6 +282,8 @@ model Organization {
   users                User[]
   clients              Client[]
   deals                Deal[]
+  activities           Activity[]
+  zakazkaUkoly         ZakazkaUkol[]
   products             Product[]
   quoteTemplates       QuoteTemplate[]
   contractTemplates    ContractTemplate[]
@@ -349,6 +351,7 @@ model User {
   deals               Deal[]
   activities          Activity[]           @relation("ActivityUser")
   assignedActivities  Activity[]           @relation("ActivityResitel")
+  zakazkaUkoly        ZakazkaUkol[]        @relation("ZakazkaUkolResitel")
   auditLogs           AuditLog[]
   passwordResetTokens PasswordResetToken[]
   magicLinkTokens     MagicLinkToken[]
@@ -602,6 +605,7 @@ enum ActivityStav {
 
 model Activity {
   id          String       @id @default(cuid())
+  orgId       String
   dealId      String
   userId      String?
   resitelId   String?
@@ -619,11 +623,13 @@ model Activity {
   reminderSentAt DateTime?
   vytvoreno   DateTime     @default(now())
 
+  organization Organization @relation(fields: [orgId], references: [id])
   deal    Deal  @relation(fields: [dealId], references: [id], onDelete: Cascade)
   user    User? @relation("ActivityUser", fields: [userId], references: [id])
   resitel User? @relation("ActivityResitel", fields: [resitelId], references: [id])
 
   @@index([reminderAt])
+  @@index([orgId, resitelId, splneno, datum])
   @@map("activities")
 }
 
@@ -1131,6 +1137,7 @@ model Zakazka {
   komentare     ZakazkaKomentar[]
   dokumenty     ZakázkaDokument[]
   kontakty      ZakazkaKontakt[]
+  ukoly         ZakazkaUkol[]
 
   @@unique([orgId, cislo])
   @@index([orgId, stav])
@@ -1195,6 +1202,32 @@ model ZakazkaKontakt {
   @@index([zakazkaId])
   @@index([orgId])
   @@map("zakazka_kontakty")
+}
+
+/// Interní úkolník zakázky (checklist realizace) — nezaměňovat s Activity (kontakt s klientem na OP)
+model ZakazkaUkol {
+  id         String    @id @default(cuid())
+  orgId      String
+  zakazkaId  String
+  text       String
+  poznamka   String?
+  termin     DateTime?
+  resitelId  String?
+  hotovo     Boolean   @default(false)
+  hotovoAt   DateTime?
+  hotovoId   String?
+  poradi     Int       @default(0)
+  vytvorilId String?
+  vytvoreno  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  zakazka    Zakazka   @relation(fields: [zakazkaId], references: [id], onDelete: Cascade)
+  resitel    User?     @relation("ZakazkaUkolResitel", fields: [resitelId], references: [id])
+
+  @@index([zakazkaId, poradi])
+  @@index([orgId, resitelId, hotovo, termin])
+  @@map("zakazka_ukoly")
 }
 
 model TechnikZakazka {

@@ -35,6 +35,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   const activity = await db.activity.create({
     data: {
+      orgId,
       dealId: params.id,
       userId,
       typ: typ as TypAktivity,

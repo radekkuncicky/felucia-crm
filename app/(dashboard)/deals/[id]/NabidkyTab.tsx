@@ -1210,6 +1210,7 @@ export default function NabidkyTab({
 
       {showShareModal && selectedQuote && (
         <ShareQuoteModal
+          dealId={dealId}
           quoteId={selectedQuote.id}
           quoteKod={selectedQuote.kod}
           quoteNazev={selectedQuote.nazev}

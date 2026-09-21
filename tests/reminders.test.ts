@@ -31,13 +31,13 @@ beforeAll(async () => {
   const before = new Date(Date.now() - 60_000)
   const after = new Date(Date.now() + 3_600_000)
   dueId = (await prisma.activity.create({
-    data: { dealId: deal.id, userId: user.id, resitelId: user.id, typ: 'UKOL', popis: 'Zavolat', datum: new Date(), reminderAt: before },
+    data: { orgId: org.id, dealId: deal.id, userId: user.id, resitelId: user.id, typ: 'UKOL', popis: 'Zavolat', datum: new Date(), reminderAt: before },
   })).id
   futureId = (await prisma.activity.create({
-    data: { dealId: deal.id, userId: user.id, typ: 'HOVOR', datum: new Date(), reminderAt: after },
+    data: { orgId: org.id, dealId: deal.id, userId: user.id, typ: 'HOVOR', datum: new Date(), reminderAt: after },
   })).id
   doneId = (await prisma.activity.create({
-    data: { dealId: deal.id, userId: user.id, typ: 'HOVOR', datum: new Date(), reminderAt: before, stav: 'DOKONCENA' },
+    data: { orgId: org.id, dealId: deal.id, userId: user.id, typ: 'HOVOR', datum: new Date(), reminderAt: before, stav: 'DOKONCENA' },
   })).id
 })
 

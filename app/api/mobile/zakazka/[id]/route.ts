@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { getMobileOrWebSession, requireTechnikOrAdmin, canAccessZakazka, klientAdresa, toAbsoluteUrl } from '@/lib/mobile-helpers'
+import { UKOL_ORDER_BY, UKOL_SELECT } from '@/lib/zakazkaUkol'
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   const host = req.headers.get('host') ?? ''
@@ -49,6 +50,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
         take: 1,
       },
       kontakty: { orderBy: { vytvoreno: 'asc' } },
+      ukoly: { orderBy: UKOL_ORDER_BY, select: UKOL_SELECT },
     },
   })
 
@@ -114,6 +116,14 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       email: k.email ?? null,
       poznamka: k.poznamka ?? null,
       vytvoreno: k.vytvoreno,
+    })),
+    ukoly: zakazka.ukoly.map(u => ({
+      id: u.id,
+      text: u.text,
+      poznamka: u.poznamka ?? null,
+      termin: u.termin ?? null,
+      hotovo: u.hotovo,
+      resitel: u.resitel?.jmeno ?? null,
     })),
     predavak: zakazka.predavaky[0]
       ? {
