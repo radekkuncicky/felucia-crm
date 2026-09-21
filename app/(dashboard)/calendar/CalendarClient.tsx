@@ -25,6 +25,7 @@ export interface CalendarEvent {
   done?: boolean
   zruseno?: boolean
   technici?: string[]  // for kapacita view
+  kdykoliv?: boolean   // zakázka „Kdykoliv" — termín je flexibilní, dá se přesunout
 }
 
 /** Zakázka s příznakem „Kdykoliv" bez termínu — kandidát na výplň volného dne */
@@ -168,6 +169,16 @@ const RANGE_SHAPE: Record<RangePos, string> = {
   end:    'rounded-r-md rounded-l-none -ml-2',
 }
 
+/** Štítek „Kdykoliv" u naplánované zakázky — flexibilní termín, dá se přesunout */
+function KdykolivTag() {
+  return (
+    <span title="Kdykoliv — flexibilní termín, dá se přesunout"
+      className="inline-flex items-center flex-shrink-0 px-1 rounded text-[9px] font-bold uppercase leading-4 bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 mr-1">
+      Kdykoliv
+    </span>
+  )
+}
+
 function EventChip({ ev, day, compact = false }: { ev: CalendarEvent; day?: string; compact?: boolean }) {
   const s = KIND_STYLE[ev.kind]
   const pos = day ? rangePos(ev, day) : 'single'
@@ -183,6 +194,7 @@ function EventChip({ ev, day, compact = false }: { ev: CalendarEvent; day?: stri
       } ${ev.done ? 'opacity-60' : ''} ${RANGE_SHAPE[pos]}`}
     >
       <span className={`w-2 h-2 rounded-full flex-shrink-0 ${ev.zruseno ? 'bg-gray-400' : s.dot}`} />
+      {ev.kdykoliv && <KdykolivTag />}
       {statusIcon && <span className="flex-shrink-0 font-bold">{statusIcon}</span>}
       {ev.time && !compact && <span className="flex-shrink-0 font-semibold opacity-80">{ev.time}</span>}
       {(pos === 'middle' || pos === 'end') && <span className="flex-shrink-0 opacity-60">…</span>}
@@ -205,6 +217,7 @@ function EventCard({ ev }: { ev: CalendarEvent }) {
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 flex-wrap">
           <p className={`text-base font-semibold ${isZruseno ? 'text-gray-400 dark:text-slate-500 line-through' : s.text}`}>{ev.title}</p>
+          {ev.kdykoliv && <KdykolivTag />}
           {isDone && <span className="text-xs font-semibold text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30 px-2 py-0.5 rounded">✓ Hotovo</span>}
           {isZruseno && <span className="text-xs font-semibold text-gray-500 dark:text-slate-400 bg-gray-100 dark:bg-slate-700 px-2 py-0.5 rounded">✕ Zrušeno</span>}
         </div>
@@ -565,6 +578,7 @@ function KapacitaView({ pivot, events, todayStr, dropEnabled = false }: {
                             className="block px-2 py-1.5 rounded-md text-xs leading-snug bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 hover:opacity-80 transition-opacity"
                             title={isRange(ev) ? `${ev.title} (${fmtRange(ev)})` : ev.title}
                           >
+                            {ev.kdykoliv && <KdykolivTag />}
                             {ev.time && <span className="font-semibold">{ev.time} </span>}
                             <span className="truncate font-medium">{ev.short ?? ev.title}</span>
                           </Link>
@@ -800,6 +814,10 @@ export default function CalendarClient({ events, canDispatch = false, kdykolivPo
             <span className="text-sm text-gray-600 dark:text-slate-400">{s.label}</span>
           </div>
         ))}
+        <div className="flex items-center gap-2">
+          <KdykolivTag />
+          <span className="text-sm text-gray-600 dark:text-slate-400">Flexibilní termín</span>
+        </div>
       </div>
     </div>
   )

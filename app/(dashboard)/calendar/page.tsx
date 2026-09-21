@@ -181,6 +181,7 @@ export default async function CalendarPage() {
           subtitle,
           href: `/zakazky/${z.id}`,
           technici: techniciNames,
+          kdykoliv: z.kdykoliv,
         })
       }
       continue
@@ -195,6 +196,7 @@ export default async function CalendarPage() {
       subtitle,
       href: `/zakazky/${z.id}`,
       technici: techniciNames,
+      kdykoliv: z.kdykoliv,
     })
   }
 
