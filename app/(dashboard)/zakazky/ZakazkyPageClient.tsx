@@ -30,6 +30,7 @@ interface ZakazkaRow {
   vytvoreno: string
   montazOd: string | null
   montazDo: string | null
+  kdykoliv: boolean
   updatedAt: string
   cenaOP: number | null
   cenaVyuctovani: number
@@ -131,6 +132,15 @@ function StavBadge({ stav }: { stav: ZakazkaStav }) {
   )
 }
 
+function KdykolivBadge() {
+  return (
+    <span title="Lze udělat kdykoliv — výplň volného místa ve výjezdu"
+      className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 flex-shrink-0">
+      Kdykoliv
+    </span>
+  )
+}
+
 function TechniciAvatars({ technici }: { technici: { id: string; jmeno: string }[] }) {
   const shown = technici.slice(0, 3)
   const rest = technici.length - 3
@@ -162,6 +172,7 @@ function ZakazkaCard({ z }: { z: ZakazkaRow }) {
         <div className="flex items-center gap-1.5">
           <UrgencyDot urgency={urgency} />
           <span className="font-mono text-sm font-bold text-green-600 dark:text-green-400">{z.cislo}</span>
+          {z.kdykoliv && <KdykolivBadge />}
         </div>
         <StavBadge stav={z.stav} />
       </div>
@@ -212,6 +223,7 @@ function KanbanCard({ z, canCreate, inlineLoadingId, onStavChange }: {
             {techLabels[z.technologie as keyof typeof techLabels] ?? z.technologie}
           </span>
         )}
+        {z.kdykoliv && <KdykolivBadge />}
       </div>
       <p className="text-sm font-medium text-gray-900 dark:text-white leading-snug line-clamp-2 mb-0.5">{z.nazev}</p>
       <p className="text-xs text-gray-400 dark:text-slate-500 mb-2 truncate">{z.klientJmeno}</p>
@@ -433,7 +445,8 @@ function ZakazkaTableRow({ z, isTechnik, showCeny, canCreate, isSelected, onTogg
           <span className={urgency === 'red' ? 'text-red-600 dark:text-red-400 font-medium' : urgency === 'orange' ? 'text-orange-600 dark:text-orange-400' : ''}>
             {formatMontaz(z.montazOd, z.montazDo)}
           </span>
-        ) : <span className="text-gray-300 dark:text-slate-600">—</span>}
+        ) : !z.kdykoliv && <span className="text-gray-300 dark:text-slate-600">—</span>}
+        {z.kdykoliv && <span className={z.montazOd ? 'ml-1.5' : ''}><KdykolivBadge /></span>}
       </td>
       {showCeny && (
         <td className="px-4 py-3 text-right text-sm font-medium text-gray-700 dark:text-slate-300 whitespace-nowrap">
@@ -480,7 +493,7 @@ export default function ZakazkyPageClient({ zakazky, vedouci, isTechnik, canCrea
   const [pohled, setPohled] = useState<'aktivni' | 'hotove' | 'vse'>('aktivni')
   const [stavFilter, setStavFilter] = useState<ZakazkaStav | ''>('')
   const [vedouciFilter, setVedouciFilter] = useState('')
-  const [montazFilter, setMontazFilter] = useState<'' | 'tento_tyden' | 'pristy_tyden' | 'bez_terminu' | 'po_terminu'>('')
+  const [montazFilter, setMontazFilter] = useState<'' | 'tento_tyden' | 'pristy_tyden' | 'bez_terminu' | 'po_terminu' | 'kdykoliv'>('')
   const [sortByMontaz, setSortByMontaz] = useState<'asc' | 'desc' | null>(null)
   const [showModal, setShowModal] = useState(false)
   const [hotoveExpanded, setHotoveExpanded] = useState(false)
@@ -560,6 +573,7 @@ export default function ZakazkyPageClient({ zakazky, vedouci, isTechnik, canCrea
         if (!z.cislo.toLowerCase().includes(q) && !z.nazev.toLowerCase().includes(q) && !z.klientJmeno.toLowerCase().includes(q)) return false
       }
       if (montazFilter === 'bez_terminu' && z.montazOd !== null) return false
+      if (montazFilter === 'kdykoliv' && !z.kdykoliv) return false
       if (montazFilter === 'po_terminu') {
         if (!z.montazOd || new Date(z.montazOd).getTime() >= now) return false
         if (['PREDANA', 'VYUCTOVANA', 'HOTOVO'].includes(z.stav)) return false
@@ -619,7 +633,7 @@ export default function ZakazkyPageClient({ zakazky, vedouci, isTechnik, canCrea
     activeFilters.push({ key: 'vedouci', label: v?.jmeno ?? vedouciFilter, clear: () => setVedouciFilter('') })
   }
   if (montazFilter) {
-    const montazLabels = { tento_tyden: 'Tento týden', pristy_tyden: 'Příští týden', bez_terminu: 'Bez termínu', po_terminu: 'Po termínu' }
+    const montazLabels = { tento_tyden: 'Tento týden', pristy_tyden: 'Příští týden', bez_terminu: 'Bez termínu', po_terminu: 'Po termínu', kdykoliv: 'Kdykoliv' }
     activeFilters.push({ key: 'montaz', label: montazLabels[montazFilter], clear: () => setMontazFilter('') })
   }
 
@@ -643,6 +657,7 @@ export default function ZakazkyPageClient({ zakazky, vedouci, isTechnik, canCrea
     { value: 'pristy_tyden', label: 'Příští týden' },
     { value: 'po_terminu', label: 'Po termínu' },
     { value: 'bez_terminu', label: 'Bez termínu' },
+    { value: 'kdykoliv', label: 'Kdykoliv' },
   ]
 
   return (

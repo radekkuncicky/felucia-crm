@@ -15,6 +15,7 @@ import PipelineBar from './PipelineBar'
 import ZakazkaDetailHeader from './ZakazkaDetailHeader'
 import MontazDatePicker from './MontazDatePicker'
 import MistoStavbyEdit from './MistoStavbyEdit'
+import KdykolivToggle from './KdykolivToggle'
 import RychlaPoznamka from './RychlaPoznamka'
 import EtapySection from './EtapySection'
 import CopyLinkButton from './CopyLinkButton'
@@ -194,6 +195,9 @@ export default async function ZakazkaDetailLayout({
                       montazDo: e.montazDo?.toISOString() ?? null,
                     }))}
                   />
+                  <div className="mt-1.5">
+                    <KdykolivToggle zakazkaId={zakazka.id} kdykoliv={zakazka.kdykoliv} canEdit={canEdit} />
+                  </div>
                 </div>
                 <div>
                   <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase mb-1">Místo instalace</p>

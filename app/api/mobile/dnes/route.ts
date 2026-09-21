@@ -13,6 +13,7 @@ function mapZakazka(z: any, origin: string) {
     stav: z.stav,
     montazOd: z.montazOd,
     montazDo: z.montazDo,
+    kdykoliv: z.kdykoliv,
     adresa: klientAdresa(z.klient),
     mistoStavby: z.mistoStavby ?? null,
     titulniFotoUrl,

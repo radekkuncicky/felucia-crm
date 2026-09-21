@@ -85,6 +85,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       uzavreno: body.stav === 'HOTOVO' ? new Date() : undefined,
       montazOd: body.montazOd !== undefined ? (body.montazOd ? new Date(body.montazOd) : null) : undefined,
       montazDo: body.montazDo !== undefined ? (body.montazDo ? new Date(body.montazDo) : null) : undefined,
+      kdykoliv: typeof body.kdykoliv === 'boolean' ? body.kdykoliv : undefined,
     },
   })
 

@@ -2,7 +2,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
-import CalendarClient, { CalendarEvent } from './CalendarClient'
+import CalendarClient, { CalendarEvent, KdykolivZakazka } from './CalendarClient'
 import { getPerms, dealScopeWhere, servisScopeWhere, zakazkyScopeWhere } from '@/lib/permissions'
 import {
   AKTIVITA_DOPLNEK, DOPLNEK, SERVIS_DOPLNEK, calendarTitle, dateRange, fmtTime, klientJmeno, servisTechnologie, technologieLabel, utcDateStr,
@@ -20,7 +20,7 @@ export default async function CalendarPage() {
   const servisScope = servisScopeWhere(perms, userId)
   const zakazkyScope = zakazkyScopeWhere(perms, userId)
 
-  const [activities, deals, servisNavstevy, montazZakazky] = await Promise.all([
+  const [activities, deals, servisNavstevy, montazZakazky, kdykolivZakazky] = await Promise.all([
     !dealScope ? [] : prisma.activity.findMany({
       where: { deal: { orgId, ...dealScope } },
       include: {
@@ -63,6 +63,23 @@ export default async function CalendarPage() {
         techniciRel: { include: { technik: { select: { jmeno: true } } } },
         etapy: { where: { montazOd: { not: null } }, orderBy: { cislo: 'asc' } },
       },
+    }),
+    // Pool „Kdykoliv" — nezaplánované zakázky k výplni volných dnů (jen pro dispečera)
+    !zakazkyScope || !perms.zakazkyEdit ? [] : prisma.zakazka.findMany({
+      where: {
+        orgId,
+        kdykoliv: true,
+        montazOd: null,
+        stav: { notIn: ['PREDANA', 'VYUCTOVANA', 'HOTOVO'] },
+        etapy: { none: { montazOd: { not: null } } },
+        AND: [zakazkyScope],
+      },
+      select: {
+        id: true, cislo: true, nazev: true, technologie: true,
+        klient: { select: { jmeno: true, prijmeni: true } },
+        techniciRel: { select: { technik: { select: { jmeno: true } } } },
+      },
+      orderBy: { vytvoreno: 'asc' },
     }),
   ])
 
@@ -181,13 +198,23 @@ export default async function CalendarPage() {
     })
   }
 
+  const kdykolivPool: KdykolivZakazka[] = kdykolivZakazky.map(z => ({
+    id: z.id,
+    cislo: z.cislo,
+    nazev: z.nazev,
+    klient: klientJmeno(z.klient),
+    technologie: technologieLabel(z.technologie),
+    technici: z.techniciRel.map(t => t.technik.jmeno),
+    href: `/zakazky/${z.id}`,
+  }))
+
   return (
     <div>
       <div className="mb-4">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Kalendář</h1>
         <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">Aktivity, termíny realizací a montáží, zálohy a servisní návštěvy</p>
       </div>
-      <CalendarClient events={events} canDispatch={perms.zakazkyEdit} />
+      <CalendarClient events={events} canDispatch={perms.zakazkyEdit} kdykolivPool={kdykolivPool} />
     </div>
   )
 }

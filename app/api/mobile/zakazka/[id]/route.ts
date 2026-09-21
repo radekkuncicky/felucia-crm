@@ -67,6 +67,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     titulniFotoUrl: toAbsoluteUrl(zakazka.titulniFotoUrl, origin),
     montazOd: zakazka.montazOd,
     montazDo: zakazka.montazDo,
+    kdykoliv: zakazka.kdykoliv,
     poznamka: zakazka.poznamka,
     vytvoreno: zakazka.vytvoreno,
     klient: {

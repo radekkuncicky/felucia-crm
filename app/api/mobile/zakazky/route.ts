@@ -72,6 +72,7 @@ export async function GET(req: Request) {
     typ: z.typ,
     montazOd: z.montazOd,
     montazDo: z.montazDo,
+    kdykoliv: z.kdykoliv,
     adresa: klientAdresa(z.klient),
     mistoStavby: z.mistoStavby ?? null,
     titulniFotoUrl: toAbsoluteUrl(z.titulniFotoUrl, origin),

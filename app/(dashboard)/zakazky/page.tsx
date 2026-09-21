@@ -135,6 +135,7 @@ export default async function ZakazkyPage() {
       vytvoreno: z.vytvoreno.toISOString(),
       montazOd: z.montazOd?.toISOString() ?? null,
       montazDo: z.montazDo?.toISOString() ?? null,
+      kdykoliv: z.kdykoliv,
       updatedAt: z.updatedAt.toISOString(),
       cenaOP,
       cenaVyuctovani,

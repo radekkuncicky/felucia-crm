@@ -1118,6 +1118,7 @@ model Zakazka {
   titulniFotoUrl String?
   montazOd      DateTime?
   montazDo      DateTime?
+  kdykoliv      Boolean       @default(false) // lze montovat kdykoliv — výplň volného místa ve výjezdu
   vytvoreno     DateTime      @default(now())
   uzavreno      DateTime?
   updatedAt     DateTime      @updatedAt

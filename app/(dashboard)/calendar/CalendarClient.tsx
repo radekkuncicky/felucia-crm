@@ -1,7 +1,15 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, ReactNode } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import {
+  DndContext, DragEndEvent, DragOverlay, DragStartEvent,
+  PointerSensor, useSensor, useSensors,
+  useDroppable, useDraggable,
+} from '@dnd-kit/core'
+import { CSS } from '@dnd-kit/utilities'
+import { api } from '@/lib/api'
 
 export interface CalendarEvent {
   id: string
@@ -19,9 +27,21 @@ export interface CalendarEvent {
   technici?: string[]  // for kapacita view
 }
 
+/** Zakázka s příznakem „Kdykoliv" bez termínu — kandidát na výplň volného dne */
+export interface KdykolivZakazka {
+  id: string
+  cislo: string
+  nazev: string
+  klient: string
+  technologie: string
+  technici: string[]
+  href: string
+}
+
 interface Props {
   events: CalendarEvent[]
   canDispatch?: boolean  // ADMIN/MANAGER can see capacity view
+  kdykolivPool?: KdykolivZakazka[]  // jen s canDispatch; přetažením na den se naplánuje
 }
 
 type ViewMode = 'month' | 'week' | 'day' | 'kapacita'
@@ -273,13 +293,85 @@ function MonthView({ year, month, events, selectedDate, onSelectDate, todayStr }
   )
 }
 
+// ─── Drag & drop: pool „Kdykoliv" → den ──────────────────────────────────────
+
+/** Cíl přetažení = den. S `enabled=false` je jen obyčejný div (měsíc/den view, bez oprávnění). */
+function DroppableDay({ dayStr, enabled, className, onClick, children }: {
+  dayStr: string
+  enabled: boolean
+  className: string
+  onClick?: () => void
+  children: ReactNode
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id: `day:${dayStr}`, disabled: !enabled })
+  return (
+    <div
+      ref={setNodeRef}
+      onClick={onClick}
+      className={`${className} ${isOver ? 'ring-2 ring-inset ring-amber-400 bg-amber-50/70 dark:bg-amber-900/20' : ''}`}
+    >
+      {children}
+    </div>
+  )
+}
+
+function KdykolivCard({ z, overlay = false }: { z: KdykolivZakazka; overlay?: boolean }) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: z.id })
+  const style = transform ? { transform: CSS.Translate.toString(transform) } : undefined
+
+  const inner = (
+    <div className={`flex gap-2 rounded-lg border bg-white dark:bg-slate-800 p-2 select-none border-amber-200 dark:border-amber-800
+      ${isDragging ? 'opacity-40' : ''}
+      ${overlay ? 'shadow-2xl rotate-1 scale-105' : 'hover:border-amber-400 hover:shadow-sm transition-all'}`}
+    >
+      <div className="w-1 rounded-full flex-shrink-0 bg-amber-400" />
+      <div className="min-w-0 flex-1">
+        <span className="text-[10px] font-mono text-gray-400 dark:text-slate-500">{z.cislo}</span>
+        <p className="text-xs font-medium text-gray-900 dark:text-white truncate">{z.klient}</p>
+        <p className="text-[10px] text-gray-500 dark:text-slate-400 truncate">{z.technologie || z.nazev}</p>
+        {z.technici.length > 0 && (
+          <p className="text-[10px] text-gray-400 dark:text-slate-500 truncate mt-0.5">{z.technici.join(', ')}</p>
+        )}
+      </div>
+    </div>
+  )
+
+  if (overlay) return inner
+
+  return (
+    <div ref={setNodeRef} style={style} {...listeners} {...attributes} className="cursor-grab active:cursor-grabbing touch-none">
+      <Link href={z.href} onClick={e => { if (transform) e.preventDefault() }}>
+        {inner}
+      </Link>
+    </div>
+  )
+}
+
+function KdykolivPool({ items }: { items: KdykolivZakazka[] }) {
+  return (
+    <div className="lg:w-72 bg-white dark:bg-slate-800 rounded-xl border border-amber-200 dark:border-amber-800/60 p-3 flex flex-col gap-2">
+      <div>
+        <h3 className="font-bold text-gray-900 dark:text-white text-sm flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+          Kdykoliv ({items.length})
+        </h3>
+        <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">Přetáhněte na den v kalendáři — nastaví se termín montáže.</p>
+      </div>
+      <div className="space-y-1.5 overflow-y-auto max-h-[70vh]">
+        {items.map(z => <KdykolivCard key={z.id} z={z} />)}
+      </div>
+    </div>
+  )
+}
+
 // ─── Week view ───────────────────────────────────────────────────────────────
 
-function WeekView({ pivot, events, onSelectDate, todayStr }: {
+function WeekView({ pivot, events, onSelectDate, todayStr, dropEnabled = false }: {
   pivot: Date
   events: CalendarEvent[]
   onSelectDate: (d: string) => void
   todayStr: string
+  dropEnabled?: boolean
 }) {
   const days = getWeekDays(pivot)
   const byDate = useMemo(() => indexByDate(events), [events])
@@ -293,8 +385,10 @@ function WeekView({ pivot, events, onSelectDate, todayStr }: {
           const isToday = ds === todayStr
           const isWeekend = i >= 5
           return (
-            <div
+            <DroppableDay
               key={ds}
+              dayStr={ds}
+              enabled={dropEnabled}
               onClick={() => onSelectDate(ds)}
               className={`border-b border-r border-gray-100 dark:border-slate-700 px-2 py-3 text-center cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700/30 ${isWeekend ? 'bg-gray-50/50 dark:bg-slate-800/50' : ''}`}
             >
@@ -306,7 +400,7 @@ function WeekView({ pivot, events, onSelectDate, todayStr }: {
               }`}>
                 {d.getDate()}
               </div>
-            </div>
+            </DroppableDay>
           )
         })}
 
@@ -316,8 +410,10 @@ function WeekView({ pivot, events, onSelectDate, todayStr }: {
           const dayEvents = byDate[ds] ?? []
           const isWeekend = i >= 5
           return (
-            <div
+            <DroppableDay
               key={`events-${ds}`}
+              dayStr={`${ds}:cell`}
+              enabled={dropEnabled}
               onClick={() => onSelectDate(ds)}
               className={`border-r border-gray-100 dark:border-slate-700 p-2 min-h-[280px] cursor-pointer hover:bg-gray-50/50 dark:hover:bg-slate-700/20 ${isWeekend ? 'bg-gray-50/30 dark:bg-slate-800/30' : ''}`}
             >
@@ -327,7 +423,7 @@ function WeekView({ pivot, events, onSelectDate, todayStr }: {
                   <p className="text-xs text-gray-300 dark:text-slate-600 text-center mt-6">–</p>
                 )}
               </div>
-            </div>
+            </DroppableDay>
           )
         })}
       </div>
@@ -365,10 +461,11 @@ function DayView({ date, events }: { date: string; events: CalendarEvent[] }) {
 
 // ─── Kapacita view ───────────────────────────────────────────────────────────
 
-function KapacitaView({ pivot, events, todayStr }: {
+function KapacitaView({ pivot, events, todayStr, dropEnabled = false }: {
   pivot: Date
   events: CalendarEvent[]
   todayStr: string
+  dropEnabled?: boolean
 }) {
   const days = getWeekDays(pivot)
 
@@ -397,17 +494,8 @@ function KapacitaView({ pivot, events, todayStr }: {
     return m
   }, [montazEvents])
 
-  if (technici.length === 0) {
-    return (
-      <div className="flex-1 flex items-center justify-center p-8">
-        <div className="text-center">
-          <p className="text-gray-500 dark:text-slate-400 font-medium">Žádné naplánované montáže tento týden</p>
-          <p className="text-sm text-gray-400 dark:text-slate-500 mt-1">Nastavte termín montáže v detailu zakázky</p>
-        </div>
-      </div>
-    )
-  }
-
+  // Prázdný týden: hlavička dnů zůstává (je cílem přetažení z poolu „Kdykoliv"),
+  // text jde do jediného řádku tabulky.
   return (
     <div className="flex-1 overflow-auto">
       <table className="w-full min-w-[760px] border-collapse text-sm">
@@ -421,21 +509,33 @@ function KapacitaView({ pivot, events, todayStr }: {
               const isToday = ds === todayStr
               const isWeekend = i >= 5
               return (
-                <th key={ds} className={`text-center px-2 py-3 border-b border-r border-gray-100 dark:border-slate-700 ${isWeekend ? 'bg-gray-50/50 dark:bg-slate-800/50' : 'bg-gray-50 dark:bg-slate-800/50'}`}>
-                  <div className={`text-sm font-semibold mb-1 ${isWeekend ? 'text-red-400' : 'text-gray-500 dark:text-slate-400'}`}>
-                    {DAYS_CS[i]}
-                  </div>
-                  <div className={`text-base font-bold w-9 h-9 flex items-center justify-center rounded-full mx-auto ${
-                    isToday ? 'bg-[#4CAF50] text-white' : isWeekend ? 'text-red-400' : 'text-gray-800 dark:text-slate-200'
-                  }`}>
-                    {d.getDate()}
-                  </div>
+                <th key={ds} className={`text-center p-0 border-b border-r border-gray-100 dark:border-slate-700 ${isWeekend ? 'bg-gray-50/50 dark:bg-slate-800/50' : 'bg-gray-50 dark:bg-slate-800/50'}`}>
+                  <DroppableDay dayStr={ds} enabled={dropEnabled} className="px-2 py-3">
+                    <div className={`text-sm font-semibold mb-1 ${isWeekend ? 'text-red-400' : 'text-gray-500 dark:text-slate-400'}`}>
+                      {DAYS_CS[i]}
+                    </div>
+                    <div className={`text-base font-bold w-9 h-9 flex items-center justify-center rounded-full mx-auto ${
+                      isToday ? 'bg-[#4CAF50] text-white' : isWeekend ? 'text-red-400' : 'text-gray-800 dark:text-slate-200'
+                    }`}>
+                      {d.getDate()}
+                    </div>
+                  </DroppableDay>
                 </th>
               )
             })}
           </tr>
         </thead>
         <tbody>
+          {technici.length === 0 && (
+            <tr>
+              <td colSpan={8} className="p-8 text-center">
+                <p className="text-gray-500 dark:text-slate-400 font-medium">Žádné naplánované montáže tento týden</p>
+                <p className="text-sm text-gray-400 dark:text-slate-500 mt-1">
+                  {dropEnabled ? 'Přetáhněte zakázku z poolu „Kdykoliv" na den, nebo nastavte termín v detailu zakázky' : 'Nastavte termín montáže v detailu zakázky'}
+                </p>
+              </td>
+            </tr>
+          )}
           {technici.map(technik => (
             <tr key={technik} className="border-b border-gray-100 dark:border-slate-700">
               <td className="px-4 py-3 font-medium text-gray-700 dark:text-slate-300 text-sm border-r border-gray-100 dark:border-slate-700 bg-white dark:bg-slate-800 sticky left-0 z-10">
@@ -484,9 +584,17 @@ function KapacitaView({ pivot, events, todayStr }: {
 
 // ─── Main ────────────────────────────────────────────────────────────────────
 
-export default function CalendarClient({ events, canDispatch = false }: Props) {
+export default function CalendarClient({ events, canDispatch = false, kdykolivPool = [] }: Props) {
+  const router = useRouter()
   const today = new Date()
   const todayStr = toDateStr(today)
+
+  // Pool „Kdykoliv" — lokální kopie kvůli optimistickému odebrání po dropu;
+  // po router.refresh() přijdou z props aktuální data.
+  const [pool, setPool] = useState(kdykolivPool)
+  useEffect(() => setPool(kdykolivPool), [kdykolivPool])
+  const [activeId, setActiveId] = useState<string | null>(null)
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
   const [view, setView] = useState<ViewMode>('month')
   const [year, setYear] = useState(today.getFullYear())
@@ -544,6 +652,31 @@ export default function CalendarClient({ events, canDispatch = false }: Props) {
     }
     return fmtDate(toDateStr(pivot))
   }, [view, month, year, pivot])
+
+  const dropEnabled = canDispatch && (view === 'week' || view === 'kapacita')
+  const showPool = dropEnabled && pool.length > 0
+  const activeItem = activeId ? pool.find(z => z.id === activeId) ?? null : null
+
+  async function handleDragEnd(event: DragEndEvent) {
+    setActiveId(null)
+    const { active, over } = event
+    if (!over) return
+    const target = String(over.id)
+    if (!target.startsWith('day:')) return
+    const dayStr = target.slice(4).replace(/:cell$/, '')
+    const id = String(active.id)
+    const prev = pool
+    setPool(p => p.filter(z => z.id !== id))
+    // UTC půlnoc — stejný formát jako MontazDatePicker, aby zakázka padla na správný den
+    const iso = new Date(dayStr).toISOString()
+    const res = await api.patch(`/api/zakazky/${id}`, { montazOd: iso, montazDo: iso },
+      { errorMessage: 'Termín se nepodařilo nastavit. Zkuste to prosím znovu.' })
+    if (!res.ok) {
+      setPool(prev)
+      return
+    }
+    router.refresh()
+  }
 
   const dayDate = view === 'day' ? toDateStr(pivot) : (selectedDate ?? todayStr)
   const selectedEvents = useMemo(
@@ -603,7 +736,12 @@ export default function CalendarClient({ events, canDispatch = false }: Props) {
       </div>
 
       {/* Calendar body */}
-      <div className="flex flex-col lg:flex-row gap-3 flex-1">
+      <DndContext
+        sensors={sensors}
+        onDragStart={(e: DragStartEvent) => setActiveId(String(e.active.id))}
+        onDragEnd={handleDragEnd}
+      >
+      <div className="flex flex-col lg:flex-row gap-3 flex-1" style={{ cursor: activeId ? 'grabbing' : undefined }}>
         {/* Main calendar */}
         <div className="flex-1 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden flex flex-col">
           {view === 'month' && (
@@ -616,13 +754,14 @@ export default function CalendarClient({ events, canDispatch = false }: Props) {
             <WeekView
               pivot={pivot} events={events}
               onSelectDate={handleSelectDate} todayStr={todayStr}
+              dropEnabled={dropEnabled}
             />
           )}
           {view === 'day' && (
             <DayView date={dayDate} events={events.filter(e => occursOn(e, dayDate))} />
           )}
           {view === 'kapacita' && (
-            <KapacitaView pivot={pivot} events={events} todayStr={todayStr} />
+            <KapacitaView pivot={pivot} events={events} todayStr={todayStr} dropEnabled={dropEnabled} />
           )}
         </div>
 
@@ -644,7 +783,14 @@ export default function CalendarClient({ events, canDispatch = false }: Props) {
             )}
           </div>
         )}
+
+        {/* Pool „Kdykoliv" — nezaplánované výplňové zakázky (týden + kapacita, jen dispečer) */}
+        {showPool && <KdykolivPool items={pool} />}
       </div>
+      <DragOverlay dropAnimation={null}>
+        {activeItem ? <KdykolivCard z={activeItem} overlay /> : null}
+      </DragOverlay>
+      </DndContext>
 
       {/* Legend */}
       <div className="flex flex-wrap gap-x-5 gap-y-2 mt-3 px-1">
