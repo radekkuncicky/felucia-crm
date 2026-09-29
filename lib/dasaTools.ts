@@ -1,4 +1,5 @@
 import type { Permissions } from '@/lib/permissions'
+import { hasDeal } from '@/lib/activities'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { generateQuoteKod } from '@/lib/quoteKod'
 import { generateDealKod } from '@/lib/dealKod'
@@ -404,11 +405,11 @@ export async function executeDasaTool(
         return {
           result: JSON.stringify({
             datum: `${formatDate(now)} (${WEEKDAYS[now.getDay()]})`,
-            ukoly: ukoly.map(u => ({
+            ukoly: ukoly.filter(hasDeal).map(u => ({
               deal: u.deal.kod, klient: u.deal.client.jmeno,
               popis: u.popis, termin: formatDate(u.datum),
             })),
-            aktivityTyden: aktivityTyden.map(a => ({
+            aktivityTyden: aktivityTyden.filter(hasDeal).map(a => ({
               datum: formatDate(a.datum), typ: a.typ,
               deal: a.deal.kod, klient: a.deal.client?.jmeno ?? '?',
             })),

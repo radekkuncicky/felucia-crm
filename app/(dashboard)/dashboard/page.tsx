@@ -1,4 +1,5 @@
 import { getServerSession } from 'next-auth'
+import { activityParent } from '@/lib/activities'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { StavDealu } from '@prisma/client'
@@ -95,11 +96,15 @@ export default async function DashboardPage() {
     }),
     prisma.activity.findMany({
       where: {
-        deal: { orgId },
+        orgId,
         stav: 'PLANOVANA',
         datum: { gte: today, lte: in7Days },
       },
-      include: { deal: { include: { client: { select: { jmeno: true, prijmeni: true } } } }, user: { select: { jmeno: true } } },
+      include: {
+        deal: { select: { id: true, client: { select: { jmeno: true, prijmeni: true } } } },
+        lead: { select: { id: true, jmeno: true, firma: true } },
+        user: { select: { jmeno: true } },
+      },
       orderBy: { datum: 'asc' },
       take: 12,
     }),
@@ -401,7 +406,12 @@ function UpcomingActivitiesGroups({
   tomorrow,
   dayAfterTomorrow,
 }: {
-  activities: Array<{ id: string; typ: string; popis: string | null; datum: Date; deal: { id: string; client: { jmeno: string; prijmeni: string } }; user: { jmeno: string } | null }>
+  activities: Array<{
+    id: string; typ: string; popis: string | null; datum: Date
+    deal: { id: string; client: { jmeno: string; prijmeni: string } } | null
+    lead: { id: string; jmeno: string; firma: string | null } | null
+    user: { jmeno: string } | null
+  }>
   today: Date
   tomorrow: Date
   dayAfterTomorrow: Date
@@ -425,10 +435,10 @@ function UpcomingActivitiesGroups({
             <span className={`w-1.5 h-1.5 rounded-full ${group.dot}`} /> {group.label}
           </span>
           <div className="space-y-1">
-            {group.items.map(act => (
+            {group.items.map(act => { const parent = activityParent(act); return (
               <Link
                 key={act.id}
-                href={`/deals/${act.deal.id}?tab=aktivity`}
+                href={parent?.href ?? '/activities'}
                 className="flex items-center gap-3 p-2.5 rounded-xl transition-colors hover:bg-gray-50 dark:hover:bg-slate-700/50 -mx-1"
               >
                 <span className="flex-shrink-0">{actTypIcons[act.typ] ?? <IconNote className="w-4 h-4 text-gray-400" />}</span>
@@ -437,12 +447,12 @@ function UpcomingActivitiesGroups({
                     {act.popis ?? '—'}
                   </p>
                   <p className="text-xs text-gray-400 dark:text-slate-500 truncate">
-                    {act.deal.client.jmeno} {act.deal.client.prijmeni}
+                    {parent?.druh === 'LEAD' ? 'Lead · ' : ''}{parent?.klient}
                     {act.user?.jmeno ? ` · ${act.user.jmeno}` : ''}
                   </p>
                 </div>
               </Link>
-            ))}
+            ) })}
           </div>
         </div>
       ))}

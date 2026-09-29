@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { hasDeal } from '@/lib/activities'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { getMobileOrWebSession, requireObchodnikOrAdmin, klientAdresa } from '@/lib/mobile-helpers'
 
@@ -58,7 +59,7 @@ export async function GET(req: Request) {
     }),
   ])
 
-  const mapAktivita = (a: (typeof dnesni)[number]) => ({
+  const mapAktivita = (a: (typeof dnesni)[number] & { deal: NonNullable<(typeof dnesni)[number]['deal']> }) => ({
     id: a.id,
     typ: a.typ,
     popis: a.popis,
@@ -80,8 +81,8 @@ export async function GET(req: Request) {
   })
 
   return NextResponse.json({
-    dnesni: dnesni.map(mapAktivita),
-    followUpy: followUpy.map(mapAktivita),
+    dnesni: dnesni.filter(hasDeal).map(mapAktivita),
+    followUpy: followUpy.filter(hasDeal).map(mapAktivita),
   })
 }
 

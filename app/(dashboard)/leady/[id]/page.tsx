@@ -23,6 +23,10 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
         include: { user: { select: { id: true, jmeno: true, avatar: true } } },
         orderBy: { vytvoreno: 'asc' },
       },
+      activities: {
+        include: { user: { select: { jmeno: true } }, resitel: { select: { jmeno: true } } },
+        orderBy: { datum: 'desc' },
+      },
       prevedenNaOp: {
         select: {
           id: true,
@@ -51,6 +55,19 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
           ...n,
           vytvoreno: n.vytvoreno.toISOString(),
         })),
+        activities: lead.activities.map(a => ({
+          id: a.id,
+          typ: a.typ,
+          popis: a.popis,
+          vysledek: a.vysledek,
+          datum: a.datum.toISOString().split('T')[0],
+          cas: a.cas,
+          stav: a.stav,
+          userJmeno: a.user?.jmeno ?? null,
+          resitelId: a.resitelId,
+          resitelJmeno: a.resitel?.jmeno ?? null,
+          reminderAt: a.reminderAt?.toISOString() ?? null,
+        })),
         prevedenNaOp: lead.prevedenNaOp
           ? {
               ...lead.prevedenNaOp,
@@ -59,6 +76,7 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
           : null,
       }}
       users={users}
+      currentUserId={session.user.id}
       canEdit={perms.obchod}
       canDelete={perms.obchodMazani}
     />

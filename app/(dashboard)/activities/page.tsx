@@ -23,7 +23,7 @@ export default async function ActivitiesPage({
 
   const activities = await prisma.activity.findMany({
     where: {
-      deal: { orgId },
+      orgId,
       ...(typFilter ? { typ: typFilter as 'HOVOR' | 'EMAIL' | 'SCHUZKA' | 'POZNAMKA' | 'UKOL' } : {}),
     },
     include: {
@@ -36,6 +36,7 @@ export default async function ActivitiesPage({
           client: { select: { id: true, jmeno: true, prijmeni: true } },
         },
       },
+      lead: { select: { id: true, jmeno: true, firma: true } },
     },
     orderBy: { datum: 'desc' },
     take: 500,
@@ -49,7 +50,7 @@ export default async function ActivitiesPage({
       <div>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{heading}</h1>
         <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
-          Přehled aktivit napříč všemi obchodními případy
+          Přehled aktivit napříč obchodními případy a leady
         </p>
       </div>
 
@@ -64,12 +65,8 @@ export default async function ActivitiesPage({
           cil: a.cil ?? null,
           vysledek: a.vysledek ?? null,
           user: a.user,
-          deal: {
-            id: a.deal.id,
-            predmet: a.deal.predmet,
-            kod: a.deal.kod,
-            client: a.deal.client,
-          },
+          deal: a.deal,
+          lead: a.lead,
         }))}
         defaultTyp={typFilter}
       />

@@ -5,6 +5,7 @@ import ConfirmModal from '@/components/ConfirmModal'
 import { formatDate } from '@/lib/format'
 import { ActivityTypeIcon } from '@/components/ui/ActivityTypeIcon'
 import { IconMapPin } from '@/components/ui/Icons'
+import DokoncitAktivituModal from '@/components/DokoncitAktivituModal'
 
 const typOptions = [
   { value: 'HOVOR',    label: 'Hovor' },
@@ -102,10 +103,32 @@ function StavDot({ stav }: { stav: Stav }) {
   return <span className={`inline-block w-2.5 h-2.5 rounded-full flex-shrink-0 ${stavConfig[stav]?.dot ?? 'bg-gray-400'}`} />
 }
 
+// Aktivita z API (POST/PATCH vrací include user/resitel) → tvar pro seznam
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function fromApi(act: any): Activity {
+  return {
+    id: act.id,
+    typ: act.typ,
+    popis: act.popis ?? null,
+    datum: new Date(act.datum).toISOString().split('T')[0],
+    cas: act.cas ?? null,
+    trvaniMin: act.trvaniMin ?? 15,
+    splneno: act.splneno,
+    stav: act.stav ?? 'PLANOVANA',
+    userJmeno: act.user?.jmeno ?? '',
+    cil: act.cil ?? null,
+    vysledek: act.vysledek ?? null,
+    misto: act.misto ?? null,
+    resitelJmeno: act.resitel?.jmeno ?? null,
+    resitelId: act.resitelId ?? null,
+    reminderAt: act.reminderAt ?? null,
+  }
+}
+
 // ─── Edit / View Modal ─────────────────────────────────────────────────────────
 
 function ActivityModal({
-  act, dealId, users, onClose, onSaved, onDeleted, onFollowUp,
+  act, dealId, users, onClose, onSaved, onDeleted, onFollowUp, onDokoncit,
 }: {
   act: Activity
   dealId: string
@@ -114,6 +137,8 @@ function ActivityModal({
   onSaved: (updated: Activity) => void
   onDeleted: (id: string) => void
   onFollowUp: (act: Activity) => void
+  /** přechod na Dokončena → dialog s navazující aktivitou (uloží i ostatní pole) */
+  onDokoncit: (act: Activity, extraPatch: Record<string, unknown>) => void
 }) {
   const [stav, setStav]           = useState<Stav>(act.stav)
   const [typ, setTyp]             = useState(act.typ)
@@ -132,6 +157,21 @@ function ActivityModal({
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   async function handleSave() {
+    if (stav === 'DOKONCENA' && act.stav !== 'DOKONCENA') {
+      onDokoncit({ ...act, typ, popis: popis || null, vysledek: vysledek || null }, {
+        typ,
+        datum,
+        cas: cas || null,
+        trvaniMin,
+        popis: popis || null,
+        cil: cil || null,
+        misto: misto || null,
+        resitelId: resitelId || null,
+        reminderAt: localInputToIso(reminderAt),
+      })
+      onClose()
+      return
+    }
     setSaving(true)
     setError('')
     try {
@@ -475,6 +515,7 @@ export default function ActivitiesSection({ dealId, activities: initActivities, 
   const [saving, setSaving]         = useState(false)
   const [addError, setAddError]     = useState('')
   const [selectedAct, setSelectedAct] = useState<Activity | null>(null)
+  const [dokoncit, setDokoncit] = useState<{ act: Activity; extraPatch?: Record<string, unknown> } | null>(null)
   const [quickLoading, setQuickLoading] = useState<Record<string, boolean>>({})
   const [form, setForm] = useState(() => emptyForm(currentUserId))
 
@@ -510,23 +551,7 @@ export default function ActivitiesSection({ dealId, activities: initActivities, 
       })
       if (res.ok) {
         const act = await res.json()
-        setActivities(prev => [{
-          id: act.id,
-          typ: act.typ,
-          popis: act.popis ?? null,
-          datum: new Date(act.datum).toISOString().split('T')[0],
-          cas: act.cas ?? null,
-          trvaniMin: act.trvaniMin ?? 15,
-          splneno: act.splneno,
-          stav: act.stav ?? 'PLANOVANA',
-          userJmeno: act.user?.jmeno ?? '',
-          cil: act.cil ?? null,
-          vysledek: act.vysledek ?? null,
-          misto: act.misto ?? null,
-          resitelJmeno: act.resitel?.jmeno ?? null,
-          resitelId: act.resitelId ?? null,
-          reminderAt: act.reminderAt ?? null,
-        }, ...prev])
+        setActivities(prev => [fromApi(act), ...prev])
         setAdding(false)
         setAddingModal(false)
         setForm(emptyForm(currentUserId))
@@ -581,6 +606,21 @@ export default function ActivitiesSection({ dealId, activities: initActivities, 
           }}
           onDeleted={id => setActivities(prev => prev.filter(a => a.id !== id))}
           onFollowUp={openFollowUp}
+          onDokoncit={(act, extraPatch) => setDokoncit({ act, extraPatch })}
+        />
+      )}
+      {dokoncit && (
+        <DokoncitAktivituModal
+          act={dokoncit.act}
+          patchUrl={`/api/deals/${dealId}/activities/${dokoncit.act.id}`}
+          extraPatch={dokoncit.extraPatch}
+          onClose={() => setDokoncit(null)}
+          onDone={({ activity, followUp }) => {
+            setActivities(prev => [
+              ...(followUp ? [fromApi(followUp)] : []),
+              ...prev.map(a => a.id === activity.id ? fromApi(activity) : a),
+            ])
+          }}
         />
       )}
       {addingModal && (
@@ -713,7 +753,7 @@ export default function ActivitiesSection({ dealId, activities: initActivities, 
               {/* Quick actions — visible on hover, only for PLANOVANA */}
               {stav === 'PLANOVANA' && (
                 <div className="flex gap-1.5 mt-2 ml-8 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <QuickAction label="✓ Hotovo" onClick={() => quickPatch(act.id, { stav: 'DOKONCENA' })} loading={loading} variant="green" />
+                  <QuickAction label="✓ Hotovo" onClick={() => setDokoncit({ act })} loading={loading} variant="green" />
                   <QuickAction label="+1 den" onClick={() => quickPatch(act.id, { datum: shiftDate(act.datum, 1) })} loading={loading} />
                   <QuickAction label="+1 týden" onClick={() => quickPatch(act.id, { datum: shiftDate(act.datum, 7) })} loading={loading} />
                   <QuickAction label="Zrušit" onClick={() => quickPatch(act.id, { stav: 'ZRUSENA' })} loading={loading} variant="red" />

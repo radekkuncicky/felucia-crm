@@ -8,6 +8,7 @@ import { LeadZdroj, LeadStatus, Technologie } from '@prisma/client'
 import { formatDate, formatKcPresne } from '@/lib/format'
 import { confirmDialog } from '@/components/ui/confirm'
 import { leadPredmet, sluzbaLabel, sluzbaToTechnologie } from '@/lib/leadService'
+import LeadAktivity, { type LeadActivity } from './LeadAktivity'
 
 interface LeadNote {
   id: string
@@ -37,6 +38,7 @@ interface Lead {
   vytvoreno: string
   updatedAt: string
   notes: LeadNote[]
+  activities: LeadActivity[]
   prevedenNaOp: {
     id: string
     kod: string | null
@@ -50,6 +52,7 @@ interface Lead {
 interface Props {
   lead: Lead
   users: { id: string; jmeno: string }[]
+  currentUserId: string
   canEdit: boolean
   canDelete: boolean
 }
@@ -84,7 +87,7 @@ const TECH_OPTIONS: { value: Technologie; label: string }[] = [
   { value: 'JINE', label: 'Jiné' },
 ]
 
-export default function LeadDetailClient({ lead: initialLead, users, canEdit, canDelete }: Props) {
+export default function LeadDetailClient({ lead: initialLead, users, currentUserId, canEdit, canDelete }: Props) {
   const router = useRouter()
   const [lead, setLead] = useState(initialLead)
   const [noteText, setNoteText] = useState('')
@@ -323,6 +326,26 @@ export default function LeadDetailClient({ lead: initialLead, users, canEdit, ca
                 <p className="text-xs text-gray-500 dark:text-slate-400 mt-3">Přílohy: {lead.prilohy}</p>
               )}
             </div>
+          )}
+
+          {/* 6b. Aktivity — hovory a e-maily (po převodu pokračují na OP) */}
+          {lead.prevedenNaOp ? (
+            lead.activities.length === 0 && (
+              <p className="text-xs text-gray-500 dark:text-slate-400 px-1">
+                Hovory a e-maily z leadu se při převodu přesunuly na{' '}
+                <Link href={`/deals/${lead.prevedenNaOp.id}?tab=aktivity`} className="text-[#3d8b40] dark:text-[#4CAF50] hover:underline">
+                  obchodní případ {lead.prevedenNaOp.kod ?? ''}
+                </Link>.
+              </p>
+            )
+          ) : (
+            <LeadAktivity
+              leadId={lead.id}
+              initial={lead.activities}
+              users={users}
+              currentUserId={currentUserId}
+              canEdit={canEdit && !isClosed}
+            />
           )}
 
           {/* 7. Interní poznámky */}

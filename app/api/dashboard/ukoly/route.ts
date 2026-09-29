@@ -1,4 +1,5 @@
 import { getServerSession } from 'next-auth'
+import { leadJmeno } from '@/lib/activities'
 import { authOptions } from '@/lib/auth'
 import { getMobileSession } from '@/lib/mobile-auth'
 import { orgPrisma } from '@/lib/orgPrisma'
@@ -6,7 +7,7 @@ import { NextResponse } from 'next/server'
 
 /**
  * „Co mám dělat“ — sloučený seznam pro přihlášeného uživatele:
- *  - naplánované aktivity na OP (řešitel = já; u starých záznamů bez řešitele autor = já)
+ *  - naplánované aktivity na OP a leadech (řešitel = já; u starých záznamů bez řešitele autor = já)
  *  - nehotové úkoly zakázek (řešitel = já)
  * Rozdělené do skupin PO_TERMINU / DNES / TYDEN / BEZ_TERMINU, seřazené podle termínu.
  */
@@ -20,8 +21,10 @@ export type CoMamDelatPolozka = {
   datum: string | null
   cas: string | null
   skupina: CoMamDelatSkupina
-  /** id OP (AKTIVITA) nebo zakázky (UKOL) — pro PATCH z dashboardu */
+  /** id OP/leadu (AKTIVITA) nebo zakázky (UKOL) — pro PATCH z dashboardu */
   parentId: string
+  /** aktivita na leadu → follow-up jen hovor/e-mail */
+  leadId: string | null
   kontext: { label: string; popis: string | null; href: string }
 }
 
@@ -48,6 +51,7 @@ export async function GET(req: Request) {
       select: {
         id: true, typ: true, popis: true, cil: true, datum: true, cas: true,
         deal: { select: { id: true, kod: true, predmet: true, client: { select: { jmeno: true, prijmeni: true } } } },
+        lead: { select: { id: true, jmeno: true, firma: true } },
       },
       orderBy: [{ datum: 'asc' }, { cas: 'asc' }],
       take: 100,
@@ -84,12 +88,19 @@ export async function GET(req: Request) {
       datum: a.datum.toISOString(),
       cas: a.cas,
       skupina: skupina(a.datum),
-      parentId: a.deal.id,
-      kontext: {
-        label: a.deal.kod ?? 'OP',
-        popis: `${a.deal.client.jmeno} ${a.deal.client.prijmeni}`.trim() || a.deal.predmet,
-        href: `/deals/${a.deal.id}?tab=aktivity`,
-      },
+      parentId: a.deal?.id ?? a.lead?.id ?? '',
+      leadId: a.lead?.id ?? null,
+      kontext: a.deal
+        ? {
+            label: a.deal.kod ?? 'OP',
+            popis: `${a.deal.client.jmeno} ${a.deal.client.prijmeni}`.trim() || a.deal.predmet,
+            href: `/deals/${a.deal.id}?tab=aktivity`,
+          }
+        : {
+            label: 'Lead',
+            popis: a.lead ? leadJmeno(a.lead) : null,
+            href: a.lead ? `/leady/${a.lead.id}` : '/activities',
+          },
     })),
     ...ukoly.map(u => ({
       id: u.id,
@@ -100,6 +111,7 @@ export async function GET(req: Request) {
       cas: null,
       skupina: skupina(u.termin),
       parentId: u.zakazka.id,
+      leadId: null,
       kontext: {
         label: u.zakazka.cislo,
         popis: `${u.zakazka.klient.jmeno} ${u.zakazka.klient.prijmeni}`.trim() || u.zakazka.nazev,

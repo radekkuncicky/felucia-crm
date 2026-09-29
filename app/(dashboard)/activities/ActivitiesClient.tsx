@@ -10,12 +10,13 @@ import ConfirmModal from '@/components/ConfirmModal'
 import { formatDate } from '@/lib/format'
 import { ActivityTypeIcon } from '@/components/ui/ActivityTypeIcon'
 import FilterDropdown from '@/components/ui/FilterDropdown'
+import DokoncitAktivituModal from '@/components/DokoncitAktivituModal'
 
 const ACT_DEFS: ColumnDef[] = [
   { id: 'datum', label: 'Datum', defaultVisible: true, defaultWidth: 110 },
   { id: 'typ', label: 'Typ', defaultVisible: true, defaultWidth: 140 },
   { id: 'popis', label: 'Popis', defaultVisible: true, defaultWidth: 240 },
-  { id: 'deal', label: 'Obchodní případ', defaultVisible: true, defaultWidth: 180 },
+  { id: 'deal', label: 'Obchodní případ / lead', defaultVisible: true, defaultWidth: 180 },
   { id: 'klient', label: 'Klient', defaultVisible: true, defaultWidth: 150 },
   { id: 'uzivatel', label: 'Uživatel', defaultVisible: true, defaultWidth: 120 },
 ]
@@ -64,7 +65,8 @@ interface Activity {
     predmet: string | null
     kod: string | null
     client: { id: string; jmeno: string; prijmeni: string }
-  }
+  } | null
+  lead: { id: string; jmeno: string; firma: string | null } | null
 }
 
 interface Props {
@@ -79,17 +81,41 @@ function StavDot({ stav }: { stav: Stav }) {
   return <span className={`inline-block w-2.5 h-2.5 rounded-full flex-shrink-0 ${stavConfig[stav]?.dot ?? 'bg-gray-400'}`} />
 }
 
-function defaultFollowupDate(): string {
-  const d = new Date()
-  d.setDate(d.getDate() + 3)
-  return d.toISOString().split('T')[0]
+/** Odkaz na rodiče aktivity — OP (tab aktivit) nebo lead */
+function parentHref(act: Activity): string {
+  return act.deal ? `/deals/${act.deal.id}?tab=aktivity` : act.lead ? `/leady/${act.lead.id}` : '/activities'
 }
 
-function ActivityModal({ act, onClose, onSaved, onDeleted }: {
+function ParentLabel({ act, mono = 'text-gray-400' }: { act: Activity; mono?: string }) {
+  if (act.deal) return <>{act.deal.kod && <span className={`font-mono text-xs ${mono} mr-1`}>{act.deal.kod}</span>}{act.deal.predmet ?? 'Bez předmětu'}</>
+  if (act.lead) return <><span className={`text-xs ${mono} mr-1`}>Lead</span>{act.lead.jmeno}</>
+  return <>—</>
+}
+
+function KlientLink({ act, className }: { act: Activity; className: string }) {
+  if (act.deal) {
+    return (
+      <Link href={`/clients/${act.deal.client.id}`} className={className} onClick={e => e.stopPropagation()}>
+        {act.deal.client.jmeno} {act.deal.client.prijmeni}
+      </Link>
+    )
+  }
+  if (act.lead) {
+    return (
+      <Link href={`/leady/${act.lead.id}`} className={className} onClick={e => e.stopPropagation()}>
+        {act.lead.firma || act.lead.jmeno}
+      </Link>
+    )
+  }
+  return <span className={className}>—</span>
+}
+
+function ActivityModal({ act, onClose, onSaved, onDeleted, onFollowUp }: {
   act: Activity
   onClose: () => void
   onSaved: (updated: Activity) => void
   onDeleted: (id: string) => void
+  onFollowUp: (a: Activity) => void
 }) {
   const [stav, setStav]     = useState<Stav>(act.stav)
   const [typ, setTyp]       = useState(act.typ)
@@ -101,30 +127,24 @@ function ActivityModal({ act, onClose, onSaved, onDeleted }: {
   const [deleting, setDeleting] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
-  const [followupEnabled, setFollowupEnabled] = useState(false)
-  const [followupDate, setFollowupDate] = useState(defaultFollowupDate)
-  const [followupTyp, setFollowupTyp] = useState('HOVOR')
-  const [followupPopis, setFollowupPopis] = useState('')
+  const [dokoncit, setDokoncit] = useState(false)
+  const [error, setError] = useState('')
+  const typy = act.lead ? typOptions.filter(t => t.value === 'HOVOR' || t.value === 'EMAIL') : typOptions.filter(t => t.value)
 
   async function handleSave() {
+    // Přechod na Dokončena → dialog s nabídkou navazující aktivity (uloží i ostatní pole)
+    if (stav === 'DOKONCENA' && act.stav !== 'DOKONCENA') { setDokoncit(true); return }
     setSaving(true)
+    setError('')
     try {
       const res = await fetch(`/api/activities/${act.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ stav, typ, datum, popis: popis || null, cil: cil || null, vysledek: vysledek || null }),
       })
-      if (res.ok) {
-        if (stav === 'DOKONCENA' && followupEnabled && followupPopis.trim()) {
-          await fetch('/api/activities', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ dealId: act.deal.id, typ: followupTyp, popis: followupPopis.trim(), datum: followupDate }),
-          })
-        }
-        onSaved({ ...act, stav, typ, datum, popis: popis || null, cil: cil || null, vysledek: vysledek || null, splneno: stav === 'DOKONCENA' })
-        onClose()
-      }
+      if (!res.ok) { setError((await res.json().catch(() => null))?.error ?? 'Nepodařilo se uložit aktivitu'); return }
+      onSaved({ ...act, stav, typ, datum, popis: popis || null, cil: cil || null, vysledek: vysledek || null, splneno: stav === 'DOKONCENA' })
+      onClose()
     } finally {
       setSaving(false)
     }
@@ -144,6 +164,32 @@ function ActivityModal({ act, onClose, onSaved, onDeleted }: {
   return (
     <>
     <ConfirmModal isOpen={confirmDelete} title="Smazat aktivitu" message="Smazat tuto aktivitu?" confirmLabel="Smazat" danger loading={deleting} onConfirm={handleDeleteConfirm} onCancel={() => setConfirmDelete(false)} />
+    {dokoncit && (
+      <DokoncitAktivituModal
+        act={{ id: act.id, typ, popis: popis || null, vysledek }}
+        patchUrl={`/api/activities/${act.id}`}
+        jeLead={!!act.lead}
+        extraPatch={{ typ, datum, popis: popis || null, cil: cil || null }}
+        onClose={() => setDokoncit(false)}
+        onDone={({ activity, followUp }) => {
+          onSaved({ ...act, typ, datum, popis: popis || null, cil: cil || null, stav: 'DOKONCENA', splneno: true, vysledek: (activity.vysledek as string | null) ?? null })
+          if (followUp) {
+            onFollowUp({
+              ...act,
+              id: followUp.id,
+              typ: followUp.typ,
+              popis: followUp.popis,
+              datum: new Date(followUp.datum).toISOString().split('T')[0],
+              stav: 'PLANOVANA',
+              splneno: false,
+              cil: null,
+              vysledek: null,
+            })
+          }
+          onClose()
+        }}
+      />
+    )}
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
       <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
         {/* Header */}
@@ -152,8 +198,10 @@ function ActivityModal({ act, onClose, onSaved, onDeleted }: {
             <ActivityTypeIcon typ={typ} className="w-6 h-6" />
             <div>
               <p className="font-semibold text-gray-900 dark:text-white">Upravit aktivitu</p>
-              <Link href={`/deals/${act.deal.id}?tab=aktivity`} className="text-xs text-green-600 hover:underline" onClick={e => e.stopPropagation()}>
-                {act.deal.kod ? `${act.deal.kod} · ` : ''}{act.deal.predmet ?? 'Bez předmětu'} — {act.deal.client.jmeno} {act.deal.client.prijmeni}
+              <Link href={parentHref(act)} className="text-xs text-green-600 hover:underline" onClick={e => e.stopPropagation()}>
+                {act.deal
+                  ? <>{act.deal.kod ? `${act.deal.kod} · ` : ''}{act.deal.predmet ?? 'Bez předmětu'} — {act.deal.client.jmeno} {act.deal.client.prijmeni}</>
+                  : <>Lead — {act.lead?.jmeno}{act.lead?.firma ? ` (${act.lead.firma})` : ''}</>}
               </Link>
             </div>
           </div>
@@ -168,11 +216,7 @@ function ActivityModal({ act, onClose, onSaved, onDeleted }: {
             <div>
               <label className="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">Typ</label>
               <select value={typ} onChange={e => setTyp(e.target.value)} className={inp}>
-                <option value="HOVOR">Hovor</option>
-                <option value="EMAIL">Email</option>
-                <option value="SCHUZKA">Schůzka</option>
-                <option value="POZNAMKA">Poznámka</option>
-                <option value="UKOL">Úkol</option>
+                {typy.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
               </select>
             </div>
             <div>
@@ -217,39 +261,10 @@ function ActivityModal({ act, onClose, onSaved, onDeleted }: {
             )}
           </div>
 
-          {/* Follow-up */}
-          {stav === 'DOKONCENA' && (
-            <div className="border border-blue-200 dark:border-blue-800 rounded-xl p-4 bg-blue-50 dark:bg-blue-950/30 space-y-3">
-              <label className="flex items-center gap-2.5 cursor-pointer select-none">
-                <input type="checkbox" checked={followupEnabled} onChange={e => setFollowupEnabled(e.target.checked)} className="w-4 h-4 accent-blue-600 flex-shrink-0" />
-                <span className="text-sm font-medium text-blue-800 dark:text-blue-300">Naplánovat navazující aktivitu</span>
-              </label>
-              {followupEnabled && (
-                <div className="space-y-2 pt-1">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">Typ</label>
-                      <select value={followupTyp} onChange={e => setFollowupTyp(e.target.value)} className={inp}>
-                        <option value="HOVOR">Hovor</option>
-                        <option value="EMAIL">Email</option>
-                        <option value="SCHUZKA">Schůzka</option>
-                        <option value="UKOL">Úkol</option>
-                        <option value="POZNAMKA">Poznámka</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">Datum</label>
-                      <input type="date" value={followupDate} onChange={e => setFollowupDate(e.target.value)} className={inp} />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">Popis</label>
-                    <input type="text" value={followupPopis} onChange={e => setFollowupPopis(e.target.value)} className={inp} placeholder="Co je potřeba udělat..." />
-                  </div>
-                </div>
-              )}
-            </div>
+          {stav === 'DOKONCENA' && act.stav !== 'DOKONCENA' && (
+            <p className="text-xs text-blue-700 dark:text-blue-300">Po uložení můžete rovnou naplánovat navazující aktivitu.</p>
           )}
+          {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
         </div>
 
         {/* Footer */}
@@ -302,6 +317,7 @@ export default function ActivitiesClient({ activities: initActivities, defaultTy
           onClose={() => setSelectedAct(null)}
           onSaved={updated => setActivities(prev => prev.map(a => a.id === updated.id ? updated : a))}
           onDeleted={id => setActivities(prev => prev.filter(a => a.id !== id))}
+          onFollowUp={a => setActivities(prev => [a, ...prev])}
         />
       )}
 
@@ -370,13 +386,10 @@ export default function ActivitiesClient({ activities: initActivities, defaultTy
             </div>
             <p className="text-sm text-gray-800 dark:text-slate-200 line-clamp-2">{act.popis ?? <span className="text-gray-400 italic">bez popisu</span>}</p>
             <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
-              <Link href={`/deals/${act.deal.id}?tab=aktivity`} className="text-green-600 dark:text-green-400 hover:underline" onClick={e => e.stopPropagation()}>
-                {act.deal.kod && <span className="font-mono text-gray-400 mr-1">{act.deal.kod}</span>}
-                {act.deal.predmet ?? 'Bez předmětu'}
+              <Link href={parentHref(act)} className="text-green-600 dark:text-green-400 hover:underline" onClick={e => e.stopPropagation()}>
+                <ParentLabel act={act} />
               </Link>
-              <Link href={`/clients/${act.deal.client.id}`} className="text-gray-500 dark:text-slate-400 hover:text-green-600" onClick={e => e.stopPropagation()}>
-                {act.deal.client.jmeno} {act.deal.client.prijmeni}
-              </Link>
+              <KlientLink act={act} className="text-gray-500 dark:text-slate-400 hover:text-green-600" />
               {act.user && <span className="text-gray-400 dark:text-slate-500">{act.user.jmeno}</span>}
             </div>
           </div>
@@ -444,27 +457,18 @@ export default function ActivitiesClient({ activities: initActivities, defaultTy
                         return (
                           <td key={col.id} className="px-4 py-3 overflow-hidden">
                             <Link
-                              href={`/deals/${act.deal.id}?tab=aktivity`}
+                              href={parentHref(act)}
                               className="text-sm text-green-600 dark:text-green-400 hover:underline truncate block"
                               onClick={e => e.stopPropagation()}
                             >
-                              {act.deal.kod && (
-                                <span className="font-mono text-xs text-gray-400 dark:text-slate-500 mr-1">{act.deal.kod}</span>
-                              )}
-                              {act.deal.predmet ?? 'Bez předmětu'}
+                              <ParentLabel act={act} mono="text-gray-400 dark:text-slate-500" />
                             </Link>
                           </td>
                         )
                       case 'klient':
                         return (
                           <td key={col.id} className="px-4 py-3 overflow-hidden">
-                            <Link
-                              href={`/clients/${act.deal.client.id}`}
-                              className="text-sm text-gray-700 dark:text-slate-300 hover:text-green-600 dark:hover:text-green-400 truncate block"
-                              onClick={e => e.stopPropagation()}
-                            >
-                              {act.deal.client.jmeno} {act.deal.client.prijmeni}
-                            </Link>
+                            <KlientLink act={act} className="text-sm text-gray-700 dark:text-slate-300 hover:text-green-600 dark:hover:text-green-400 truncate block" />
                           </td>
                         )
                       case 'uzivatel':

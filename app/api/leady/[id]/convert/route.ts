@@ -96,6 +96,11 @@ export async function POST(req: Request, { params }: { params: { id: string } })
             prevedenNaKlientId: clientId,
           },
         })
+        // Hovory/e-maily z leadu pokračují na OP (historie i naplánované)
+        await tx.activity.updateMany({
+          where: { leadId: params.id },
+          data: { leadId: null, dealId: deal.id },
+        })
         return deal
       }),
     )

@@ -4,7 +4,7 @@ import { forbidden, getPerms } from '@/lib/permissions'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
-import { TypAktivity } from '@prisma/client'
+import { patchActivity } from '@/lib/activityPatch'
 
 export async function PATCH(req: Request, { params }: { params: { id: string; actId: string } }) {
   const session = await getServerSession(authOptions)
@@ -18,40 +18,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string; ac
   })
   if (!activity) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const body = await req.json()
-
-  // Backward compat: splneno=true → stav=DOKONCENA
-  let stav = body.stav ?? activity.stav
-  if (body.splneno === true && !body.stav) stav = 'DOKONCENA'
-  if (body.splneno === false && !body.stav) stav = 'PLANOVANA'
-  const splneno = stav === 'DOKONCENA'
-
-  // Validate resitelId belongs to same org
-  if (body.resitelId !== undefined && body.resitelId !== null) {
-    const resitel = await db.user.findFirst({ where: { id: body.resitelId, orgId } })
-    if (!resitel) return NextResponse.json({ error: 'Řešitel nebyl nalezen' }, { status: 400 })
-  }
-
-  const updated = await db.activity.update({
-    where: { id: params.actId },
-    data: {
-      stav,
-      splneno,
-      typ: body.typ ? (body.typ as TypAktivity) : activity.typ,
-      datum: body.datum ? new Date(body.datum) : activity.datum,
-      cas: body.cas !== undefined ? (body.cas || null) : activity.cas,
-      trvaniMin: body.trvaniMin !== undefined ? (body.trvaniMin != null ? Number(body.trvaniMin) : null) : activity.trvaniMin,
-      popis: body.popis !== undefined ? (body.popis || null) : activity.popis,
-      cil: body.cil !== undefined ? (body.cil || null) : activity.cil,
-      vysledek: body.vysledek !== undefined ? (body.vysledek || null) : activity.vysledek,
-      misto: body.misto !== undefined ? (body.misto || null) : activity.misto,
-      resitelId: body.resitelId !== undefined ? (body.resitelId || null) : activity.resitelId,
-      reminderAt: body.reminderAt !== undefined ? (body.reminderAt ? new Date(body.reminderAt) : null) : activity.reminderAt,
-    },
-    include: { user: { select: { jmeno: true } }, resitel: { select: { jmeno: true } } },
-  })
-
-  return NextResponse.json(updated)
+  const r = await patchActivity(db, orgId, session.user.id, activity, await req.json())
+  return NextResponse.json(r.json, { status: r.status })
 }
 
 export async function DELETE(req: Request, { params }: { params: { id: string; actId: string } }) {

@@ -606,7 +606,9 @@ enum ActivityStav {
 model Activity {
   id          String       @id @default(cuid())
   orgId       String
-  dealId      String
+  // Rodič: přesně jeden z dealId / leadId (CHECK v DB, migrace activity_lead)
+  dealId      String?
+  leadId      String?
   userId      String?
   resitelId   String?
   typ         TypAktivity
@@ -624,12 +626,14 @@ model Activity {
   vytvoreno   DateTime     @default(now())
 
   organization Organization @relation(fields: [orgId], references: [id])
-  deal    Deal  @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  deal    Deal? @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  lead    Lead? @relation(fields: [leadId], references: [id], onDelete: Cascade)
   user    User? @relation("ActivityUser", fields: [userId], references: [id])
   resitel User? @relation("ActivityResitel", fields: [resitelId], references: [id])
 
   @@index([reminderAt])
   @@index([orgId, resitelId, splneno, datum])
+  @@index([leadId])
   @@map("activities")
 }
 
@@ -1734,6 +1738,7 @@ model Lead {
   assignedTo         User?        @relation("LeadAssigned", fields: [assignedToId], references: [id])
   prevedenNaOp       Deal?        @relation(fields: [prevedenNaOpId], references: [id])
   notes              LeadNote[]
+  activities         Activity[]
 
   @@index([orgId, status])
   @@index([orgId, vytvoreno])

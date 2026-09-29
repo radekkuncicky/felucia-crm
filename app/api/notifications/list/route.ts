@@ -1,4 +1,5 @@
 import { getServerSession } from 'next-auth'
+import { hasDeal } from '@/lib/activities'
 import { authOptions } from '@/lib/auth'
 import { getMobileSession } from '@/lib/mobile-auth'
 import { orgPrisma } from '@/lib/orgPrisma'
@@ -98,7 +99,7 @@ export async function GET(req: Request) {
 
   return NextResponse.json({
     opBezAktivity,
-    prosleAktivity: prosleAktivityRaw.map(a => ({
+    prosleAktivity: prosleAktivityRaw.filter(hasDeal).map(a => ({
       id: a.id,
       typ: a.typ,
       popis: a.popis,
@@ -107,7 +108,7 @@ export async function GET(req: Request) {
       dealKod: a.deal.kod,
       dealPredmet: a.deal.predmet,
     })),
-    nesplneneUkoly: nesplneneUkoly.map(a => ({
+    nesplneneUkoly: nesplneneUkoly.filter(hasDeal).map(a => ({
       id: a.id,
       popis: a.popis,
       datum: a.datum.toISOString(),

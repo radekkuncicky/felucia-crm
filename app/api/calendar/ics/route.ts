@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { leadJmeno } from '@/lib/activities'
 import { dealScopeWhere, resolvePermissions, servisScopeWhere } from '@/lib/permissions'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { verifyCalendarToken } from '@/lib/calendarToken'
@@ -93,8 +94,10 @@ export async function GET(req: Request) {
   const [activities, deals, servisNavstevy, montazZakazky] = await Promise.all([
     db.activity.findMany({
       where: {
-        deal: { orgId },
+        orgId,
         OR: [{ userId: uid }, { resitelId: uid }],
+        // Aktivity leadů jen tam, kde uživatel leady vidí (STANDARD+, obchod)
+        ...(perms.obchod && user.organization.plan !== 'STARTER' ? {} : { dealId: { not: null } }),
       },
       include: {
         deal: {
@@ -106,6 +109,7 @@ export async function GET(req: Request) {
             client: { select: { jmeno: true, prijmeni: true, telefon: true, email: true } },
           },
         },
+        lead: { select: { id: true, jmeno: true, firma: true, telefon: true, email: true } },
       },
       orderBy: { datum: 'asc' },
     }),
@@ -152,19 +156,19 @@ export async function GET(req: Request) {
 
   for (const a of activities) {
     const dateStr = utcDateStr(a.datum)
-    const c = a.deal.client
-    const klient = klientJmeno(c)
-    const dealName = a.deal.predmet ?? a.deal.kod ?? ''
+    const c = a.deal?.client ?? a.lead
+    const klient = a.deal ? klientJmeno(a.deal.client) : a.lead ? leadJmeno(a.lead) : ''
+    const dealName = a.deal ? (a.deal.predmet ?? a.deal.kod ?? '') : ''
 
-    // Summary: "Jan Novák – Klimatizace – hovor"
-    const summary = calendarTitle(klient, technologieLabel(a.deal.technologie), AKTIVITA_DOPLNEK[a.typ] ?? a.typ.toLowerCase())
+    // Summary: "Jan Novák – Klimatizace – hovor" / "Jan Novák – Lead – hovor"
+    const summary = calendarTitle(klient, a.deal ? technologieLabel(a.deal.technologie) : 'Lead', AKTIVITA_DOPLNEK[a.typ] ?? a.typ.toLowerCase())
 
     // Build description lines
     const descLines: string[] = []
 
     // Contact info by type
-    if (a.typ === 'HOVOR' && c.telefon) descLines.push(`📞 ${c.telefon}`)
-    if (a.typ === 'EMAIL' && c.email)   descLines.push(`✉️ ${c.email}`)
+    if (a.typ === 'HOVOR' && c?.telefon) descLines.push(`📞 ${c.telefon}`)
+    if (a.typ === 'EMAIL' && c?.email)   descLines.push(`✉️ ${c.email}`)
     if (a.typ === 'SCHUZKA' && a.misto) descLines.push(`📍 ${a.misto}`)
 
     if (dealName) descLines.push(`Případ: ${dealName}`)
@@ -174,8 +178,9 @@ export async function GET(req: Request) {
 
     const description = descLines.join('\n')
     const location = a.typ === 'SCHUZKA' ? (a.misto ?? undefined) : undefined
+    const href = a.deal ? `${base}/deals/${a.deal.id}?tab=aktivity` : `${base}/leady/${a.lead?.id ?? ''}`
 
-    vevents.push(vevent(`act-${a.id}`, dateStr, summary, description, `${base}/deals/${a.deal.id}?tab=aktivity`, location))
+    vevents.push(vevent(`act-${a.id}`, dateStr, summary, description, href, location))
   }
 
   for (const d of deals) {

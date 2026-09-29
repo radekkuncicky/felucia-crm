@@ -275,24 +275,36 @@ export function emailWelcome(jmeno: string, slug: string, loginUrl: string) {
   `)
 }
 
-export function emailActivityReminder(jmeno: string, aktivita: string, dealLabel: string, termin: string, url: string) {
+export function emailActivityReminder(p: {
+  jmeno: string
+  typLabel: string
+  popis: string | null
+  klient: string
+  kontextLabel: string
+  kontext: string | null
+  termin: string
+  url: string
+}) {
+  const label = (t: string) =>
+    `<p style="margin:0 0 6px;color:#9aa3b2;font-size:12px;text-transform:uppercase;letter-spacing:.05em;">${t}</p>`
   return emailLayout(`
     <h2 style="margin:0 0 8px;color:#1A2744;font-size:22px;">⏰ Připomínka aktivity</h2>
-    <p style="color:#6b7280;margin:0 0 24px;">Dobrý den, <strong>${escHtml(jmeno)}</strong>.</p>
+    <p style="color:#6b7280;margin:0 0 24px;">Dobrý den, <strong>${escHtml(p.jmeno)}</strong>.</p>
     <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8f9fc;border-radius:10px;margin:0 0 24px;">
       <tr>
         <td style="padding:16px 20px;">
-          <p style="margin:0 0 6px;color:#9aa3b2;font-size:12px;text-transform:uppercase;letter-spacing:.05em;">Aktivita</p>
-          <p style="margin:0 0 12px;color:#1A2744;font-size:16px;font-weight:700;">${aktivita}</p>
-          <p style="margin:0 0 6px;color:#9aa3b2;font-size:12px;text-transform:uppercase;letter-spacing:.05em;">Obchodní případ</p>
-          <p style="margin:0 0 12px;color:#1A2744;font-size:14px;">${dealLabel}</p>
-          <p style="margin:0 0 6px;color:#9aa3b2;font-size:12px;text-transform:uppercase;letter-spacing:.05em;">Termín</p>
-          <p style="margin:0;color:#1A2744;font-size:14px;">${termin}</p>
+          ${label('Aktivita')}
+          <p style="margin:0 0 ${p.popis ? '4px' : '12px'};color:#1A2744;font-size:16px;font-weight:700;">${escHtml(p.typLabel)}</p>
+          ${p.popis ? `<p style="margin:0 0 12px;color:#1A2744;font-size:14px;white-space:pre-wrap;">${escHtml(p.popis)}</p>` : ''}
+          ${p.klient ? `${label('Klient')}<p style="margin:0 0 12px;color:#1A2744;font-size:16px;font-weight:700;">${escHtml(p.klient)}</p>` : ''}
+          ${p.kontext ? `${label(escHtml(p.kontextLabel))}<p style="margin:0 0 12px;color:#1A2744;font-size:14px;">${escHtml(p.kontext)}</p>` : ''}
+          ${label('Termín')}
+          <p style="margin:0;color:#1A2744;font-size:14px;">${escHtml(p.termin)}</p>
         </td>
       </tr>
     </table>
     <div style="text-align:center;margin:32px 0;">
-      <a href="${url}" style="display:inline-block;background:#FFC93C;color:#1A2744;font-weight:700;font-size:15px;padding:14px 32px;border-radius:10px;text-decoration:none;">
+      <a href="${escHtml(p.url)}" style="display:inline-block;background:#FFC93C;color:#1A2744;font-weight:700;font-size:15px;padding:14px 32px;border-radius:10px;text-decoration:none;">
         Otevřít v CRM
       </a>
     </div>

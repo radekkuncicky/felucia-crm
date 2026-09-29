@@ -7,6 +7,7 @@ import { getPerms, dealScopeWhere, servisScopeWhere, zakazkyScopeWhere } from '@
 import {
   AKTIVITA_DOPLNEK, DOPLNEK, SERVIS_DOPLNEK, calendarTitle, dateRange, fmtTime, klientJmeno, servisTechnologie, technologieLabel, utcDateStr,
 } from '@/lib/calendarEvents'
+import { leadJmeno } from '@/lib/activities'
 
 export default async function CalendarPage() {
   const session = await getServerSession(authOptions)
@@ -20,12 +21,18 @@ export default async function CalendarPage() {
   const servisScope = servisScopeWhere(perms, userId)
   const zakazkyScope = zakazkyScopeWhere(perms, userId)
 
-  const [activities, deals, servisNavstevy, montazZakazky, kdykolivZakazky] = await Promise.all([
+  const [activities, leadActivities, deals, servisNavstevy, montazZakazky, kdykolivZakazky] = await Promise.all([
     !dealScope ? [] : prisma.activity.findMany({
       where: { deal: { orgId, ...dealScope } },
       include: {
         deal: { include: { client: { select: { jmeno: true, prijmeni: true } } } },
       },
+      orderBy: { datum: 'asc' },
+    }),
+    // Hovory/e-maily na leadech — leady vidí každý s obchodem (STANDARD+)
+    !perms.obchod || session.user.plan === 'STARTER' ? [] : prisma.activity.findMany({
+      where: { orgId, leadId: { not: null } },
+      include: { lead: { select: { id: true, jmeno: true, firma: true } } },
       orderBy: { datum: 'asc' },
     }),
     !dealScope ? [] : prisma.deal.findMany({
@@ -90,6 +97,7 @@ export default async function CalendarPage() {
   }
 
   for (const a of activities) {
+    if (!a.deal) continue
     const kind = typMap[a.typ] ?? 'POZNAMKA'
     const klient = klientJmeno(a.deal.client)
     const tech = technologieLabel(a.deal.technologie)
@@ -102,6 +110,22 @@ export default async function CalendarPage() {
       title: calendarTitle(klient, tech, AKTIVITA_DOPLNEK[a.typ] ?? a.typ.toLowerCase()),
       subtitle: a.deal.predmet ?? a.deal.kod ?? '',
       href: `/deals/${a.deal.id}?tab=aktivity`,
+      done: a.stav === 'DOKONCENA',
+      zruseno: a.stav === 'ZRUSENA',
+    })
+  }
+
+  for (const a of leadActivities) {
+    if (!a.lead) continue
+    events.push({
+      id: `act-${a.id}`,
+      kind: typMap[a.typ] ?? 'POZNAMKA',
+      date: utcDateStr(a.datum),
+      time: a.cas ?? undefined,
+      trvaniMin: a.trvaniMin ?? undefined,
+      title: calendarTitle(leadJmeno(a.lead), 'Lead', AKTIVITA_DOPLNEK[a.typ] ?? a.typ.toLowerCase()),
+      subtitle: a.popis ?? '',
+      href: `/leady/${a.lead.id}`,
       done: a.stav === 'DOKONCENA',
       zruseno: a.stav === 'ZRUSENA',
     })

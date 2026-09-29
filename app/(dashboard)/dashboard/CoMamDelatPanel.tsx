@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { formatDate } from '@/lib/format'
+import DokoncitAktivituModal from '@/components/DokoncitAktivituModal'
 import { IconPhone, IconMail, IconHandshake, IconNote, IconCheck, IconHammer } from '@/components/ui/Icons'
 import type { CoMamDelatPolozka, CoMamDelatSkupina } from '@/app/api/dashboard/ukoly/route'
 
@@ -83,20 +84,25 @@ export default function CoMamDelatPanel() {
   const [notif, setNotif] = useState<NotifData | null>(null)
   const [openSection, setOpenSection] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
+  const [dokoncit, setDokoncit] = useState<CoMamDelatPolozka | null>(null)
+
+  function nactiPolozky() {
+    fetch('/api/dashboard/ukoly').then(r => r.ok ? r.json() : { polozky: [] }).then(d => setPolozky(d.polozky ?? [])).catch(() => setPolozky([]))
+  }
 
   useEffect(() => {
-    fetch('/api/dashboard/ukoly').then(r => r.ok ? r.json() : { polozky: [] }).then(d => setPolozky(d.polozky ?? [])).catch(() => setPolozky([]))
+    nactiPolozky()
     fetch('/api/notifications/list').then(r => r.ok ? r.json() : null).then(setNotif).catch(() => {})
   }, [])
 
   async function hotovo(p: CoMamDelatPolozka) {
+    // Aktivita → dialog s výsledkem a nabídkou navazující aktivity
+    if (p.druh === 'AKTIVITA') { setDokoncit(p); return }
     setBusy(p.id)
     const prev = polozky
     setPolozky(list => (list ?? []).filter(x => x.id !== p.id))
     try {
-      const res = p.druh === 'AKTIVITA'
-        ? await fetch(`/api/activities/${p.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ stav: 'DOKONCENA' }) })
-        : await fetch(`/api/zakazky/${p.parentId}/ukoly/${p.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ hotovo: true }) })
+      const res = await fetch(`/api/zakazky/${p.parentId}/ukoly/${p.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ hotovo: true }) })
       if (!res.ok) {
         setPolozky(prev)
         toast.error('Nepodařilo se označit jako hotové')
@@ -120,6 +126,18 @@ export default function CoMamDelatPanel() {
 
   return (
     <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm overflow-hidden">
+      {dokoncit && (
+        <DokoncitAktivituModal
+          act={{ id: dokoncit.id, typ: dokoncit.typ ?? 'HOVOR', popis: dokoncit.text }}
+          patchUrl={`/api/activities/${dokoncit.id}`}
+          jeLead={!!dokoncit.leadId}
+          onClose={() => setDokoncit(null)}
+          onDone={({ followUp }) => {
+            setPolozky(list => (list ?? []).filter(x => x.id !== dokoncit.id))
+            if (followUp) { toast.success('Navazující aktivita naplánována'); nactiPolozky() }
+          }}
+        />
+      )}
       <div className="px-5 py-3.5 flex items-center justify-between">
         <h2 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
           Co mám dělat
