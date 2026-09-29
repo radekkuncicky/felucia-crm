@@ -63,7 +63,8 @@ test('servis: nová servisní akce pro klienta z ulice (nový klient + nové za�
   // 1. Kdo — inline založení klienta
   await page.getByPlaceholder(/Příjmení, jméno nebo firma/).fill(prijmeni)
   await page.getByRole('button', { name: /Vytvořit klienta/ }).click()
-  await page.getByPlaceholder('+420 …').first().fill('+420600700800')
+  // unikátní telefon — jinak test DB z minulého běhu vyvolá dialog „Nemyslíte tohoto klienta?"
+  await page.getByPlaceholder('+420 …').first().fill(`+420 6${String(Date.now()).slice(-8)}`)
   await page.getByPlaceholder('Dlouhá 12').fill('Testovací 7')
   await page.getByPlaceholder('Praha', { exact: true }).fill('Brno')
   await page.getByRole('button', { name: 'Vytvořit a použít' }).click()
