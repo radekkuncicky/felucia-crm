@@ -2,7 +2,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
-import { stripe, STRIPE_PLANS } from '@/lib/stripe'
+import { stripe, STRIPE_PLANS, ZIVE_STAVY_PREDPLATNEHO } from '@/lib/stripe'
 import { getPerms } from '@/lib/permissions'
 
 export async function POST(req: Request) {
@@ -20,6 +20,15 @@ export async function POST(req: Request) {
   const orgId = session.user.orgId
   let org = await prisma.organization.findUnique({ where: { id: orgId } })
   if (!org) return NextResponse.json({ error: 'Organization not found' }, { status: 404 })
+
+  // Běžící předplatné: nový checkout by založil druhé (dvojí platba).
+  // Změna plánu jde přes zákaznický portál → webhook subscription.updated.
+  if (org.stripePlanId && ZIVE_STAVY_PREDPLATNEHO.includes(org.stripeSubscriptionStatus ?? '')) {
+    return NextResponse.json(
+      { error: 'Plán změníte ve správě předplatného.', usePortal: true },
+      { status: 409 },
+    )
+  }
 
   // Create Stripe customer if not exists
   if (!org.stripeCustomerId) {

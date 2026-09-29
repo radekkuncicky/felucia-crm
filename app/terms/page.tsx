@@ -28,22 +28,6 @@ export default function TermsPage() {
       {/* Content */}
       <div style={{ maxWidth: 800, margin: '0 auto', padding: '56px 24px 80px' }}>
 
-        {/* Draft notice */}
-        <div style={{
-          marginBottom: 32,
-          padding: '12px 16px',
-          background: 'rgba(255,193,7,0.08)',
-          border: '1px dashed rgba(255,193,7,0.4)',
-          borderRadius: 8,
-          fontFamily: 'Inter, sans-serif',
-          fontSize: 13,
-          color: '#FFD54F',
-          lineHeight: 1.6,
-        }}>
-          <strong>Před zveřejněním doplňte:</strong> IČO, adresa sídla, datum platnosti.{' '}
-          Doporučena právní revize zejm. čl. 7, 8 a 9.
-        </div>
-
         <div style={{ marginBottom: 48 }}>
           <h1 style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 32, fontWeight: 700, color: '#E8F5E9', marginBottom: 8 }}>
             Všeobecné obchodní podmínky
@@ -71,7 +55,7 @@ export default function TermsPage() {
           </Section>
 
           <Section title="Čl. 3 — Zkušební doba">
-            <p>3.1 Každý nový Uživatel má nárok na bezplatnou zkušební dobu v délce 14 dní od aktivace účtu. Během zkušební doby je Služba dostupná v plném rozsahu bez poplatku.</p>
+            <p>3.1 Každý nový Uživatel má nárok na bezplatnou zkušební dobu v délce 30 dní od aktivace účtu. Během zkušební doby je Služba dostupná v plném rozsahu bez poplatku.</p>
             <p>3.2 Po uplynutí zkušební doby, pokud Uživatel nepřejde na placené předplatné, dojde k automatickému omezení přístupu. Uživateli se zobrazí výzva k pokračování; bez aktivního předplatného nelze vytvářet nové záznamy ani upravovat stávající data.</p>
             <p>3.3 Uživatel má po uplynutí zkušební doby možnost přejít na placené předplatné kdykoliv během 60 dní od jejího skončení. Po uplynutí této lhůty bez úhrady předplatného může být účet i s veškerými daty trvale smazán.</p>
             <p>3.4 Poskytovatel si vyhrazuje právo zkušební dobu omezit nebo zrušit v případě jejího zneužití.</p>

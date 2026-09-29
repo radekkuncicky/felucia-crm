@@ -253,7 +253,7 @@ export default function AIAssistant() {
             <div style={{ fontSize: 36 }}>✦</div>
             <p style={{ color: '#f1f5f9', fontWeight: 700, fontSize: 15, margin: 0, textAlign: 'center' }}>Dáša — AI asistentka</p>
             <p style={{ color: '#81C784', fontSize: 13, margin: 0, textAlign: 'center', lineHeight: 1.5 }}>V demo módu je vypnuta.</p>
-            <a href="/#pricing" onClick={() => setIsOpen(false)} style={{ marginTop: 8, background: '#4CAF50', color: '#fff', borderRadius: 8, padding: '8px 20px', fontSize: 13, fontWeight: 700, textDecoration: 'none', display: 'inline-block' }}>Vyzkoušet 14 dní →</a>
+            <a href="/#pricing" onClick={() => setIsOpen(false)} style={{ marginTop: 8, background: '#4CAF50', color: '#fff', borderRadius: 8, padding: '8px 20px', fontSize: 13, fontWeight: 700, textDecoration: 'none', display: 'inline-block' }}>Vyzkoušet 30 dní →</a>
           </div>
         )}
       </>

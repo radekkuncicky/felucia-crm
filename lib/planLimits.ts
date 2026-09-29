@@ -1,3 +1,6 @@
+/** Délka bezplatné zkušební doby nové firmy (dny) */
+export const TRIAL_DNI = 30
+
 export const PLAN_LIMITS = {
   STARTER: {
     maxUsers: 1,

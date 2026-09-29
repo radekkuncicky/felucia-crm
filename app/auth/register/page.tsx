@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { signIn } from 'next-auth/react'
 import Link from 'next/link'
+import { TRIAL_DNI } from '@/lib/planLimits'
 
 const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'felucia.io'
 
@@ -250,7 +251,7 @@ export default function RegisterPage() {
               felucia
             </span>
           </Link>
-          <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: textMuted, marginTop: 6 }}>14 dní zdarma, pak 49 Kč/měsíc</p>
+          <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: textMuted, marginTop: 6 }}>{TRIAL_DNI} dní zdarma, pak 49 Kč/měsíc</p>
         </div>
 
         <Steps current={step} isDark={isDark} />
@@ -359,7 +360,7 @@ export default function RegisterPage() {
               <div style={{ display: 'flex', gap: 10 }}>
                 <button type="button" onClick={() => setStep(2)} disabled={submitting} style={{ ...btnOutline, opacity: submitting ? 0.5 : 1 }}>← Zpět</button>
                 <button type="submit" disabled={submitting} style={{ ...btnPrimary, flex: 1, marginTop: 0, opacity: submitting ? 0.7 : 1, cursor: submitting ? 'not-allowed' : 'pointer' }}>
-                  {submitting ? 'Vytvářím účet…' : 'Vyzkoušet 14 dní zdarma'}
+                  {submitting ? 'Vytvářím účet…' : `Vyzkoušet ${TRIAL_DNI} dní zdarma`}
                 </button>
               </div>
             </form>

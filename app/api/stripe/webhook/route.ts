@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { stripe } from '@/lib/stripe'
+import { stripe, planFromPriceId } from '@/lib/stripe'
 import { prisma } from '@/lib/prisma'
 import Stripe from 'stripe'
 
@@ -90,19 +90,30 @@ export async function POST(req: Request) {
           break
         }
 
+        // Jiné (staré/souběžné) předplatné nesmí přepsat stav hlavního plánu
+        if (org.stripePlanId && sub.id !== org.stripePlanId) {
+          console.log(`[Stripe] Org ${org.id}: update cizího předplatného ${sub.id} ignorován (hlavní ${org.stripePlanId})`)
+          break
+        }
+
         // current_period_end is on the first subscription item in Stripe v21+
-        const periodEnd = sub.items?.data?.[0]?.current_period_end
+        const item = sub.items?.data?.[0]
+        const periodEnd = item?.current_period_end
         const activeTo = periodEnd ? new Date(periodEnd * 1000) : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+        // Změna plánu v zákaznickém portálu = změna price na položce předplatného
+        const plan = planFromPriceId(item?.price?.id)
 
         await prisma.organization.update({
           where: { id: org.id },
           data: {
+            ...(plan ? { plan } : {}),
+            stripePlanId: sub.id,
             stripeSubscriptionStatus: sub.status,
             stripeCurrentPeriodEnd: activeTo,
             planActiveTo: activeTo,
           },
         })
-        console.log(`[Stripe] Org ${org.id} subscription updated (${sub.status}), active to ${activeTo.toISOString()}`)
+        console.log(`[Stripe] Org ${org.id} subscription updated (${sub.status}${plan ? `, plán ${plan}` : ''}), active to ${activeTo.toISOString()}`)
         break
       }
 
@@ -120,6 +131,12 @@ export async function POST(req: Request) {
             data: { modulPodpisy: false, stripePodpisySubId: null },
           })
           console.log(`[Stripe] Org ${org.id} zrušil modul PODPISY`)
+          break
+        }
+
+        // Zrušení jiného než hlavního předplatného plán neshazuje
+        if (org.stripePlanId && sub.id !== org.stripePlanId) {
+          console.log(`[Stripe] Org ${org.id}: zrušení cizího předplatného ${sub.id} ignorováno (hlavní ${org.stripePlanId})`)
           break
         }
 

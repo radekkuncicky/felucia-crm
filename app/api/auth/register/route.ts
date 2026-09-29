@@ -5,6 +5,7 @@ import { prisma } from '@/lib/prisma'
 import { sendEmail, emailWelcome } from '@/lib/email'
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit'
 import { seedOrgDefaults } from '@/lib/orgDefaults'
+import { TRIAL_DNI } from '@/lib/planLimits'
 
 
 function generateSlug(name: string): string {
@@ -71,7 +72,7 @@ export async function POST(req: Request) {
     const hesloHash = await bcrypt.hash(heslo, 12)
 
     const now = new Date()
-    const trialEndsAt = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000)
+    const trialEndsAt = new Date(now.getTime() + TRIAL_DNI * 24 * 60 * 60 * 1000)
 
     const org = await prisma.$transaction(async (tx) => {
       const newOrg = await tx.organization.create({

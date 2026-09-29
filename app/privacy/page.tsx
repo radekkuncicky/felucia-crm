@@ -28,22 +28,6 @@ export default function PrivacyPage() {
       {/* Content */}
       <div style={{ maxWidth: 800, margin: '0 auto', padding: '56px 24px 80px' }}>
 
-        {/* Draft notice */}
-        <div style={{
-          marginBottom: 32,
-          padding: '12px 16px',
-          background: 'rgba(255,193,7,0.08)',
-          border: '1px dashed rgba(255,193,7,0.4)',
-          borderRadius: 8,
-          fontFamily: 'Inter, sans-serif',
-          fontSize: 13,
-          color: '#FFD54F',
-          lineHeight: 1.6,
-        }}>
-          <strong>Před zveřejněním doplňte:</strong> IČO, adresa sídla, kontaktní e-mail pro žádosti subjektů údajů, datum platnosti.{' '}
-          Doporučena právní revize.
-        </div>
-
         <div style={{ marginBottom: 48 }}>
           <h1 style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: 32, fontWeight: 700, color: '#E8F5E9', marginBottom: 8 }}>
             Zásady ochrany osobních údajů

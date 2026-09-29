@@ -29,7 +29,12 @@ export function PaywallModal() {
         body: JSON.stringify({ plan }),
       })
       const data = await res.json()
-      if (data.url) window.location.href = data.url
+      if (data.url) { window.location.href = data.url; return }
+      // Běžící předplatné (např. po splatnosti) — řeší se ve správě předplatného
+      if (data.usePortal) {
+        const portal = await fetch('/api/stripe/create-portal', { method: 'POST' }).then(r => r.json()).catch(() => null)
+        if (portal?.url) window.location.href = portal.url
+      }
     } finally {
       setLoading(null)
     }

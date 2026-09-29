@@ -12,3 +12,15 @@ export const STRIPE_PLANS: Record<string, string> = {
 // Price vytvořit ve Stripe dashboardu (recurring, per unit, CZK) a ID doplnit
 // do .env — bez něj je aktivace modulu v UI nedostupná.
 export const STRIPE_PODPISY_PRICE_ID = process.env.STRIPE_PODPISY_PRICE_ID
+
+export type StripePlan = 'STARTER' | 'STANDARD' | 'PROFESSIONAL'
+
+/** Plán podle price ID předplatného (změna plánu v zákaznickém portálu mění jen price). */
+export function planFromPriceId(priceId: string | null | undefined): StripePlan | null {
+  if (!priceId) return null
+  const hit = Object.entries(STRIPE_PLANS).find(([, id]) => id && id === priceId)
+  return (hit?.[0] as StripePlan | undefined) ?? null
+}
+
+/** Stavy, kdy firma má běžící předplatné plánu — nový checkout by založil druhé. */
+export const ZIVE_STAVY_PREDPLATNEHO = ['active', 'trialing', 'past_due', 'incomplete', 'unpaid']

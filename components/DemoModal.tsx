@@ -1228,7 +1228,7 @@ export function DemoApp({ onClose }: DemoAppProps) {
             }
           </button>
           <Link href="/auth/register" style={{ fontFamily: 'Inter,sans-serif', fontSize: 12, fontWeight: 600, padding: '5px 13px', borderRadius: 7, background: t.ac, color: 'white', textDecoration: 'none' }}>
-            Vyzkoušet 14 dní →
+            Vyzkoušet 30 dní →
           </Link>
           {onClose && (
             <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: t.tf, padding: 3, display: 'flex' }}

@@ -175,6 +175,10 @@ export default function BillingClient({
         body: JSON.stringify({ plan }),
       })
       const data = await res.json()
+      if (res.status === 409 && data.usePortal) {
+        await handlePortal()
+        return
+      }
       if (!res.ok || !data.url) {
         toast.error(data.error ?? 'Platbu se nepodařilo vytvořit.')
         return
@@ -364,7 +368,7 @@ export default function BillingClient({
                   </a>
                 ) : isHigher ? (
                   <button
-                    onClick={() => handleCheckout(plan.key)}
+                    onClick={() => (hasActiveSubscription ? handlePortal() : handleCheckout(plan.key))}
                     disabled={!!loading}
                     className="w-full bg-[#4CAF50] hover:bg-[#43A047] disabled:opacity-60 text-white font-semibold py-2 rounded-lg text-sm transition-colors"
                   >
@@ -372,7 +376,7 @@ export default function BillingClient({
                   </button>
                 ) : (
                   <button
-                    onClick={() => handleCheckout(plan.key)}
+                    onClick={() => (hasActiveSubscription ? handlePortal() : handleCheckout(plan.key))}
                     disabled={!!loading}
                     className="w-full border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-60 font-semibold py-2 rounded-lg text-sm transition-colors"
                   >

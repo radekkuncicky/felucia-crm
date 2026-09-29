@@ -31,13 +31,15 @@ export default async function DashboardLayout({
   // Trial + onboarding status
   const org = await prisma.organization.findUnique({
     where: { id: session.user.orgId },
-    select: { nazev: true, trialEndsAt: true, trialStartedAt: true, onboardingDone: true, onboardingStep: true },
+    select: { nazev: true, trialEndsAt: true, trialStartedAt: true, onboardingDone: true, onboardingStep: true, stripeSubscriptionStatus: true },
   })
   const now = new Date()
   const trialDaysLeft = org?.trialEndsAt
     ? Math.max(0, Math.ceil((org.trialEndsAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
     : null
-  const trialExpired = org?.trialEndsAt ? org.trialEndsAt < now && session.user.plan === 'STARTER' : false
+  // Zaplacený STARTER (aktivní předplatné) už není „vypršelá zkušební verze"
+  const predplatneAktivni = org?.stripeSubscriptionStatus === 'active' || org?.stripeSubscriptionStatus === 'trialing'
+  const trialExpired = org?.trialEndsAt ? org.trialEndsAt < now && session.user.plan === 'STARTER' && !predplatneAktivni : false
 
   // Impersonation banner
   const cookieStore = cookies()

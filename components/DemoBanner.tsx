@@ -23,7 +23,7 @@ export default function DemoBanner() {
             fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer',
           }}
         >
-          Vyzkoušet 14 dní →
+          Vyzkoušet 30 dní →
         </button>
         <button
           onClick={() => void signOut({ callbackUrl: '/' })}
