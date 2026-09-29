@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { EtapaStav } from '@prisma/client'
+import { toast } from 'sonner'
 import { api } from '@/lib/api'
 import { etapaProgressFromRaw, etapaKompletni, lzePridatDalsiEtapu } from '@/lib/zakazkaEtapy'
 
@@ -26,6 +27,8 @@ interface Props {
   zakazkaId: string
   etapy: Etapa[]
   canEdit: boolean
+  /** Zakázka bez etap už má předávák/vyúčtování — při rozdělení se z nich stane Etapa 1 */
+  maPraciBezEtapy?: boolean
 }
 
 const STAV_LABELS: Record<EtapaStav, string> = {
@@ -55,9 +58,11 @@ function formatDate(iso: string | null) {
   return new Date(iso).toLocaleDateString('cs-CZ', { day: 'numeric', month: 'short' })
 }
 
-export default function EtapySection({ zakazkaId, etapy: initialEtapy, canEdit }: Props) {
+export default function EtapySection({ zakazkaId, etapy: initialEtapy, canEdit, maPraciBezEtapy = false }: Props) {
   const router = useRouter()
   const [etapy, setEtapy] = useState<Etapa[]>(initialEtapy)
+  // router.refresh() (přeřazení protokolu, schválení…) posílá nová data ze serveru
+  useEffect(() => { setEtapy(initialEtapy) }, [initialEtapy])
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -106,6 +111,11 @@ export default function EtapySection({ zakazkaId, etapy: initialEtapy, canEdit }
       {etapy.length === 0 && !showAddForm && (
         <div className="px-5 py-6 text-center">
           <p className="text-sm text-gray-400 dark:text-slate-500">Žádné etapy. Zakázka probíhá jako jednofázová montáž.</p>
+          {maPraciBezEtapy && (
+            <p className="mt-1 text-xs text-gray-400 dark:text-slate-500">
+              Stávající předávák a vyúčtování se při rozdělení zařadí jako Etapa 1.
+            </p>
+          )}
           {canEdit && (
             <button
               onClick={() => setShowAddForm(true)}
@@ -145,9 +155,17 @@ export default function EtapySection({ zakazkaId, etapy: initialEtapy, canEdit }
       {showAddForm && canEdit && (
         <AddEtapaForm
           zakazkaId={zakazkaId}
-          onSave={newEtapa => {
-            setEtapy(prev => [...prev, newEtapa])
+          adoptuje={etapy.length === 0 && maPraciBezEtapy}
+          onSave={async newEtapa => {
             setShowAddForm(false)
+            if (newEtapa.adoptovano) {
+              // Vznikla i Etapa 1 ze stávající práce — načíst celý seznam znovu
+              const res = await api.get<Etapa[]>(`/api/zakazky/${zakazkaId}/etapy`)
+              if (res.ok && res.data) setEtapy(res.data)
+              if (newEtapa.upozorneni) toast.info(newEtapa.upozorneni)
+            } else {
+              setEtapy(prev => [...prev, newEtapa])
+            }
             setExpandedId(newEtapa.id)
             router.refresh()
           }}
@@ -443,9 +461,12 @@ function EditEtapaForm({
   )
 }
 
-function AddEtapaForm({ zakazkaId, onSave, onCancel }: {
+type NovaEtapaResponse = Etapa & { adoptovano?: boolean; upozorneni?: string | null }
+
+function AddEtapaForm({ zakazkaId, adoptuje, onSave, onCancel }: {
   zakazkaId: string
-  onSave: (e: Etapa) => void
+  adoptuje: boolean
+  onSave: (e: NovaEtapaResponse) => void
   onCancel: () => void
 }) {
   const [nazev, setNazev] = useState('')
@@ -456,7 +477,7 @@ function AddEtapaForm({ zakazkaId, onSave, onCancel }: {
   async function handleSave() {
     setSaving(true)
     try {
-      const res = await api.post<Etapa>(`/api/zakazky/${zakazkaId}/etapy`,
+      const res = await api.post<NovaEtapaResponse>(`/api/zakazky/${zakazkaId}/etapy`,
         { nazev, montazOd: montazOd || null, montazDo: montazDo || null },
       )
       if (res.ok && res.data) onSave(res.data)
@@ -467,7 +488,14 @@ function AddEtapaForm({ zakazkaId, onSave, onCancel }: {
 
   return (
     <div className="px-5 py-4 border-t border-gray-100 dark:border-slate-700 bg-gray-50/50 dark:bg-slate-700/20 space-y-3">
-      <p className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide">Nová etapa</p>
+      <p className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide">
+        {adoptuje ? 'Nová etapa 2' : 'Nová etapa'}
+      </p>
+      {adoptuje && (
+        <p className="text-xs text-gray-500 dark:text-slate-400">
+          Dosavadní práce (předávák a vyúčtování) se zařadí jako Etapa 1. Tady vyplňte, co přijde teď.
+        </p>
+      )}
       <div className="grid sm:grid-cols-3 gap-3">
         <div>
           <label className="block text-xs font-medium text-gray-600 dark:text-slate-400 mb-1">Název (volitelný)</label>

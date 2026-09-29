@@ -48,5 +48,8 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: result.status })
   }
-  return NextResponse.json(result.etapa, { status: 201 })
+  return NextResponse.json(
+    { ...result.etapa, adoptovano: result.adoptovano, upozorneni: result.upozorneni },
+    { status: 201 },
+  )
 }

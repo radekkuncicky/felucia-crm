@@ -57,6 +57,13 @@ export default async function VyuctovaniDetailPage({
       const progress = etapaProgressFromRaw(posledniEtapa)
       if (progress.montazDone && progress.predavkaDone) dalsiEtapaCislo = posledniEtapa.cislo + 1
     }
+  } else if (perms.zakazkySchvalovani && perms.zakazkyEdit && !v.etapaId) {
+    // Zakázka zatím bez etap: stávající práce se při zahájení stane Etapou 1, nová bude 2
+    const [pocetEtap, schvalenyPredavak] = await Promise.all([
+      prisma.zakazkaEtapa.count({ where: { zakazkaId: params.id, orgId } }),
+      prisma.predavak.count({ where: { zakazkaId: params.id, orgId, etapaId: null, stav: 'SCHVALEN' } }),
+    ])
+    if (pocetEtap === 0 && schvalenyPredavak > 0) dalsiEtapaCislo = 2
   }
 
   const orgSettings = await prisma.orgSettings.findUnique({ where: { orgId }, select: { zakazkyDefaultDph: true } })

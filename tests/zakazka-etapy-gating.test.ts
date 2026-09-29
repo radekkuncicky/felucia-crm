@@ -6,6 +6,7 @@ vi.mock('next-auth', () => ({ getServerSession: vi.fn() }))
 import { POST as etapyPost } from '@/app/api/zakazky/[id]/etapy/route'
 import { POST as predavakyPost } from '@/app/api/predavaky/route'
 import { POST as schvalitPost } from '@/app/api/predavaky/[id]/schvalit/route'
+import { PATCH as predavakPatch } from '@/app/api/predavaky/[id]/route'
 import { POST as vyuSchvalitPost } from '@/app/api/vyuctovani/[id]/schvalit/route'
 import { POST as mobilePredavakPost } from '@/app/api/mobile/zakazka/[id]/predavak/route'
 import { getServerSession } from 'next-auth'
@@ -203,5 +204,99 @@ describe('souběžné založení první etapy (dvojklik) nespadne jako neošetř
 
     const pocetEtap = await prisma.zakazkaEtapa.count({ where: { zakazkaId: zakazka.id } })
     expect(pocetEtap).toBe(statuses[1] === 201 ? 2 : 1)
+  })
+})
+
+describe('rozdělení na etapy u zakázky, která už má předávák a vyúčtování', () => {
+  let n = 0
+  async function zakazkaSPraci(vyuctovaniSchvalit: boolean) {
+    n++
+    const klient = await prisma.client.create({ data: { orgId, jmeno: 'Jednofázový', prijmeni: `Klient ${n}` } })
+    const zakazka = await prisma.zakazka.create({
+      data: {
+        orgId, cislo: `${RUN}-ZAK-ADOPT-${n}`, nazev: 'Bez etap', klientId: klient.id, vedouciId: adminId,
+        stav: 'V_REALIZACI',
+        polozky: { create: [{ nazev: 'Jednotka', mnozstvi: 1, jednotka: 'ks', prodejniCena: 30000, dphSazba: 12, poradi: 0 }] },
+      },
+    })
+    const p = await predavakyPost(new Request('http://test/api/predavaky', {
+      method: 'POST', body: JSON.stringify({ zakazkaId: zakazka.id }),
+    }))
+    const predavak = await p.json()
+    await prisma.predavak.update({ where: { id: predavak.id }, data: { stav: 'PODPISAN', podpisano: new Date() } })
+    const schval = await schvalitPost(new Request('http://test'), { params: { id: predavak.id } })
+    expect(schval.status).toBe(200)
+    const { vyuctovaniId } = await schval.json()
+    if (vyuctovaniSchvalit) {
+      const r = await vyuSchvalitPost(new Request('http://test'), { params: { id: vyuctovaniId } })
+      expect(r.status).toBe(200)
+    }
+    return { zakazkaId: zakazka.id, predavakId: predavak.id as string, vyuctovaniId: vyuctovaniId as string }
+  }
+
+  it('hotová práce se zařadí jako Etapa 1 a nová etapa dostane číslo 2', async () => {
+    const z = await zakazkaSPraci(true)
+    const res = await postEtapa(z.zakazkaId, { nazev: 'Zprovoznění' })
+    expect(res.status).toBe(201)
+    const body = await res.json()
+    expect(body.cislo).toBe(2)
+    expect(body.nazev).toBe('Zprovoznění')
+    expect(body.adoptovano).toBe(true)
+    expect(body.upozorneni).toBeNull()
+
+    const e1 = await prisma.zakazkaEtapa.findFirstOrThrow({ where: { zakazkaId: z.zakazkaId, cislo: 1 } })
+    expect(e1.stav).toBe('PREDANA')
+    expect((await prisma.predavak.findUniqueOrThrow({ where: { id: z.predavakId } })).etapaId).toBe(e1.id)
+    expect((await prisma.vyuctovani.findUniqueOrThrow({ where: { id: z.vyuctovaniId } })).etapaId).toBe(e1.id)
+    expect((await prisma.zakazka.findUniqueOrThrow({ where: { id: z.zakazkaId } })).stav).toBe('V_REALIZACI')
+  })
+
+  it('nevyúčtovaná práce se zařadí jako Etapa 1, ale další etapa zatím nevznikne', async () => {
+    const z = await zakazkaSPraci(false)
+    const res = await postEtapa(z.zakazkaId, { nazev: 'Zprovoznění' })
+    expect(res.status).toBe(201)
+    const body = await res.json()
+    expect(body.cislo).toBe(1)
+    expect(body.adoptovano).toBe(true)
+    expect(body.upozorneni).toMatch(/Etapa 1/)
+    expect(await prisma.zakazkaEtapa.count({ where: { zakazkaId: z.zakazkaId } })).toBe(1)
+    expect((await prisma.vyuctovani.findUniqueOrThrow({ where: { id: z.vyuctovaniId } })).etapaId).toBe(body.id)
+  })
+
+  it('zakázka bez dokladů dostane prázdnou Etapu 1 jako dřív', async () => {
+    const klient = await prisma.client.create({ data: { orgId, jmeno: 'Prázdný', prijmeni: 'Klient' } })
+    const zakazka = await prisma.zakazka.create({
+      data: { orgId, cislo: `${RUN}-ZAK-PRAZDNA`, nazev: 'Prázdná', klientId: klient.id, stav: 'V_REALIZACI' },
+    })
+    const res = await postEtapa(zakazka.id, { nazev: 'První' })
+    expect(res.status).toBe(201)
+    const body = await res.json()
+    expect(body.cislo).toBe(1)
+    expect(body.adoptovano).toBe(false)
+    expect(body.stav).toBe('PLANOVANA')
+  })
+
+  it('„Schválit a zahájit další etapu" na zakázce bez etap založí Etapu 1 z práce + Etapu 2', async () => {
+    const z = await zakazkaSPraci(false)
+    const res = await vyuSchvalitPost(new Request('http://test', {
+      method: 'POST', body: JSON.stringify({ zahajitDalsiEtapu: true }),
+    }), { params: { id: z.vyuctovaniId } })
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.dalsiEtapa?.cislo).toBe(2)
+    expect(body.dalsiEtapaChyba).toBeNull()
+    const e1 = await prisma.zakazkaEtapa.findFirstOrThrow({ where: { zakazkaId: z.zakazkaId, cislo: 1 } })
+    expect((await prisma.vyuctovani.findUniqueOrThrow({ where: { id: z.vyuctovaniId } })).etapaId).toBe(e1.id)
+  })
+
+  it('přeřazení předáváku do jiné etapy přesune i jeho vyúčtování', async () => {
+    const z = await zakazkaSPraci(true)
+    await postEtapa(z.zakazkaId, {})
+    const e2 = await prisma.zakazkaEtapa.findFirstOrThrow({ where: { zakazkaId: z.zakazkaId, cislo: 2 } })
+    const res = await predavakPatch(new Request('http://test', {
+      method: 'PATCH', body: JSON.stringify({ etapaId: e2.id }),
+    }), { params: { id: z.predavakId } })
+    expect(res.status).toBe(200)
+    expect((await prisma.vyuctovani.findUniqueOrThrow({ where: { id: z.vyuctovaniId } })).etapaId).toBe(e2.id)
   })
 })

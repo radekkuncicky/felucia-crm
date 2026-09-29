@@ -165,6 +165,9 @@ export default function PredavakyTab({ zakazkaId, predavaky: initialPredavaky, c
         setPredavaky(predchozi)
         const err = await res.json().catch(() => ({}))
         setChyba(err.error ?? 'Nepodařilo se přeřadit protokol k etapě')
+      } else {
+        // s protokolem se přesunulo i vyúčtování — lišta a sekce Etap musí přepočítat stav
+        router.refresh()
       }
     } catch {
       setPredavaky(predchozi)

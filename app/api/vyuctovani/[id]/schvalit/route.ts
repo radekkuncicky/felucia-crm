@@ -78,7 +78,10 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   let zakazkaNovyStav: string | null = posunZakazku ? 'VYUCTOVANA' : null
   if (zahajitDalsiEtapu) {
     const r = await zalozDalsiEtapu(db, orgId, v.zakazkaId)
-    if (r.ok) {
+    if (r.ok && r.upozorneni) {
+      // zakázka bez etap: stávající práce se jen zařadila jako Etapa 1, další nevznikla
+      dalsiEtapaChyba = r.upozorneni
+    } else if (r.ok) {
       dalsiEtapa = { id: r.etapa.id, cislo: r.etapa.cislo }
       if (r.zakazkaNovyStav) zakazkaNovyStav = r.zakazkaNovyStav
     } else {

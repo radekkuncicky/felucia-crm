@@ -60,7 +60,8 @@ export default async function ZakazkaDetailLayout({
       vedouci: { select: { id: true, jmeno: true, email: true } },
       op: { select: { id: true, kod: true, predmet: true } },
       polozky: { select: { stav: true, nakupniCena: true, mnozstvi: true } },
-      vyuctovani: { select: { stav: true, polozky: { select: { mnozstvi: true, prodejniCena: true } } } },
+      vyuctovani: { select: { stav: true, etapaId: true, polozky: { select: { mnozstvi: true, prodejniCena: true } } } },
+      _count: { select: { predavaky: { where: { etapaId: null } } } },
       objednavky: { where: { stav: { in: ['NAVRH', 'ODESLANA', 'CASTECNE_DORUCENA'] } }, select: { id: true } },
       techniciRel: { select: { technikId: true } },
       etapy: {
@@ -301,6 +302,7 @@ export default async function ZakazkaDetailLayout({
           vyuctovani: e.vyuctovani,
         }))}
         canEdit={canEdit}
+        maPraciBezEtapy={zakazka._count.predavaky > 0 || zakazka.vyuctovani.some(v => !v.etapaId)}
       />
 
       {/* Finanční přehled — cena dle OP vs. vyúčtování (bez DPH) + marže z nákupek */}

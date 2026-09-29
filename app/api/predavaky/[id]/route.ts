@@ -165,10 +165,14 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       const etapa = await db.zakazkaEtapa.findFirst({ where: { id: etapaId, zakazkaId: predavak.zakazkaId, orgId } })
       if (!etapa) return NextResponse.json({ error: 'Etapa nenalezena' }, { status: 404 })
     }
-    const updated = await db.predavak.update({
-      where: { id: params.id },
-      data: { etapaId },
-      include: { polozky: { orderBy: { id: 'asc' } }, fotky: true },
+    // Vyúčtování vzniklé z protokolu patří ke stejné etapě — přeřadit spolu s ním
+    const updated = await db.$transaction(async tx => {
+      await tx.vyuctovani.updateMany({ where: { predavakId: params.id }, data: { etapaId } })
+      return tx.predavak.update({
+        where: { id: params.id },
+        data: { etapaId },
+        include: { polozky: { orderBy: { id: 'asc' } }, fotky: true },
+      })
     })
     return NextResponse.json(updated)
   }

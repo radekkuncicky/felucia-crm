@@ -24,8 +24,46 @@ export interface ZalozEtapuData {
 }
 
 export type ZalozEtapuResult =
-  | { ok: true; etapa: EtapaSDetailem; zakazkaNovyStav: 'V_REALIZACI' | null }
+  | {
+      ok: true
+      etapa: EtapaSDetailem
+      zakazkaNovyStav: 'V_REALIZACI' | null
+      /** Stávající práce (předávky/vyúčtování bez etapy) byla zařazena jako Etapa 1. */
+      adoptovano: boolean
+      /** Info pro uživatele, když se místo požadované etapy založila jen Etapa 1 ze stávající práce. */
+      upozorneni: string | null
+    }
   | { ok: false; status: number; error: string }
+
+/**
+ * Zakázka bez etap, na které už existují předávky/vyúčtování (jednofázová montáž):
+ * tahle práce JE Etapa 1. Založí ji a přiřadí jí všechny doklady bez etapy.
+ * Volat uvnitř transakce; P2002 na (zakazkaId, cislo) řeší retry volajícího.
+ */
+type OrgTx = Parameters<Parameters<OrgPrismaClient['$transaction']>[0]>[0]
+
+async function adoptujStavajiciPraci(
+  tx: OrgTx,
+  orgId: string,
+  zakazka: { id: string; montazOd: Date | null; montazDo: Date | null },
+) {
+  const schvalenyPredavak = await tx.predavak.count({
+    where: { zakazkaId: zakazka.id, etapaId: null, stav: 'SCHVALEN' },
+  })
+  const e1 = await tx.zakazkaEtapa.create({
+    data: {
+      orgId,
+      zakazkaId: zakazka.id,
+      cislo: 1,
+      montazOd: zakazka.montazOd,
+      montazDo: zakazka.montazDo,
+      stav: schvalenyPredavak > 0 ? 'PREDANA' : 'PROBIHAJICI',
+    },
+  })
+  await tx.predavak.updateMany({ where: { zakazkaId: zakazka.id, etapaId: null }, data: { etapaId: e1.id } })
+  await tx.vyuctovani.updateMany({ where: { zakazkaId: zakazka.id, etapaId: null }, data: { etapaId: e1.id } })
+  return tx.zakazkaEtapa.findUniqueOrThrow({ where: { id: e1.id }, include: ETAPA_INCLUDE })
+}
 
 /**
  * Založí další etapu zakázky (lineární gating — poslední etapa musí být kompletně
@@ -60,11 +98,26 @@ export async function zalozDalsiEtapu(
         error: `Etapu ${last.cislo} je nejdřív potřeba dokončit (montáž → předávka → vyúčtování), než půjde přidat další.`,
       }
     }
-    const cislo = (last?.cislo ?? 0) + 1
+    // První etapa na zakázce, která už má doklady → stávající práce se stane Etapou 1
+    const adoptovat = !last && (
+      await db.predavak.count({ where: { zakazkaId, etapaId: null } }) +
+      await db.vyuctovani.count({ where: { zakazkaId, etapaId: null } })
+    ) > 0
 
     try {
       let zakazkaNovyStav: 'V_REALIZACI' | null = null
+      let upozorneni: string | null = null
       const etapa = await db.$transaction(async tx => {
+        let cislo = (last?.cislo ?? 0) + 1
+        if (adoptovat) {
+          const e1 = await adoptujStavajiciPraci(tx, orgId, zakazka)
+          if (!lzePridatDalsiEtapu([etapaProgressFromRaw(e1)])) {
+            upozorneni = 'Stávající práce byla zařazena jako Etapa 1. Další etapu přidáte, až bude Etapa 1 předaná a vyúčtovaná.'
+            return e1
+          }
+          cislo = 2
+        }
+
         const e = await tx.zakazkaEtapa.create({
           data: {
             orgId,
@@ -91,7 +144,7 @@ export async function zalozDalsiEtapu(
         return e
       })
 
-      return { ok: true, etapa, zakazkaNovyStav }
+      return { ok: true, etapa, zakazkaNovyStav, adoptovano: adoptovat, upozorneni }
     } catch (e) {
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
         lastError = e
