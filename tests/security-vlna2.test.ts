@@ -67,6 +67,8 @@ afterAll(async () => {
     await prisma.technikZakazka.deleteMany({ where: { zakazka: { orgId } } })
     await prisma.zakazka.deleteMany({ where: { orgId } })
     await prisma.category.deleteMany({ where: { orgId } })
+    await prisma.lead.deleteMany({ where: { orgId } })
+    await prisma.product.deleteMany({ where: { orgId } })
     await prisma.client.deleteMany({ where: { orgId } })
     await prisma.passwordResetToken.deleteMany({ where: { user: { orgId } } })
     await prisma.user.deleteMany({ where: { orgId } })
@@ -131,6 +133,38 @@ describe('SEC-22 — klienti a vyhledávání jen v rozsahu uživatele', () => {
     login(obchodnikA, orgA, 'OBCHODNIK', { ...getPerms({ role: 'OBCHODNIK' } as never), obchodCiziOP: false })
     const o = await (await searchGet(get('http://test?q=Zuzana'))).json()
     expect(o.filter((r: { type: string }) => r.type === 'deal').map((r: { id: string }) => r.id)).toEqual([dealObch])
+  })
+})
+
+describe('SEC-22b — hledání zakázek, leadů a produktů (UX vlna 2)', () => {
+  let zCizi: string
+  beforeAll(async () => {
+    zCizi = (await prisma.zakazka.create({ data: { orgId: orgA, cislo: `${RUN}-Z2`, nazev: 'Zuzana cizí montáž', klientId: clientA2 } })).id
+    await prisma.lead.create({ data: { orgId: orgA, jmeno: 'Zuzana Leadová' } })
+    await prisma.product.create({ data: { orgId: orgA, nazev: 'Zuzana split 3,5 kW', standardniCena: 1 } })
+  })
+
+  const typy = (r: { type: string; id: string }[], typ: string) => r.filter(x => x.type === typ).map(x => x.id)
+
+  it('technik najde jen svou zakázku, žádné leady ani produkty', async () => {
+    login(technikA, orgA, 'TECHNIK')
+    const t = await (await searchGet(get('http://test?q=Zuzana'))).json()
+    const z1 = await prisma.zakazka.findFirstOrThrow({ where: { orgId: orgA, cislo: `${RUN}-Z1` } })
+    expect(typy(t, 'zakazka')).toEqual([z1.id])
+    expect(typy(t, 'lead')).toEqual([])
+    expect(typy(t, 'product')).toEqual([])
+  })
+
+  it('obchodník nenajde cizí zakázku, admin ano; obchodník najde lead i produkt', async () => {
+    login(obchodnikA, orgA, 'OBCHODNIK')
+    const o = await (await searchGet(get('http://test?q=Zuzana'))).json()
+    expect(typy(o, 'zakazka')).not.toContain(zCizi)
+    expect(typy(o, 'lead')).toHaveLength(1)
+    expect(typy(o, 'product')).toHaveLength(1)
+
+    login(adminA, orgA, 'ADMIN')
+    const a = await (await searchGet(get('http://test?q=Zuzana'))).json()
+    expect(typy(a, 'zakazka')).toContain(zCizi)
   })
 })
 

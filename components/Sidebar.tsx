@@ -8,7 +8,7 @@ import { useOrgSettings } from '@/context/OrgSettingsContext'
 import { ROLE_LABELS, type Permissions } from '@/lib/permissions'
 import { sidebarSections, footerItems, type NavItem as NavItemDef } from '@/lib/navigation'
 import { NavIcon } from '@/components/NavIcon'
-import { IconLogout, IconChevronLeft, IconChevronRight, IconSearch } from '@/components/ui/Icons'
+import { IconLogout, IconChevronLeft, IconChevronRight } from '@/components/ui/Icons'
 
 interface SidebarUser {
   jmeno: string
@@ -93,21 +93,8 @@ export default function Sidebar({ user, orgNazev }: Props) {
         )}
       </div>
 
-      {/* Hledání = paleta ⌘K (jedno hledání pro celou aplikaci) */}
-      <div className="px-3 py-2">
-        <button
-          type="button"
-          onClick={() => window.dispatchEvent(new Event('felucia:command-palette'))}
-          title={collapsed ? 'Hledat' : undefined}
-          className={`w-full flex items-center gap-2 bg-[#0D1A0E] border border-green-900/60 rounded-lg px-2.5 py-1.5 text-sm text-green-400/50 hover:border-[#4CAF50]/60 hover:text-green-200 transition-colors ${collapsed ? 'justify-center' : ''}`}
-        >
-          <IconSearch className="w-4 h-4 flex-shrink-0" />
-          {!collapsed && <><span className="flex-1 text-left">Hledat…</span><kbd className="text-[11px] text-green-400/40 font-sans">⌘K</kbd></>}
-        </button>
-      </div>
-
       {/* Nav */}
-      <nav className="flex-1 px-2 pb-2 overflow-y-auto overflow-x-hidden scrollbar-none">
+      <nav className="flex-1 px-2 py-2 overflow-y-auto overflow-x-hidden scrollbar-none">
         {sections.map((sec, i) => (
           <div key={sec.id} className={i > 0 ? (collapsed || !sec.title ? 'mt-2 pt-2 border-t border-green-900/40' : 'mt-3') : ''}>
             {sec.title && !collapsed && (

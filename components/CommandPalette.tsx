@@ -2,9 +2,13 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import type { NavItem, NavIconKey } from '@/lib/navigation'
+import { NavIcon } from '@/components/NavIcon'
+
+type ResultType = 'deal' | 'client' | 'servis' | 'zakazka' | 'lead' | 'product'
 
 interface SearchResult {
-  type: 'deal' | 'client' | 'servis'
+  type: ResultType
   id: string
   label: string
   sub: string
@@ -21,50 +25,57 @@ interface Item {
   icon: React.ReactNode
   label: string
   sub?: string
-  shortcut?: string
+  badge?: string
   href?: string
   action?: () => void
 }
 
-const ICON_DEAL = (
-  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-  </svg>
-)
-const ICON_CLIENT = (
-  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-  </svg>
-)
-const ICON_WRENCH = (
-  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-  </svg>
-)
-const ICON_PLUS = (
-  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-  </svg>
-)
-const ICON_NAV = (
-  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M9 5l7 7-7 7" />
-  </svg>
-)
-
-interface Props {
-  /** Servisní modul: enabled = viditelný v menu, canCreate = smí zakládat akce (dispečink). */
-  servis?: { enabled: boolean; canCreate: boolean }
+const TYP: Record<ResultType, { icon: NavIconKey; badge: string }> = {
+  client: { icon: 'users', badge: 'Klient' },
+  deal: { icon: 'briefcase', badge: 'OP' },
+  zakazka: { icon: 'clipboard', badge: 'Zakázka' },
+  servis: { icon: 'wrench', badge: 'Servis' },
+  lead: { icon: 'bell', badge: 'Lead' },
+  product: { icon: 'box', badge: 'Produkt' },
 }
 
-export default function CommandPalette({ servis }: Props = {}) {
+const RECENT_KEY = 'felucia_recent_search'
+
+function readRecent(): SearchResult[] {
+  try {
+    const raw = localStorage.getItem(RECENT_KEY)
+    const list = raw ? (JSON.parse(raw) as SearchResult[]) : []
+    return Array.isArray(list) ? list.filter(r => r && r.href && TYP[r.type]).slice(0, 5) : []
+  } catch {
+    return []
+  }
+}
+
+function pushRecent(r: SearchResult) {
+  try {
+    const next = [r, ...readRecent().filter(x => x.href !== r.href)].slice(0, 5)
+    localStorage.setItem(RECENT_KEY, JSON.stringify(next))
+  } catch {}
+}
+
+const icon = (name: NavIconKey) => <NavIcon name={name} className="w-4 h-4" />
+
+interface Props {
+  /** Položky z lib/navigation.ts paletteItems() — už vyfiltrované podle role, plánu a modulů */
+  navigace: NavItem[]
+  akce: NavItem[]
+  /** Klávesa N = nový obchodní případ (jen s obchodem) */
+  canNewDeal: boolean
+}
+
+export default function CommandPalette({ navigace, akce, canNewDeal }: Props) {
   const [open, setOpen] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
   const [loading, setLoading] = useState(false)
   const [activeIdx, setActiveIdx] = useState(0)
+  const [recent, setRecent] = useState<SearchResult[]>([])
   const router = useRouter()
   const inputRef = useRef<HTMLInputElement>(null)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -96,8 +107,8 @@ export default function CommandPalette({ servis }: Props = {}) {
         setOpen(o => !o)
         return
       }
-      // n → new deal
-      if (e.key === 'n' || e.key === 'N') {
+      // n → nový obchodní případ (jen s právem obchodu)
+      if (canNewDeal && (e.key === 'n' || e.key === 'N')) {
         e.preventDefault()
         router.push('/deals/new')
         return
@@ -110,7 +121,7 @@ export default function CommandPalette({ servis }: Props = {}) {
       document.removeEventListener('keydown', handler)
       window.removeEventListener('felucia:command-palette', openHandler)
     }
-  }, [router])
+  }, [router, canNewDeal])
 
   // Close help on outside click
   useEffect(() => {
@@ -128,6 +139,7 @@ export default function CommandPalette({ servis }: Props = {}) {
       setQuery('')
       setResults([])
       setActiveIdx(0)
+      setRecent(readRecent())
       setTimeout(() => inputRef.current?.focus(), 50)
     }
   }, [open])
@@ -136,7 +148,7 @@ export default function CommandPalette({ servis }: Props = {}) {
     if (q.length < 2) { setResults([]); return }
     setLoading(true)
     try {
-      // Jedno místo pravdy pro hledání (klienti, OP, servisní zakázky, scope podle oprávnění)
+      // Jedno místo pravdy pro hledání (klienti, OP, zakázky, servis, leady, produkty; scope podle oprávnění)
       const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`)
       const mapped: SearchResult[] = res.ok ? await res.json() : []
       setResults(mapped)
@@ -152,51 +164,37 @@ export default function CommandPalette({ servis }: Props = {}) {
     return () => { if (timer.current) clearTimeout(timer.current) }
   }, [query, search])
 
-  function navigate(href: string) {
-    router.push(href)
+  function open_(item: Item | undefined) {
+    if (!item) return
+    item.action?.()
+    if (item.href) router.push(item.href)
     setOpen(false)
   }
 
+  const toItem = (r: SearchResult): Item => ({
+    id: `${r.type}-${r.id}`,
+    icon: icon(TYP[r.type].icon),
+    label: r.label,
+    sub: r.sub,
+    badge: TYP[r.type].badge,
+    href: r.href,
+    action: () => pushRecent(r),
+  })
+
   const staticGroups: Group[] = [
+    ...(recent.length ? [{ label: 'Nedávné', items: recent.map(toItem) }] : []),
     {
       label: 'Přejít na',
-      items: [
-        { id: 'nav-dashboard', icon: ICON_NAV, label: 'Nástěnka', shortcut: '⌘1', href: '/dashboard' },
-        { id: 'nav-deals', icon: ICON_DEAL, label: 'Obchodní případy', shortcut: '⌘2', href: '/deals' },
-        { id: 'nav-clients', icon: ICON_CLIENT, label: 'Klienti', shortcut: '⌘3', href: '/clients' },
-        { id: 'nav-activities', icon: ICON_NAV, label: 'Aktivity', shortcut: '⌘4', href: '/activities' },
-        { id: 'nav-calendar', icon: ICON_NAV, label: 'Kalendář', href: '/calendar' },
-        ...(servis?.enabled
-          ? [
-              { id: 'nav-servis', icon: ICON_NAV, label: 'Servis — přehled', href: '/servis' },
-              { id: 'nav-servis-zakazky', icon: ICON_NAV, label: 'Servisní zakázky', href: '/servis/zakazky' },
-              { id: 'nav-servis-plan', icon: ICON_NAV, label: 'Plán servisů', href: '/servis/plan' },
-              { id: 'nav-servis-portfolio', icon: ICON_NAV, label: 'Servisní portfolio', sub: 'Klienti, zařízení, smlouvy', href: '/servis/portfolio' },
-            ]
-          : []),
-        { id: 'nav-settings', icon: ICON_NAV, label: 'Nastavení', href: '/settings' },
-      ],
+      items: navigace.map(n => ({ id: `nav-${n.id}`, icon: icon(n.icon), label: n.label, href: n.href })),
     },
-    {
+    ...(akce.length ? [{
       label: 'Rychlé akce',
-      items: [
-        { id: 'act-new-deal', icon: ICON_PLUS, label: 'Nový obchodní případ', href: '/deals/new' },
-        { id: 'act-new-client', icon: ICON_PLUS, label: 'Nový klient', href: '/clients/new' },
-        ...(servis?.canCreate
-          ? [{ id: 'act-new-servis', icon: ICON_PLUS, label: 'Nová servisní akce', sub: 'Porucha, oprava, kontrola…', href: '/servis/nova' }]
-          : []),
-      ],
-    },
+      items: akce.map(a => ({ id: `act-${a.id}`, icon: icon(a.icon), label: a.label, href: a.href })),
+    }] : []),
   ]
 
   // Build flat list for keyboard nav
-  const searchItems: Item[] = results.map(r => ({
-    id: r.id,
-    icon: r.type === 'deal' ? ICON_DEAL : r.type === 'servis' ? ICON_WRENCH : ICON_CLIENT,
-    label: r.label,
-    sub: r.sub,
-    href: r.href,
-  }))
+  const searchItems: Item[] = results.map(toItem)
 
   const hasSearch = query.length >= 2
   const allItems: Item[] = hasSearch
@@ -213,9 +211,7 @@ export default function CommandPalette({ servis }: Props = {}) {
       setActiveIdx(i => Math.max(0, i - 1))
     } else if (e.key === 'Enter') {
       e.preventDefault()
-      const item = allItems[activeIdx]
-      if (item?.href) navigate(item.href)
-      else item?.action?.()
+      open_(allItems[activeIdx])
     }
   }
 
@@ -240,7 +236,7 @@ export default function CommandPalette({ servis }: Props = {}) {
               {[
                 [`${mod}+K`, 'Hledat'],
                 ['/', 'Hledat'],
-                ['N', 'Nový OP'],
+                ...(canNewDeal ? [['N', 'Nový OP']] : []),
                 ['Esc', 'Zavřít'],
               ].map(([key, label]) => (
                 <div key={key} className="flex items-center justify-between gap-4 text-xs">
@@ -274,7 +270,7 @@ export default function CommandPalette({ servis }: Props = {}) {
             value={query}
             onChange={e => { setQuery(e.target.value); setActiveIdx(0) }}
             onKeyDown={handleKey}
-            placeholder="Hledat nebo zadat příkaz…"
+            placeholder="Hledat klienta, OP, zakázku, produkt…"
             className="flex-1 bg-transparent text-base text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none"
           />
           <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -294,7 +290,7 @@ export default function CommandPalette({ servis }: Props = {}) {
                   <div>
                     <p className="text-[10px] uppercase tracking-widest text-gray-400 dark:text-slate-500 px-4 py-1.5 font-semibold">Výsledky hledání</p>
                     {searchItems.map((item, i) => (
-                      <ResultRow key={item.id} item={item} active={i === activeIdx} onHover={() => setActiveIdx(i)} onClick={() => item.href && navigate(item.href)} />
+                      <ResultRow key={item.id} item={item} active={i === activeIdx} onHover={() => setActiveIdx(i)} onClick={() => open_(item)} />
                     ))}
                   </div>
                 )}
@@ -312,10 +308,7 @@ export default function CommandPalette({ servis }: Props = {}) {
                       item={item}
                       active={offset + i === activeIdx}
                       onHover={() => setActiveIdx(offset + i)}
-                      onClick={() => {
-                        if (item.href) navigate(item.href)
-                        else item.action?.()
-                      }}
+                      onClick={() => open_(item)}
                     />
                   ))}
                 </div>
@@ -364,8 +357,8 @@ function ResultRow({ item, active, onHover, onClick }: {
         <span className="text-sm font-medium text-gray-900 dark:text-white truncate block">{item.label}</span>
         {item.sub && <span className="text-xs text-gray-400 dark:text-slate-500 truncate block">{item.sub}</span>}
       </div>
-      {item.shortcut && (
-        <kbd className="text-[11px] text-gray-400 dark:text-slate-500 border border-gray-200 dark:border-slate-600 rounded px-1.5 py-0.5 font-mono flex-shrink-0">{item.shortcut}</kbd>
+      {item.badge && (
+        <span className="text-[11px] text-gray-500 dark:text-slate-400 bg-gray-100 dark:bg-slate-800 rounded px-1.5 py-0.5 flex-shrink-0">{item.badge}</span>
       )}
     </button>
   )

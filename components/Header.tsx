@@ -75,7 +75,7 @@ export default function Header({ user, onMenuClick }: HeaderProps) {
         <span className="font-bold text-sm text-gray-900 dark:text-green-100 tracking-wide font-space">FELUCIA</span>
       </div>
 
-      {/* Search trigger - desktop only */}
+      {/* Search trigger - desktop (mobil má ikonu vpravo) */}
       <button
         onClick={() => window.dispatchEvent(new Event('felucia:command-palette'))}
         className="hidden md:flex items-center gap-2 w-64 px-3 py-1.5 rounded-lg border border-[#C8E6C9] dark:border-green-900/50 text-gray-400 dark:text-green-300/40 hover:border-primary dark:hover:border-primary text-sm transition-colors"
@@ -88,6 +88,16 @@ export default function Header({ user, onMenuClick }: HeaderProps) {
       </button>
 
       <div className="flex items-center gap-2 md:gap-3">
+        {/* Hledání na mobilu — stejná paleta jako ⌘K */}
+        <button
+          onClick={() => window.dispatchEvent(new Event('felucia:command-palette'))}
+          aria-label="Hledat"
+          className="md:hidden p-2 rounded-lg text-gray-500 dark:text-green-300/60 hover:bg-gray-100 dark:hover:bg-green-900/30 transition-colors"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </button>
         <NotificationBell />
         <ThemeToggle />
         <div className="hidden sm:block h-5 w-px bg-[#C8E6C9] dark:bg-green-900/50" />

@@ -1,7 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { getPerms } from '@/lib/permissions'
-import { getPlanLimits } from '@/lib/planLimits'
 import { redirect } from 'next/navigation'
 import DashboardShell from '@/components/DashboardShell'
 import AIAssistant from '@/components/AIAssistant'
@@ -12,6 +11,7 @@ import { cookies } from 'next/headers'
 import ImpersonationBanner from '@/components/ImpersonationBanner'
 import DemoBanner from '@/components/DemoBanner'
 import { prisma } from '@/lib/prisma'
+import { paletteItems } from '@/lib/navigation'
 import CommandPalette from '@/components/CommandPalette'
 import TrialBanner from '@/components/TrialBanner'
 import OnboardingBanner from '@/components/OnboardingBanner'
@@ -101,11 +101,8 @@ export default async function DashboardLayout({
       </div>
       <AIAssistant />
       <CommandPalette
-        servis={{
-          // stejné gating jako skupina Servis v Sidebaru
-          enabled: getPlanLimits(session.user.plan).hasServiceModule && orgSettings.modulServis && getPerms(session.user).servis !== 'ZADNY',
-          canCreate: getPlanLimits(session.user.plan).hasServiceModule && orgSettings.modulServis && getPerms(session.user).servisDispecink,
-        }}
+        {...paletteItems({ perms: getPerms(session.user), plan: session.user.plan, orgSettings, isSuperAdmin: session.user.isSuperAdmin })}
+        canNewDeal={getPerms(session.user).obchod}
       />
       <Suspense fallback={null}>
         <OnboardingModal />
