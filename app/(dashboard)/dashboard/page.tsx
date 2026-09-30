@@ -13,7 +13,7 @@ import {
   IconHammer, IconCreditCard, IconSparkles,
 } from '@/components/ui/Icons'
 import { formatKcCompact } from '@/lib/format'
-import { getPerms, isTechnikView } from '@/lib/permissions'
+import { getPerms, isTechnikView, dealScopeWhere } from '@/lib/permissions'
 
 const stavLabels: Record<StavDealu, string> = {
   NOVY: 'Nový', JEDNANI: 'Jednání', NABIDKA: 'Nabídka',
@@ -69,6 +69,14 @@ export default async function DashboardPage() {
   const tomorrow = new Date(today.getTime() + 1 * 24 * 60 * 60 * 1000)
   const dayAfterTomorrow = new Date(today.getTime() + 2 * 24 * 60 * 60 * 1000)
 
+  // Obchodní přehled (KPI, pipeline, aktivity, termíny) jen s právem obchodu
+  // a v rozsahu OP, které uživatel smí vidět; částky jen s financeProdejni.
+  const perms = getPerms(session!.user)
+  const dealScope = dealScopeWhere(perms, session!.user.id)
+  const showObchod = dealScope !== null
+  const ds = dealScope ?? {}
+  const activityScope = perms.obchodCiziOP ? {} : { userId: session!.user.id }
+
   const [
     clientCount,
     dealsByStav,
@@ -79,10 +87,10 @@ export default async function DashboardPage() {
     dealsThisMonth,
     clientsThisMonth,
   ] = await Promise.all([
-    prisma.client.count({ where: { orgId } }),
-    prisma.deal.groupBy({ by: ['stav'], where: { orgId }, _count: true }),
-    prisma.deal.findMany({
-      where: { orgId, stav: { notIn: ['USPECH', 'PAS', 'ZNEPLATNENO'] } },
+    showObchod ? prisma.client.count({ where: { orgId } }) : 0,
+    showObchod ? prisma.deal.groupBy({ by: ['stav'], where: { orgId, ...ds }, _count: true }) : [],
+    !showObchod || !perms.financeProdejni ? [] : prisma.deal.findMany({
+      where: { orgId, ...ds, stav: { notIn: ['USPECH', 'PAS', 'ZNEPLATNENO'] } },
       select: {
         quotes: {
           where: { aktivni: true },
@@ -94,9 +102,10 @@ export default async function DashboardPage() {
         },
       },
     }),
-    prisma.activity.findMany({
+    !showObchod ? [] : prisma.activity.findMany({
       where: {
         orgId,
+        ...activityScope,
         stav: 'PLANOVANA',
         datum: { gte: today, lte: in7Days },
       },
@@ -108,9 +117,10 @@ export default async function DashboardPage() {
       orderBy: { datum: 'asc' },
       take: 12,
     }),
-    prisma.deal.findMany({
+    !showObchod ? [] : prisma.deal.findMany({
       where: {
         orgId,
+        ...ds,
         stav: { notIn: ['PAS', 'USPECH'] },
         OR: [
           { terminRealizace: { gte: today, lte: in30Days } },
@@ -121,14 +131,14 @@ export default async function DashboardPage() {
       orderBy: { terminRealizace: 'asc' },
       take: 6,
     }),
-    prisma.deal.findMany({
-      where: { orgId, stav: 'USPECH', vytvoreno: { gte: startOfMonth } },
+    !showObchod ? [] : prisma.deal.findMany({
+      where: { orgId, ...ds, stav: 'USPECH', vytvoreno: { gte: startOfMonth } },
       include: { client: { select: { jmeno: true, prijmeni: true } } },
       orderBy: { vytvoreno: 'desc' },
       take: 5,
     }),
-    prisma.deal.count({ where: { orgId, vytvoreno: { gte: startOfMonth } } }),
-    prisma.client.count({ where: { orgId, vytvoreno: { gte: startOfMonth } } }),
+    showObchod ? prisma.deal.count({ where: { orgId, ...ds, vytvoreno: { gte: startOfMonth } } }) : 0,
+    showObchod ? prisma.client.count({ where: { orgId, vytvoreno: { gte: startOfMonth } } }) : 0,
   ])
 
   const countByStav = Object.fromEntries(dealsByStav.map(d => [d.stav, d._count])) as Partial<Record<StavDealu, number>>
@@ -147,7 +157,6 @@ export default async function DashboardPage() {
   }, 0)
   const maxStageCount = Math.max(...pipelineStages.map(s => countByStav[s.stav] ?? 0), 1)
 
-  const perms = getPerms(session!.user)
   const firstName = session!.user.jmeno.split(' ')[0]
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Dobré ráno' : hour < 18 ? 'Dobrý den' : 'Dobrý večer'
@@ -165,16 +174,18 @@ export default async function DashboardPage() {
             {new Date().toLocaleDateString('cs-CZ', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
           </p>
         </div>
-        <Link href="/deals/new" className="hidden sm:flex items-center gap-2 bg-primary hover:bg-primary-hover text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors">
+        {showObchod && <Link href="/deals/new" className="hidden sm:flex items-center gap-2 bg-primary hover:bg-primary-hover text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
           Nový případ
-        </Link>
+        </Link>}
       </div>
 
+      {showObchod && (<>
+
       {/* KPI cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className={`grid grid-cols-2 sm:grid-cols-3 ${perms.financeProdejni ? "lg:grid-cols-5" : "lg:grid-cols-4"} gap-3`}>
         {[
           {
             label: 'Aktivní OP',
@@ -194,7 +205,7 @@ export default async function DashboardPage() {
             delta: clientsThisMonth > 0 ? `+${clientsThisMonth} tento měsíc` : undefined,
             href: '/clients',
           },
-          {
+          ...(!perms.financeProdejni ? [] : [{
             label: 'Hodnota pipeline',
             value: pipeline > 0 ? fmtKc(pipeline) : '—',
             icon: <IconCoins className="w-[18px] h-[18px]" />,
@@ -202,7 +213,7 @@ export default async function DashboardPage() {
             color: 'text-green-600 dark:text-green-400',
             small: pipeline > 0,
             href: '/deals',
-          },
+          }]),
           {
             label: 'Vyhráno (měsíc)',
             value: recentWins.length,
@@ -385,6 +396,8 @@ export default async function DashboardPage() {
           )}
         </div>
       </div>
+
+      </>)}
 
       {/* Zakázky section for managers (schvalování předáváků/vyúčtování) */}
       {perms.zakazkySchvalovani && (
