@@ -1,76 +1,30 @@
 import { getPlanLimits } from '@/lib/planLimits'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
-import { generateServisniProtokolHtml } from '@/lib/servisniProtokolHtml'
-import { generatePdf } from '@/lib/pdf'
-import { buildDokumentChrome } from '@/lib/dokumentyChrome'
-import { orgLogoDataUrl } from '@/lib/quoteRenderer'
+import { forbidden, getPerms, servisScopeWhere } from '@/lib/permissions'
+import { renderServisniProtokol } from '@/lib/servisniProtokol'
 
 // GET /api/servis/zakazky/[id]/protokol - servisní protokol jako PDF (hardened cesta).
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+// Jde stáhnout kdykoliv, i bez podpisu klienta (PDF pak nese stav „Nepodepsáno"/„Koncept").
+// ?inline=1 = náhled v prohlížeči, jinak stažení souboru.
+export async function GET(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { orgId, plan } = session.user
-  const db = orgPrisma(orgId)
   if (!getPlanLimits(plan).hasServiceModule) return NextResponse.json({ error: 'Vyžadován plán Professional nebo Enterprise' }, { status: 403 })
-
-  const navsteva = await db.servisniZakazka.findFirst({
-    where: { id: params.id, orgId },
-    include: {
-      technik: { select: { jmeno: true } },
-      zarizeni: {
-        select: {
-          nazev: true,
-          typ: true,
-          vyrobniCislo: true,
-          datumInstalace: true,
-          zarukaDo: true,
-        },
-      },
-      klient: {
-        select: {
-          jmeno: true,
-          prijmeni: true,
-          telefon: true,
-          email: true,
-          ulice: true,
-          mesto: true,
-          psc: true,
-        },
-      },
-    },
-  })
-
-  if (!navsteva) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-
-  const org = await db.organization.findUnique({
-    where: { id: orgId },
-    select: { nazev: true, sidlo: true, ico: true, email: true, telefon: true, logo: true },
-  })
-
-  if (!org) return NextResponse.json({ error: 'Org not found' }, { status: 404 })
+  const scope = servisScopeWhere(getPerms(session.user), session.user.id)
+  if (!scope) return forbidden()
 
   try {
-    // Logo jako data URL - relativní cesta se v hardened PDF (síť jen fonty) nenačte.
-    const html = generateServisniProtokolHtml(
-      navsteva,
-      navsteva.zarizeni,
-      navsteva.klient,
-      { ...org, logo: orgLogoDataUrl(org.logo) },
-    )
-
-    const chrome = await buildDokumentChrome(orgId, plan)
-    const pdf = await generatePdf(html, chrome)
-
-    const cislo = navsteva.cislo ?? navsteva.id.slice(0, 8).toUpperCase()
-    const filename = `servisni-protokol-${cislo}.pdf`
-
-    return new Response(pdf as unknown as BodyInit, {
+    const res = await renderServisniProtokol(orgId, plan, params.id, scope)
+    if (!res) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    const inline = new URL(req.url).searchParams.get('inline') === '1'
+    return new Response(res.pdf as unknown as BodyInit, {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="${filename}"`,
+        'Content-Disposition': `${inline ? 'inline' : 'attachment'}; filename="${res.filename}"`,
+        'Cache-Control': 'private, no-store',
       },
     })
   } catch (err) {

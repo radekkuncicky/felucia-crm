@@ -1,5 +1,14 @@
 import { formatDate } from '@/lib/format'
 import { podpisToImgSrc } from '@/lib/podpisImage'
+
+/**
+ * Servisní protokol pro klienta (A4, Puppeteer). Tiskový dokument, ne webové
+ * karty: šířku určují jen okraje stránky z generatePdf (žádné width/min-height),
+ * bloky, které se nesmí roztrhnout (hlavička, řádky tabulky, řádky fotek,
+ * podpisy), mají break-inside: avoid; dlouhé texty se lámou volně po řádcích.
+ * Ceny se klientovi neukazují — ty patří do vyúčtování.
+ */
+
 const TYP_LABELS: Record<string, string> = {
   TEPELNE_CERPADLO: 'Tepelné čerpadlo',
   KLIMATIZACE: 'Klimatizace',
@@ -19,6 +28,15 @@ const NAVSTEVA_TYP_LABELS: Record<string, string> = {
   KONTROLA: 'Kontrola',
 }
 
+const POLOZKA_TYP_LABELS: Record<string, string> = {
+  PRACE: 'Práce',
+  MATERIAL: 'Materiál',
+  DOPRAVA: 'Doprava',
+  JINE: 'Jiné',
+}
+
+export const PROTOKOL_MAX_FOTEK = 6
+
 // Escapuje VŠECHNY dynamické hodnoty (data tenanta) do HTML. Bez toho hrozí
 // injection do PDF. Pole protokolu jsou prostý text, ne HTML, takže escapujeme,
 // nesanitizujeme. Datové URL (logo, fotky, podpis) projdou beze změny.
@@ -31,35 +49,32 @@ function esc(s: unknown): string {
     .replace(/'/g, '&#39;')
 }
 
-function fmt(n: number) {
-  return n.toLocaleString('cs-CZ', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
-}
-
-function fmtDate(d: Date | string | null) {
+function fmtDate(d: Date | string | null | undefined) {
   if (!d) return '—'
   return formatDate(d)
 }
 
-function fmtDateTime(d: Date | string | null) {
+function fmtTime(d: Date | string | null | undefined) {
+  if (!d) return null
+  return new Date(d).toLocaleTimeString('cs-CZ', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Prague' })
+}
+
+function fmtDateTime(d: Date | string | null | undefined) {
   if (!d) return '—'
-  return new Date(d).toLocaleString('cs-CZ', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+  return `${formatDate(d)} ${fmtTime(d)}`
 }
 
 function trvaniLabel(minuty: number | null) {
-  if (!minuty) return '—'
+  if (!minuty) return null
   const h = Math.floor(minuty / 60)
   const m = minuty % 60
   if (h === 0) return `${m} min`
-  if (m === 0) return `${h} hod`
-  return `${h} hod ${m} min`
+  if (m === 0) return `${h} h`
+  return `${h} h ${m} min`
 }
 
-function zarukaColor(zarukaDo: Date | string | null) {
-  if (!zarukaDo) return '#6b7280'
-  const diff = (new Date(zarukaDo).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-  if (diff < 0) return '#dc2626'
-  if (diff < 90) return '#d97706'
-  return '#16a34a'
+function fmtMnozstvi(n: unknown) {
+  return Number(n ?? 0).toLocaleString('cs-CZ', { maximumFractionDigits: 2 })
 }
 
 // Jen datové URL (data:) projdou do <img src>. Cokoli jiného (http, relativní
@@ -70,10 +85,20 @@ function safeImageSrc(src: string | null | undefined): string | null {
   return src.startsWith('data:') ? src : null
 }
 
+function safeColor(c: string | null | undefined): string {
+  return c && /^#[0-9a-f]{6}$/i.test(c) ? c : '#1B5E20'
+}
+
+/** Víceřádkový text: escapovat, zachovat odřádkování (pre-wrap v CSS) */
+function textBlock(s: string) {
+  return `<div class="text">${esc(s.trim())}</div>`
+}
+
 type Navsteva = {
   id: string
   cislo: string | null
   typ: string
+  stav?: string | null
   // Zadání (servis/nova) — u starších zakázek chybí, sekce se pak nevykreslí
   popis?: string | null
   priorita?: string | null
@@ -86,11 +111,19 @@ type Navsteva = {
   zprava: string | null
   nalezeneZavady: string | null
   doporuceni: string | null
-  nakladyCas: unknown
-  nakladyMaterial: unknown
   fotky: unknown
   podpisKlienta: string | null
+  /** false = klient nebyl při zásahu přítomen (protokol bez podpisu) */
+  klientPritomen?: boolean
+  protokolDokoncen?: Date | string | null
   technik: { jmeno: string } | null
+  polozky?: {
+    typ: string
+    popis: string
+    mnozstvi: unknown
+    jednotka: string
+    krytoKontraktem: boolean
+  }[]
 }
 
 type Zarizeni = {
@@ -115,10 +148,17 @@ type Org = {
   nazev: string
   sidlo: string | null
   ico: string | null
+  dic?: string | null
   email: string | null
   telefon: string | null
   // Předvyřešená data URL loga (orgLogoDataUrl) z routy, ne relativní cesta.
   logo: string | null
+  primaryColor?: string | null
+}
+
+function row(label: string, value: string | null | undefined) {
+  if (!value) return ''
+  return `<div class="kv"><span class="k">${label}</span><span class="v">${value}</span></div>`
 }
 
 export function generateServisniProtokolHtml(
@@ -127,364 +167,293 @@ export function generateServisniProtokolHtml(
   klient: Klient,
   org: Org,
 ): string {
+  const barva = safeColor(org.primaryColor)
   const cislo = esc(navsteva.cislo ?? navsteva.id.slice(0, 8).toUpperCase())
-  const datum = fmtDate(navsteva.planovanyTermin)
-  const datumTisku = new Date().toLocaleString('cs-CZ', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-
-  const nakladyCas = Number(navsteva.nakladyCas ?? 0)
-  const nakladyMaterial = Number(navsteva.nakladyMaterial ?? 0)
-  const celkemNaklady = nakladyCas + nakladyMaterial
+  const datumZasahu = fmtDate(navsteva.skutecnyTermin ?? navsteva.planovanyTermin ?? navsteva.protokolDokoncen)
+  const dokonceno = !!navsteva.protokolDokoncen
+  const nepritomen = navsteva.klientPritomen === false
+  const podpisSrc = nepritomen ? null : podpisToImgSrc(navsteva.podpisKlienta)
+  const klientJmeno = klient ? `${klient.jmeno} ${klient.prijmeni}`.trim() : null
 
   const fotky = (Array.isArray(navsteva.fotky) ? navsteva.fotky as string[] : [])
     .map(safeImageSrc)
     .filter((s): s is string => s !== null)
+    .slice(0, PROTOKOL_MAX_FOTEK)
 
   const adresaKlienta = klient
-    ? [klient.ulice, [klient.mesto, klient.psc].filter(Boolean).join(' ')].filter(Boolean).join(', ')
-    : '—'
+    ? [klient.ulice, [klient.psc, klient.mesto].filter(Boolean).join(' ')].filter(Boolean).join(', ')
+    : ''
+  const mistoZasahu = navsteva.adresaZasahu?.trim() || adresaKlienta
 
   const logoSrc = safeImageSrc(org.logo)
-  const logoHtml = logoSrc
-    ? `<img src="${esc(logoSrc)}" alt="Logo" style="height:50px;object-fit:contain;" />`
-    : `<span style="font-size:20px;font-weight:800;color:#1a1a2e;">${esc(org.nazev)}</span>`
+  const orgRadky = [
+    org.sidlo,
+    [org.ico && `IČO ${org.ico}`, org.dic && `DIČ ${org.dic}`].filter(Boolean).join(' · '),
+    [org.telefon, org.email].filter(Boolean).join(' · '),
+  ].filter(Boolean) as string[]
 
-  const podpisSrc = podpisToImgSrc(navsteva.podpisKlienta)
+  // Stav dokumentu: klient musí na první pohled vidět, co drží v ruce
+  const stavChip = !dokonceno
+    ? `<span class="chip chip-draft">Koncept — zásah neukončen</span>`
+    : podpisSrc
+      ? `<span class="chip chip-ok">Podepsáno klientem</span>`
+      : nepritomen
+        ? `<span class="chip chip-warn">Klient nebyl přítomen</span>`
+        : `<span class="chip chip-warn">Nepodepsáno klientem</span>`
+
+  // ── Hlavička ──────────────────────────────────────────────────────────────
+  const header = `
+  <table class="head">
+    <tr>
+      <td class="head-org">
+        ${logoSrc
+          ? `<img class="logo" src="${esc(logoSrc)}" alt="" />`
+          : `<div class="org-name-big">${esc(org.nazev)}</div>`}
+        <div class="org-lines">
+          ${logoSrc ? `<strong>${esc(org.nazev)}</strong><br/>` : ''}
+          ${orgRadky.map(esc).join('<br/>')}
+        </div>
+      </td>
+      <td class="head-doc">
+        <div class="doc-title">Servisní protokol</div>
+        <div class="doc-no">${cislo}</div>
+        <div class="doc-date">Datum zásahu: <strong>${datumZasahu}</strong></div>
+        <div style="margin-top:6px">${stavChip}</div>
+      </td>
+    </tr>
+  </table>`
+
+  // ── Strany: zákazník / místo / zařízení ───────────────────────────────────
+  const kontaktNaMiste = [navsteva.kontaktJmeno, navsteva.kontaktTelefon].filter(Boolean).join(', ')
+  const zarukaPlatna = zarizeni?.zarukaDo ? new Date(zarizeni.zarukaDo).getTime() >= Date.now() : null
+
+  const parties = `
+  <table class="parties">
+    <tr>
+      <td>
+        <div class="label">Zákazník</div>
+        <div class="strong">${esc(klientJmeno ?? '—')}</div>
+        ${adresaKlienta ? `<div>${esc(adresaKlienta)}</div>` : ''}
+        ${klient?.telefon ? `<div>${esc(klient.telefon)}</div>` : ''}
+        ${klient?.email ? `<div>${esc(klient.email)}</div>` : ''}
+      </td>
+      <td>
+        <div class="label">Místo zásahu</div>
+        <div class="strong">${esc(mistoZasahu || '—')}</div>
+        ${kontaktNaMiste ? `<div>Kontakt na místě: ${esc(kontaktNaMiste)}</div>` : ''}
+      </td>
+      <td>
+        <div class="label">Zařízení</div>
+        ${zarizeni ? `
+          <div class="strong">${esc(zarizeni.nazev)}</div>
+          <div>${esc(TYP_LABELS[zarizeni.typ] ?? zarizeni.typ)}</div>
+          ${zarizeni.vyrobniCislo ? `<div>Výr. č. ${esc(zarizeni.vyrobniCislo)}</div>` : ''}
+          ${zarizeni.datumInstalace ? `<div>Instalace ${fmtDate(zarizeni.datumInstalace)}</div>` : ''}
+          ${zarizeni.zarukaDo ? `<div>Záruka do ${fmtDate(zarizeni.zarukaDo)}${zarukaPlatna === false ? ' (po záruce)' : ''}</div>` : ''}
+        ` : '<div class="muted">Neuvedeno</div>'}
+      </td>
+    </tr>
+  </table>`
+
+  // ── Údaje o zásahu (jeden řádek) ──────────────────────────────────────────
+  const prijezd = navsteva.skutecnyTermin ? fmtDateTime(navsteva.skutecnyTermin) : null
+  const meta = `
+  <div class="meta">
+    ${row('Typ zásahu', esc(NAVSTEVA_TYP_LABELS[navsteva.typ] ?? navsteva.typ))}
+    ${row('Technik', navsteva.technik?.jmeno ? esc(navsteva.technik.jmeno) : null)}
+    ${row('Příjezd', prijezd)}
+    ${row('Doba práce', trvaniLabel(navsteva.trvaniMinut))}
+    ${navsteva.priorita === 'URGENTNI' ? row('Priorita', 'Urgentní') : ''}
+  </div>`
+
+  // ── Textové sekce: jen vyplněné; „Provedené práce" vždy ────────────────────
+  const section = (title: string, body: string) => `
+  <section class="sec">
+    <h2>${title}</h2>
+    ${body}
+  </section>`
+
+  const texty = [
+    navsteva.popis?.trim() ? section('Hlášená závada / požadavek', textBlock(navsteva.popis)) : '',
+    section('Provedené práce', navsteva.zprava?.trim()
+      ? textBlock(navsteva.zprava)
+      : `<div class="text muted">${dokonceno ? 'Bez záznamu.' : 'Doplní technik po ukončení zásahu.'}</div>`),
+    navsteva.nalezeneZavady?.trim() ? section('Zjištěné závady', textBlock(navsteva.nalezeneZavady)) : '',
+    navsteva.doporuceni?.trim() ? section('Doporučení', textBlock(navsteva.doporuceni)) : '',
+  ].join('')
+
+  // ── Položky (bez cen) ─────────────────────────────────────────────────────
+  const polozky = navsteva.polozky ?? []
+  const nejakeKryto = polozky.some(p => p.krytoKontraktem)
+  const polozkyHtml = polozky.length === 0 ? '' : section('Provedené úkony a použitý materiál', `
+    <table class="items">
+      <thead>
+        <tr>
+          <th class="c-no">#</th>
+          <th class="c-typ">Druh</th>
+          <th>Popis</th>
+          <th class="c-qty">Množství</th>
+          ${nejakeKryto ? '<th class="c-kryto">Smlouva</th>' : ''}
+        </tr>
+      </thead>
+      <tbody>
+        ${polozky.map((p, i) => `
+        <tr>
+          <td class="c-no">${i + 1}</td>
+          <td class="c-typ">${esc(POLOZKA_TYP_LABELS[p.typ] ?? p.typ)}</td>
+          <td>${esc(p.popis)}</td>
+          <td class="c-qty">${fmtMnozstvi(p.mnozstvi)} ${esc(p.jednotka)}</td>
+          ${nejakeKryto ? `<td class="c-kryto">${p.krytoKontraktem ? 'v ceně smlouvy' : ''}</td>` : ''}
+        </tr>`).join('')}
+      </tbody>
+    </table>`)
+
+  // ── Fotky: tabulka po 3, řádek se nedělí mezi stránky ─────────────────────
+  const fotkyRows: string[][] = []
+  for (let i = 0; i < fotky.length; i += 3) fotkyRows.push(fotky.slice(i, i + 3))
+  const fotkyHtml = fotky.length === 0 ? '' : `
+  <section class="sec">
+    <h2>Fotodokumentace</h2>
+    <table class="photos">
+      ${fotkyRows.map(r => `
+      <tr>
+        ${[0, 1, 2].map(j => `<td>${r[j] ? `<img src="${esc(r[j])}" alt="" />` : ''}</td>`).join('')}
+      </tr>`).join('')}
+    </table>
+  </section>`
+
+  // ── Podpisy (celý blok vždy pohromadě) ────────────────────────────────────
+  const podpisDatum = dokonceno ? fmtDate(navsteva.protokolDokoncen) : ''
+  const podpisy = `
+  <section class="sec signs">
+    <h2>Předání a převzetí</h2>
+    <p class="prohlaseni">
+      ${nepritomen
+        ? 'Klient nebyl při zásahu přítomen. Protokol byl vyhotoven bez podpisu zákazníka.'
+        : `Zákazník svým podpisem potvrzuje, že výše uvedené práce byly provedeny a zařízení
+      bylo předáno${zarizeni ? ' v provozuschopném stavu, není-li v protokolu uvedeno jinak' : ''}.`}
+    </p>
+    <table class="sign-table">
+      <tr>
+        <td>
+          <div class="sign-box"></div>
+          <div class="sign-caption">
+            Za zhotovitele: <strong>${esc(navsteva.technik?.jmeno ?? org.nazev)}</strong><br/>
+            ${esc(org.nazev)}
+          </div>
+        </td>
+        <td>
+          <div class="sign-box">
+            ${podpisSrc ? `<img src="${esc(podpisSrc)}" alt="Podpis zákazníka" />` : ''}
+          </div>
+          <div class="sign-caption">
+            Zákazník: <strong>${esc(klientJmeno ?? '')}</strong><br/>
+            ${podpisSrc
+              ? `Podepsáno elektronicky${podpisDatum ? ` dne ${podpisDatum}` : ''}`
+              : nepritomen
+                ? 'Nebyl přítomen'
+                : 'Datum: ………………………'}
+          </div>
+        </td>
+      </tr>
+    </table>
+  </section>`
 
   return `<!DOCTYPE html>
 <html lang="cs">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Servisní protokol ${cislo}</title>
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-    font-size: 11pt;
-    color: #1a1a2e;
-    background: #fff;
-    padding: 0;
+    font-family: 'Inter', Arial, sans-serif;
+    font-size: 9.5pt;
+    line-height: 1.45;
+    color: #111827;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
-  .page {
-    width: 210mm;
-    min-height: 297mm;
-    padding: 18mm 18mm 14mm;
-    margin: 0 auto;
-    background: #fff;
-  }
-  h2 { font-size: 13pt; font-weight: 700; color: #1a1a2e; margin-bottom: 10px; }
-  .header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    border-bottom: 3px solid #16a34a;
-    padding-bottom: 14px;
-    margin-bottom: 20px;
-  }
-  .header-title { font-size: 24pt; font-weight: 800; color: #16a34a; }
-  .header-meta { text-align: right; font-size: 10pt; color: #4b5563; }
-  .header-meta strong { color: #1a1a2e; font-size: 12pt; }
-  .section {
-    margin-bottom: 18px;
-    border: 1px solid #e5e7eb;
-    border-radius: 8px;
-    overflow: hidden;
-  }
-  .section-title {
-    background: #f0fdf4;
-    border-bottom: 1px solid #d1fae5;
-    padding: 8px 14px;
-    font-size: 10pt;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: #15803d;
-  }
-  .section-body { padding: 12px 14px; }
-  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 20px; }
-  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px 16px; }
-  .field { margin-bottom: 4px; }
-  .field-label { font-size: 8.5pt; color: #6b7280; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 1px; }
-  .field-value { font-size: 10.5pt; color: #1a1a2e; font-weight: 500; }
-  .field-value a { color: #16a34a; text-decoration: none; }
-  .badge {
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 20px;
-    font-size: 9pt;
-    font-weight: 600;
-  }
-  .badge-green { background: #dcfce7; color: #15803d; }
-  .badge-red { background: #fee2e2; color: #dc2626; }
-  .badge-orange { background: #ffedd5; color: #c2410c; }
-  .badge-blue { background: #dbeafe; color: #1d4ed8; }
-  .text-block {
-    background: #f9fafb;
-    border: 1px solid #e5e7eb;
-    border-radius: 6px;
-    padding: 10px 12px;
-    font-size: 10.5pt;
-    line-height: 1.5;
-    white-space: pre-wrap;
-    color: #1a1a2e;
-    min-height: 40px;
-  }
-  .text-block.empty { color: #9ca3af; font-style: italic; }
-  .costs-table { width: 100%; border-collapse: collapse; }
-  .costs-table td { padding: 5px 8px; font-size: 10.5pt; }
-  .costs-table .label { color: #6b7280; }
-  .costs-table .value { text-align: right; font-weight: 500; }
-  .costs-table .total { border-top: 2px solid #16a34a; font-weight: 700; color: #15803d; font-size: 12pt; }
-  .photos-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
-  }
-  .photo-item img {
-    width: 100%;
-    height: 100px;
-    object-fit: cover;
-    border-radius: 6px;
-    border: 1px solid #e5e7eb;
-  }
-  .signatures {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 30px;
-    margin-top: 6px;
-  }
-  .signature-line {
-    border-bottom: 1.5px solid #374151;
-    padding-bottom: 4px;
-    margin-bottom: 6px;
-    height: 50px;
-  }
-  .signature-name { font-size: 9pt; color: #6b7280; }
-  .footer {
-    margin-top: 20px;
-    border-top: 1px solid #e5e7eb;
-    padding-top: 10px;
-    display: flex;
-    justify-content: space-between;
-    font-size: 8.5pt;
-    color: #9ca3af;
-  }
-  @media print {
-    body { padding: 0; }
-    .page { padding: 15mm 15mm 12mm; }
-  }
+  table { border-collapse: collapse; width: 100%; }
+  td, th { vertical-align: top; text-align: left; }
+  .muted { color: #9ca3af; }
+  .strong { font-weight: 600; }
+
+  /* Hlavička */
+  .head { border-bottom: 2.5px solid ${barva}; margin-bottom: 14px; break-inside: avoid; }
+  .head td { padding-bottom: 12px; }
+  .head-org { width: 55%; }
+  .logo { max-height: 46px; max-width: 170px; object-fit: contain; display: block; margin-bottom: 6px; }
+  .org-name-big { font-size: 15pt; font-weight: 800; margin-bottom: 4px; }
+  .org-lines { font-size: 8pt; color: #4b5563; line-height: 1.5; }
+  .head-doc { text-align: right; }
+  .doc-title { font-size: 17pt; font-weight: 800; color: ${barva}; letter-spacing: -0.2px; }
+  .doc-no { font-size: 11pt; font-weight: 700; margin-top: 2px; }
+  .doc-date { font-size: 9pt; color: #4b5563; margin-top: 2px; }
+  .chip { display: inline-block; font-size: 7.5pt; font-weight: 700; text-transform: uppercase;
+          letter-spacing: 0.4px; padding: 2px 8px; border-radius: 3px; border: 1px solid; }
+  .chip-ok { color: #166534; border-color: #86efac; background: #f0fdf4; }
+  .chip-warn { color: #92400e; border-color: #fcd34d; background: #fffbeb; }
+  .chip-draft { color: #4b5563; border-color: #d1d5db; background: #f9fafb; }
+
+  /* Zákazník / místo / zařízení */
+  .parties { margin-bottom: 10px; break-inside: avoid; }
+  .parties td { width: 33.33%; padding: 0 12px 0 0; font-size: 9pt; line-height: 1.5; }
+  .parties td + td { padding-left: 12px; border-left: 1px solid #e5e7eb; }
+  .label { font-size: 7.5pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+           color: #6b7280; margin-bottom: 3px; }
+
+  /* Údaje o zásahu */
+  .meta { display: flex; flex-wrap: wrap; gap: 4px 22px; padding: 7px 0; margin-bottom: 4px;
+          border-top: 1px solid #e5e7eb; border-bottom: 1px solid #e5e7eb; break-inside: avoid; }
+  .kv .k { color: #6b7280; margin-right: 5px; }
+  .kv .v { font-weight: 600; }
+
+  /* Sekce */
+  .sec { margin-top: 14px; }
+  .sec h2 { font-size: 8pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px;
+            color: ${barva}; padding-bottom: 3px; margin-bottom: 6px; border-bottom: 1px solid #e5e7eb;
+            break-after: avoid; page-break-after: avoid; }
+  .text { white-space: pre-wrap; orphans: 3; widows: 3; }
+
+  /* Položky */
+  .items thead { display: table-header-group; }
+  .items th { font-size: 7.5pt; font-weight: 600; color: #6b7280; text-transform: uppercase;
+              letter-spacing: 0.3px; padding: 4px 6px; border-bottom: 1px solid #d1d5db; }
+  .items td { padding: 5px 6px; border-bottom: 1px solid #f0f0f0; }
+  .items tr { break-inside: avoid; page-break-inside: avoid; }
+  .c-no { width: 24px; color: #9ca3af; }
+  .c-typ { width: 70px; color: #4b5563; }
+  .c-qty { width: 90px; text-align: right !important; white-space: nowrap; }
+  .c-kryto { width: 100px; color: #4b5563; font-size: 8.5pt; }
+
+  /* Fotky */
+  .photos { border-collapse: separate; border-spacing: 0 6px; margin-top: -6px; }
+  .photos tr { break-inside: avoid; page-break-inside: avoid; }
+  .photos td { width: 33.33%; padding: 0 3px; }
+  .photos td:first-child { padding-left: 0; }
+  .photos td:last-child { padding-right: 0; }
+  .photos img { width: 100%; height: 40mm; object-fit: cover; border-radius: 3px; display: block; }
+
+  /* Podpisy */
+  .signs { break-inside: avoid; page-break-inside: avoid; margin-top: 18px; }
+  .prohlaseni { font-size: 8.5pt; color: #4b5563; margin-bottom: 10px; }
+  .sign-table td { width: 50%; padding-right: 24px; }
+  .sign-table td + td { padding-right: 0; padding-left: 24px; }
+  .sign-box { height: 22mm; border-bottom: 1px solid #374151; display: flex; align-items: flex-end; }
+  .sign-box img { max-height: 20mm; max-width: 100%; object-fit: contain; }
+  .sign-caption { font-size: 8.5pt; color: #4b5563; margin-top: 4px; line-height: 1.5; }
 </style>
 </head>
 <body>
-<div class="page">
-
-  <!-- HEADER -->
-  <div class="header">
-    <div>
-      ${logoHtml}
-    </div>
-    <div class="header-meta">
-      <div class="header-title">Servisní protokol</div>
-      <div><strong>${cislo}</strong></div>
-      <div>Datum: ${datum}</div>
-    </div>
-  </div>
-
-  <!-- ZAŘÍZENÍ -->
-  ${zarizeni ? `
-  <div class="section">
-    <div class="section-title">Zařízení</div>
-    <div class="section-body">
-      <div class="grid3">
-        <div class="field">
-          <div class="field-label">Název</div>
-          <div class="field-value">${esc(zarizeni.nazev)}</div>
-        </div>
-        <div class="field">
-          <div class="field-label">Typ</div>
-          <div class="field-value">${esc(TYP_LABELS[zarizeni.typ] ?? zarizeni.typ)}</div>
-        </div>
-        <div class="field">
-          <div class="field-label">Výrobní číslo</div>
-          <div class="field-value">${esc(zarizeni.vyrobniCislo ?? '—')}</div>
-        </div>
-        <div class="field">
-          <div class="field-label">Datum instalace</div>
-          <div class="field-value">${fmtDate(zarizeni.datumInstalace)}</div>
-        </div>
-        <div class="field">
-          <div class="field-label">Záruka do</div>
-          <div class="field-value" style="color:${zarukaColor(zarizeni.zarukaDo)}">
-            ${fmtDate(zarizeni.zarukaDo)}
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-  ` : ''}
-
-  <!-- KLIENT -->
-  ${klient ? `
-  <div class="section">
-    <div class="section-title">Klient</div>
-    <div class="section-body">
-      <div class="grid2">
-        <div class="field">
-          <div class="field-label">Jméno</div>
-          <div class="field-value">${esc(`${klient.jmeno} ${klient.prijmeni}`)}</div>
-        </div>
-        <div class="field">
-          <div class="field-label">${navsteva.adresaZasahu && navsteva.adresaZasahu !== adresaKlienta ? 'Místo zásahu' : 'Adresa'}</div>
-          <div class="field-value">${esc(navsteva.adresaZasahu || adresaKlienta)}</div>
-        </div>
-        <div class="field">
-          <div class="field-label">Telefon</div>
-          <div class="field-value">${klient.telefon ? `<a href="tel:${esc(klient.telefon)}">${esc(klient.telefon)}</a>` : '—'}</div>
-        </div>
-        <div class="field">
-          <div class="field-label">Email</div>
-          <div class="field-value">${klient.email ? `<a href="mailto:${esc(klient.email)}">${esc(klient.email)}</a>` : '—'}</div>
-        </div>
-      </div>
-    </div>
-  </div>
-  ` : ''}
-
-  <!-- HLÁŠENÁ ZÁVADA / ZADÁNÍ -->
-  ${navsteva.popis || navsteva.kontaktJmeno || navsteva.kontaktTelefon || navsteva.priorita === 'URGENTNI' ? `
-  <div class="section">
-    <div class="section-title">Hlášená závada / požadavek${navsteva.priorita === 'URGENTNI' ? ' — URGENTNÍ' : ''}</div>
-    <div class="section-body">
-      <div class="${navsteva.popis ? 'text-block' : 'text-block empty'}">${navsteva.popis ? esc(navsteva.popis) : 'Bez popisu'}</div>
-      ${navsteva.kontaktJmeno || navsteva.kontaktTelefon ? `
-      <div class="grid2" style="margin-top:8px">
-        <div class="field">
-          <div class="field-label">Kontakt na místě</div>
-          <div class="field-value">${esc(navsteva.kontaktJmeno ?? '—')}</div>
-        </div>
-        <div class="field">
-          <div class="field-label">Telefon na místě</div>
-          <div class="field-value">${navsteva.kontaktTelefon ? `<a href="tel:${esc(navsteva.kontaktTelefon)}">${esc(navsteva.kontaktTelefon)}</a>` : '—'}</div>
-        </div>
-      </div>` : ''}
-    </div>
-  </div>
-  ` : ''}
-
-  <!-- PRŮBĚH SERVISU -->
-  <div class="section">
-    <div class="section-title">Průběh servisu</div>
-    <div class="section-body">
-      <div class="grid3">
-        <div class="field">
-          <div class="field-label">Typ návštěvy</div>
-          <div class="field-value">${esc(NAVSTEVA_TYP_LABELS[navsteva.typ] ?? navsteva.typ)}</div>
-        </div>
-        <div class="field">
-          <div class="field-label">Plánovaný termín</div>
-          <div class="field-value">${fmtDateTime(navsteva.planovanyTermin)}</div>
-        </div>
-        <div class="field">
-          <div class="field-label">Skutečný příjezd</div>
-          <div class="field-value">${fmtDateTime(navsteva.skutecnyTermin)}</div>
-        </div>
-        <div class="field">
-          <div class="field-label">Trvání</div>
-          <div class="field-value">${trvaniLabel(navsteva.trvaniMinut)}</div>
-        </div>
-        <div class="field">
-          <div class="field-label">Technik</div>
-          <div class="field-value">${esc(navsteva.technik?.jmeno ?? '—')}</div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- CO BYLO PROVEDENO -->
-  <div class="section">
-    <div class="section-title">Co bylo provedeno</div>
-    <div class="section-body">
-      <div class="${navsteva.zprava ? 'text-block' : 'text-block empty'}">${navsteva.zprava ? esc(navsteva.zprava) : 'Bez zprávy'}</div>
-    </div>
-  </div>
-
-  <!-- NALEZENÉ ZÁVADY -->
-  <div class="section">
-    <div class="section-title">Nalezené závady</div>
-    <div class="section-body">
-      <div class="${navsteva.nalezeneZavady ? 'text-block' : 'text-block empty'}">${navsteva.nalezeneZavady ? esc(navsteva.nalezeneZavady) : 'Bez závad'}</div>
-    </div>
-  </div>
-
-  <!-- DOPORUČENÍ -->
-  <div class="section">
-    <div class="section-title">Doporučení</div>
-    <div class="section-body">
-      <div class="${navsteva.doporuceni ? 'text-block' : 'text-block empty'}">${navsteva.doporuceni ? esc(navsteva.doporuceni) : 'Bez doporučení'}</div>
-    </div>
-  </div>
-
-  <!-- NÁKLADY -->
-  <div class="section">
-    <div class="section-title">Náklady</div>
-    <div class="section-body">
-      <table class="costs-table">
-        <tr><td class="label">Práce</td><td class="value">${fmt(nakladyCas)} Kč</td></tr>
-        <tr><td class="label">Materiál</td><td class="value">${fmt(nakladyMaterial)} Kč</td></tr>
-        <tr class="total"><td class="label">Celkem</td><td class="value">${fmt(celkemNaklady)} Kč</td></tr>
-      </table>
-    </div>
-  </div>
-
-  <!-- FOTODOKUMENTACE -->
-  ${fotky.length > 0 ? `
-  <div class="section">
-    <div class="section-title">Fotodokumentace</div>
-    <div class="section-body">
-      <div class="photos-grid">
-        ${fotky.slice(0, 6).map(f => `
-          <div class="photo-item">
-            <img src="${esc(f)}" alt="Fotodokumentace" />
-          </div>
-        `).join('')}
-      </div>
-    </div>
-  </div>
-  ` : ''}
-
-  <!-- PODPISY -->
-  <div class="section">
-    <div class="section-title">Podpisy</div>
-    <div class="section-body">
-      <div class="signatures">
-        <div>
-          <div class="signature-line"></div>
-          <div class="signature-name">Technik: ${esc(navsteva.technik?.jmeno ?? '—')}</div>
-        </div>
-        <div>
-          <div class="signature-line">
-            ${podpisSrc ? `<img src="${esc(podpisSrc)}" alt="Podpis klienta" style="height:44px;max-width:100%;object-fit:contain;object-position:left;" />` : ''}
-          </div>
-          <div class="signature-name">Klient: ${klient ? esc(`${klient.jmeno} ${klient.prijmeni}`) : '—'}</div>
-        </div>
-      </div>
-      ${podpisSrc ? `
-      <div style="margin-top:12px;font-size:9.5pt;color:#15803d;">
-        Podepsáno klientem
-      </div>
-      ` : ''}
-    </div>
-  </div>
-
-  <!-- FOOTER -->
-  <div class="footer">
-    <div>
-      <strong>${esc(org.nazev)}</strong>${org.sidlo ? ` · ${esc(org.sidlo)}` : ''}${org.ico ? ` · IČO: ${esc(org.ico)}` : ''}${org.telefon ? ` · ${esc(org.telefon)}` : ''}${org.email ? ` · ${esc(org.email)}` : ''}
-    </div>
-    <div>Vytištěno: ${esc(datumTisku)}</div>
-  </div>
-
-</div>
+  ${header}
+  ${parties}
+  ${meta}
+  ${texty}
+  ${polozkyHtml}
+  ${fotkyHtml}
+  ${podpisy}
 </body>
 </html>`
 }

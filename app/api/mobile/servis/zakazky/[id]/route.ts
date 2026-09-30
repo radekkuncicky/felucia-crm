@@ -33,8 +33,8 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   const z = await orgPrisma(orgId).servisniZakazka.findFirst({
     where: { id: params.id, orgId },
     include: {
-      kontrakt: { select: { nazev: true, klient: { select: { jmeno: true, prijmeni: true, telefon: true, ulice: true, mesto: true, psc: true } } } },
-      klient: { select: { jmeno: true, prijmeni: true, telefon: true, ulice: true, mesto: true, psc: true } },
+      kontrakt: { select: { nazev: true, klient: { select: { jmeno: true, prijmeni: true, telefon: true, email: true, ulice: true, mesto: true, psc: true } } } },
+      klient: { select: { jmeno: true, prijmeni: true, telefon: true, email: true, ulice: true, mesto: true, psc: true } },
       zarizeni: { select: { nazev: true, typ: true, vyrobniCislo: true } },
       technik: { select: { id: true, jmeno: true } },
     },
@@ -65,7 +65,10 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     nakladyMaterial: z.nakladyMaterial != null ? Number(z.nakladyMaterial) : null,
     fotky: (z.fotky as string[]) ?? [],
     podpisKlienta: z.podpisKlienta,
+    klientPritomen: z.klientPritomen,
     protokolDokoncen: z.protokolDokoncen,
+    protokolOdeslan: z.protokolOdeslan,
+    protokolOdeslanNa: z.protokolOdeslanNa,
     technik: z.technik ? { id: z.technik.id, jmeno: z.technik.jmeno } : null,
     zarizeni: z.zarizeni
       ? { nazev: z.zarizeni.nazev, typ: z.zarizeni.typ, vyrobniCislo: z.zarizeni.vyrobniCislo ?? null }
@@ -74,6 +77,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       ? {
           jmeno: `${klient.jmeno} ${klient.prijmeni}`,
           telefon: klient.telefon ?? null,
+          email: klient.email ?? null,
           adresa: klientAdresa(klient),
         }
       : null,
@@ -96,6 +100,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   for (const k of ['nakladyCas', 'nakladyMaterial', 'trvaniMinut'] as const) {
     if (body[k] !== undefined) allowed[k] = body[k] == null ? null : Number(body[k])
   }
+  if (body.klientPritomen !== undefined) allowed.klientPritomen = body.klientPritomen !== false
   if (body.stav !== undefined) {
     if (!POVOLENE_STAVY.includes(body.stav)) {
       return NextResponse.json({ error: 'Nepovolený přechod stavu' }, { status: 422 })

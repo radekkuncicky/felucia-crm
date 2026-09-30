@@ -15,6 +15,7 @@ const KLIENT_SELECT = {
   mesto: true,
   psc: true,
   telefon: true,
+  email: true,
 } as const
 
 export default async function ServisZakazkaDetailPage({ params }: { params: { id: string } }) {
@@ -81,7 +82,10 @@ export default async function ServisZakazkaDetailPage({ params }: { params: { id
     nakladyMaterial: z.nakladyMaterial ? String(z.nakladyMaterial) : null,
     fotky: (z.fotky as string[]) ?? [],
     podpisKlienta: z.podpisKlienta,
+    klientPritomen: z.klientPritomen,
     protokolDokoncen: z.protokolDokoncen ? z.protokolDokoncen.toISOString() : null,
+    protokolOdeslan: z.protokolOdeslan ? z.protokolOdeslan.toISOString() : null,
+    protokolOdeslanNa: z.protokolOdeslanNa,
     vyfakturovano: z.vyfakturovano,
     zaplaceno: z.zaplaceno,
     klient: klient
@@ -90,6 +94,7 @@ export default async function ServisZakazkaDetailPage({ params }: { params: { id
           jmeno: `${klient.jmeno} ${klient.prijmeni}`,
           adresa: [klient.ulice, [klient.mesto, klient.psc].filter(Boolean).join(' ')].filter(Boolean).join(', '),
           telefon: klient.telefon,
+          email: klient.email ?? null,
         }
       : null,
     kontrakt: z.kontrakt ? { id: z.kontrakt.id, nazev: z.kontrakt.nazev, cisloKontraktu: z.kontrakt.cisloKontraktu } : null,

@@ -23,6 +23,7 @@ import {
   jeUrgentni,
 } from '@/lib/servisStav'
 import { formatDate } from '@/lib/format'
+import { cn } from '@/lib/cn'
 
 interface ZakazkaRef {
   id: string
@@ -54,10 +55,13 @@ interface Zakazka {
   nakladyMaterial: string | null
   fotky: string[]
   podpisKlienta: string | null
+  klientPritomen: boolean
   protokolDokoncen: string | null
+  protokolOdeslan: string | null
+  protokolOdeslanNa: string | null
   vyfakturovano: boolean
   zaplaceno: boolean
-  klient: { id: string; jmeno: string; adresa: string; telefon: string | null } | null
+  klient: { id: string; jmeno: string; adresa: string; telefon: string | null; email: string | null } | null
   kontrakt: { id: string; nazev: string; cisloKontraktu: string | null } | null
   zarizeni: { id: string; nazev: string; typ: string; vyrobniCislo: string | null } | null
   puvodniZakazka: ZakazkaRef | null
@@ -101,6 +105,7 @@ export default function ZakazkaDetailClient({ zakazka, orgUsers, canEdit, isAdmi
   const [fotky, setFotky] = useState<string[]>(zakazka.fotky)
   const [uploading, setUploading] = useState(false)
   const [podpis, setPodpis] = useState<string | null>(zakazka.podpisKlienta)
+  const [klientPritomen, setKlientPritomen] = useState(zakazka.klientPritomen)
   const [confirmAction, setConfirmAction] = useState<'zrusit' | 'uzavrit' | null>(null)
   const [reklamaceOpen, setReklamaceOpen] = useState(false)
   const [cekaOpen, setCekaOpen] = useState(false)
@@ -108,6 +113,13 @@ export default function ZakazkaDetailClient({ zakazka, orgUsers, canEdit, isAdmi
   const [reklamacePoznamka, setReklamacePoznamka] = useState('')
   const [manualStavOpen, setManualStavOpen] = useState(false)
   const [manualStav, setManualStav] = useState(zakazka.stav)
+  const [odeslatOpen, setOdeslatOpen] = useState(false)
+  const [odeslatTo, setOdeslatTo] = useState(zakazka.klient?.email ?? '')
+  const [odeslatZprava, setOdeslatZprava] = useState('')
+  const [odesilam, setOdesilam] = useState(false)
+  const [odeslano, setOdeslano] = useState<{ kdy: string; na: string } | null>(
+    zakazka.protokolOdeslan ? { kdy: zakazka.protokolOdeslan, na: zakazka.protokolOdeslanNa ?? '' } : null,
+  )
 
   const [form, setForm] = useState({
     typ: zakazka.typ,
@@ -157,6 +169,7 @@ export default function ZakazkaDetailClient({ zakazka, orgUsers, canEdit, isAdmi
         nakladyCas: form.nakladyCas ? Number(form.nakladyCas) : null,
         nakladyMaterial: form.nakladyMaterial ? Number(form.nakladyMaterial) : null,
         podpisKlienta: podpis,
+        klientPritomen,
         ...override,
       }),
     })
@@ -201,8 +214,8 @@ export default function ZakazkaDetailClient({ zakazka, orgUsers, canEdit, isAdmi
   // Handoff: dokončení protokolu = přechod do DOKONCENA, což nastaví
   // protokolDokoncen (brána do vyúčtování). Vyžaduje podpis klienta.
   async function dokoncitProtokol() {
-    if (!podpis) {
-      toast.warning('Pro dokončení protokolu je potřeba podpis klienta (sekce Předání zakázky).')
+    if (klientPritomen && !podpis) {
+      toast.warning('Pro dokončení protokolu je potřeba podpis klienta, nebo vypněte „Klient byl přítomen“ (sekce Předání zakázky).')
       document.getElementById('predani-sekce')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
       return
     }
@@ -213,6 +226,30 @@ export default function ZakazkaDetailClient({ zakazka, orgUsers, canEdit, isAdmi
     })
     if (!ok) return
     await changeStav('DOKONCENA')
+  }
+
+  // Přepínač se ukládá hned (samostatně), aby ho viděl i náhled/odeslání PDF.
+  async function prepnoutKlientPritomen() {
+    const next = !klientPritomen
+    setKlientPritomen(next)
+    const res = await api.patch(`/api/servis/zakazky/${zakazka.id}`, { klientPritomen: next })
+    if (!res.ok) setKlientPritomen(!next)
+  }
+
+  async function odeslatProtokol() {
+    setOdesilam(true)
+    try {
+      const res = await api.post<{ to: string; protokolOdeslan: string }>(
+        `/api/servis/zakazky/${zakazka.id}/protokol/odeslat`,
+        { to: odeslatTo.trim() || undefined, zprava: odeslatZprava.trim() || undefined },
+      )
+      if (!res.ok || !res.data) return
+      setOdeslano({ kdy: res.data.protokolOdeslan, na: res.data.to })
+      setOdeslatOpen(false)
+      toast.success(`Protokol odeslán na ${res.data.to}`)
+    } finally {
+      setOdesilam(false)
+    }
   }
 
   async function vytvoritReklamaci() {
@@ -387,6 +424,52 @@ export default function ZakazkaDetailClient({ zakazka, orgUsers, canEdit, isAdmi
         </div>
       )}
 
+      {/* Odeslání protokolu klientovi */}
+      {odeslatOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md">
+            <div className="px-6 py-5 border-b border-gray-200 dark:border-slate-700">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Odeslat protokol klientovi</h3>
+              <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
+                Protokol {zakazka.cislo ?? ''} přijde jako PDF v příloze.
+                {!klientPritomen
+                  ? ' Klient nebyl při zásahu přítomen — v PDF to bude uvedeno.'
+                  : !podpis && ' Klient ho ještě nepodepsal — v PDF bude uvedeno „Nepodepsáno klientem“.'}
+              </p>
+            </div>
+            <div className="px-6 py-4 space-y-3">
+              <div>
+                <label className={labelClass}>E-mail klienta</label>
+                <input
+                  type="email"
+                  value={odeslatTo}
+                  onChange={e => setOdeslatTo(e.target.value)}
+                  placeholder="klient@example.cz"
+                  className={inputClass}
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className={labelClass}>Zpráva (nepovinné)</label>
+                <textarea
+                  rows={3}
+                  value={odeslatZprava}
+                  onChange={e => setOdeslatZprava(e.target.value)}
+                  placeholder="Např. termín další prohlídky…"
+                  className={`${inputClass} resize-none`}
+                />
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-200 dark:border-slate-700 flex gap-3 justify-end">
+              <button onClick={() => setOdeslatOpen(false)} className={ghostBtn}>Zpět</button>
+              <button onClick={odeslatProtokol} disabled={odesilam || !odeslatTo.trim()} className={primaryBtn}>
+                {odesilam ? 'Odesílám…' : 'Odeslat'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Reklamace modal */}
       {reklamaceOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -444,7 +527,7 @@ export default function ZakazkaDetailClient({ zakazka, orgUsers, canEdit, isAdmi
           <div className="flex flex-wrap items-center gap-2">
             {renderAkce()}
             <a
-              href={`/api/servis/zakazky/${zakazka.id}/protokol`}
+              href={`/api/servis/zakazky/${zakazka.id}/protokol?inline=1`}
               target="_blank"
               rel="noopener noreferrer"
               className={ghostBtn}
@@ -743,8 +826,37 @@ export default function ZakazkaDetailClient({ zakazka, orgUsers, canEdit, isAdmi
                 </span>
               )}
             </div>
-            <label className={labelClass}>Podpis klienta</label>
-            <SignatureCanvas onChange={setPodpis} existingDataUrl={podpis} disabled={!canEdit || !!zakazka.protokolDokoncen} />
+            {canEdit && !zakazka.protokolDokoncen ? (
+              <button
+                type="button"
+                role="switch"
+                aria-checked={klientPritomen}
+                data-compact
+                onClick={prepnoutKlientPritomen}
+                className="hit-area flex items-center gap-3 text-left mb-3"
+              >
+                <span className={cn('relative w-11 h-6 rounded-full transition-colors flex-shrink-0', klientPritomen ? 'bg-green-500' : 'bg-gray-300 dark:bg-slate-600')} aria-hidden>
+                  <span className={cn('absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform', klientPritomen ? 'left-5' : 'left-0.5')} />
+                </span>
+                <span className="text-sm font-medium text-gray-700 dark:text-slate-300">Klient byl přítomen</span>
+              </button>
+            ) : (
+              !klientPritomen && <p className="text-sm text-gray-600 dark:text-slate-400 mb-3">Klient nebyl přítomen</p>
+            )}
+            {klientPritomen ? (
+              <>
+                <label className={labelClass}>Podpis klienta</label>
+                <SignatureCanvas onChange={setPodpis} existingDataUrl={podpis} disabled={!canEdit || !!zakazka.protokolDokoncen} />
+              </>
+            ) : (
+              <div className="bg-gray-50 dark:bg-slate-700/50 rounded-xl px-4 py-4">
+                <p className="text-sm text-gray-600 dark:text-slate-400">
+                  Klient nebyl při zásahu přítomen.
+                  <br />
+                  Protokol se dokončí bez podpisu — v PDF to bude uvedeno.
+                </p>
+              </div>
+            )}
             {!zakazka.protokolDokoncen && canEdit && (
               <div className="mt-4 flex flex-wrap items-center gap-3">
                 <button
@@ -754,26 +866,37 @@ export default function ZakazkaDetailClient({ zakazka, orgUsers, canEdit, isAdmi
                 >
                   {acting ? 'Dokončuji…' : 'Dokončit protokol a předat'}
                 </button>
-                <a
-                  href={`/api/servis/zakazky/${zakazka.id}/protokol`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm text-green-600 dark:text-green-400 hover:underline"
-                >
-                  Náhled protokolu (PDF)
-                </a>
               </div>
             )}
-            {zakazka.protokolDokoncen && (
+            <div className="mt-4 pt-4 border-t border-gray-100 dark:border-slate-700 flex flex-wrap items-center gap-2">
+              <span className="text-sm font-semibold text-gray-700 dark:text-slate-300 mr-1">Servisní protokol</span>
               <a
-                href={`/api/servis/zakazky/${zakazka.id}/protokol`}
+                href={`/api/servis/zakazky/${zakazka.id}/protokol?inline=1`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-3 inline-block text-sm text-green-600 dark:text-green-400 hover:underline"
+                className={ghostBtn}
               >
-                Protokol (PDF)
+                Náhled
               </a>
-            )}
+              <a href={`/api/servis/zakazky/${zakazka.id}/protokol`} className={ghostBtn}>
+                Stáhnout PDF
+              </a>
+              {canEdit && (
+                <button onClick={() => setOdeslatOpen(true)} className={primaryBtn}>
+                  {odeslano ? 'Odeslat znovu' : 'Odeslat klientovi'}
+                </button>
+              )}
+              {odeslano && (
+                <span className="text-xs text-gray-500 dark:text-slate-400 w-full sm:w-auto">
+                  Odesláno {formatDate(odeslano.kdy)}{odeslano.na ? ` na ${odeslano.na}` : ''}
+                </span>
+              )}
+              {klientPritomen && !podpis && (
+                <span className="text-xs text-amber-700 dark:text-amber-400 w-full">
+                  Bez podpisu klienta — PDF lze stáhnout i odeslat, bude označené „Nepodepsáno“.
+                </span>
+              )}
+            </div>
           </div>
 
           <div id="vyuctovani-sekce">

@@ -510,3 +510,30 @@ export function emailObjednavkaDodavateli(params: {
     Na dodacím listu uveďte číslo objednávky.</p>
   `)
 }
+
+export function emailServisniProtokolKlientovi(params: {
+  orgNazev: string
+  primaryColor: string
+  cislo: string
+  datumZasahu: string | null
+  zarizeni: string | null
+  zprava: string | null
+  odpovedEmail: string | null
+}) {
+  const { orgNazev, primaryColor: primaryColorRaw, cislo, datumZasahu, zarizeni, zprava, odpovedEmail } = params
+  const primaryColor = safeColor(primaryColorRaw)
+  const zpravaHtml = zprava
+    ? `<div style="background:#f9fafb;border-left:3px solid ${primaryColor};border-radius:6px;padding:12px 16px;margin:0 0 24px;color:#374151;white-space:pre-wrap;">${escHtml(zprava)}</div>`
+    : ''
+  const kontext = [datumZasahu && `ze dne <strong>${escHtml(datumZasahu)}</strong>`, zarizeni && `(${escHtml(zarizeni)})`]
+    .filter(Boolean).join(' ')
+  return orgEmailLayout(orgNazev, primaryColor, `
+    <h2 style="margin:0 0 8px;color:#1a1a2e;font-size:21px;">Servisní protokol ${escHtml(cislo)}</h2>
+    <p style="color:#6b7280;margin:0 0 24px;">Dobrý den,</p>
+    <p style="color:#374151;margin:0 0 ${zprava ? '12' : '24'}px;">v příloze vám zasíláme servisní protokol k provedenému zásahu${kontext ? ` ${kontext}` : ''}.
+    Najdete v něm popis provedených prací, zjištěné závady a naše doporučení.</p>
+    ${zpravaHtml}
+    <p style="color:#374151;margin:0 0 8px;">V případě dotazů nám odpovězte${odpovedEmail ? ` na <a href="mailto:${escHtml(odpovedEmail)}" style="color:${primaryColor};">${escHtml(odpovedEmail)}</a>` : ' na tento e-mail'}.</p>
+    <p style="color:#374151;margin:16px 0 0;">S pozdravem<br/><strong>${escHtml(orgNazev)}</strong></p>
+  `)
+}

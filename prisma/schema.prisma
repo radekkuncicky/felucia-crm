@@ -1034,7 +1034,11 @@ model ServisniZakazka {
   nakladyMaterial  Decimal?            @db.Decimal(12, 2)
   fotky            Json                @default("[]")
   podpisKlienta    String?
+  // false = klient nebyl při zásahu přítomen → protokol se dokončí bez podpisu (jako u předáváku)
+  klientPritomen   Boolean             @default(true)
   protokolDokoncen DateTime?
+  protokolOdeslan  DateTime?
+  protokolOdeslanNa String?
 
   // Vyúčtování (brána: bez protokolu nelze vyúčtovat - hlídá API)
   vyfakturovano       Boolean          @default(false)
