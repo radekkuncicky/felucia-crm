@@ -1,8 +1,10 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
-import { createPortal } from 'react-dom'
+import { useState, useRef, useEffect, useId } from 'react'
 import { confirmDialog } from '@/components/ui/confirm'
+import { Dialog } from '@/components/ui/Dialog'
+import { Button } from '@/components/ui/Button'
+import { Field, Input } from '@/components/ui/Field'
 import type { AresFirma } from '@/hooks/useAresLookup'
 
 export interface Client {
@@ -26,11 +28,14 @@ interface Props {
 }
 
 interface CreateForm {
-  prijmeni: string
+  /** Osoba: křestní jméno · firma: název firmy (jako clients/new) */
   jmeno: string
+  /** Osoba: příjmení · firma: kontaktní osoba */
+  prijmeni: string
   telefon: string
   email: string
   ico: string
+  dic: string
   ulice: string
   mesto: string
   psc: string
@@ -45,14 +50,17 @@ function CreateClientModal({
   onCreated: (client: Client) => void
   onCancel: () => void
 }) {
+  const formId = useId()
   // Parse initial text: last space-separated word = jmeno, rest = prijmeni (Czech CRM convention)
   const parts = initialText.trim().split(' ')
+  const [firma, setFirma] = useState(false)
   const [form, setForm] = useState<CreateForm>({
     prijmeni: parts.length > 1 ? parts.slice(0, -1).join(' ') : initialText,
     jmeno: parts.length > 1 ? parts[parts.length - 1] : '',
     telefon: '',
     email: '',
     ico: '',
+    dic: '',
     ulice: '',
     mesto: '',
     psc: '',
@@ -65,6 +73,15 @@ function CreateClientModal({
     setForm(f => ({ ...f, [field]: value }))
   }
 
+  // Přepnutí typu: text z vyhledávání patří do názvu firmy, resp. zpět do příjmení
+  function zmenitTyp(naFirmu: boolean) {
+    if (naFirmu === firma) return
+    setFirma(naFirmu)
+    setForm(f => naFirmu
+      ? { ...f, jmeno: `${f.prijmeni} ${f.jmeno}`.trim(), prijmeni: '' }
+      : { ...f, prijmeni: f.jmeno, jmeno: '' })
+  }
+
   // Přes vlastní /api/ares — přímé volání ares.gov.cz z prohlížeče blokuje CSP (connect-src)
   async function loadFromAres() {
     if (!form.ico.trim()) return
@@ -74,16 +91,18 @@ function CreateClientModal({
       const res = await fetch(`/api/ares?q=${encodeURIComponent(form.ico.trim())}`)
       const firmy = res.ok ? await res.json() as AresFirma[] : []
       if (!firmy.length) { setError('IČO nenalezeno v ARES'); return }
-      const nazev = firmy[0].nazev
-      // Split company name: last word = jmeno, rest = prijmeni (best-effort)
-      const nameParts = nazev.trim().split(' ')
+      const f0 = firmy[0]
+      // Firma z ARES: název celý do jmeno, kontaktní osoba zůstává prázdná
+      setFirma(true)
       setForm(f => ({
         ...f,
-        prijmeni: nameParts.length > 1 ? nameParts.slice(0, -1).join(' ') : nazev,
-        jmeno: nameParts.length > 1 ? nameParts[nameParts.length - 1] : '',
-        ulice: firmy[0].ulice || f.ulice,
-        mesto: firmy[0].mesto || f.mesto,
-        psc: firmy[0].psc || f.psc,
+        jmeno: f0.nazev.trim(),
+        prijmeni: '',
+        ico: f0.ico || f.ico,
+        dic: f0.dic || f.dic,
+        ulice: f0.ulice || f.ulice,
+        mesto: f0.mesto || f.mesto,
+        psc: f0.psc || f.psc,
       }))
     } catch {
       setError('Nepodařilo se načíst data z ARES')
@@ -94,11 +113,14 @@ function CreateClientModal({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    // Modal bývá uvnitř jiného formuláře (nová OP, servis/nova). Portál ho drží
-    // mimo DOM rodiče (vnořený <form> se jinak odešle nativně) a stopPropagation
-    // brání tomu, aby React probublal submit do vnějšího formuláře.
+    // Modal bývá uvnitř jiného formuláře (nová OP, servis/nova). Dialog je v portálu
+    // (vnořený <form> v DOM nevznikne) a stopPropagation brání tomu, aby React
+    // probublal submit do vnějšího formuláře.
     e.stopPropagation()
-    if (!form.prijmeni.trim()) { setError('Příjmení je povinné'); return }
+    if (firma ? !form.jmeno.trim() : !form.prijmeni.trim()) {
+      setError(firma ? 'Název firmy je povinný' : 'Příjmení je povinné')
+      return
+    }
     setSaving(true)
     setError('')
     try {
@@ -128,11 +150,13 @@ function CreateClientModal({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          typKlienta: firma ? 'FIRMA' : 'FYZICKA_OSOBA',
           jmeno: form.jmeno.trim() || '-',
           prijmeni: form.prijmeni.trim(),
           telefon: form.telefon || null,
           email: form.email || null,
           ico: form.ico || null,
+          dic: form.dic || null,
           ulice: form.ulice || null,
           mesto: form.mesto || null,
           psc: form.psc || null,
@@ -160,90 +184,98 @@ function CreateClientModal({
     }
   }
 
-  const inp = 'w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-400'
-
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-[480px]">
-        <div className="px-6 py-4 border-b border-gray-200 dark:border-slate-700">
-          <h3 className="text-base font-semibold text-gray-900 dark:text-white">Nový klient</h3>
-        </div>
-        <form onSubmit={handleSubmit} className="p-6 space-y-3">
-          {error && <div className="bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-sm px-3 py-2 rounded-lg">{error}</div>}
+    <Dialog
+      open
+      onClose={onCancel}
+      title="Nový klient"
+      size="lg"
+      layer="top"
+      footer={<>
+        <Button variant="secondary" onClick={onCancel}>Zrušit</Button>
+        <Button type="submit" form={formId} loading={saving}>Vytvořit a použít</Button>
+      </>}
+    >
+      <form id={formId} onSubmit={handleSubmit} className="space-y-3">
+        {error && <div role="alert" className="bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-sm px-3 py-2 rounded-lg">{error}</div>}
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-slate-400 mb-1">Příjmení *</label>
-              <input type="text" required value={form.prijmeni} onChange={e => set('prijmeni', e.target.value)} className={inp} placeholder="Novák" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-slate-400 mb-1">Jméno</label>
-              <input type="text" value={form.jmeno} onChange={e => set('jmeno', e.target.value)} className={inp} placeholder="Jan" />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-slate-400 mb-1">Telefon</label>
-              <input type="tel" value={form.telefon} onChange={e => set('telefon', e.target.value)} className={inp} placeholder="+420 …" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-slate-400 mb-1">E-mail</label>
-              <input type="email" value={form.email} onChange={e => set('email', e.target.value)} className={inp} placeholder="jan@…" />
-            </div>
-          </div>
-
-          <div className="flex gap-2">
-            <div className="flex-1">
-              <label className="block text-xs font-medium text-gray-600 dark:text-slate-400 mb-1">IČO</label>
-              <input type="text" value={form.ico} onChange={e => set('ico', e.target.value)} className={inp} placeholder="12345678" maxLength={8} />
-            </div>
-            <div className="flex items-end">
-              <button
-                type="button"
-                onClick={loadFromAres}
-                disabled={aresLoading || !form.ico.trim()}
-                className="px-3 py-2 text-sm font-semibold text-green-700 dark:text-green-400 border border-green-300 dark:border-green-700 rounded-lg hover:bg-green-50 dark:hover:bg-green-900/20 disabled:opacity-40 whitespace-nowrap"
-              >
-                {aresLoading ? '…' : 'ARES'}
-              </button>
-            </div>
-            <div className="flex-1">
-              <label className="block text-xs font-medium text-gray-600 dark:text-slate-400 mb-1">Město</label>
-              <input type="text" value={form.mesto} onChange={e => set('mesto', e.target.value)} className={inp} placeholder="Praha" />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-3 gap-3">
-            <div className="col-span-2">
-              <label className="block text-xs font-medium text-gray-600 dark:text-slate-400 mb-1">Ulice a č. p.</label>
-              <input type="text" value={form.ulice} onChange={e => set('ulice', e.target.value)} className={inp} placeholder="Dlouhá 12" />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 dark:text-slate-400 mb-1">PSČ</label>
-              <input type="text" value={form.psc} onChange={e => set('psc', e.target.value)} className={inp} placeholder="110 00" />
-            </div>
-          </div>
-
-          <div className="flex gap-3 pt-2">
+        <div className="flex gap-1 p-1 bg-gray-100 dark:bg-slate-700 rounded-lg w-fit" role="group" aria-label="Typ klienta">
+          {([false, true] as const).map(jeFirma => (
             <button
-              type="submit"
-              disabled={saving}
-              className="flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-semibold px-4 py-2 rounded-lg text-sm"
-            >
-              {saving ? 'Vytvářím…' : 'Vytvořit a použít'}
-            </button>
-            <button
+              key={String(jeFirma)}
               type="button"
-              onClick={onCancel}
-              className="px-4 py-2 text-sm text-gray-600 dark:text-slate-400 hover:text-gray-900 border border-gray-300 dark:border-slate-600 rounded-lg"
+              data-compact
+              aria-pressed={firma === jeFirma}
+              onClick={() => zmenitTyp(jeFirma)}
+              className={`hit-area px-3 py-1 rounded-md text-sm font-medium transition-colors ${
+                firma === jeFirma
+                  ? 'bg-white dark:bg-slate-800 text-gray-900 dark:text-white shadow-sm'
+                  : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200'
+              }`}
             >
-              Zrušit
+              {jeFirma ? 'Firma' : 'Fyzická osoba'}
             </button>
+          ))}
+        </div>
+
+        {firma ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Field label="Název firmy" required className="sm:col-span-2">
+              <Input value={form.jmeno} onChange={e => set('jmeno', e.target.value)} placeholder="Vzorová stavba s.r.o." autoComplete="organization" />
+            </Field>
+            <Field label="Kontaktní osoba" className="sm:col-span-2">
+              <Input value={form.prijmeni} onChange={e => set('prijmeni', e.target.value)} placeholder="Jan Novák" autoComplete="name" />
+            </Field>
           </div>
-        </form>
-      </div>
-    </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Field label="Příjmení" required>
+              <Input value={form.prijmeni} onChange={e => set('prijmeni', e.target.value)} placeholder="Novák" autoComplete="family-name" />
+            </Field>
+            <Field label="Jméno">
+              <Input value={form.jmeno} onChange={e => set('jmeno', e.target.value)} placeholder="Jan" autoComplete="given-name" />
+            </Field>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Field label="Telefon">
+            <Input kind="tel" value={form.telefon} onChange={e => set('telefon', e.target.value)} placeholder="+420 …" />
+          </Field>
+          <Field label="E-mail">
+            <Input kind="email" value={form.email} onChange={e => set('email', e.target.value)} placeholder="jan@…" />
+          </Field>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Field label="IČO" hint={firma ? undefined : 'Po načtení z ARES se klient přepne na firmu'}>
+            <div className="flex gap-2">
+              <Input kind="ico" value={form.ico} onChange={e => set('ico', e.target.value)} placeholder="12345678" />
+              <Button variant="secondary" onClick={loadFromAres} disabled={!form.ico.trim()} loading={aresLoading} title="Načíst údaje z ARES podle IČO">
+                ARES
+              </Button>
+            </div>
+          </Field>
+          {firma && (
+            <Field label="DIČ">
+              <Input value={form.dic} onChange={e => set('dic', e.target.value)} placeholder="CZ12345678" />
+            </Field>
+          )}
+        </div>
+
+        <Field label="Ulice a č. p.">
+          <Input value={form.ulice} onChange={e => set('ulice', e.target.value)} placeholder="Dlouhá 12" autoComplete="street-address" />
+        </Field>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <Field label="Město" className="sm:col-span-2">
+            <Input value={form.mesto} onChange={e => set('mesto', e.target.value)} placeholder="Praha" autoComplete="address-level2" />
+          </Field>
+          <Field label="PSČ">
+            <Input kind="psc" value={form.psc} onChange={e => set('psc', e.target.value)} placeholder="110 00" />
+          </Field>
+        </div>
+      </form>
+    </Dialog>
   )
 }
 
@@ -375,7 +407,7 @@ export default function ClientSelectWithCreate({ clients, value, onChange, onSel
         </div>
       )}
 
-      {showCreateModal && typeof document !== 'undefined' && createPortal(
+      {showCreateModal && (
         <CreateClientModal
           initialText={createText}
           onCreated={client => {
@@ -385,8 +417,7 @@ export default function ClientSelectWithCreate({ clients, value, onChange, onSel
             setShowCreateModal(false)
           }}
           onCancel={() => { setShowCreateModal(false); setOpen(false) }}
-        />,
-        document.body,
+        />
       )}
     </div>
   )
