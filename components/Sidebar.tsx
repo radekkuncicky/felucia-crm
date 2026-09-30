@@ -241,7 +241,7 @@ export default function Sidebar({ user, orgNazev }: Props) {
       <nav className="flex-1 px-2 py-2 space-y-0.5 overflow-y-auto overflow-x-hidden scrollbar-none">
         {isTechnik ? (
           <>
-            {hasServiceAccess ? (
+            {isPlatinum && orgSettings.modulServis && hasServiceAccess ? (
               <>
                 <GroupToggle
                   open={activeGroup === 'zakazky'}
