@@ -301,6 +301,28 @@ body .text-blue-500 { color: #4CAF50; }
   transform: rotate(45deg);
 }
 
+/* ===================== FOCUS (klávesnice) ===================== */
+/* Viditelný focus jen při ovládání klávesnicí; inputy mají vlastní focus:ring */
+:where(button, a, [role="button"], [role="switch"], [tabindex], summary, input[type="checkbox"], input[type="radio"]):focus-visible {
+  outline: 2px solid #4CAF50;
+  outline-offset: 2px;
+  border-radius: 0.375rem;
+}
+
+/* Neviditelně rozšířená klikací plocha (malé štítky a přepínače ≥ 44 px na dotyk) */
+.hit-area {
+  position: relative;
+}
+.hit-area::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max(100%, 44px);
+  height: max(100%, 44px);
+  transform: translate(-50%, -50%);
+}
+
 /* ===================== MOBILE UX GLOBALS ===================== */
 
 /* Prevent iOS zoom on focus */
