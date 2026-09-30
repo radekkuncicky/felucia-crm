@@ -42,7 +42,32 @@
       {
         "selector": "CallExpression[callee.property.name=/^toLocale(Date|Time)?String$/]",
         "message": "Použij formatDate/formatDateTime/formatKc/formatCislo z @/lib/format — jednotné formátování v celé aplikaci."
+      },
+      {
+        "selector": "JSXAttribute[name.name='className'] Literal[value=/(^|\\s)fixed(\\s.*)?\\sinset-0(\\s|$)|(^|\\s)inset-0(\\s.*)?\\sfixed(\\s|$)/]",
+        "message": "Ručně psaný modal (fixed inset-0) — použij Dialog z @/components/ui/Dialog (Esc, focus trap, aria), případně ConfirmModal/MobileSheet. Viz CLAUDE.md „UI primitivy“."
+      },
+      {
+        "selector": "JSXAttribute[name.name='className'] TemplateElement[value.raw=/(^|\\s)fixed(\\s.*)?\\sinset-0(\\s|$)|(^|\\s)inset-0(\\s.*)?\\sfixed(\\s|$)/]",
+        "message": "Ručně psaný modal (fixed inset-0) — použij Dialog z @/components/ui/Dialog (Esc, focus trap, aria), případně ConfirmModal/MobileSheet. Viz CLAUDE.md „UI primitivy“."
       }
     ]
-  }
+  },
+  "overrides": [
+    {
+      "files": [
+        "components/ui/**",
+        "components/MobileSheet.tsx"
+      ],
+      "rules": {
+        "no-restricted-syntax": [
+          "warn",
+          {
+            "selector": "CallExpression[callee.property.name=/^toLocale(Date|Time)?String$/]",
+            "message": "Použij formatDate/formatDateTime/formatKc/formatCislo z @/lib/format — jednotné formátování v celé aplikaci."
+          }
+        ]
+      }
+    }
+  ]
 }

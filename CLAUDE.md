@@ -90,6 +90,20 @@ Obnova: `/root/scripts/restore-db.sh <soubor.dump.gpg> [DB_URL]` (dešifruje + p
   (script-src bez 'unsafe-inline', + 'strict-dynamic'); root layout čte
   headers() → všechny stránky se renderují dynamicky. CSP hlavičku hlídá E2E test.
 
+## UI primitivy (components/ui)
+- Nový kód stav z nich, ne z ručně psaných tříd:
+  - `Button` / `ButtonLink` (variant primary|secondary|danger|warning|ghost|link, size sm|md|lg, `loading`)
+    a `IconButton` (povinný `label` → aria-label)
+  - `Field` + `Input`/`Select`/`Textarea` — popisek propojený s polem, `hint`, `error`, `required`;
+    `Input kind="tel|email|psc|ico|castka|cislo"` nastaví správnou mobilní klávesnici a autocomplete.
+    Formuláře na mobilu v jednom sloupci (`grid-cols-1 sm:grid-cols-2`)
+  - `Dialog` (portál, Esc, klik mimo, focus trap, na mobilu spodní panel; `layer="top"` pro dialog z dialogu)
+  - potvrzení: `confirmDialog()` z `ui/confirm` nebo `ConfirmModal`; mobilní panel `MobileSheet` (obojí na Dialogu)
+- Ručně psaný modal (`fixed inset-0` v className) hlásí ESLint jako warning — při úpravě souboru převést na `Dialog`
+- Dotykové cíle: tlačítka mají na mobilu min. 44 px (globals.css); malé štítky/přepínače
+  `data-compact` + třída `.hit-area` (větší klikací plocha bez nafouknutí)
+- Třídy spojovat přes `cn()` z `lib/cn.ts`
+
 ## PDF / tenant HTML (bezpečnost)
 - Tenant HTML (šablony smluv, textSmlouvy, CUSTOM_HTML nabídky, vlastní záhlaví/patička)
   VŽDY přes `lib/sanitizeHtml.ts` (`sanitizeFullDocumentHtml` dokumenty, `sanitizeDocumentHtml` fragmenty)
