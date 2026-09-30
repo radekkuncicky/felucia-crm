@@ -134,11 +134,16 @@ export default async function CalendarPage() {
     })
   }
 
+  // OP, jehož zakázka už má naplánovanou montáž: realizaci a předání díla ukazuje montáž
+  // (termín se přeplánovává na zakázce) — jinak by tentýž klient byl v kalendáři 3×.
+  const opSMontazi = new Set(montazZakazky.map(z => z.opId).filter((id): id is string => !!id))
+
   for (const d of deals) {
     const klient = klientJmeno(d.client)
     const tech = technologieLabel(d.technologie)
     const predmet = d.predmet ?? d.kod ?? ''
-    if (d.terminRealizace) {
+    const maMontaz = opSMontazi.has(d.id)
+    if (d.terminRealizace && !maMontaz) {
       // Realizace běží od termínu realizace do termínu převzetí (pokud je pozdější) → souvislý pruh od–do
       const konec = d.terminPrevzeti && d.terminPrevzeti > d.terminRealizace ? d.terminPrevzeti : null
       events.push({
@@ -152,7 +157,7 @@ export default async function CalendarPage() {
         href: `/deals/${d.id}`,
       })
     }
-    if (d.terminPrevzeti) {
+    if (d.terminPrevzeti && !maMontaz) {
       events.push({
         id: `deal-pre-${d.id}`,
         kind: 'PREVZETI',

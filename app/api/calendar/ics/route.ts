@@ -183,18 +183,22 @@ export async function GET(req: Request) {
     vevents.push(vevent(`act-${a.id}`, dateStr, summary, description, href, location))
   }
 
+  // OP se zakázkou s naplánovanou montáží v tomto feedu: realizaci a předání díla ukazuje montáž
+  const opSMontazi = new Set(montazZakazky.map(z => z.opId).filter((id): id is string => !!id))
+
   for (const d of deals) {
+    const maMontaz = opSMontazi.has(d.id)
     const klient = klientJmeno(d.client)
     const tech = technologieLabel(d.technologie)
     const predmet = d.predmet ?? d.kod ?? ''
     const desc = [`Klient: ${klient}`, predmet ? `Případ: ${predmet}` : ''].filter(Boolean).join('\n')
-    if (d.terminRealizace) {
+    if (d.terminRealizace && !maMontaz) {
       // Realizace od termínu realizace do termínu převzetí (pokud je pozdější) → vícedenní událost
       const konec = d.terminPrevzeti && d.terminPrevzeti > d.terminRealizace ? d.terminPrevzeti : null
       const r = dateRange(d.terminRealizace, konec)
       vevents.push(vevent(`deal-rea-${d.id}`, r.date, calendarTitle(klient, tech, DOPLNEK.REALIZACE), desc, `${base}/deals/${d.id}`, undefined, r.dateTo))
     }
-    if (d.terminPrevzeti) {
+    if (d.terminPrevzeti && !maMontaz) {
       vevents.push(vevent(`deal-pre-${d.id}`, utcDateStr(d.terminPrevzeti), calendarTitle(klient, tech, DOPLNEK.PREVZETI), desc, `${base}/deals/${d.id}`))
     }
     if (d.splatnostZalohy) {
