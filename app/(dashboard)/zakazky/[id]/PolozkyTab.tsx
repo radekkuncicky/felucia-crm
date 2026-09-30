@@ -9,8 +9,8 @@ import { useState, useEffect } from 'react'
 import { ZakazkaPolozkaStav } from '@prisma/client'
 import { formatKcPresne } from '@/lib/format'
 import ProductCatalogModal from '@/components/ProductCatalogModal'
+import { OBJEDNAVKY_ZMENA } from './ObjednavkyTab'
 import ObjednatModal from '@/components/objednavky/ObjednatModal'
-import { useRouter } from 'next/navigation'
 
 const fmtQty = (n: number) => n.toLocaleString('cs-CZ', { maximumFractionDigits: 3 })
 
@@ -337,7 +337,6 @@ export default function PolozkyTab({ zakazkaId, polozky: initialPolozky, canEdit
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [showCatalog, setShowCatalog] = useState(false)
   const [showObjednat, setShowObjednat] = useState(false)
-  const router = useRouter()
 
   /** Položky z katalogu produktů — s vazbou productId (sklad v2 podle ní vede zásobu). */
   async function handleAddFromCatalog(items: { productId: string; kod: string | null; nazev: string; cenaZaKus: number; mnozstvi: number; jednotka?: string }[]) {
@@ -421,7 +420,7 @@ export default function PolozkyTab({ zakazkaId, polozky: initialPolozky, canEdit
   return (
     <>
       {showCatalog && <ProductCatalogModal onClose={() => setShowCatalog(false)} onAdd={handleAddFromCatalog} />}
-      {showObjednat && <ObjednatModal zakazkaId={zakazkaId} showNakupky={showNakupky} onClose={() => setShowObjednat(false)} onCreated={() => { refreshPolozky(); router.push(`/zakazky/${zakazkaId}?tab=objednavky`) }} />}
+      {showObjednat && <ObjednatModal zakazkaId={zakazkaId} showNakupky={showNakupky} onClose={() => setShowObjednat(false)} onCreated={() => { refreshPolozky(); window.dispatchEvent(new Event(OBJEDNAVKY_ZMENA)); document.getElementById('objednavky')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }} />}
       {naskladnitModal && (
         <NaskladnitModal
           polozka={naskladnitModal}

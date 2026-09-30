@@ -190,13 +190,20 @@ test('sklad: záložky Zásoby / Dodavatelé / Objednávky se načtou a přepín
   expect(errors).toEqual([])
 })
 
-test('zakázka: záložka Objednávky a tlačítko Objednat u dodavatele', async ({ page }) => {
+test('zakázka: objednávky pod položkami, starý odkaz ?tab=objednavky přesměruje, Objednat u dodavatele', async ({ page }) => {
   const errors = trackErrors(page)
   await page.goto('/zakazky')
   await page.getByRole('row', { name: /E2E Zakázka/ }).getByRole('link', { name: /Detail/ }).click()
   await page.waitForURL(/\/zakazky\/[^/]+$/)
-  await page.getByRole('link', { name: 'Objednávky' }).click()
-  await expect(page.locator('body')).toContainText(/Objednávky u dodavatelů/)
+  const detailUrl = page.url()
+  // 6 tabů místo 9 — Objednávky jsou sekce na tabu Položky
+  await expect(page.getByRole('link', { name: 'Protokoly a vyúčtování' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Objednávky', exact: true })).toHaveCount(0)
+  await expect(page.locator('#objednavky')).toContainText(/Objednávky u dodavatelů/)
+  // starý odkaz z e-mailu / notifikace
+  await page.goto(`${detailUrl}?tab=objednavky`)
+  await page.waitForURL(/tab=polozky/)
+  await expect(page.locator('#objednavky')).toBeVisible()
   await page.getByRole('button', { name: /Objednat u dodavatele/ }).click()
   await expect(page.locator('body')).toContainText(/Vyberte položky a dodavatele/)
   expect(errors).toEqual([])

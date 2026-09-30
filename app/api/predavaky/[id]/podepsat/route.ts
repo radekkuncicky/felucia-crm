@@ -71,7 +71,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
           userId: vedouciId,
           typ: 'PREDAVAK_PODPISAN',
           zprava: `Předávací protokol ${predavak.cislo} čeká na schválení`,
-          url: `/zakazky/${predavak.zakazkaId}?tab=predavaky`,
+          url: `/zakazky/${predavak.zakazkaId}?tab=protokoly#predavaky`,
         },
       })
     }

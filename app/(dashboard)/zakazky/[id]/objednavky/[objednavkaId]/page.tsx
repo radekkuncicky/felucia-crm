@@ -22,7 +22,7 @@ export default async function ObjednavkaDetailPage({ params }: { params: { id: s
 
   return (
     <div className="space-y-4">
-      <Link href={`/zakazky/${params.id}?tab=objednavky`} className="inline-flex items-center gap-1 text-sm text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white">
+      <Link href={`/zakazky/${params.id}?tab=polozky#objednavky`} className="inline-flex items-center gap-1 text-sm text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white">
         ← Zpět na objednávky
       </Link>
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-5">

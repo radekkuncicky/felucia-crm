@@ -278,7 +278,7 @@ export default function ObjednavkaDetail({ objednavka: o, canEdit, showNakupky, 
           <p className={lbl}>Zakázka</p>
           {o.zakazka ? (
             <>
-              <Link href={`/zakazky/${o.zakazka.id}?tab=objednavky`} className="font-semibold text-gray-900 dark:text-white hover:underline">{o.zakazka.cislo}</Link>
+              <Link href={`/zakazky/${o.zakazka.id}?tab=polozky#objednavky`} className="font-semibold text-gray-900 dark:text-white hover:underline">{o.zakazka.cislo}</Link>
               <p className="text-gray-600 dark:text-slate-400">{o.zakazka.nazev}</p>
               {o.zakazka.mistoStavby && <p className="text-xs text-gray-500 dark:text-slate-500">{o.zakazka.mistoStavby}</p>}
             </>

@@ -1,8 +1,9 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { getPerms } from '@/lib/permissions'
-import { notFound } from 'next/navigation'
+import { getPerms, isTechnikView } from '@/lib/permissions'
+import { notFound, redirect } from 'next/navigation'
+import { resolveZakazkaTab, vychoziZakazkaTab } from '@/lib/zakazkaTaby'
 import PolozkyTab from './PolozkyTab'
 import ObjednavkyTab from './ObjednavkyTab'
 import PredavakyTab from './PredavakyTab'
@@ -28,7 +29,9 @@ export default async function ZakazkaDetailPage({
   // Přístup k zakázce ověřuje layout.tsx (canAccessZakazka)
   const perms = getPerms(session.user)
   const canEdit = perms.zakazkyEdit
-  const tab = searchParams.tab ?? 'polozky'
+  const { tab, presmerovat } = resolveZakazkaTab(searchParams.tab, vychoziZakazkaTab(isTechnikView(perms)))
+  // Staré odkazy (?tab=vyuctovani, predavaky, objednavky, foto) → nový tab + kotva sekce
+  if (presmerovat) redirect(`/zakazky/${params.id}?tab=${presmerovat.tab}${presmerovat.kotva ? `#${presmerovat.kotva}` : ''}`)
 
   const [zakazka, komentare, auditLogs, uzivateleOrg] = await Promise.all([
     prisma.zakazka.findFirst({
@@ -98,89 +101,119 @@ export default async function ZakazkaDetailPage({
   return (
     <>
       {tab === 'polozky' && (
-        <PolozkyTab
-          zakazkaId={zakazka.id}
-          polozky={zakazka.polozky.map(p => ({
-            id: p.id,
-            productId: p.productId,
-            nazev: p.nazev,
-            kod: p.kod,
-            mnozstvi: Number(p.mnozstvi),
-            jednotka: p.jednotka,
-            prodejniCena: perms.financeProdejni && p.prodejniCena !== null ? Number(p.prodejniCena) : null,
-            nakupniCena: perms.financeNakupky && p.nakupniCena !== null ? Number(p.nakupniCena) : null,
-            dphSazba: Number(p.dphSazba),
-            stav: p.stav,
-            poznamka: p.poznamka,
-          }))}
-          canEdit={canEdit}
-          canSklad={perms.sklad === 'PLNY'}
-          showCeny={perms.financeProdejni}
-          showNakupky={perms.financeNakupky}
-        />
+        <div className="space-y-4">
+          <PolozkyTab
+            zakazkaId={zakazka.id}
+            polozky={zakazka.polozky.map(p => ({
+              id: p.id,
+              productId: p.productId,
+              nazev: p.nazev,
+              kod: p.kod,
+              mnozstvi: Number(p.mnozstvi),
+              jednotka: p.jednotka,
+              prodejniCena: perms.financeProdejni && p.prodejniCena !== null ? Number(p.prodejniCena) : null,
+              nakupniCena: perms.financeNakupky && p.nakupniCena !== null ? Number(p.nakupniCena) : null,
+              dphSazba: Number(p.dphSazba),
+              stav: p.stav,
+              poznamka: p.poznamka,
+            }))}
+            canEdit={canEdit}
+            canSklad={perms.sklad === 'PLNY'}
+            showCeny={perms.financeProdejni}
+            showNakupky={perms.financeNakupky}
+          />
+          {perms.sklad !== 'ZADNY' && (
+            <section id="objednavky" className="scroll-mt-24">
+              {/* PolozkyTab ukazuje „Objednat u dodavatele", jen když něco čeká — jinak tady, ať je vždy právě jedno */}
+              <ObjednavkyTab
+                zakazkaId={zakazka.id}
+                canEdit={perms.sklad === 'PLNY'}
+                showNakupky={perms.financeNakupky}
+                showObjednatButton={!zakazka.polozky.some(p => p.stav === 'CEKA')}
+              />
+            </section>
+          )}
+        </div>
       )}
 
-      {tab === 'predavaky' && (
-        <PredavakyTab
-          zakazkaId={zakazka.id}
-          predavaky={zakazka.predavaky.map(p => ({
-            id: p.id,
-            cislo: p.cislo,
-            stav: p.stav,
-            technikJmeno: p.technik.jmeno,
-            vytvoreno: p.vytvoreno.toISOString(),
-            podpisano: p.podpisano?.toISOString() ?? null,
-            upravenoPodpisano: p.upravenoPodpisano,
-            etapaId: p.etapaId ?? null,
-            vyuctovaniId: p.vyuctovani?.id ?? null,
-            vyuctovaniCislo: p.vyuctovani?.cislo ?? null,
-          }))}
-          canCreate={true}
-          canApprove={perms.zakazkySchvalovani}
-          showVyuctovani={perms.financeProdejni}
-          etapy={zakazka.etapy ?? []}
-        />
+      {tab === 'protokoly' && (
+        <div className="space-y-4">
+          <section id="predavaky" className="scroll-mt-24">
+            <PredavakyTab
+              zakazkaId={zakazka.id}
+              predavaky={zakazka.predavaky.map(p => ({
+                id: p.id,
+                cislo: p.cislo,
+                stav: p.stav,
+                technikJmeno: p.technik.jmeno,
+                vytvoreno: p.vytvoreno.toISOString(),
+                podpisano: p.podpisano?.toISOString() ?? null,
+                upravenoPodpisano: p.upravenoPodpisano,
+                etapaId: p.etapaId ?? null,
+                vyuctovaniId: p.vyuctovani?.id ?? null,
+                vyuctovaniCislo: p.vyuctovani?.cislo ?? null,
+              }))}
+              canCreate={true}
+              canApprove={perms.zakazkySchvalovani}
+              showVyuctovani={perms.financeProdejni}
+              etapy={zakazka.etapy ?? []}
+            />
+          </section>
+          {perms.financeProdejni && (
+            <section id="vyuctovani" className="scroll-mt-24">
+              <VyuctovaniTab
+                zakazkaId={zakazka.id}
+                vyuctovani={zakazka.vyuctovani.map(v => ({
+                  id: v.id,
+                  cislo: v.cislo,
+                  stav: v.stav,
+                  vytvoreno: v.vytvoreno.toISOString(),
+                  etapaId: v.etapaId ?? null,
+                  predavakCislo: v.predavak?.cislo ?? null,
+                  celkemBezDph: v.polozky.reduce((s, p) => s + Number(p.mnozstvi) * Number(p.prodejniCena), 0),
+                  celkemSDph: v.polozky.reduce((s, p) => s + Number(p.mnozstvi) * Number(p.prodejniCena) * (1 + Number(p.dphSazba) / 100), 0),
+                }))}
+                canCreate={canEdit}
+                etapy={zakazka.etapy ?? []}
+              />
+            </section>
+          )}
+        </div>
       )}
 
-      {tab === 'objednavky' && perms.sklad !== 'ZADNY' && (
-        <ObjednavkyTab zakazkaId={zakazka.id} canEdit={perms.sklad === 'PLNY'} showNakupky={perms.financeNakupky} />
-      )}
 
-      {tab === 'vyuctovani' && perms.financeProdejni && (
-        <VyuctovaniTab
-          zakazkaId={zakazka.id}
-          vyuctovani={zakazka.vyuctovani.map(v => ({
-            id: v.id,
-            cislo: v.cislo,
-            stav: v.stav,
-            vytvoreno: v.vytvoreno.toISOString(),
-            etapaId: v.etapaId ?? null,
-            predavakCislo: v.predavak?.cislo ?? null,
-            celkemBezDph: v.polozky.reduce((s, p) => s + Number(p.mnozstvi) * Number(p.prodejniCena), 0),
-            celkemSDph: v.polozky.reduce((s, p) => s + Number(p.mnozstvi) * Number(p.prodejniCena) * (1 + Number(p.dphSazba) / 100), 0),
-          }))}
-          canCreate={canEdit}
-          etapy={zakazka.etapy ?? []}
-        />
-      )}
 
       {tab === 'podklady' && (
-        <PodkladyTab
-          zakazkaId={zakazka.id}
-          pokyny={zakazka.pokyny ?? null}
-          dokumenty={zakazka.dokumenty.map(d => ({
-            id: d.id,
-            nazev: d.nazev,
-            mime: d.mime,
-            url: d.url,
-            vytvoreno: d.vytvoreno.toISOString(),
-            nahral: d.nahral,
-          }))}
-          canEdit={canEdit}
-          opFotky={opFotky}
-          opId={zakazka.op?.id ?? null}
-          opKod={zakazka.op?.kod ?? null}
-        />
+        <div className="space-y-4">
+          <PodkladyTab
+            zakazkaId={zakazka.id}
+            pokyny={zakazka.pokyny ?? null}
+            dokumenty={zakazka.dokumenty.map(d => ({
+              id: d.id,
+              nazev: d.nazev,
+              mime: d.mime,
+              url: d.url,
+              vytvoreno: d.vytvoreno.toISOString(),
+              nahral: d.nahral,
+            }))}
+            canEdit={canEdit}
+            opFotky={opFotky}
+            opId={zakazka.op?.id ?? null}
+            opKod={zakazka.op?.kod ?? null}
+          />
+          <section id="foto" className="scroll-mt-24">
+            <FotoTab
+              zakazkaId={zakazka.id}
+              fotky={zakazka.fotky.map(f => ({
+                id: f.id,
+                url: f.url,
+                popis: f.popis,
+                vytvoreno: f.vytvoreno.toISOString(),
+                nahral: f.nahral,
+              }))}
+            />
+          </section>
+        </div>
       )}
 
       {tab === 'kontakty' && (
@@ -216,18 +249,6 @@ export default async function ZakazkaDetailPage({
         />
       )}
 
-      {tab === 'foto' && (
-        <FotoTab
-          zakazkaId={zakazka.id}
-          fotky={zakazka.fotky.map(f => ({
-            id: f.id,
-            url: f.url,
-            popis: f.popis,
-            vytvoreno: f.vytvoreno.toISOString(),
-            nahral: f.nahral,
-          }))}
-        />
-      )}
 
       {tab === 'historie' && (
         <HistorieTab

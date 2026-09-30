@@ -14,9 +14,14 @@ interface Props {
   /** sklad PLNY */
   canEdit: boolean
   showNakupky: boolean
+  /** Na tabu Položky je „Objednat u dodavatele" už u položek — tady ho neduplikovat */
+  showObjednatButton?: boolean
 }
 
-export default function ObjednavkyTab({ zakazkaId, canEdit, showNakupky }: Props) {
+/** Událost, kterou pošle PolozkyTab po vytvoření objednávky — seznam se obnoví */
+export const OBJEDNAVKY_ZMENA = 'zakazka-objednavky-zmena'
+
+export default function ObjednavkyTab({ zakazkaId, canEdit, showNakupky, showObjednatButton = true }: Props) {
   const [rows, setRows] = useState<ObjednavkaDto[] | null>(null)
   const [showObjednat, setShowObjednat] = useState(false)
 
@@ -26,6 +31,10 @@ export default function ObjednavkyTab({ zakazkaId, canEdit, showNakupky }: Props
   }, [zakazkaId])
 
   useEffect(() => { load() }, [load])
+  useEffect(() => {
+    window.addEventListener(OBJEDNAVKY_ZMENA, load)
+    return () => window.removeEventListener(OBJEDNAVKY_ZMENA, load)
+  }, [load])
 
   return (
     <>
@@ -34,7 +43,7 @@ export default function ObjednavkyTab({ zakazkaId, canEdit, showNakupky }: Props
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700">
         <div className="px-5 py-4 border-b border-gray-200 dark:border-slate-700 flex items-center justify-between">
           <h3 className="font-semibold text-gray-900 dark:text-white">Objednávky u dodavatelů{rows ? ` (${rows.length})` : ''}</h3>
-          {canEdit && (
+          {canEdit && showObjednatButton && (
             <button onClick={() => setShowObjednat(true)} className="text-sm font-medium text-primary dark:text-primary-light hover:underline flex items-center gap-1">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
               Objednat u dodavatele

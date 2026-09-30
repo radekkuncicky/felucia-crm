@@ -22,7 +22,7 @@ export default function ObjednavkaDetailClient({ objednavka: initial, canEdit, s
       showNakupky={showNakupky}
       emailConfigured={emailConfigured}
       onChange={next => { setO(next); router.refresh() }}
-      onDeleted={() => router.push(`/zakazky/${zakazkaId}?tab=objednavky`)}
+      onDeleted={() => router.push(`/zakazky/${zakazkaId}?tab=polozky#objednavky`)}
     />
   )
 }

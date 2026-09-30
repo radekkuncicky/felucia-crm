@@ -292,7 +292,7 @@ export default function PredavakClient({ predavak: initial, currentUserId, canAp
       const res = await fetch(`/api/predavaky/${initial.id}`, { method: 'DELETE' })
       if (res.ok) {
         showToast('Protokol smazán', 'ok')
-        router.push(`/zakazky/${initial.zakazka.id}?tab=predavaky`)
+        router.push(`/zakazky/${initial.zakazka.id}?tab=protokoly#predavaky`)
       } else {
         const err = await res.json()
         showToast(err.error ?? 'Chyba při mazání', 'err')
@@ -488,7 +488,7 @@ export default function PredavakClient({ predavak: initial, currentUserId, canAp
           <div className="flex flex-col gap-3">
             {/* Breadcrumb */}
             <div className="flex items-center gap-1.5 text-sm text-gray-400 dark:text-slate-500">
-              <a href={`/zakazky/${initial.zakazka.id}?tab=predavaky`} className="hover:text-gray-600 dark:hover:text-slate-300 transition-colors">{initial.zakazka.cislo}</a>
+              <a href={`/zakazky/${initial.zakazka.id}?tab=protokoly#predavaky`} className="hover:text-gray-600 dark:hover:text-slate-300 transition-colors">{initial.zakazka.cislo}</a>
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
               <span className="text-gray-600 dark:text-slate-300 font-medium">{initial.cislo}</span>
             </div>

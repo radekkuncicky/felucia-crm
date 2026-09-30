@@ -95,7 +95,7 @@ export default function ObjednavkyTab({ showNakupky, search, initialId }: Props)
                       <td className="px-4 py-3 text-gray-900 dark:text-white">{o.dodavatel.nazev}</td>
                       <td className="px-4 py-3">
                         {o.zakazka ? (
-                          <Link href={`/zakazky/${o.zakazka.id}?tab=objednavky`} onClick={e => e.stopPropagation()} className="text-green-600 dark:text-green-400 font-mono text-xs hover:underline">{o.zakazka.cislo}</Link>
+                          <Link href={`/zakazky/${o.zakazka.id}?tab=polozky#objednavky`} onClick={e => e.stopPropagation()} className="text-green-600 dark:text-green-400 font-mono text-xs hover:underline">{o.zakazka.cislo}</Link>
                         ) : <span className="text-gray-400">—</span>}
                         {o.zakazka && <p className="text-xs text-gray-500 dark:text-slate-400 truncate max-w-[180px]">{o.zakazka.nazev}</p>}
                       </td>

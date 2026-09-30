@@ -27,7 +27,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
           userId: v.zakazka.vedouciId,
           typ: 'VYUCTOVANI_KE_SCHVALENI',
           zprava: `Vyúčtování ${v.cislo} čeká na schválení`,
-          url: `/zakazky/${v.zakazkaId}?tab=vyuctovani`,
+          url: `/zakazky/${v.zakazkaId}?tab=protokoly#vyuctovani`,
         },
       }),
     ] : []),

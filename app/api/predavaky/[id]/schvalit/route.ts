@@ -154,7 +154,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
           userId: vedouciId,
           typ: 'VYUCTOVANI_PRIPRAVENO',
           zprava: `Vyúčtování ${vyuctovaniCislo} je připraveno ke kontrole`,
-          url: `/zakazky/${predavak.zakazkaId}?tab=vyuctovani`,
+          url: `/zakazky/${predavak.zakazkaId}?tab=protokoly#vyuctovani`,
         },
       })
     }

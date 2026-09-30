@@ -2,41 +2,24 @@
 
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
+import { ZAKAZKA_TABY, resolveZakazkaTab, zakazkaTabZCesty, type ZakazkaTab } from '@/lib/zakazkaTaby'
 
 // SVG icon paths (heroicons outline)
 const ICONS: Record<string, string> = {
   polozky:    'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2',
-  predavaky:  'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+  protokoly:  'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
   podklady:   'M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z',
-  vyuctovani: 'M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z',
-  foto:       'M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z M15 13a3 3 0 11-6 0 3 3 0 016 0z',
   historie:   'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
   kontakty:   'M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z',
-  objednavky: 'M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z',
   ukoly:      'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4',
 }
 
-const TABS = [
-  { key: 'polozky',    label: 'Položky' },
-  { key: 'ukoly',      label: 'Úkoly' },
-  { key: 'objednavky', label: 'Objednávky' },
-  { key: 'predavaky',  label: 'Protokoly' },
-  { key: 'kontakty',   label: 'Kontakty' },
-  { key: 'podklady',   label: 'Podklady' },
-  { key: 'vyuctovani', label: 'Vyúčtování' },
-  { key: 'foto',       label: 'Foto' },
-  { key: 'historie',   label: 'Historie' },
-]
-
 interface Props {
   zakazkaId: string
-  /** zakazkyEdit */
-  /** financeProdejni */
-  showVyuctovani: boolean
+  /** Výchozí tab podle role (technik → protokoly) */
+  defaultTab: ZakazkaTab
   /** zakazkyEdit */
   showHistorie: boolean
-  /** sklad !== ZADNY */
-  showObjednavky: boolean
 }
 
 function Icon({ path }: { path: string }) {
@@ -47,19 +30,12 @@ function Icon({ path }: { path: string }) {
   )
 }
 
-export default function ZakazkyTabs({ zakazkaId, showVyuctovani, showHistorie, showObjednavky }: Props) {
-  const tabs = TABS.filter(t =>
-    (t.key !== 'objednavky' || showObjednavky) &&
-    (t.key !== 'vyuctovani' || showVyuctovani) &&
-    (t.key !== 'historie' || showHistorie),
-  )
+export default function ZakazkyTabs({ zakazkaId, defaultTab, showHistorie }: Props) {
+  const tabs = ZAKAZKA_TABY.filter(t => t.key !== 'historie' || showHistorie)
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
-  let activeTab = searchParams.get('tab') ?? 'polozky'
-  if (pathname.includes('/vyuctovani/')) activeTab = 'vyuctovani'
-  if (pathname.includes('/predavaky/')) activeTab = 'predavaky'
-  if (pathname.includes('/objednavky/')) activeTab = 'objednavky'
+  const activeTab = zakazkaTabZCesty(pathname) ?? resolveZakazkaTab(searchParams.get('tab') ?? undefined, defaultTab).tab
 
   return (
     <div className="sticky top-0 z-20 relative bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700">

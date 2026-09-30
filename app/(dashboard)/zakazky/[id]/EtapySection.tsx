@@ -292,7 +292,7 @@ function EtapaRow({
                     <p className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide">Protokoly</p>
                     {canEdit && (
                       <Link
-                        href={`/zakazky/${zakazkaId}?tab=predavaky`}
+                        href={`/zakazky/${zakazkaId}?tab=protokoly#predavaky`}
                         className="text-xs text-primary dark:text-primary-light hover:underline"
                         onClick={e => e.stopPropagation()}
                       >

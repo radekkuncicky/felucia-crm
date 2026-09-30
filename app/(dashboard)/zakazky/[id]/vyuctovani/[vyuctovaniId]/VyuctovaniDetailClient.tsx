@@ -266,7 +266,7 @@ export default function VyuctovaniDetailClient({ vyuctovani: initial, canApprove
       const res = await fetch(`/api/vyuctovani/${initial.id}`, { method: 'DELETE' })
       if (res.ok) {
         setToast('Vyúčtování smazáno')
-        router.push(`/zakazky/${initial.zakazka.id}?tab=vyuctovani`)
+        router.push(`/zakazky/${initial.zakazka.id}?tab=protokoly#vyuctovani`)
       } else {
         const err = await res.json()
         setToast(err.error ?? 'Chyba při mazání')
@@ -347,7 +347,7 @@ export default function VyuctovaniDetailClient({ vyuctovani: initial, canApprove
           <div className="flex flex-col gap-3">
             {/* Breadcrumb */}
             <div className="flex items-center gap-1.5 text-sm text-gray-400 dark:text-slate-500">
-              <a href={`/zakazky/${initial.zakazka.id}?tab=vyuctovani`} className="hover:text-gray-600 dark:hover:text-slate-300 transition-colors">{initial.zakazka.cislo}</a>
+              <a href={`/zakazky/${initial.zakazka.id}?tab=protokoly#vyuctovani`} className="hover:text-gray-600 dark:hover:text-slate-300 transition-colors">{initial.zakazka.cislo}</a>
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
               <span className="text-gray-600 dark:text-slate-300 font-medium">{initial.cislo}</span>
             </div>

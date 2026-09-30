@@ -11,6 +11,7 @@ import { getPerms, isTechnikView } from '@/lib/permissions'
 import { getPlanLimits } from '@/lib/planLimits'
 import { NavigateButton } from '@/components/NavigateButton'
 import ZakazkyTabs from './ZakazkyTabs'
+import { vychoziZakazkaTab } from '@/lib/zakazkaTaby'
 import PipelineBar from './PipelineBar'
 import ZakazkaDetailHeader from './ZakazkaDetailHeader'
 import MontazDatePicker from './MontazDatePicker'
@@ -288,7 +289,7 @@ export default async function ZakazkaDetailLayout({
                 <span className="text-xs text-green-600 dark:text-green-400 font-medium">vše ready</span>
               )}
               {perms.sklad !== 'ZADNY' && zakazka.objednavky.length > 0 && (
-                <Link href={`/zakazky/${zakazka.id}?tab=objednavky`} className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 hover:underline whitespace-nowrap">
+                <Link href={`/zakazky/${zakazka.id}?tab=polozky#objednavky`} className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 hover:underline whitespace-nowrap">
                   {zakazka.objednavky.length} {zakazka.objednavky.length === 1 ? 'otevřená objednávka' : zakazka.objednavky.length < 5 ? 'otevřené objednávky' : 'otevřených objednávek'}
                 </Link>
               )}
@@ -387,7 +388,7 @@ export default async function ZakazkaDetailLayout({
 
       {/* Tab bar — always visible, active tab determined from URL */}
       <Suspense fallback={<div className="border-b border-gray-200 dark:border-slate-700 h-10" />}>
-        <ZakazkyTabs zakazkaId={zakazka.id} showVyuctovani={perms.financeProdejni} showHistorie={canEdit} showObjednavky={perms.sklad !== 'ZADNY'} />
+        <ZakazkyTabs zakazkaId={zakazka.id} defaultTab={vychoziZakazkaTab(isTechnik)} showHistorie={canEdit} />
       </Suspense>
 
       {/* Page content */}
