@@ -3,7 +3,8 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
+import { Button, ButtonLink } from '@/components/ui/Button'
+import { Field, Input, Select } from '@/components/ui/Field'
 import ClientSelectWithCreate from '@/components/ClientSelectWithCreate'
 
 const techOptions = [
@@ -24,13 +25,14 @@ export default function NewDealForm({ clients, defaultClientId }: Props) {
   const router = useRouter()
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [clientError, setClientError] = useState('')
   const [form, setForm] = useState({ clientId: defaultClientId, technologie: 'KLIMA', predmet: '' })
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     // Klient se vybírá přes skrytý input, který prohlížeč nevaliduje
     if (!form.clientId) {
-      setError('Vyberte klienta, nebo založte nového.')
+      setClientError('Vyberte klienta, nebo založte nového.')
       return
     }
     setSaving(true)
@@ -63,51 +65,41 @@ export default function NewDealForm({ clients, defaultClientId }: Props) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-6 space-y-4">
-      {error && <div className="bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-400 text-sm px-4 py-3 rounded-lg">{error}</div>}
+    <form onSubmit={handleSubmit} className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4 sm:p-6 space-y-4">
+      {error && <div role="alert" className="bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-400 text-sm px-4 py-3 rounded-lg">{error}</div>}
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Klient *</label>
+      {/* Výběr klienta je vlastní komponenta (skrytý input) — popisek a chyba ručně */}
+      <div role="group" aria-labelledby="deal-klient-label">
+        <p id="deal-klient-label" className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
+          Klient<span className="text-red-500 ml-0.5" aria-hidden>*</span>
+        </p>
         <ClientSelectWithCreate
           clients={clients}
           value={form.clientId}
-          onChange={(clientId) => setForm((f) => ({ ...f, clientId }))}
+          onChange={(clientId) => { setForm((f) => ({ ...f, clientId })); if (clientId) setClientError('') }}
         />
+        {clientError && <p role="alert" className="text-xs mt-1 text-red-600 dark:text-red-400">{clientError}</p>}
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Technologie *</label>
-        <select
-          value={form.technologie}
-          onChange={(e) => setForm((f) => ({ ...f, technologie: e.target.value }))}
-          className="w-full border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-        >
+      <Field label="Technologie" required>
+        <Select value={form.technologie} onChange={(e) => setForm((f) => ({ ...f, technologie: e.target.value }))}>
           {techOptions.map((t) => (
             <option key={t.value} value={t.value}>{t.label}</option>
           ))}
-        </select>
-      </div>
+        </Select>
+      </Field>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Předmět</label>
-        <input
-          type="text"
+      <Field label="Předmět">
+        <Input
           placeholder="Stručný popis zakázky…"
           value={form.predmet}
           onChange={(e) => setForm((f) => ({ ...f, predmet: e.target.value }))}
-          className="w-full border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
         />
-      </div>
+      </Field>
 
       <div className="flex gap-3 pt-2">
-        <button
-          type="submit"
-          disabled={saving}
-          className="bg-primary hover:bg-primary-hover disabled:opacity-50 text-white font-medium px-4 py-2 rounded-lg text-sm"
-        >
-          {saving ? 'Ukládám…' : 'Vytvořit případ'}
-        </button>
-        <Link href="/deals" className="px-4 py-2 text-sm text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white">Zrušit</Link>
+        <Button type="submit" loading={saving}>Vytvořit případ</Button>
+        <ButtonLink href="/deals" variant="ghost">Zrušit</ButtonLink>
       </div>
     </form>
   )
