@@ -1,5 +1,8 @@
 'use client'
 
+import { Dialog } from '@/components/ui/Dialog'
+import { Button } from '@/components/ui/Button'
+import { Field, Textarea } from '@/components/ui/Field'
 import { podpisToImgSrc } from '@/lib/podpisImage'
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -397,108 +400,87 @@ export default function PredavakClient({ predavak: initial, currentUserId, canAp
 
   return (
     <>
-      {/* Confirm podepsat */}
-      {confirmPodpsat && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-xl max-w-sm w-full">
-            <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Odeslat ke schválení?</h3>
-            <p className="text-sm text-gray-600 dark:text-slate-400 mb-5">
-              Po odeslání nelze položky upravit. Protokol bude odeslán vedoucímu ke schválení.
+      {/* Potvrzovací dialogy (ui/Dialog: Esc, klik mimo, focus) */}
+      <Dialog
+        open={confirmPodpsat}
+        onClose={() => setConfirmPodpsat(false)}
+        title="Odeslat ke schválení?"
+        size="sm"
+        footer={<>
+          <Button variant="secondary" onClick={() => setConfirmPodpsat(false)}>Zrušit</Button>
+          <Button onClick={handlePodepsat} loading={saving} data-autofocus>Odeslat</Button>
+        </>}
+      >
+        <p className="text-sm text-gray-600 dark:text-slate-400">
+          Po odeslání nelze položky upravit. Protokol bude odeslán vedoucímu ke schválení.
+        </p>
+      </Dialog>
+
+      <Dialog
+        open={confirmSchvalit}
+        onClose={() => setConfirmSchvalit(false)}
+        title="Schválit protokol?"
+        size="sm"
+        footer={<>
+          <Button variant="secondary" onClick={() => setConfirmSchvalit(false)}>Zrušit</Button>
+          <Button onClick={handleSchvalit} loading={saving} data-autofocus>Schválit</Button>
+        </>}
+      >
+        <p className="text-sm text-gray-600 dark:text-slate-400">
+          Schválením protokolu <strong>{initial.cislo}</strong> budou použité položky označeny jako vydané ze skladu a bude automaticky vytvořeno vyúčtování.
+        </p>
+      </Dialog>
+
+      <Dialog
+        open={confirmReopen}
+        onClose={() => setConfirmReopen(false)}
+        title="Vrátit protokol k úpravám?"
+        size="sm"
+        footer={<>
+          <Button variant="secondary" onClick={() => setConfirmReopen(false)} data-autofocus>Zrušit</Button>
+          <Button variant="warning" onClick={handleReopen} loading={saving}>Vrátit k úpravám</Button>
+        </>}
+      >
+        <div className="text-sm text-gray-600 dark:text-slate-400 space-y-2">
+          <p>Protokol <strong>{initial.cislo}</strong> se vrátí do stavu <strong>Rozpracován</strong> a technik ho bude muset znovu podepsat.</p>
+          {stav === 'SCHVALEN' && (
+            <p>
+              Zároveň se zruší schválení: vydané položky se vrátí na sklad
+              {initial.vyuctovani && <> a smaže se návrh vyúčtování <strong>{initial.vyuctovani.cislo}</strong></>}.
             </p>
-            <div className="flex gap-3 justify-end">
-              <button onClick={() => setConfirmPodpsat(false)} className="px-4 py-2 text-sm text-gray-600 dark:text-slate-400 border border-gray-300 dark:border-slate-600 rounded-lg">Zrušit</button>
-              <button onClick={handlePodepsat} disabled={saving} className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg disabled:opacity-50">
-                {saving ? 'Odesílám…' : 'Odeslat'}
-              </button>
-            </div>
-          </div>
+          )}
         </div>
-      )}
+      </Dialog>
 
-      {/* Confirm schvalit */}
-      {confirmSchvalit && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-xl max-w-sm w-full">
-            <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Schválit protokol?</h3>
-            <p className="text-sm text-gray-600 dark:text-slate-400 mb-5">
-              Schválením protokolu <strong>{initial.cislo}</strong> budou použité položky označeny jako vydané ze skladu a bude automaticky vytvořeno vyúčtování.
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button onClick={() => setConfirmSchvalit(false)} className="px-4 py-2 text-sm text-gray-600 dark:text-slate-400 border border-gray-300 dark:border-slate-600 rounded-lg">Zrušit</button>
-              <button onClick={handleSchvalit} disabled={saving} className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg disabled:opacity-50">
-                {saving ? 'Schvaluji…' : 'Schválit'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Dialog
+        open={confirmDelete}
+        onClose={() => setConfirmDelete(false)}
+        title="Smazat protokol?"
+        size="sm"
+        footer={<>
+          <Button variant="secondary" onClick={() => setConfirmDelete(false)} data-autofocus>Zrušit</Button>
+          <Button variant="danger" onClick={handleDelete} loading={saving}>Smazat</Button>
+        </>}
+      >
+        <p className="text-sm text-gray-600 dark:text-slate-400">
+          Protokol <strong>{initial.cislo}</strong> včetně všech položek a fotek bude <strong>trvale smazán</strong>. Tuto akci nelze vzít zpět.
+        </p>
+      </Dialog>
 
-      {/* Confirm reopen */}
-      {confirmReopen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-xl max-w-sm w-full">
-            <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Vrátit protokol k úpravám?</h3>
-            <div className="text-sm text-gray-600 dark:text-slate-400 mb-5 space-y-2">
-              <p>Protokol <strong>{initial.cislo}</strong> se vrátí do stavu <strong>Rozpracován</strong> a technik ho bude muset znovu podepsat.</p>
-              {stav === 'SCHVALEN' && (
-                <p>
-                  Zároveň se zruší schválení: vydané položky se vrátí na sklad
-                  {initial.vyuctovani && <> a smaže se návrh vyúčtování <strong>{initial.vyuctovani.cislo}</strong></>}.
-                </p>
-              )}
-            </div>
-            <div className="flex gap-3 justify-end">
-              <button onClick={() => setConfirmReopen(false)} className="px-4 py-2 text-sm text-gray-600 dark:text-slate-400 border border-gray-300 dark:border-slate-600 rounded-lg">Zrušit</button>
-              <button onClick={handleReopen} disabled={saving} className="px-4 py-2 text-sm font-medium text-white bg-orange-600 hover:bg-orange-700 rounded-lg disabled:opacity-50">
-                {saving ? 'Vracím…' : 'Vrátit k úpravám'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Confirm delete */}
-      {confirmDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-xl max-w-sm w-full">
-            <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Smazat protokol?</h3>
-            <p className="text-sm text-gray-600 dark:text-slate-400 mb-5">
-              Protokol <strong>{initial.cislo}</strong> včetně všech položek a fotek bude <strong>trvale smazán</strong>. Tuto akci nelze vzít zpět.
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button onClick={() => setConfirmDelete(false)} className="px-4 py-2 text-sm text-gray-600 dark:text-slate-400 border border-gray-300 dark:border-slate-600 rounded-lg">Zrušit</button>
-              <button onClick={handleDelete} disabled={saving} className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg disabled:opacity-50">
-                {saving ? 'Mažu…' : 'Smazat'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Odmitnutí modal */}
-      {odmitnutiModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-xl max-w-sm w-full">
-            <h3 className="font-semibold text-gray-900 dark:text-white mb-3">Odmítnout protokol</h3>
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Důvod odmítnutí *</label>
-              <textarea
-                value={odmitnutiDuvod}
-                onChange={e => setOdmitnutiDuvod(e.target.value)}
-                rows={3}
-                style={{ fontSize: 16 }}
-                className="w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-            </div>
-            <div className="flex gap-3 justify-end">
-              <button onClick={() => { setOdmitnutiModal(false); setOdmitnutiDuvod('') }} className="px-4 py-2 text-sm text-gray-600 dark:text-slate-400 border border-gray-300 dark:border-slate-600 rounded-lg">Zrušit</button>
-              <button onClick={handleOdmitnout} disabled={!odmitnutiDuvod.trim() || saving} className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg disabled:opacity-50">
-                Odmítnout
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Dialog
+        open={odmitnutiModal}
+        onClose={() => { setOdmitnutiModal(false); setOdmitnutiDuvod('') }}
+        title="Odmítnout protokol"
+        size="sm"
+        footer={<>
+          <Button variant="secondary" onClick={() => { setOdmitnutiModal(false); setOdmitnutiDuvod('') }}>Zrušit</Button>
+          <Button variant="danger" onClick={handleOdmitnout} disabled={!odmitnutiDuvod.trim()} loading={saving}>Odmítnout</Button>
+        </>}
+      >
+        <Field label="Důvod odmítnutí" required>
+          <Textarea value={odmitnutiDuvod} onChange={e => setOdmitnutiDuvod(e.target.value)} rows={3} data-autofocus />
+        </Field>
+      </Dialog>
 
       <div className="space-y-5 pb-40 md:pb-6">
         {/* ─── Header ─── */}
@@ -960,21 +942,25 @@ export default function PredavakClient({ predavak: initial, currentUserId, canAp
           {canEdit ? (
             <div className="space-y-4">
               {/* Toggle klientPritomen */}
-              <label className="flex items-center gap-3 cursor-pointer">
-                <div
-                  onClick={() => {
-                    const next = !klientPritomen
-                    setKlientPritomen(next)
-                    autoSave({ klientPritomen: next })
-                  }}
-                  className={`relative w-11 h-6 rounded-full transition-colors ${klientPritomen ? 'bg-green-500' : 'bg-gray-300 dark:bg-slate-600'}`}
-                >
-                  <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${klientPritomen ? 'left-5' : 'left-0.5'}`} />
-                </div>
+              {/* Skutečný přepínač (klávesnice, čtečky) — klikací je celý řádek */}
+              <button
+                type="button"
+                role="switch"
+                aria-checked={klientPritomen}
+                onClick={() => {
+                  const next = !klientPritomen
+                  setKlientPritomen(next)
+                  autoSave({ klientPritomen: next })
+                }}
+                className="flex items-center gap-3 text-left"
+              >
+                <span className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${klientPritomen ? 'bg-green-500' : 'bg-gray-300 dark:bg-slate-600'}`} aria-hidden>
+                  <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${klientPritomen ? 'left-5' : 'left-0.5'}`} />
+                </span>
                 <span className="text-sm font-medium text-gray-700 dark:text-slate-300">
                   Klient byl přítomen
                 </span>
-              </label>
+              </button>
 
               {klientPritomen ? (
                 <SignatureCanvas

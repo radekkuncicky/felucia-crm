@@ -4,13 +4,14 @@ import { forwardRef } from 'react'
 import Link from 'next/link'
 import { cn } from '@/lib/cn'
 
-export type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'ghost' | 'link'
+export type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'warning' | 'ghost' | 'link'
 export type ButtonSize = 'sm' | 'md' | 'lg'
 
 const VARIANT: Record<ButtonVariant, string> = {
   primary: 'bg-primary hover:bg-primary-hover text-white font-medium shadow-sm',
   secondary: 'bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-200 border border-gray-300 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700',
   danger: 'bg-red-600 hover:bg-red-700 text-white font-medium shadow-sm',
+  warning: 'bg-orange-600 hover:bg-orange-700 text-white font-medium shadow-sm',
   ghost: 'text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700/60',
   link: 'text-primary dark:text-primary-light hover:underline font-medium',
 }
