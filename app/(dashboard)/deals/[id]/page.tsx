@@ -21,7 +21,8 @@ import { getPlanLimits } from '@/lib/planLimits'
 import { NavigateButton } from '@/components/NavigateButton'
 import { CollapsibleEdit } from './CollapsibleEdit'
 import { DealNotesCard } from './DealNotesCard'
-import { formatDate, formatCislo } from '@/lib/format'
+import { DalsiKrokCard } from './DalsiKrokCard'
+import { formatCislo } from '@/lib/format'
 import { getDefiniceProZamereni, vyplneneSekce } from '@/lib/zamereniDefinice'
 import { klientAdresa } from '@/lib/mobile-helpers'
 
@@ -110,10 +111,17 @@ export default async function DealDetailPage({
   if (deal.stav === 'ZNEPLATNENO' && !perms.obchodMazani) notFound()
 
   // Zakázka vzniklá z tohoto OP (auto-create při Úspěchu)
-  const linkedZakazka = await prisma.zakazka.findFirst({
-    where: { opId: deal.id, orgId },
-    select: { id: true, cislo: true, stav: true },
-  })
+  const [linkedZakazka, posledniSmlouva] = await Promise.all([
+    prisma.zakazka.findFirst({
+      where: { opId: deal.id, orgId },
+      select: { id: true, cislo: true, stav: true },
+    }),
+    prisma.sod.findFirst({
+      where: { dealId: deal.id, orgId, stav: { notIn: ['STORNO', 'EXPIROVANO'] } },
+      select: { id: true, stav: true },
+      orderBy: { vytvoreno: 'desc' },
+    }),
+  ])
 
   const klientAdresaText = klientAdresa(deal.client)
   const zamereniItems = await Promise.all(
@@ -281,6 +289,15 @@ export default async function DealDetailPage({
 
       {/* Tab content */}
       {tab === 'prehled' && (
+        <div className="space-y-6">
+        <DalsiKrokCard
+          dealId={deal.id}
+          stav={deal.stav}
+          maNabidku={deal.quotes.length > 0}
+          nabidkaOdeslana={deal.quotes.some(q => q.odeslanoAt !== null)}
+          smlouva={posledniSmlouva}
+          zakazka={linkedZakazka}
+        />
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Left: notes + activities + collapsible edit form */}
           <div className="space-y-4">
@@ -318,14 +335,6 @@ export default async function DealDetailPage({
           <div className="space-y-4">
             {/* Info cards row */}
             <div className="grid grid-cols-2 gap-3">
-              <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4">
-                <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase mb-1">Kód OP</p>
-                <p className="font-mono font-bold text-gray-900 dark:text-white">{deal.kod ?? '—'}</p>
-              </div>
-              <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4">
-                <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase mb-1">Vytvořen</p>
-                <p className="font-medium text-gray-900 dark:text-white">{formatDate(deal.vytvoreno)}</p>
-              </div>
               <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4">
                 <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase mb-1">Obchodník</p>
                 <p className="font-medium text-gray-900 dark:text-white truncate">{deal.user?.jmeno ?? '—'}</p>
@@ -386,6 +395,7 @@ export default async function DealDetailPage({
             )}
 
           </div>
+        </div>
         </div>
       )}
 
