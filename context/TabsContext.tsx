@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 
 export interface Tab {
@@ -46,7 +46,7 @@ const TabsContext = createContext<TabsCtx>({
   closeAll: () => {},
 })
 
-export function TabsProvider({ children }: { children: React.ReactNode }) {
+export function TabsProvider({ children, showDeals = true }: { children: React.ReactNode; showDeals?: boolean }) {
   const router = useRouter()
   const [dynamicTabs, setDynamicTabs] = useState<Tab[]>([])
 
@@ -55,7 +55,9 @@ export function TabsProvider({ children }: { children: React.ReactNode }) {
     setDynamicTabs(readLS())
   }, [])
 
-  const tabs = [...STATIC_TABS, ...dynamicTabs]
+  // Tab „Obchodní případy" jen pro role s obchodem (technika by middleware přesměroval)
+  const staticTabs = useMemo(() => showDeals ? STATIC_TABS : STATIC_TABS.filter(t => t.id !== 'deals'), [showDeals])
+  const tabs = [...staticTabs, ...dynamicTabs]
 
   const activateTab = useCallback((tab: Tab) => {
     // Read fresh from localStorage — source of truth across re-mounts
@@ -75,16 +77,16 @@ export function TabsProvider({ children }: { children: React.ReactNode }) {
     setDynamicTabs(next)
     const closedTab = current.find(t => t.id === id)
     if (closedTab && window.location.pathname === closedTab.href) {
-      const allNext = [...STATIC_TABS, ...next]
-      const target = allNext[Math.max(0, STATIC_TABS.length + idx - 1)] ?? STATIC_TABS[1]
+      const allNext = [...staticTabs, ...next]
+      const target = allNext[Math.max(0, staticTabs.length + idx - 1)] ?? staticTabs[staticTabs.length - 1]
       router.push(target.href)
     }
-  }, [router])
+  }, [router, staticTabs])
 
   const closeAll = useCallback(() => {
     writeLS([])
     setDynamicTabs([])
-    router.push('/deals')
+    router.push('/dashboard')
   }, [router])
 
   return (

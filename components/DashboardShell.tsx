@@ -42,7 +42,7 @@ export default function DashboardShell({ user, orgSettings, orgNazev, children }
 
   return (
     <OrgSettingsProvider settings={orgSettings}>
-    <TabsProvider>
+    <TabsProvider showDeals={!!user.perms?.obchod}>
       <div className="flex h-[100dvh] bg-[#F9FBF9] dark:bg-[#0A120A] transition-colors overflow-hidden">
         {/* Mobile overlay backdrop */}
         {sidebarOpen && (
@@ -64,7 +64,8 @@ export default function DashboardShell({ user, orgSettings, orgNazev, children }
         {/* Main area */}
         <div className="flex flex-col flex-1 overflow-hidden min-w-0">
           <Header user={user} onMenuClick={() => setSidebarOpen(true)} />
-          <TabBar />
+          {/* Pracovní taby jen na desktopu — na mobilu se nevejdou (viz docs/ux-audit A4) */}
+          <div className="hidden md:block"><TabBar /></div>
           {/* md:pb-24: rezerva pod Dáša FAB (bottom:24 + výška 56px) + nápovědou (bottom:24 + 32px),
               jinak poslední řádek obsahu končí pod plovoucími tlačítky (viz zakázka detail/předáváky) */}
           <main className="flex-1 overflow-auto p-4 md:p-6 pb-safe-nav md:pb-24">
