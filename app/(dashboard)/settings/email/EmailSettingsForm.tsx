@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import Link from 'next/link'
 import { toast } from 'sonner'
 import { confirmDialog } from '@/components/ui/confirm'
 import { formatDate } from '@/lib/format'
@@ -197,8 +196,7 @@ export default function EmailSettingsForm({ initial, globalFallback, userEmail }
   return (
     <div className="max-w-3xl">
       <div className="mb-6">
-        <Link href="/settings" className="text-sm text-gray-400 hover:text-gray-600 dark:hover:text-slate-300">← Nastavení</Link>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">Odesílání e-mailů</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Odesílání e-mailů</h1>
         <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
           Připojte firemní e-mailový účet — upozornění, pozvánky a dokumenty pak klientům
           odejdou z vaší adresy, ne ze systémové.

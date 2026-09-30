@@ -18,6 +18,8 @@ const PAGE_LABELS: Record<string, string> = {
   '/settings/categories': 'Kategorie produktů',
   '/settings/quotes': 'Vzhled nabídek',
   '/settings/email': 'Odesílání e-mailů',
+  '/settings/zakazky': 'Nastavení zakázek',
+  '/settings/dokumenty': 'Vzhled dokumentů',
 }
 
 export default function SettingsBreadcrumb() {

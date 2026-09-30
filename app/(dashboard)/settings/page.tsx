@@ -90,6 +90,13 @@ const SECTIONS: { label: string; cards: CardDef[] }[] = [
         description: 'Import z Excelu, hromadné přidání',
         iconPath: <><polyline points="16 16 12 12 8 16" /><line x1="12" y1="12" x2="12" y2="21" /><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3" /></>,
       },
+      {
+        href: '/settings/categories',
+        perm: 'nastaveniOrg',
+        label: 'Kategorie produktů',
+        description: 'Třídění katalogu a filtry v nabídkách',
+        iconPath: <><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><line x1="7" y1="7" x2="7.01" y2="7" /></>,
+      },
     ],
   },
   {

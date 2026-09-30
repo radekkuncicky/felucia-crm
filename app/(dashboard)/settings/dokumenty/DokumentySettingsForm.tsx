@@ -81,10 +81,9 @@ export default function DokumentySettingsForm({ initial, hasWhiteLabel }: { init
   return (
     <div className="max-w-3xl">
       <div className="mb-6">
-        <Link href="/settings" className="text-sm text-gray-400 hover:text-gray-600 dark:hover:text-slate-300">← Nastavení</Link>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">Vzhled dokumentů</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Vzhled dokumentů</h1>
         <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
-          Záhlaví, patička a číslování stránek na PDF smlouvách. Logo a brand barvu nastavíš v{' '}
+          Záhlaví, patička a číslování stránek na PDF smlouvách. Logo a brand barvu nastavíte v{' '}
           <Link href="/settings/company" className="text-primary dark:text-primary-light hover:underline">Nastavení firmy</Link>.
         </p>
       </div>
