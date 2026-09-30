@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma'
 vi.mock('next-auth', () => ({ getServerSession: vi.fn() }))
 
 import { PATCH as leadPatch, DELETE as leadDelete } from '@/app/api/leady/[id]/route'
-import { POST as leadConvert } from '@/app/api/leady/[id]/convert/route'
+import { POST as leadConvert, GET as leadConvertKandidat } from '@/app/api/leady/[id]/convert/route'
 import { POST as leadCancel } from '@/app/api/leady/[id]/cancel/route'
 import { POST as leadReopen } from '@/app/api/leady/[id]/reopen/route'
 import { getServerSession } from 'next-auth'
@@ -218,5 +218,41 @@ describe('status leadu odpovídá skutečnosti', () => {
     const body = await res.json()
     expect(body.error).toMatch(/jméno/i)
     expect((await prisma.lead.findUnique({ where: { id } }))?.status).toBe('NOVY')
+  })
+})
+
+describe('převod leadu — existující klient (C1)', () => {
+  const kandidat = async (id: string) =>
+    (await (await leadConvertKandidat(new Request('http://localhost'), { params: { id } })).json()).kandidat
+
+  it('najde klienta podle telefonu (i v jiném formátu) a převod s existingClientId nezaloží duplicitu', async () => {
+    jakoAdmin()
+    const klient = await prisma.client.create({
+      data: { orgId, jmeno: 'Jana', prijmeni: `Stálá-${RUN}`, telefon: '+420 601 222 333' },
+    })
+    const id = await novyLead({ jmeno: 'Jana Stálá', telefon: '601222333' })
+    const k = await kandidat(id)
+    expect(k).toMatchObject({ id: klient.id, duvod: 'telefon' })
+
+    const pred = await prisma.client.count({ where: { orgId } })
+    const res = await leadConvert(post(id, { existingClientId: klient.id }), { params: { id } })
+    expect(res.status).toBe(201)
+    expect((await res.json()).clientId).toBe(klient.id)
+    expect(await prisma.client.count({ where: { orgId } })).toBe(pred)
+  })
+
+  it('firemní lead bez kontaktu najde firmu podle názvu (bez kontaktní osoby)', async () => {
+    jakoAdmin()
+    const firma = await prisma.client.create({
+      data: { orgId, typKlienta: 'FIRMA', jmeno: `Klimatech ${RUN} s.r.o.`, prijmeni: 'Petr Kontakt' },
+    })
+    const id = await novyLead({ jmeno: 'Někdo Jiný', firma: `Klimatech ${RUN} s.r.o.` })
+    expect(await kandidat(id)).toMatchObject({ id: firma.id, duvod: 'jmeno', nazev: `Klimatech ${RUN} s.r.o.` })
+  })
+
+  it('bez shody vrátí null', async () => {
+    jakoAdmin()
+    const id = await novyLead({ jmeno: 'Úplně Neznámý', email: `nikdo-${RUN}@example.cz` })
+    expect(await kandidat(id)).toBeNull()
   })
 })

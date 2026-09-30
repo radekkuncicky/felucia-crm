@@ -1,12 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { LeadZdroj, LeadStatus, Technologie } from '@prisma/client'
 import { formatDate, formatKcPresne } from '@/lib/format'
 import { confirmDialog } from '@/components/ui/confirm'
+import { Dialog } from '@/components/ui/Dialog'
+import { Button } from '@/components/ui/Button'
+import { Field, Input, Select } from '@/components/ui/Field'
+import { api } from '@/lib/api'
 import { leadPredmet, sluzbaLabel, sluzbaToTechnologie } from '@/lib/leadService'
 import LeadAktivity, { type LeadActivity } from './LeadAktivity'
 
@@ -602,84 +606,112 @@ export default function LeadDetailClient({ lead: initialLead, users, currentUser
   )
 }
 
+interface KlientKandidat {
+  id: string
+  nazev: string
+  telefon: string | null
+  email: string | null
+  duvod: 'telefon' | 'email' | 'jmeno'
+}
+
+const DUVOD_SHODY: Record<KlientKandidat['duvod'], string> = {
+  telefon: 'shodný telefon',
+  email: 'shodný e-mail',
+  jmeno: 'podobné jméno',
+}
+
 function ConvertModal({ lead, onClose, onConverted }: {
   lead: Lead
   onClose: () => void
   onConverted: (dealId: string) => void
 }) {
+  const formId = useId()
   const [saving, setSaving] = useState(false)
   const [technologie, setTechnologie] = useState<Technologie>(sluzbaToTechnologie(lead.sluzba))
   const [predmet, setPredmet] = useState(leadPredmet(lead))
+  // undefined = ještě se hledá, null = žádná shoda
+  const [kandidat, setKandidat] = useState<KlientKandidat | null | undefined>(undefined)
+  const [pouzitExistujiciho, setPouzitExistujiciho] = useState(true)
 
-  async function handleConvert() {
-    setSaving(true)
-    const res = await fetch(`/api/leady/${lead.id}/convert`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ technologie, predmet }),
+  useEffect(() => {
+    let zruseno = false
+    api.get<{ kandidat: KlientKandidat | null }>(`/api/leady/${lead.id}/convert`, { silent: true }).then(res => {
+      if (!zruseno) setKandidat(res.ok ? res.data?.kandidat ?? null : null)
     })
-    if (res.ok) {
-      const data = await res.json()
-      toast.success('Obchodní případ vytvořen')
-      onConverted(data.dealId)
-    } else {
-      const body = await res.json().catch(() => null)
-      toast.error(body?.error ?? 'Převod se nezdařil')
-    }
+    return () => { zruseno = true }
+  }, [lead.id])
+
+  async function handleConvert(e: React.FormEvent) {
+    e.preventDefault()
+    setSaving(true)
+    const res = await api.post<{ dealId: string }>(`/api/leady/${lead.id}/convert`, {
+      technologie,
+      predmet,
+      ...(kandidat && pouzitExistujiciho ? { existingClientId: kandidat.id } : {}),
+    })
     setSaving(false)
+    if (res.ok && res.data) {
+      toast.success('Obchodní případ vytvořen')
+      onConverted(res.data.dealId)
+    }
   }
 
+  const novyNazev = lead.firma?.trim() || lead.jmeno
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 shadow-xl rounded-xl w-full max-w-md">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-slate-700">
-          <h2 className="text-base font-semibold text-gray-900 dark:text-white">Převést na obchodní případ</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-700 dark:text-white/60 dark:hover:text-white transition-colors">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        <div className="p-6 space-y-4">
-          <div className="bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/15 rounded-lg p-3 text-sm">
-            <p className="text-gray-500 dark:text-white/65 text-xs mb-1">Bude vytvořen</p>
-            <p className="text-white">Nový klient: <span className="text-[#4CAF50]">{lead.jmeno}</span></p>
-            {lead.email && <p className="text-gray-500 dark:text-white/65 text-xs mt-0.5">{lead.email}</p>}
-            {lead.telefon && <p className="text-gray-500 dark:text-white/65 text-xs">{lead.telefon}</p>}
-          </div>
-          <div>
-            <label className="block text-xs text-gray-500 dark:text-white/65 mb-1">Technologie *</label>
-            <select
-              value={technologie}
-              onChange={e => setTechnologie(e.target.value as Technologie)}
-              className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg text-sm text-gray-900 dark:text-white focus:outline-none focus:border-[#4CAF50]/60"
-            >
-              {TECH_OPTIONS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="block text-xs text-gray-500 dark:text-white/65 mb-1">Předmět OP</label>
-            <input
-              value={predmet}
-              onChange={e => setPredmet(e.target.value)}
-              className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg text-sm text-gray-900 dark:text-white focus:outline-none focus:border-[#4CAF50]/60"
-            />
-          </div>
-          <div className="flex justify-end gap-3 pt-2">
-            <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 dark:text-gray-500 dark:text-white/65 dark:hover:text-white transition-colors">
-              Zrušit
-            </button>
-            <button
-              onClick={handleConvert}
-              disabled={saving}
-              className="px-4 py-2 bg-[#4CAF50] hover:bg-[#43A047] text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
-            >
-              {saving ? 'Vytvářím...' : 'Vytvořit OP'}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    <Dialog
+      open
+      onClose={onClose}
+      title="Převést na obchodní případ"
+      footer={<>
+        <Button variant="secondary" onClick={onClose}>Zrušit</Button>
+        <Button type="submit" form={formId} loading={saving} disabled={kandidat === undefined}>Vytvořit OP</Button>
+      </>}
+    >
+      <form id={formId} onSubmit={handleConvert} className="space-y-4">
+        <fieldset className="space-y-2">
+          <legend className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Klient</legend>
+          {kandidat === undefined && (
+            <p className="text-sm text-gray-400 dark:text-slate-500">Hledám, jestli klient už v CRM není…</p>
+          )}
+          {kandidat && (
+            <label className={`flex items-start gap-3 rounded-lg border p-3 cursor-pointer ${pouzitExistujiciho ? 'border-primary bg-primary/5' : 'border-gray-200 dark:border-slate-700'}`}>
+              <input type="radio" name="klient" checked={pouzitExistujiciho} onChange={() => setPouzitExistujiciho(true)} className="mt-1" />
+              <span className="text-sm">
+                <span className="block font-medium text-gray-900 dark:text-white">Použít existujícího: {kandidat.nazev}</span>
+                <span className="block text-xs text-gray-500 dark:text-slate-400">
+                  Nalezen v CRM — {DUVOD_SHODY[kandidat.duvod]}
+                  {[kandidat.telefon, kandidat.email].filter(Boolean).length > 0 && ` · ${[kandidat.telefon, kandidat.email].filter(Boolean).join(' · ')}`}
+                </span>
+              </span>
+            </label>
+          )}
+          {kandidat !== undefined && (
+            <label className={`flex items-start gap-3 rounded-lg border p-3 ${kandidat ? 'cursor-pointer' : ''} ${!kandidat || !pouzitExistujiciho ? 'border-primary bg-primary/5' : 'border-gray-200 dark:border-slate-700'}`}>
+              {kandidat && (
+                <input type="radio" name="klient" checked={!pouzitExistujiciho} onChange={() => setPouzitExistujiciho(false)} className="mt-1" />
+              )}
+              <span className="text-sm">
+                <span className="block font-medium text-gray-900 dark:text-white">
+                  Založit nového: {novyNazev}{lead.firma?.trim() ? ` (${lead.jmeno})` : ''}
+                </span>
+                {(lead.telefon || lead.email) && (
+                  <span className="block text-xs text-gray-500 dark:text-slate-400">{[lead.telefon, lead.email].filter(Boolean).join(' · ')}</span>
+                )}
+              </span>
+            </label>
+          )}
+        </fieldset>
+        <Field label="Technologie" required>
+          <Select value={technologie} onChange={e => setTechnologie(e.target.value as Technologie)}>
+            {TECH_OPTIONS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+          </Select>
+        </Field>
+        <Field label="Předmět OP">
+          <Input value={predmet} onChange={e => setPredmet(e.target.value)} />
+        </Field>
+      </form>
+    </Dialog>
   )
 }
 

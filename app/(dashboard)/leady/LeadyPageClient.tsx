@@ -301,7 +301,7 @@ export default function LeadyPageClient({ leady, users, novychCount, currentUser
         <AddLeadModal
           users={users}
           onClose={() => setShowModal(false)}
-          onCreated={() => { setShowModal(false); router.refresh() }}
+          onCreated={id => { setShowModal(false); router.refresh(); router.push(`/leady/${id}`) }}
         />
       )}
     </div>
@@ -311,7 +311,7 @@ export default function LeadyPageClient({ leady, users, novychCount, currentUser
 function AddLeadModal({ users, onClose, onCreated }: {
   users: User[]
   onClose: () => void
-  onCreated: () => void
+  onCreated: (id: string) => void
 }) {
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({
@@ -337,8 +337,10 @@ function AddLeadModal({ users, onClose, onCreated }: {
         toast.error(body?.error ?? 'Lead se nepodařilo vytvořit')
         return
       }
+      const lead = await res.json()
       toast.success('Lead vytvořen')
-      onCreated()
+      // Rovnou do detailu — tam se lead dál kvalifikuje / převádí
+      onCreated(lead.id)
     } finally {
       setSaving(false)
     }

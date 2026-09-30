@@ -7,8 +7,53 @@ import { generateDealKod } from '@/lib/dealKod'
 import { createWithUniqueKod } from '@/lib/uniqueKod'
 import { NextResponse } from 'next/server'
 import { getPerms, forbidden } from '@/lib/permissions'
+import { najdiDuplicitnihoKlienta, normalizeEmail, normalizePhone } from '@/lib/clientDuplicate'
 
 const TECHNOLOGIE_VALUES = new Set<string>(Object.values(Technologie))
+
+// GET — kandidát na existujícího klienta (shoda telefonu/e-mailu, bez kontaktu podle jména/firmy),
+// aby převod nezakládal duplicitu. -> { kandidat: { id, nazev, telefon, email, duvod } | null }
+export async function GET(req: Request, { params }: { params: { id: string } }) {
+  const session = await getServerSession(authOptions)
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!getPerms(session.user).obchod) return forbidden()
+
+  const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
+  const lead = await db.lead.findFirst({ where: { id: params.id, orgId } })
+  if (!lead) return NextResponse.json({ error: 'Lead nenalezen.' }, { status: 404 })
+
+  const klienti = await db.client.findMany({
+    where: { orgId },
+    select: { id: true, jmeno: true, prijmeni: true, telefon: true, email: true, typKlienta: true },
+  })
+  const firma = lead.firma?.trim()
+  // U firem porovnávat jen název (prijmeni = kontaktní osoba)
+  const match = najdiDuplicitnihoKlienta(klienti.map(k => k.typKlienta === 'FIRMA' ? { ...k, prijmeni: '' } : k), {
+    // Firma je v klientech uložená v `jmeno` (název), osoba jako „jméno příjmení"
+    jmeno: firma || lead.jmeno,
+    prijmeni: null,
+    telefon: lead.telefon,
+    email: lead.email,
+  })
+  if (!match) return NextResponse.json({ kandidat: null })
+
+  const duvod = lead.telefon && normalizePhone(lead.telefon) === normalizePhone(match.telefon)
+    ? 'telefon'
+    : lead.email && normalizeEmail(lead.email) === normalizeEmail(match.email)
+      ? 'email'
+      : 'jmeno'
+  const k = klienti.find(x => x.id === match.id)!
+  return NextResponse.json({
+    kandidat: {
+      id: k.id,
+      nazev: k.typKlienta === 'FIRMA' ? k.jmeno : `${k.jmeno} ${k.prijmeni}`.trim(),
+      telefon: k.telefon,
+      email: k.email,
+      duvod,
+    },
+  })
+}
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
