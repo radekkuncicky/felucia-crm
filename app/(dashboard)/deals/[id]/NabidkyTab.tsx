@@ -21,6 +21,12 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import ProductCatalogModal from '@/components/ProductCatalogModal'
 import ConfirmModal from '@/components/ConfirmModal'
+import { toast } from 'sonner'
+import { Button, buttonClasses } from '@/components/ui/Button'
+import { Menu } from '@/components/ui/Menu'
+import { IconButton } from '@/components/ui/IconButton'
+import { Field, Select } from '@/components/ui/Field'
+import MobileSheet from '@/components/MobileSheet'
 import ShareQuoteModal from '@/components/ShareQuoteModal'
 import KontrolniKontaktModal from '@/components/KontrolniKontaktModal'
 
@@ -30,13 +36,15 @@ const SHEET_ICON_PATHS: Record<string, string> = {
   download: 'M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4',
   copy: 'M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z',
   check: 'M5 13l4 4L19 7',
+  edit: 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z',
+  trash: 'M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16',
   phone: 'M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z',
   share: 'M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z',
 }
 
 function SheetIcon({ name }: { name: string }) {
   return (
-    <svg className="w-5 h-5 text-green-200/80 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
+    <svg className="w-5 h-5 text-gray-400 dark:text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
       <path d={SHEET_ICON_PATHS[name] ?? SHEET_ICON_PATHS.check} />
     </svg>
   )
@@ -561,8 +569,6 @@ export default function NabidkyTab({
   const [renameVal, setRenameVal] = useState('')
   const [editingNameId, setEditingNameId] = useState<string | null>(null)
   const [editingNameValue, setEditingNameValue] = useState('')
-  const [toast, setToast] = useState<string | null>(null)
-  const [toastType, setToastType] = useState<'success' | 'error'>('success')
   const [pdfLoading, setPdfLoading] = useState(false)
   const [isDirty, setIsDirty] = useState(false)
   const [deleteQuoteId, setDeleteQuoteId] = useState<string | null>(null)
@@ -666,17 +672,8 @@ export default function NabidkyTab({
     return () => window.removeEventListener('beforeunload', onBeforeUnload)
   }, [])
 
-  function showToast(msg: string) {
-    setToast(msg)
-    setToastType('success')
-    setTimeout(() => setToast(null), 3000)
-  }
-
-  function showError(msg: string) {
-    setToast(msg)
-    setToastType('error')
-    setTimeout(() => setToast(null), 4000)
-  }
+  const showToast = (msg: string) => toast.success(msg)
+  const showError = (msg: string) => toast.error(msg)
 
   // ── Auto-save ─────────────────────────────────────────────────────────────
 
@@ -832,6 +829,9 @@ export default function NabidkyTab({
         ])
         setSelectedQuoteId(q.id)
         activateIfNone(q.id)
+      } else {
+        const d = await res.json().catch(() => ({}))
+        showError(d.message || d.error || 'Novou nabídku se nepodařilo vytvořit')
       }
     } finally {
       setSaving(false)
@@ -868,6 +868,9 @@ export default function NabidkyTab({
         ])
         setSelectedQuoteId(q.id)
         activateIfNone(q.id)
+      } else {
+        const d = await res.json().catch(() => ({}))
+        showError(d.message || d.error || 'Nabídku ze šablony se nepodařilo vytvořit')
       }
     } finally {
       setSaving(false)
@@ -905,6 +908,9 @@ export default function NabidkyTab({
         ])
         setSelectedQuoteId(q.id)
         activateIfNone(q.id)
+      } else {
+        const d = await res.json().catch(() => ({}))
+        showError(d.message || d.error || 'Nabídku se nepodařilo duplikovat')
       }
     } finally {
       setSaving(false)
@@ -1197,12 +1203,6 @@ export default function NabidkyTab({
         onConfirm={deleteItemConfirm}
         onCancel={() => setDeleteItemId(null)}
       />
-      {/* Toast */}
-      {toast && (
-        <div className={`fixed top-4 right-4 z-50 text-white text-sm font-medium px-4 py-2.5 rounded-lg shadow-lg ${toastType === 'error' ? 'bg-red-600' : 'bg-green-600'}`}>
-          {toast}
-        </div>
-      )}
 
       {showProductModal && (
         <ProductCatalogModal
@@ -1325,11 +1325,26 @@ export default function NabidkyTab({
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">
           {/* Mobile header */}
           <div className="flex items-center justify-between px-4 pt-3 pb-1 md:hidden">
-            <div>
+            <div className="min-w-0">
               {selectedQuote.kod && (
-                <span className="font-mono text-xs text-green-400">{selectedQuote.kod}</span>
+                <span className="font-mono text-xs text-green-700 dark:text-green-400">{selectedQuote.kod}</span>
               )}
-              <h3 className="font-semibold text-white text-base">{selectedQuote.nazev}</h3>
+              {editingNameId === selectedQuote.id ? (
+                <input
+                  autoFocus
+                  aria-label="Název nabídky"
+                  value={editingNameValue}
+                  onChange={e => setEditingNameValue(e.target.value)}
+                  onBlur={() => saveNameEdit(selectedQuote.id)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') saveNameEdit(selectedQuote.id)
+                    if (e.key === 'Escape') setEditingNameId(null)
+                  }}
+                  className="block w-full border border-blue-400 rounded px-2 py-1 text-base font-semibold bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              ) : (
+                <h3 className="font-semibold text-gray-900 dark:text-white text-base">{selectedQuote.nazev}</h3>
+              )}
             </div>
             <div className="flex items-center gap-2">
               {selectedQuote.aktivni && (
@@ -1337,12 +1352,9 @@ export default function NabidkyTab({
                   Aktivní
                 </span>
               )}
-              <button
-                onClick={() => setMoreOpen(true)}
-                className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white"
-              >
-                ⋯
-              </button>
+              <IconButton label="Akce s nabídkou" onClick={() => setMoreOpen(true)}>
+                <span aria-hidden className="text-lg leading-none">⋯</span>
+              </IconButton>
             </div>
           </div>
 
@@ -1363,16 +1375,18 @@ export default function NabidkyTab({
                     className="border border-blue-400 rounded px-2 py-0.5 text-sm font-semibold bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
                   />
                 ) : (
-                  <span
+                  <button
+                    type="button"
+                    data-compact
                     onClick={() => {
                       setEditingNameId(selectedQuote.id)
                       setEditingNameValue(selectedQuote.nazev)
                     }}
-                    className="cursor-pointer hover:text-primary dark:hover:text-primary-light"
+                    className="hover:text-primary dark:hover:text-primary-light text-left"
                     title="Klikněte pro přejmenování"
                   >
                     {selectedQuote.nazev}
-                  </span>
+                  </button>
                 )}
               </h3>
               {selectedQuote.kod && (
@@ -1449,88 +1463,29 @@ export default function NabidkyTab({
                   ? '✓ Uloženo'
                   : '●'}
               </span>
-              <button
-                onClick={() => doSave()}
-                disabled={!isDirty || saveStatus === 'saving'}
-                className="text-xs text-white bg-primary hover:bg-primary-hover disabled:opacity-40 px-2.5 py-1 rounded-lg"
-              >
-                Uložit
-              </button>
-              <button
-                onClick={() => duplicateQuote(selectedQuote.id)}
-                disabled={saving}
-                className="text-xs text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200"
-              >
-                Duplikovat
-              </button>
-              <button
-                onClick={() => setShowDuplicateToModal(true)}
-                className="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 border border-indigo-300 dark:border-indigo-700 hover:border-indigo-400 px-2 py-0.5 rounded"
-              >
-                Duplikovat →
-              </button>
+              <Button size="sm" variant="secondary" onClick={addInlineItem} disabled={saving}>+ Položka</Button>
+              <Button size="sm" variant="secondary" onClick={() => setShowProductModal(true)}>Z katalogu</Button>
               <a
                 href={`/api/quotes/${selectedQuote.id}/preview`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 border border-emerald-300 dark:border-emerald-700 px-2.5 py-1 rounded-lg"
+                className={buttonClasses({ variant: 'secondary', size: 'sm' })}
               >
                 Náhled
               </a>
-              <button
-                onClick={() => setShowShareModal(true)}
-                className="text-xs text-green-700 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300 border border-green-300 dark:border-green-700 px-2.5 py-1 rounded-lg"
-              >
-                Poslat klientovi
-              </button>
-              <button
-                onClick={() => setShowKontrolaModal(true)}
-                title="Naplánovat hovor / e-mail klientovi k této nabídce"
-                className="text-xs text-amber-700 dark:text-amber-400 hover:text-amber-900 dark:hover:text-amber-300 border border-amber-300 dark:border-amber-700 px-2.5 py-1 rounded-lg"
-              >
-                Kontrolní kontakt
-              </button>
-              <button
-                onClick={() => handleExportPdf(selectedQuote.id)}
-                disabled={pdfLoading}
-                className="text-xs text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-white border border-gray-300 dark:border-slate-600 px-2.5 py-1 rounded-lg disabled:opacity-50"
-              >
-                {pdfLoading ? 'Generuji…' : '⬇ PDF'}
-              </button>
-              {quotes.length > 1 && (
-                <button
-                  onClick={() => setDeleteQuoteId(selectedQuote.id)}
-                  className="text-xs text-red-400 hover:text-red-600"
-                >
-                  Smazat
-                </button>
-              )}
-              <button
-                onClick={() => setShowProductModal(true)}
-                className="flex items-center gap-1.5 bg-primary hover:bg-primary-hover text-white text-xs font-medium px-2.5 py-1.5 rounded-lg"
-              >
-                <svg
-                  className="w-3 h-3"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 4v16m8-8H4"
-                  />
-                </svg>
-                Z katalogu
-              </button>
-              <button
-                onClick={addInlineItem}
-                disabled={saving}
-                className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-slate-300 border border-gray-300 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700 px-2.5 py-1.5 rounded-lg disabled:opacity-50"
-              >
-                + Přidat položku
-              </button>
+              <Button size="sm" onClick={() => setShowShareModal(true)}>Poslat klientovi</Button>
+              <Menu
+                label="Další akce s nabídkou"
+                items={[
+                  ...(isDirty ? [{ label: 'Uložit hned', onSelect: () => doSave() }] : []),
+                  { label: pdfLoading ? 'Generuji PDF…' : 'Stáhnout PDF', onSelect: () => handleExportPdf(selectedQuote.id), disabled: pdfLoading },
+                  { label: 'Kontrolní kontakt…', onSelect: () => setShowKontrolaModal(true) },
+                  { label: 'Duplikovat jako novou verzi', onSelect: () => duplicateQuote(selectedQuote.id), disabled: saving, separator: true },
+                  { label: 'Kopírovat do jiného OP…', onSelect: () => setShowDuplicateToModal(true) },
+                  { label: 'Přejmenovat', onSelect: () => { setEditingNameId(selectedQuote.id); setEditingNameValue(selectedQuote.nazev) } },
+                  ...(quotes.length > 1 ? [{ label: 'Smazat nabídku', onSelect: () => setDeleteQuoteId(selectedQuote.id), danger: true, separator: true }] : []),
+                ]}
+              />
             </div>
           </div>
 
@@ -1558,7 +1513,7 @@ export default function NabidkyTab({
           {isMobile && (
             <div className="px-4 pt-3 md:hidden">
               {selectedQuote.items.length === 0 && (
-                <p className="text-center text-sm text-green-400/60 py-6">
+                <p className="text-center text-sm text-green-700/70 dark:text-green-400/60 py-6">
                   Žádné položky. Přidejte položku nebo vyberte z katalogu.
                 </p>
               )}
@@ -1567,13 +1522,13 @@ export default function NabidkyTab({
                   const celkem = Number(item.cenaZaKus) * Number(item.mnozstvi) * (1 - Number(item.sleva || 0) / 100)
                   return (
                     <div key={item.id}
-                      className="bg-white/5 border border-green-900/30 rounded-xl p-3">
+                      className="bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-green-900/30 rounded-xl p-3">
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex-1 min-w-0">
                           <input
                             value={item.nazev}
                             onChange={e => updateItemField(item.id, { nazev: e.target.value })}
-                            className="font-semibold text-white text-sm bg-transparent border-b border-transparent focus:border-green-500 outline-none w-full"
+                            className="font-semibold text-gray-900 dark:text-white text-sm bg-transparent border-b border-transparent focus:border-green-500 outline-none w-full"
                             placeholder="Název položky"
                             style={{ fontSize: 16 }}
                           />
@@ -1583,53 +1538,53 @@ export default function NabidkyTab({
                             <button
                               onClick={() => moveItem(item.id, 'up')}
                               disabled={idx === 0}
-                              className="text-green-400/40 hover:text-green-400 disabled:opacity-20 p-1 text-sm"
+                              className="text-green-700/50 dark:text-green-400/40 hover:text-green-700 dark:hover:text-green-400 disabled:opacity-20 p-1 text-sm"
                             >↑</button>
                             <button
                               onClick={() => moveItem(item.id, 'down')}
                               disabled={idx === selectedQuote.items.length - 1}
-                              className="text-green-400/40 hover:text-green-400 disabled:opacity-20 p-1 text-sm"
+                              className="text-green-700/50 dark:text-green-400/40 hover:text-green-700 dark:hover:text-green-400 disabled:opacity-20 p-1 text-sm"
                             >↓</button>
                           </div>
                           <button
                             onClick={() => setDeleteItemId(item.id)}
-                            className="text-red-400 p-1"
+                            className="text-red-600 dark:text-red-400 p-1"
                           >×</button>
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-2 mb-2">
                         <div>
-                          <label className="text-xs text-green-400/60 uppercase tracking-wide">Množství</label>
+                          <label className="text-xs text-green-700/70 dark:text-green-400/60 uppercase tracking-wide">Množství</label>
                           <input
                             type="number"
                             value={item.mnozstvi}
                             onChange={e => updateItemField(item.id, { mnozstvi: parseFloat(e.target.value) || 0 })}
-                            className="w-full bg-white/10 rounded-lg px-3 py-2 text-white text-sm text-right border border-transparent focus:border-green-500 outline-none mt-1"
+                            className="w-full bg-white dark:bg-white/10 rounded-lg px-3 py-2 text-gray-900 dark:text-white border-gray-300 dark:border-transparent text-sm text-right border focus:border-green-500 outline-none mt-1"
                             style={{ fontSize: 16 }}
                           />
                         </div>
                         <div>
-                          <label className="text-xs text-green-400/60 uppercase tracking-wide">Jednotka</label>
+                          <label className="text-xs text-green-700/70 dark:text-green-400/60 uppercase tracking-wide">Jednotka</label>
                           <input
                             value={item.jednotka || 'ks'}
                             onChange={e => updateItemField(item.id, { jednotka: e.target.value })}
-                            className="w-full bg-white/10 rounded-lg px-3 py-2 text-white text-sm border border-transparent focus:border-green-500 outline-none mt-1"
+                            className="w-full bg-white dark:bg-white/10 rounded-lg px-3 py-2 text-gray-900 dark:text-white border-gray-300 dark:border-transparent text-sm border focus:border-green-500 outline-none mt-1"
                             style={{ fontSize: 16 }}
                           />
                         </div>
                         <div>
-                          <label className="text-xs text-green-400/60 uppercase tracking-wide">Cena / ks</label>
+                          <label className="text-xs text-green-700/70 dark:text-green-400/60 uppercase tracking-wide">Cena / ks</label>
                           <input
                             type="number"
                             value={item.cenaZaKus}
                             onChange={e => updateItemField(item.id, { cenaZaKus: parseFloat(e.target.value) || 0 })}
-                            className="w-full bg-white/10 rounded-lg px-3 py-2 text-white text-sm text-right border border-transparent focus:border-green-500 outline-none mt-1"
+                            className="w-full bg-white dark:bg-white/10 rounded-lg px-3 py-2 text-gray-900 dark:text-white border-gray-300 dark:border-transparent text-sm text-right border focus:border-green-500 outline-none mt-1"
                             style={{ fontSize: 16 }}
                           />
                         </div>
                         {isManazer && (
                           <div>
-                            <label className="text-xs text-green-400/60 uppercase tracking-wide">NK. cena</label>
+                            <label className="text-xs text-green-700/70 dark:text-green-400/60 uppercase tracking-wide">NK. cena</label>
                             <input
                               type="number"
                               value={item.nakupniCena ?? ''}
@@ -1637,17 +1592,17 @@ export default function NabidkyTab({
                               onChange={e => updateItemField(item.id, {
                                 nakupniCena: e.target.value === '' ? null : (parseFloat(e.target.value) || 0),
                               })}
-                              className="w-full bg-white/10 rounded-lg px-3 py-2 text-white text-sm text-right border border-transparent focus:border-green-500 outline-none mt-1"
+                              className="w-full bg-white dark:bg-white/10 rounded-lg px-3 py-2 text-gray-900 dark:text-white border-gray-300 dark:border-transparent text-sm text-right border focus:border-green-500 outline-none mt-1"
                               style={{ fontSize: 16 }}
                             />
                           </div>
                         )}
                         <div>
-                          <label className="text-xs text-green-400/60 uppercase tracking-wide">DPH %</label>
+                          <label className="text-xs text-green-700/70 dark:text-green-400/60 uppercase tracking-wide">DPH %</label>
                           <select
                             value={item.dphSazba}
                             onChange={e => updateItemField(item.id, { dphSazba: Number(e.target.value) })}
-                            className="w-full bg-white/10 rounded-lg px-3 py-2 text-white text-sm border border-transparent focus:border-green-500 outline-none mt-1"
+                            className="w-full bg-white dark:bg-white/10 rounded-lg px-3 py-2 text-gray-900 dark:text-white border-gray-300 dark:border-transparent text-sm border focus:border-green-500 outline-none mt-1"
                             style={{ fontSize: 16 }}
                           >
                             <option value={0}>0 %</option>
@@ -1656,19 +1611,19 @@ export default function NabidkyTab({
                           </select>
                         </div>
                         <div>
-                          <label className="text-xs text-green-400/60 uppercase tracking-wide">Sleva %</label>
+                          <label className="text-xs text-green-700/70 dark:text-green-400/60 uppercase tracking-wide">Sleva %</label>
                           <input
                             type="number"
                             value={item.sleva || 0}
                             onChange={e => updateItemField(item.id, { sleva: parseFloat(e.target.value) || 0 })}
-                            className="w-full bg-white/10 rounded-lg px-3 py-2 text-white text-sm text-right border border-transparent focus:border-green-500 outline-none mt-1"
+                            className="w-full bg-white dark:bg-white/10 rounded-lg px-3 py-2 text-gray-900 dark:text-white border-gray-300 dark:border-transparent text-sm text-right border focus:border-green-500 outline-none mt-1"
                             style={{ fontSize: 16 }}
                           />
                         </div>
                       </div>
-                      <div className="flex justify-between items-center pt-2 border-t border-green-900/20">
-                        <span className="text-xs text-green-400/60">Celkem</span>
-                        <span className="font-semibold text-green-400 text-sm">
+                      <div className="flex justify-between items-center pt-2 border-t border-green-100 dark:border-green-900/20">
+                        <span className="text-xs text-green-700/70 dark:text-green-400/60">Celkem</span>
+                        <span className="font-semibold text-green-700 dark:text-green-400 text-sm">
                           {formatCena(celkem)} Kč
                         </span>
                       </div>
@@ -1678,22 +1633,22 @@ export default function NabidkyTab({
               </div>
 
               {/* Mobile souhrn cen */}
-              <div className="bg-[#0D1A0E] border border-green-900/30 rounded-xl p-4 mb-20">
+              <div className="bg-green-50 dark:bg-[#0D1A0E] border border-green-200 dark:border-green-900/30 rounded-xl p-4 mb-20">
                 <div className="flex justify-between text-sm mb-1">
-                  <span className="text-green-400/60">Bez DPH</span>
-                  <span className="text-white">{formatCena(total)} Kč</span>
+                  <span className="text-green-700/70 dark:text-green-400/60">Bez DPH</span>
+                  <span className="text-gray-900 dark:text-white">{formatCena(total)} Kč</span>
                 </div>
                 <div className="flex justify-between text-sm mb-2">
-                  <span className="text-green-400/60">DPH {dphRate} %</span>
-                  <span className="text-white">{formatCena(totalDph - total)} Kč</span>
+                  <span className="text-green-700/70 dark:text-green-400/60">DPH {dphRate} %</span>
+                  <span className="text-gray-900 dark:text-white">{formatCena(totalDph - total)} Kč</span>
                 </div>
-                <div className="flex justify-between font-bold border-t border-green-900/30 pt-2">
-                  <span className="text-green-400">Celkem s DPH</span>
-                  <span className="text-green-400 text-lg">{formatCena(totalDph)} Kč</span>
+                <div className="flex justify-between font-bold border-t border-green-200 dark:border-green-900/30 pt-2">
+                  <span className="text-green-700 dark:text-green-400">Celkem s DPH</span>
+                  <span className="text-green-700 dark:text-green-400 text-lg">{formatCena(totalDph)} Kč</span>
                 </div>
                 {marzeQuote && isManazer && (
-                  <div className="flex justify-between text-sm mt-2 pt-2 border-t border-green-900/20">
-                    <span className="text-green-400/60">Marže</span>
+                  <div className="flex justify-between text-sm mt-2 pt-2 border-t border-green-100 dark:border-green-900/20">
+                    <span className="text-green-700/70 dark:text-green-400/60">Marže</span>
                     <span className={marzeQuote.proc >= 20 ? 'text-green-400 font-semibold' : 'text-red-400 font-semibold'}>
                       {marzeQuote.proc.toFixed(1)} % ({formatCena(marzeQuote.kc)} Kč)
                     </span>
@@ -1911,63 +1866,51 @@ export default function NabidkyTab({
         </div>
       )}
 
-      {/* Mobile bottom sheet */}
-      {moreOpen && selectedQuote && isMobile && (
-        <>
-          <div className="fixed inset-0 z-50 bg-black/60" onClick={() => setMoreOpen(false)} />
-          <div className="fixed bottom-0 left-0 right-0 z-50 bg-[#0D1A0E] border-t border-green-900/50 rounded-t-2xl p-4 pb-8">
-            <div className="w-10 h-1 bg-white/20 rounded-full mx-auto mb-4" />
-            <div className="space-y-1">
-              {([
-                { label: 'Uložit', icon: 'save', action: () => { doSave(); setMoreOpen(false) } },
-                { label: 'Poslat klientovi', icon: 'share', action: () => { setShowShareModal(true); setMoreOpen(false) } },
-                { label: 'Kontrolní kontakt', icon: 'phone', action: () => { setShowKontrolaModal(true); setMoreOpen(false) } },
-                { label: 'Náhled PDF', icon: 'eye', action: () => { window.open(`/api/quotes/${selectedQuote.id}/preview`, '_blank'); setMoreOpen(false) } },
-                { label: 'Stáhnout PDF', icon: 'download', action: () => { handleExportPdf(selectedQuote.id); setMoreOpen(false) } },
-                { label: 'Duplikovat nabídku', icon: 'copy', action: () => { duplicateQuote(selectedQuote.id); setMoreOpen(false) } },
-                ...(!selectedQuote.aktivni ? [{ label: 'Nastavit jako aktivní', icon: 'check', action: () => { setActive(selectedQuote.id); setMoreOpen(false) } }] : []),
-              ] as { label: string; icon: string; action: () => void }[]).map(item => (
-                <button
-                  key={item.label}
-                  onClick={item.action}
-                  className="w-full flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/5 text-left transition-colors"
-                >
-                  <SheetIcon name={item.icon} />
-                  <span className="text-white text-sm font-medium">{item.label}</span>
-                </button>
-              ))}
-            </div>
-            <div className="mt-4 pt-4 border-t border-green-900/30 flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-green-400/60">DPH:</span>
-                <select
-                  value={selectedQuote.dphSazba}
-                  onChange={e => updateQuoteDph(selectedQuote.id, Number(e.target.value))}
-                  className="bg-white/10 text-white text-sm rounded-lg px-2 py-1 border border-green-900/30 outline-none"
-                >
-                  <option value="0">0 %</option>
-                  <option value="12">12 %</option>
-                  <option value="21">21 %</option>
-                </select>
-              </div>
-              {renderTemplates.length > 0 && (
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <span className="text-xs text-green-400/60 flex-shrink-0">Šablona:</span>
-                  <select
-                    value={selectedQuote.templateId ?? ''}
-                    onChange={e => updateQuoteTemplate(selectedQuote.id, e.target.value || null)}
-                    className="bg-white/10 text-white text-sm rounded-lg px-2 py-1 border border-green-900/30 outline-none flex-1 min-w-0"
-                  >
-                    <option value="">Výchozí</option>
-                    {renderTemplates.map(t => (
-                      <option key={t.id} value={t.id}>{t.nazev}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-            </div>
+      {/* Mobile bottom sheet — stejné akce jako menu „⋯" na desktopu */}
+      {selectedQuote && isMobile && (
+        <MobileSheet open={moreOpen} onClose={() => setMoreOpen(false)} title="Akce s nabídkou">
+          <div className="space-y-1 -mx-2">
+            {([
+              ...(isDirty ? [{ label: 'Uložit hned', icon: 'save', action: () => doSave() }] : []),
+              { label: 'Poslat klientovi', icon: 'share', action: () => setShowShareModal(true) },
+              { label: 'Náhled PDF', icon: 'eye', action: () => window.open(`/api/quotes/${selectedQuote.id}/preview`, '_blank') },
+              { label: 'Stáhnout PDF', icon: 'download', action: () => handleExportPdf(selectedQuote.id) },
+              { label: 'Kontrolní kontakt', icon: 'phone', action: () => setShowKontrolaModal(true) },
+              { label: 'Duplikovat jako novou verzi', icon: 'copy', action: () => duplicateQuote(selectedQuote.id) },
+              { label: 'Kopírovat do jiného OP', icon: 'copy', action: () => setShowDuplicateToModal(true) },
+              { label: 'Přejmenovat', icon: 'edit', action: () => { setEditingNameId(selectedQuote.id); setEditingNameValue(selectedQuote.nazev) } },
+              ...(!selectedQuote.aktivni ? [{ label: 'Nastavit jako aktivní', icon: 'check', action: () => setActive(selectedQuote.id) }] : []),
+              ...(quotes.length > 1 ? [{ label: 'Smazat nabídku', icon: 'trash', action: () => setDeleteQuoteId(selectedQuote.id), danger: true }] : []),
+            ] as { label: string; icon: string; action: () => void; danger?: boolean }[]).map(item => (
+              <button
+                key={item.label}
+                type="button"
+                onClick={() => { setMoreOpen(false); item.action() }}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-colors hover:bg-gray-50 dark:hover:bg-slate-700 ${item.danger ? 'text-red-600 dark:text-red-400' : 'text-gray-800 dark:text-white'}`}
+              >
+                <SheetIcon name={item.icon} />
+                <span className="text-sm font-medium">{item.label}</span>
+              </button>
+            ))}
           </div>
-        </>
+          <div className="mt-4 pt-4 border-t border-gray-100 dark:border-slate-700 grid grid-cols-1 gap-3">
+            <Field label="DPH">
+              <Select value={selectedQuote.dphSazba} onChange={e => updateQuoteDph(selectedQuote.id, Number(e.target.value))}>
+                <option value="0">0 %</option>
+                <option value="12">12 %</option>
+                <option value="21">21 %</option>
+              </Select>
+            </Field>
+            {renderTemplates.length > 0 && (
+              <Field label="Šablona">
+                <Select value={selectedQuote.templateId ?? ''} onChange={e => updateQuoteTemplate(selectedQuote.id, e.target.value || null)}>
+                  <option value="">Výchozí</option>
+                  {renderTemplates.map(t => <option key={t.id} value={t.id}>{t.nazev}</option>)}
+                </Select>
+              </Field>
+            )}
+          </div>
+        </MobileSheet>
       )}
     </div>
   )
