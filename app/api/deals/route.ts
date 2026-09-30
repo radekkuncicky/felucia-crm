@@ -83,7 +83,7 @@ export async function POST(req: Request) {
   if (!canCreate) {
     return NextResponse.json({
       error: 'PLAN_LIMIT_REACHED',
-      message: 'Dosáhli jste limitu obchodních případů pro váš plán. Upgradujte na Premium pro neomezený počet.',
+      message: 'Dosáhli jste limitu obchodních případů pro váš plán. Vyšší plán má neomezený počet.',
       upgradeUrl: '/settings/billing',
     }, { status: 403 })
   }

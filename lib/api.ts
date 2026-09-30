@@ -3,7 +3,8 @@ import { toast } from 'sonner'
 /**
  * Jednotný fetch wrapper pro klientské komponenty.
  * Při síťové chybě nebo ne-OK odpovědi automaticky zobrazí toast.error
- * (zprávu vezme z pole `error` v JSON odpovědi serveru, jinak fallback),
+ * (zprávu vezme z `message`/`error` v JSON odpovědi serveru, jinak fallback;
+ * u limitu plánu přidá do toastu odkaz na plány),
  * takže žádná akce neselže potichu.
  *
  * Nevyhazuje výjimky — vrací ApiResult, ať se dá mechanicky nahradit
@@ -25,6 +26,7 @@ interface ApiOpts {
 }
 
 const FALLBACK_ERROR = 'Akce se nepodařila. Zkuste to prosím znovu.'
+const PLAN_LIMIT = 'PLAN_LIMIT_REACHED'
 const NETWORK_ERROR = 'Nepodařilo se spojit se serverem. Zkontrolujte připojení.'
 
 async function parseJson<T>(res: Response): Promise<T | null> {
@@ -52,11 +54,20 @@ export async function apiFetch<T = unknown>(
 
   if (!res.ok) {
     if (!opts.silent) {
-      const serverMsg = (data as { error?: unknown } | null)?.error
-      const msg =
-        opts.errorMessage ??
-        (typeof serverMsg === 'string' && serverMsg ? serverMsg : FALLBACK_ERROR)
-      toast.error(msg)
+      const body = data as { error?: unknown; message?: unknown; code?: unknown; upgradeUrl?: unknown } | null
+      // Část API posílá kód v `error` a lidský text v `message` (limity plánu)
+      const serverMsg = [body?.message, body?.error].find(
+        (m): m is string => typeof m === 'string' && !!m && m !== PLAN_LIMIT,
+      )
+      const msg = opts.errorMessage ?? serverMsg ?? FALLBACK_ERROR
+      if (body?.code === PLAN_LIMIT || body?.error === PLAN_LIMIT) {
+        const upgradeUrl = typeof body?.upgradeUrl === 'string' ? body.upgradeUrl : '/settings/billing'
+        toast.error(serverMsg ?? 'Dosáhli jste limitu vašeho plánu.', {
+          action: { label: 'Zobrazit plány', onClick: () => { window.location.href = upgradeUrl } },
+        })
+      } else {
+        toast.error(msg)
+      }
     }
     return { ok: false, status: res.status, data }
   }

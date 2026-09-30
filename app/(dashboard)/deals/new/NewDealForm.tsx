@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import ClientSelectWithCreate from '@/components/ClientSelectWithCreate'
@@ -27,6 +28,11 @@ export default function NewDealForm({ clients, defaultClientId }: Props) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    // Klient se vybírá přes skrytý input, který prohlížeč nevaliduje
+    if (!form.clientId) {
+      setError('Vyberte klienta, nebo založte nového.')
+      return
+    }
     setSaving(true)
     setError('')
     try {
@@ -36,11 +42,18 @@ export default function NewDealForm({ clients, defaultClientId }: Props) {
         body: JSON.stringify(form),
       })
       if (!res.ok) {
-        const data = await res.json()
-        setError(data.error || 'Chyba při ukládání')
+        const data = await res.json().catch(() => ({}))
+        if (data.error === 'PLAN_LIMIT_REACHED' || data.code === 'PLAN_LIMIT_REACHED') {
+          toast.error(data.message || 'Dosáhli jste limitu vašeho plánu.', {
+            action: { label: 'Zobrazit plány', onClick: () => router.push(data.upgradeUrl || '/settings/billing') },
+          })
+        } else {
+          setError(data.message || data.error || 'Chyba při ukládání')
+        }
         return
       }
       const deal = await res.json()
+      toast.success('Obchodní případ vytvořen')
       router.push(`/deals/${deal.id}`)
     } catch {
       setError('Chyba při ukládání')
