@@ -14,7 +14,7 @@ export default async function NewDealPage({ searchParams }: { searchParams: { cl
 
   return (
     <div className="max-w-lg space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Nový obchodní případ</h1>
+      <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Nový obchodní případ</h1>
       <NewDealForm clients={clients.map(c => ({ id: c.id, jmeno: c.jmeno, prijmeni: c.prijmeni }))} defaultClientId={searchParams.clientId ?? ''} />
     </div>
   )

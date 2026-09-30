@@ -631,42 +631,42 @@ function ConvertModal({ lead, onClose, onConverted }: {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="bg-[#141922] border border-white/10 rounded-xl w-full max-w-md">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-          <h2 className="text-base font-semibold text-white">Převést na obchodní případ</h2>
-          <button onClick={onClose} className="text-white/60 hover:text-white transition-colors">
+      <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 shadow-xl rounded-xl w-full max-w-md">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-slate-700">
+          <h2 className="text-base font-semibold text-gray-900 dark:text-white">Převést na obchodní případ</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700 dark:text-white/60 dark:hover:text-white transition-colors">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
         <div className="p-6 space-y-4">
-          <div className="bg-white/8 border border-white/15 rounded-lg p-3 text-sm">
-            <p className="text-white/65 text-xs mb-1">Bude vytvořen</p>
+          <div className="bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/15 rounded-lg p-3 text-sm">
+            <p className="text-gray-500 dark:text-white/65 text-xs mb-1">Bude vytvořen</p>
             <p className="text-white">Nový klient: <span className="text-[#4CAF50]">{lead.jmeno}</span></p>
-            {lead.email && <p className="text-white/65 text-xs mt-0.5">{lead.email}</p>}
-            {lead.telefon && <p className="text-white/65 text-xs">{lead.telefon}</p>}
+            {lead.email && <p className="text-gray-500 dark:text-white/65 text-xs mt-0.5">{lead.email}</p>}
+            {lead.telefon && <p className="text-gray-500 dark:text-white/65 text-xs">{lead.telefon}</p>}
           </div>
           <div>
-            <label className="block text-xs text-white/65 mb-1">Technologie *</label>
+            <label className="block text-xs text-gray-500 dark:text-white/65 mb-1">Technologie *</label>
             <select
               value={technologie}
               onChange={e => setTechnologie(e.target.value as Technologie)}
-              className="w-full px-3 py-2 bg-[#1e2638] border border-white/20 rounded-lg text-sm text-white focus:outline-none focus:border-[#4CAF50]/60"
+              className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg text-sm text-gray-900 dark:text-white focus:outline-none focus:border-[#4CAF50]/60"
             >
               {TECH_OPTIONS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
             </select>
           </div>
           <div>
-            <label className="block text-xs text-white/65 mb-1">Předmět OP</label>
+            <label className="block text-xs text-gray-500 dark:text-white/65 mb-1">Předmět OP</label>
             <input
               value={predmet}
               onChange={e => setPredmet(e.target.value)}
-              className="w-full px-3 py-2 bg-[#1e2638] border border-white/20 rounded-lg text-sm text-white focus:outline-none focus:border-[#4CAF50]/60"
+              className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg text-sm text-gray-900 dark:text-white focus:outline-none focus:border-[#4CAF50]/60"
             />
           </div>
           <div className="flex justify-end gap-3 pt-2">
-            <button onClick={onClose} className="px-4 py-2 text-sm text-white/65 hover:text-white transition-colors">
+            <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 dark:text-gray-500 dark:text-white/65 dark:hover:text-white transition-colors">
               Zrušit
             </button>
             <button
@@ -710,10 +710,10 @@ function CancelModal({ leadId, onClose, onCancelled }: {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="bg-[#141922] border border-white/10 rounded-xl w-full max-w-md">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-          <h2 className="text-base font-semibold text-white">Zamítnout lead</h2>
-          <button onClick={onClose} className="text-white/60 hover:text-white transition-colors">
+      <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 shadow-xl rounded-xl w-full max-w-md">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-slate-700">
+          <h2 className="text-base font-semibold text-gray-900 dark:text-white">Zamítnout lead</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700 dark:text-white/60 dark:hover:text-white transition-colors">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -721,17 +721,17 @@ function CancelModal({ leadId, onClose, onCancelled }: {
         </div>
         <div className="p-6 space-y-4">
           <div>
-            <label className="block text-xs text-white/65 mb-1">Důvod zamítnutí (volitelné)</label>
+            <label className="block text-xs text-gray-500 dark:text-white/65 mb-1">Důvod zamítnutí (volitelné)</label>
             <textarea
               rows={3}
               value={reason}
               onChange={e => setReason(e.target.value)}
               placeholder="Proč se lead zamítá?"
-              className="w-full px-3 py-2 bg-[#1e2638] border border-white/20 rounded-lg text-sm text-white placeholder-white/40 focus:outline-none focus:border-red-500/50 resize-none"
+              className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:border-red-500/50 resize-none"
             />
           </div>
           <div className="flex justify-end gap-3">
-            <button onClick={onClose} className="px-4 py-2 text-sm text-white/65 hover:text-white transition-colors">
+            <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 dark:text-gray-500 dark:text-white/65 dark:hover:text-white transition-colors">
               Zpět
             </button>
             <button

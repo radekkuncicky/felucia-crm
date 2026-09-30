@@ -1012,14 +1012,14 @@ export default function PredavakClient({ predavak: initial, currentUserId, canAp
       {/* ─── Sticky footer (mobile) — positioned ABOVE the BottomNav ─── */}
       {canEdit && stav !== 'PODPISAN' && (
         <div
-          className="fixed left-0 right-0 z-40 bg-[#0D1A0E] border-t border-green-900/50 md:hidden"
+          className="fixed left-0 right-0 z-40 bg-white dark:bg-[#0D1A0E] border-t border-gray-200 dark:border-green-900/50 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] md:hidden"
           style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom, 0px))', padding: '10px 16px' }}
         >
           <div className="flex gap-3">
             <button
               onClick={handleSave}
               disabled={saving}
-              className="flex-1 bg-white/10 text-white rounded-xl py-3.5 font-medium text-sm disabled:opacity-50 min-h-[52px]"
+              className="flex-1 bg-gray-100 dark:bg-white/10 text-gray-800 dark:text-white rounded-xl py-3.5 font-medium text-sm disabled:opacity-50 min-h-[52px]"
             >
               {saving ? 'Ukládám…' : 'Uložit'}
             </button>
@@ -1032,7 +1032,7 @@ export default function PredavakClient({ predavak: initial, currentUserId, canAp
             </button>
           </div>
           {submitBlockReason && (
-            <p className="text-xs text-amber-400 text-center mt-2">{submitBlockReason}</p>
+            <p className="text-xs text-amber-600 dark:text-amber-400 text-center mt-2">{submitBlockReason}</p>
           )}
         </div>
       )}
@@ -1040,13 +1040,13 @@ export default function PredavakClient({ predavak: initial, currentUserId, canAp
       {/* Technik editing a submitted protocol */}
       {canEdit && stav === 'PODPISAN' && !isManager && (
         <div
-          className="fixed left-0 right-0 z-40 bg-[#0D1A0E] border-t border-green-900/50 md:hidden"
+          className="fixed left-0 right-0 z-40 bg-white dark:bg-[#0D1A0E] border-t border-gray-200 dark:border-green-900/50 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] md:hidden"
           style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom, 0px))', padding: '10px 16px' }}
         >
           <button
             onClick={handleSave}
             disabled={saving}
-            className="w-full bg-white/10 text-white rounded-xl py-3.5 font-medium text-sm disabled:opacity-50 min-h-[52px]"
+            className="w-full bg-gray-100 dark:bg-white/10 text-gray-800 dark:text-white rounded-xl py-3.5 font-medium text-sm disabled:opacity-50 min-h-[52px]"
           >
             {saving ? 'Ukládám…' : 'Uložit změny'}
           </button>
@@ -1056,7 +1056,7 @@ export default function PredavakClient({ predavak: initial, currentUserId, canAp
       {/* Manager approve buttons mobile */}
       {isManager && stav === 'PODPISAN' && (
         <div
-          className="fixed left-0 right-0 z-40 bg-[#0D1A0E] border-t border-green-900/50 md:hidden"
+          className="fixed left-0 right-0 z-40 bg-white dark:bg-[#0D1A0E] border-t border-gray-200 dark:border-green-900/50 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] md:hidden"
           style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom, 0px))', padding: '10px 16px' }}
         >
           <div className="flex gap-3">

@@ -147,9 +147,9 @@ export default function LeadyPageClient({ leady, users, novychCount, currentUser
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-white">Leady</h1>
+          <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Leady</h1>
           {novychCount > 0 && (
-            <p className="text-sm text-yellow-400 mt-0.5">{novychCount} nových leadů čeká na zpracování</p>
+            <p className="text-sm text-amber-600 dark:text-yellow-400 mt-0.5">{novychCount} nových leadů čeká na zpracování</p>
           )}
         </div>
         {canEdit && (
@@ -172,11 +172,11 @@ export default function LeadyPageClient({ leady, users, novychCount, currentUser
           placeholder="Hledat jméno, email, firma..."
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="px-3 py-1.5 bg-[#1e2638] border border-white/20 rounded-lg text-sm text-white placeholder-white/50 focus:outline-none focus:border-[#4CAF50]/60 w-56"
+          className="px-3 py-1.5 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:border-[#4CAF50]/60 w-56"
         />
-        <FilterDropdown variant="dark" value={filterStatus} onChange={setFilterStatus} options={statusOptions} />
-        <FilterDropdown variant="dark" value={filterZdroj} onChange={setFilterZdroj} options={zdrojOptions} />
-        <FilterDropdown variant="dark" value={filterAssigned} onChange={setFilterAssigned} options={assignedOptions} />
+        <FilterDropdown value={filterStatus} onChange={setFilterStatus} options={statusOptions} />
+        <FilterDropdown value={filterZdroj} onChange={setFilterZdroj} options={zdrojOptions} />
+        <FilterDropdown value={filterAssigned} onChange={setFilterAssigned} options={assignedOptions} />
       </div>
 
       {/* Hromadné akce */}
@@ -346,10 +346,10 @@ function AddLeadModal({ users, onClose, onCreated }: {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="bg-[#141922] border border-white/10 rounded-xl w-full max-w-lg">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-          <h2 className="text-base font-semibold text-white">Nový lead</h2>
-          <button onClick={onClose} className="text-white/60 hover:text-white transition-colors">
+      <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 shadow-xl rounded-xl w-full max-w-lg">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-slate-700">
+          <h2 className="text-base font-semibold text-gray-900 dark:text-white">Nový lead</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700 dark:text-white/60 dark:hover:text-white transition-colors">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -358,75 +358,75 @@ function AddLeadModal({ users, onClose, onCreated }: {
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs text-white/65 mb-1">Jméno *</label>
+              <label className="block text-xs text-gray-500 dark:text-white/65 mb-1">Jméno *</label>
               <input
                 required
                 value={form.jmeno}
                 onChange={e => setForm(f => ({ ...f, jmeno: e.target.value }))}
-                className="w-full px-3 py-2 bg-[#1e2638] border border-white/20 rounded-lg text-sm text-white focus:outline-none focus:border-[#4CAF50]/60"
+                className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg text-sm text-gray-900 dark:text-white focus:outline-none focus:border-[#4CAF50]/60"
               />
             </div>
             <div>
-              <label className="block text-xs text-white/65 mb-1">Firma</label>
+              <label className="block text-xs text-gray-500 dark:text-white/65 mb-1">Firma</label>
               <input
                 value={form.firma}
                 onChange={e => setForm(f => ({ ...f, firma: e.target.value }))}
-                className="w-full px-3 py-2 bg-[#1e2638] border border-white/20 rounded-lg text-sm text-white focus:outline-none focus:border-[#4CAF50]/60"
+                className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg text-sm text-gray-900 dark:text-white focus:outline-none focus:border-[#4CAF50]/60"
               />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs text-white/65 mb-1">Email</label>
+              <label className="block text-xs text-gray-500 dark:text-white/65 mb-1">Email</label>
               <input
                 type="email"
                 value={form.email}
                 onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
-                className="w-full px-3 py-2 bg-[#1e2638] border border-white/20 rounded-lg text-sm text-white focus:outline-none focus:border-[#4CAF50]/60"
+                className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg text-sm text-gray-900 dark:text-white focus:outline-none focus:border-[#4CAF50]/60"
               />
             </div>
             <div>
-              <label className="block text-xs text-white/65 mb-1">Telefon</label>
+              <label className="block text-xs text-gray-500 dark:text-white/65 mb-1">Telefon</label>
               <input
                 value={form.telefon}
                 onChange={e => setForm(f => ({ ...f, telefon: e.target.value }))}
-                className="w-full px-3 py-2 bg-[#1e2638] border border-white/20 rounded-lg text-sm text-white focus:outline-none focus:border-[#4CAF50]/60"
+                className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg text-sm text-gray-900 dark:text-white focus:outline-none focus:border-[#4CAF50]/60"
               />
             </div>
           </div>
           <div>
-            <label className="block text-xs text-white/65 mb-1">Zpráva / poptávka</label>
+            <label className="block text-xs text-gray-500 dark:text-white/65 mb-1">Zpráva / poptávka</label>
             <textarea
               rows={3}
               value={form.zprava}
               onChange={e => setForm(f => ({ ...f, zprava: e.target.value }))}
-              className="w-full px-3 py-2 bg-[#1e2638] border border-white/20 rounded-lg text-sm text-white placeholder-white/40 focus:outline-none focus:border-[#4CAF50]/60 resize-none"
+              className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:border-[#4CAF50]/60 resize-none"
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs text-white/65 mb-1">Přiřadit obchodníkovi</label>
+              <label className="block text-xs text-gray-500 dark:text-white/65 mb-1">Přiřadit obchodníkovi</label>
               <select
                 value={form.assignedToId}
                 onChange={e => setForm(f => ({ ...f, assignedToId: e.target.value }))}
-                className="w-full px-3 py-2 bg-[#1e2638] border border-white/20 rounded-lg text-sm text-white focus:outline-none focus:border-[#4CAF50]/60"
+                className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg text-sm text-gray-900 dark:text-white focus:outline-none focus:border-[#4CAF50]/60"
               >
                 <option value="">Nepřiřazen</option>
                 {users.map(u => <option key={u.id} value={u.id}>{u.jmeno}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-xs text-white/65 mb-1">Odh. hodnota (Kč)</label>
+              <label className="block text-xs text-gray-500 dark:text-white/65 mb-1">Odh. hodnota (Kč)</label>
               <input
                 type="number"
                 value={form.odhadovanaHodnota}
                 onChange={e => setForm(f => ({ ...f, odhadovanaHodnota: e.target.value }))}
-                className="w-full px-3 py-2 bg-[#1e2638] border border-white/20 rounded-lg text-sm text-white focus:outline-none focus:border-[#4CAF50]/60"
+                className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg text-sm text-gray-900 dark:text-white focus:outline-none focus:border-[#4CAF50]/60"
               />
             </div>
           </div>
           <div className="flex justify-end gap-3 pt-2">
-            <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-white/65 hover:text-white transition-colors">
+            <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 dark:text-gray-500 dark:text-white/65 dark:hover:text-white transition-colors">
               Zrušit
             </button>
             <button
