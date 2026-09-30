@@ -201,3 +201,46 @@ test('zakázka: záložka Objednávky a tlačítko Objednat u dodavatele', async
   await expect(page.locator('body')).toContainText(/Vyberte položky a dodavatele/)
   expect(errors).toEqual([])
 })
+
+test('kalendář: dva měsíce, chip s klientem a přetažení montáže posune termín', async ({ page }) => {
+  const errors = trackErrors(page)
+  await page.goto('/zakazky')
+  const detail = page.getByRole('row', { name: /E2E Zakázka/ }).getByRole('link', { name: /Detail/ })
+  const zakazkaId = (await detail.getAttribute('href'))!.split('/').pop()!
+
+  const now = new Date()
+  const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  const od = `${ym}-10`, doo = `${ym}-11`
+  const set = await page.request.patch(`/api/zakazky/${zakazkaId}`, {
+    data: { montazOd: new Date(od).toISOString(), montazDo: new Date(doo).toISOString() },
+  })
+  expect(set.ok()).toBeTruthy()
+
+  await page.goto('/calendar')
+  const MONTHS = ['Leden', 'Únor', 'Březen', 'Duben', 'Květen', 'Červen', 'Červenec', 'Srpen', 'Září', 'Říjen', 'Listopad', 'Prosinec']
+  await expect(page.getByText(`${MONTHS[(now.getMonth() + 1) % 12]} ${now.getMonth() === 11 ? now.getFullYear() + 1 : now.getFullYear()}`, { exact: true })).toBeVisible()
+
+  const chip = page.locator(`[data-day="${od}"] a[href="/zakazky/${zakazkaId}"]`)
+  await expect(chip).toContainText('Klient E2E')
+
+  // Přetažení z 10. na 13. → montáž 13.–14. (délka zachována)
+  const target = page.locator(`[data-day="${ym}-13"]`)
+  const from = (await chip.boundingBox())!
+  const to = (await target.boundingBox())!
+  await page.mouse.move(from.x + 10, from.y + from.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(from.x + 30, from.y + from.height / 2, { steps: 5 })
+  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 15 })
+  await page.mouse.up()
+
+  await expect(page.locator(`[data-day="${ym}-13"] a[href="/zakazky/${zakazkaId}"]`)).toBeVisible()
+  await expect.poll(async () => {
+    const r = await page.request.get(`/api/zakazky/${zakazkaId}`)
+    const z = await r.json()
+    return [String(z.montazOd).slice(0, 10), String(z.montazDo).slice(0, 10)]
+  }).toEqual([`${ym}-13`, `${ym}-14`])
+
+  // Pool „Kdykoliv" je v měsíci vidět (i prázdný)
+  await expect(page.getByRole('heading', { name: /Kdykoliv \(\d+\)/ })).toBeVisible()
+  expect(errors).toEqual([])
+})

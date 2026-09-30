@@ -49,6 +49,30 @@ export function servisTechnologie(zarizeni: { typ?: string | null; nazev?: strin
   return zarizeni.nazev ?? ''
 }
 
+/** Krátký štítek technologie do úzkých buněk kalendáře */
+export const TECH_SHORT: Record<string, string> = {
+  KLIMA: 'Klima',
+  TEPELNE_CERPADLO: 'TČ',
+  REKUPERACE: 'Rekup.',
+  PODLAHOVE_TOPENI: 'Podl. top.',
+  VZDUCHOTECHNIKA: 'VZT',
+  JINE: 'Jiné',
+}
+
+/** Typ servisovaného zařízení → technologie (kvůli jednotným barvám v kalendáři) */
+const ZARIZENI_TYP_TECH: Record<string, string> = {
+  KLIMATIZACE: 'KLIMA',
+  TEPELNE_CERPADLO: 'TEPELNE_CERPADLO',
+  REKUPERACE: 'REKUPERACE',
+  PODLAHOVE_VYTAPENI: 'PODLAHOVE_TOPENI',
+  VZDUCHOTECHNIKA: 'VZDUCHOTECHNIKA',
+}
+
+export function zarizeniTech(zarizeni: { typ?: string | null } | null | undefined): string | undefined {
+  if (!zarizeni?.typ) return undefined
+  return ZARIZENI_TYP_TECH[zarizeni.typ] ?? 'JINE'
+}
+
 /** Doplněk názvu podle typu servisní návštěvy (NavstevaTyp) */
 export const SERVIS_DOPLNEK: Record<string, string> = {
   PLANOVANY_SERVIS: 'servisní návštěva',
@@ -68,8 +92,13 @@ export const DOPLNEK = {
   MONTAZ: 'montáž',
 } as const
 
-export function klientJmeno(k: { jmeno?: string | null; prijmeni?: string | null } | null | undefined): string {
+/**
+ * Jméno klienta do kalendáře. U firmy je v `jmeno` název firmy a v `prijmeni`
+ * kontaktní osoba — ukazujeme jen firmu.
+ */
+export function klientJmeno(k: { jmeno?: string | null; prijmeni?: string | null; typKlienta?: string | null } | null | undefined): string {
   if (!k) return ''
+  if (k.typKlienta === 'FIRMA') return (k.jmeno ?? '').trim()
   return [k.jmeno, k.prijmeni].filter(Boolean).join(' ').trim()
 }
 
@@ -96,4 +125,24 @@ export function dateRange(od: Date, doo?: Date | null): { date: string; dateTo?:
 
 export function fmtTime(d: Date): string {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+}
+
+/** Posune den YYYY-MM-DD o n dní (počítáno v UTC, bez vlivu letního času). */
+export function addDaysStr(dateStr: string, n: number): string {
+  const d = new Date(dateStr + 'T00:00:00Z')
+  d.setUTCDate(d.getUTCDate() + n)
+  return d.toISOString().split('T')[0]
+}
+
+/** Rozdíl dnů b − a (YYYY-MM-DD). */
+export function diffDays(a: string, b: string): number {
+  return Math.round((Date.parse(b + 'T00:00:00Z') - Date.parse(a + 'T00:00:00Z')) / 86_400_000)
+}
+
+/** Posun rozsahu od–do o `delta` dní se zachováním délky (přetažení v kalendáři). */
+export function shiftRange(date: string, dateTo: string | undefined, delta: number): { date: string; dateTo?: string } {
+  return {
+    date: addDaysStr(date, delta),
+    ...(dateTo ? { dateTo: addDaysStr(dateTo, delta) } : {}),
+  }
 }

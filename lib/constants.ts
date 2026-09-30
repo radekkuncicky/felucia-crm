@@ -65,10 +65,10 @@ export const zamereniFotoTagLabels: Record<string, string> = {
 }
 
 export const techColors: Record<Technologie, string> = {
-  KLIMA: 'bg-blue-50 text-blue-700',
-  TEPELNE_CERPADLO: 'bg-amber-50 text-amber-700',
-  REKUPERACE: 'bg-teal-50 text-teal-700',
-  PODLAHOVE_TOPENI: 'bg-orange-50 text-orange-700',
-  VZDUCHOTECHNIKA: 'bg-purple-50 text-purple-700',
-  JINE: 'bg-gray-50 text-gray-600',
+  KLIMA: 'bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
+  TEPELNE_CERPADLO: 'bg-amber-50 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
+  REKUPERACE: 'bg-teal-50 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300',
+  PODLAHOVE_TOPENI: 'bg-orange-50 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300',
+  VZDUCHOTECHNIKA: 'bg-purple-50 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300',
+  JINE: 'bg-gray-50 text-gray-600 dark:bg-slate-700 dark:text-slate-300',
 }

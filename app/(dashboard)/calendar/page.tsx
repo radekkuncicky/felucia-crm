@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma'
 import CalendarClient, { CalendarEvent, KdykolivZakazka } from './CalendarClient'
 import { getPerms, dealScopeWhere, servisScopeWhere, zakazkyScopeWhere } from '@/lib/permissions'
 import {
-  AKTIVITA_DOPLNEK, DOPLNEK, SERVIS_DOPLNEK, calendarTitle, dateRange, fmtTime, klientJmeno, servisTechnologie, technologieLabel, utcDateStr,
+  AKTIVITA_DOPLNEK, DOPLNEK, SERVIS_DOPLNEK, calendarTitle, dateRange, fmtTime, klientJmeno, servisTechnologie, technologieLabel, utcDateStr, zarizeniTech,
 } from '@/lib/calendarEvents'
 import { leadJmeno } from '@/lib/activities'
 
@@ -25,7 +25,7 @@ export default async function CalendarPage() {
     !dealScope ? [] : prisma.activity.findMany({
       where: { deal: { orgId, ...dealScope } },
       include: {
-        deal: { include: { client: { select: { jmeno: true, prijmeni: true } } } },
+        deal: { include: { client: { select: { jmeno: true, prijmeni: true, typKlienta: true } } } },
       },
       orderBy: { datum: 'asc' },
     }),
@@ -45,13 +45,13 @@ export default async function CalendarPage() {
           { splatnostZalohy: { not: null } },
         ],
       },
-      include: { client: { select: { jmeno: true, prijmeni: true } } },
+      include: { client: { select: { jmeno: true, prijmeni: true, typKlienta: true } } },
     }),
     !servisScope ? [] : prisma.servisniZakazka.findMany({
       where: { orgId, ...servisScope, stav: { in: ['NAPLANOVANA', 'PROBIHA'] }, planovanyTermin: { not: null } },
       include: {
-        kontrakt: { select: { nazev: true, klient: { select: { jmeno: true, prijmeni: true } }, zarizeni: { select: { nazev: true, typ: true } } } },
-        klient: { select: { jmeno: true, prijmeni: true } },
+        kontrakt: { select: { nazev: true, klient: { select: { jmeno: true, prijmeni: true, typKlienta: true } }, zarizeni: { select: { nazev: true, typ: true } } } },
+        klient: { select: { jmeno: true, prijmeni: true, typKlienta: true } },
         zarizeni: { select: { nazev: true, typ: true } },
         technik: { select: { jmeno: true } },
       },
@@ -66,7 +66,7 @@ export default async function CalendarPage() {
         AND: [zakazkyScope],
       },
       include: {
-        klient: { select: { jmeno: true, prijmeni: true } },
+        klient: { select: { jmeno: true, prijmeni: true, typKlienta: true } },
         techniciRel: { include: { technik: { select: { jmeno: true } } } },
         etapy: { where: { montazOd: { not: null } }, orderBy: { cislo: 'asc' } },
       },
@@ -83,7 +83,7 @@ export default async function CalendarPage() {
       },
       select: {
         id: true, cislo: true, nazev: true, technologie: true,
-        klient: { select: { jmeno: true, prijmeni: true } },
+        klient: { select: { jmeno: true, prijmeni: true, typKlienta: true } },
         techniciRel: { select: { technik: { select: { jmeno: true } } } },
       },
       orderBy: { vytvoreno: 'asc' },
@@ -108,6 +108,8 @@ export default async function CalendarPage() {
       time: a.cas ?? undefined,
       trvaniMin: a.trvaniMin ?? undefined,
       title: calendarTitle(klient, tech, AKTIVITA_DOPLNEK[a.typ] ?? a.typ.toLowerCase()),
+      klient,
+      tech: a.deal.technologie ?? undefined,
       subtitle: a.deal.predmet ?? a.deal.kod ?? '',
       href: `/deals/${a.deal.id}?tab=aktivity`,
       done: a.stav === 'DOKONCENA',
@@ -124,6 +126,7 @@ export default async function CalendarPage() {
       time: a.cas ?? undefined,
       trvaniMin: a.trvaniMin ?? undefined,
       title: calendarTitle(leadJmeno(a.lead), 'Lead', AKTIVITA_DOPLNEK[a.typ] ?? a.typ.toLowerCase()),
+      klient: leadJmeno(a.lead),
       subtitle: a.popis ?? '',
       href: `/leady/${a.lead.id}`,
       done: a.stav === 'DOKONCENA',
@@ -143,6 +146,8 @@ export default async function CalendarPage() {
         kind: 'REALIZACE',
         ...dateRange(d.terminRealizace, konec),
         title: calendarTitle(klient, tech, DOPLNEK.REALIZACE),
+        klient,
+        tech: d.technologie ?? undefined,
         subtitle: predmet,
         href: `/deals/${d.id}`,
       })
@@ -153,6 +158,8 @@ export default async function CalendarPage() {
         kind: 'PREVZETI',
         date: utcDateStr(d.terminPrevzeti),
         title: calendarTitle(klient, tech, DOPLNEK.PREVZETI),
+        klient,
+        tech: d.technologie ?? undefined,
         subtitle: predmet,
         href: `/deals/${d.id}`,
       })
@@ -163,6 +170,8 @@ export default async function CalendarPage() {
         kind: 'ZALOHA',
         date: utcDateStr(d.splatnostZalohy),
         title: calendarTitle(klient, tech, DOPLNEK.ZALOHA),
+        klient,
+        tech: d.technologie ?? undefined,
         subtitle: predmet,
         href: `/deals/${d.id}`,
       })
@@ -180,6 +189,8 @@ export default async function CalendarPage() {
       date: utcDateStr(n.planovanyTermin),
       time: fmtTime(n.planovanyTermin),
       title: calendarTitle(klient, tech, SERVIS_DOPLNEK[n.typ] ?? DOPLNEK.SERVIS),
+      klient,
+      tech: zarizeniTech(n.zarizeni ?? n.kontrakt?.zarizeni),
       subtitle,
       href: `/servis/zakazky/${n.id}`,
     })
@@ -202,6 +213,9 @@ export default async function CalendarPage() {
           ...dateRange(e.montazOd!, e.montazDo),
           title: calendarTitle(klient, tech, `${DOPLNEK.MONTAZ}, ${etapaLabel}`),
           short: `${klient} (${e.cislo}. et.)`,
+          klient: `${klient} (${e.cislo}. et.)`,
+          tech: z.technologie ?? undefined,
+          move: { zakazkaId: z.id, etapaId: e.id },
           subtitle,
           href: `/zakazky/${z.id}`,
           technici: techniciNames,
@@ -217,6 +231,9 @@ export default async function CalendarPage() {
       ...dateRange(z.montazOd, z.montazDo),
       title: calendarTitle(klient, tech, DOPLNEK.MONTAZ),
       short: klient,
+      klient,
+      tech: z.technologie ?? undefined,
+      move: { zakazkaId: z.id },
       subtitle,
       href: `/zakazky/${z.id}`,
       technici: techniciNames,
