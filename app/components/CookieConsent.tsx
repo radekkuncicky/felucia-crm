@@ -27,7 +27,8 @@ export default function CookieConsent() {
         transform: 'translateX(-50%)',
         width: 'calc(100% - 32px)',
         maxWidth: '600px',
-        zIndex: 9999,
+        // Nad obsahem a spodní navigací (z-40), ale pod dialogy (ui/Dialog z-50/60)
+        zIndex: 45,
       }}
     >
       <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl shadow-2xl px-5 py-4 flex items-start gap-4">
