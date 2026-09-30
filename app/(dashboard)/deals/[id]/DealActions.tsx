@@ -9,6 +9,8 @@ import { api } from '@/lib/api'
 
 interface Props {
   dealId: string
+  /** Zakázka už k OP existuje → místo „Vytvořit" nabídnout „Otevřít" */
+  linkedZakazkaId?: string | null
   dealData?: {
     kod: string | null
     predmet: string | null
@@ -20,7 +22,7 @@ interface Props {
   }
 }
 
-export default function DealActions({ dealId, dealData }: Props) {
+export default function DealActions({ dealId, linkedZakazkaId, dealData }: Props) {
   const router = useRouter()
   const { data: session } = useSession()
   const isAdmin = session?.user?.perms?.obchodMazani === true
@@ -84,6 +86,9 @@ export default function DealActions({ dealId, dealData }: Props) {
       if (res.ok && res.data) {
         toast.success('Zakázka vytvořena')
         router.push(`/zakazky/${res.data.id}`)
+      } else if (res.status === 409 && res.data?.id) {
+        // zakázka mezitím vznikla (např. podpisem SOD) — otevřít tu existující
+        router.push(`/zakazky/${res.data.id}`)
       }
     } finally {
       setLoading(false)
@@ -128,7 +133,7 @@ export default function DealActions({ dealId, dealData }: Props) {
           <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-xl max-w-sm w-full mx-4">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Vytvořit zakázku</h3>
             <p className="text-sm text-gray-600 dark:text-slate-400 mb-6">
-              Opravdu chcete vytvořit zakázku v FELUCIA Workspace pro tento obchodní případ?
+              Vytvořit k tomuto obchodnímu případu zakázku? Položky se převezmou z aktivní nabídky.
             </p>
             <div className="flex gap-3 justify-end">
               <button onClick={() => setConfirmModal(false)} className="px-4 py-2 text-sm text-gray-600 dark:text-slate-400 hover:text-gray-900 border border-gray-300 dark:border-slate-600 rounded-lg">Zrušit</button>
@@ -166,15 +171,27 @@ export default function DealActions({ dealId, dealData }: Props) {
           </button>
           {dropdownOpen && (
             <div className="absolute right-0 top-full mt-1 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg shadow-xl z-30 min-w-[180px]">
-              <button
-                onClick={() => { setDropdownOpen(false); setConfirmModal(true) }}
-                className="w-full text-left px-4 py-3 text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 flex items-center gap-2"
-              >
-                <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                Vytvořit zakázku
-              </button>
+              {linkedZakazkaId ? (
+                <button
+                  onClick={() => { setDropdownOpen(false); router.push(`/zakazky/${linkedZakazkaId}`) }}
+                  className="w-full text-left px-4 py-3 text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                  Otevřít zakázku
+                </button>
+              ) : (
+                <button
+                  onClick={() => { setDropdownOpen(false); setConfirmModal(true) }}
+                  className="w-full text-left px-4 py-3 text-sm text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Vytvořit zakázku
+                </button>
+              )}
               {isAdmin && (
                 <>
                   <div className="border-t border-gray-100 dark:border-slate-700" />

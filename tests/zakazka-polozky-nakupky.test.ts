@@ -69,3 +69,18 @@ describe('zakázka založená z OP přebírá nákupní ceny z aktivní nabídky
     expect(polozky[1].nakupniCena).toBeNull()
   })
 })
+
+describe('jeden OP = jedna zakázka', () => {
+  it('druhý POST /api/zakazky se stejným opId vrátí 409 s id existující zakázky', async () => {
+    const existujici = await prisma.zakazka.findFirstOrThrow({ where: { orgId, opId: dealId } })
+    const res = await zakazkyPost(
+      new Request('http://test', {
+        method: 'POST',
+        body: JSON.stringify({ opId: dealId, klientId, nazev: 'Duplicitní zakázka' }),
+      }),
+    )
+    expect(res.status).toBe(409)
+    expect((await res.json()).id).toBe(existujici.id)
+    expect(await prisma.zakazka.count({ where: { orgId, opId: dealId } })).toBe(1)
+  })
+})

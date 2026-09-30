@@ -256,6 +256,7 @@ export default async function DealDetailPage({
             )}
             <DealActions
               dealId={deal.id}
+              linkedZakazkaId={linkedZakazka?.id ?? null}
               dealData={{
                 kod: deal.kod,
                 predmet: deal.predmet,

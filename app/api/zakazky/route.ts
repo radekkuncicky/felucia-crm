@@ -60,6 +60,14 @@ export async function POST(req: Request) {
   let opKod: string | null = null
   let opAdresaDila: string | null = null
   if (body.opId) {
+    // Jeden OP = jedna zakázka (auto-create při Úspěchu i ruční „Vytvořit zakázku").
+    const existujici = await db.zakazka.findFirst({ where: { opId: body.opId, orgId }, select: { id: true, cislo: true } })
+    if (existujici) {
+      return NextResponse.json(
+        { error: `K tomuto obchodnímu případu už existuje zakázka ${existujici.cislo}.`, id: existujici.id },
+        { status: 409 },
+      )
+    }
     const op = await db.deal.findFirst({ where: { id: body.opId, orgId }, select: { kod: true, adresaDila: true } })
     opKod = op?.kod ?? null
     opAdresaDila = op?.adresaDila ?? null
