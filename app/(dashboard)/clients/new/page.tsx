@@ -1,5 +1,7 @@
 'use client'
 
+import { Button, ButtonLink } from '@/components/ui/Button'
+import { Field, Input, Textarea } from '@/components/ui/Field'
 import { toast } from 'sonner'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -21,8 +23,6 @@ function parseFullAddress(text: string): { ulice: string; psc: string; mesto: st
   }
 }
 
-const inp = 'w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400'
-const label = 'block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1'
 
 type TypKlienta = 'FYZICKA_OSOBA' | 'FIRMA'
 
@@ -158,15 +158,16 @@ export default function NewClientPage() {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        {error && <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-sm px-4 py-3 rounded-lg">{error}</div>}
+        {error && <div role="alert" className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-sm px-4 py-3 rounded-lg">{error}</div>}
 
         {/* Toggle typ klienta */}
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4">
-          <div className="flex gap-1 p-1 bg-gray-100 dark:bg-slate-700 rounded-lg w-fit">
+          <div className="flex gap-1 p-1 bg-gray-100 dark:bg-slate-700 rounded-lg w-fit" role="group" aria-label="Typ klienta">
             {(['FYZICKA_OSOBA', 'FIRMA'] as TypKlienta[]).map(typ => (
               <button
                 key={typ}
                 type="button"
+                aria-pressed={typKlienta === typ}
                 onClick={() => setTypKlienta(typ)}
                 className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
                   typKlienta === typ
@@ -180,77 +181,57 @@ export default function NewClientPage() {
           </div>
         </div>
 
-        {/* Kontaktní údaje */}
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-6 space-y-4">
+        {/* Kontaktní údaje — na mobilu jeden sloupec */}
+        <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4 sm:p-6 space-y-4">
           <h2 className="font-semibold text-gray-900 dark:text-white">
             {typKlienta === 'FIRMA' ? 'Firemní údaje' : 'Kontaktní údaje'}
           </h2>
 
           {typKlienta === 'FYZICKA_OSOBA' ? (
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className={label}>Jméno *</label>
-                <input type="text" required value={form.jmeno} onChange={e => set('jmeno', e.target.value)} className={inp} placeholder="Karel" />
-              </div>
-              <div>
-                <label className={label}>Příjmení *</label>
-                <input type="text" required value={form.prijmeni} onChange={e => set('prijmeni', e.target.value)} className={inp} placeholder="Novák" />
-              </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Field label="Jméno" required>
+                <Input value={form.jmeno} onChange={e => set('jmeno', e.target.value)} placeholder="Karel" autoComplete="given-name" />
+              </Field>
+              <Field label="Příjmení" required>
+                <Input value={form.prijmeni} onChange={e => set('prijmeni', e.target.value)} placeholder="Novák" autoComplete="family-name" />
+              </Field>
             </div>
           ) : (
             <div className="space-y-4">
               <div>
-                <label className={label}>Vyhledat firmu v ARES</label>
+                <p className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Vyhledat firmu v ARES</p>
                 <AresAutocomplete onSelect={handleAresSelect} />
                 <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">Zadejte název firmy nebo IČO — po výběru se pole vyplní automaticky</p>
               </div>
-              <div>
-                <label className={label}>Název firmy *</label>
-                <input type="text" required value={form.jmeno} onChange={e => set('jmeno', e.target.value)} className={inp} placeholder="Vzorová stavba s.r.o." />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className={label}>IČO</label>
+              <Field label="Název firmy" required>
+                <Input value={form.jmeno} onChange={e => set('jmeno', e.target.value)} placeholder="Vzorová stavba s.r.o." autoComplete="organization" />
+              </Field>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Field label="IČO">
                   <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={form.ico}
-                      onChange={e => set('ico', e.target.value)}
-                      className={inp}
-                      placeholder="12345678"
-                    />
-                    <button
-                      type="button"
-                      onClick={loadFromAres}
-                      disabled={aresLoading || !form.ico.trim()}
-                      title="Načíst z ARES"
-                      className="flex-shrink-0 px-3 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-600 disabled:opacity-40 whitespace-nowrap"
-                    >
-                      {aresLoading ? '…' : 'ARES'}
-                    </button>
+                    <Input kind="ico" value={form.ico} onChange={e => set('ico', e.target.value)} placeholder="12345678" />
+                    <Button variant="secondary" onClick={loadFromAres} disabled={!form.ico.trim()} loading={aresLoading} title="Načíst údaje z ARES podle IČO">
+                      ARES
+                    </Button>
                   </div>
-                </div>
-                <div>
-                  <label className={label}>DIČ</label>
-                  <input type="text" value={form.dic} onChange={e => set('dic', e.target.value)} className={inp} placeholder="CZ12345678" />
-                </div>
+                </Field>
+                <Field label="DIČ">
+                  <Input value={form.dic} onChange={e => set('dic', e.target.value)} placeholder="CZ12345678" />
+                </Field>
               </div>
-              <div>
-                <label className={label}>Kontaktní osoba</label>
-                <input type="text" value={form.kontaktniOsoba} onChange={e => set('kontaktniOsoba', e.target.value)} className={inp} placeholder="Šárka Kočurová" />
-              </div>
+              <Field label="Kontaktní osoba">
+                <Input value={form.kontaktniOsoba} onChange={e => set('kontaktniOsoba', e.target.value)} placeholder="Jan Novák" autoComplete="name" />
+              </Field>
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={label}>Telefon</label>
-              <input type="tel" value={form.telefon} onChange={e => set('telefon', e.target.value)} className={inp} />
-            </div>
-            <div>
-              <label className={label}>Email</label>
-              <input
-                type="text"
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="Telefon">
+              <Input kind="tel" value={form.telefon} onChange={e => set('telefon', e.target.value)} />
+            </Field>
+            <Field label="E-mail">
+              <Input
+                kind="email"
                 value={form.email}
                 onChange={e => set('email', e.target.value)}
                 onPaste={e => {
@@ -259,19 +240,16 @@ export default function NewClientPage() {
                   if (parsed !== text) { e.preventDefault(); set('email', parsed) }
                 }}
                 onBlur={e => set('email', parseEmailInput(e.target.value))}
-                className={inp}
               />
-            </div>
+            </Field>
           </div>
         </div>
 
         {/* Adresa */}
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-6 space-y-4">
+        <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4 sm:p-6 space-y-4">
           <h2 className="font-semibold text-gray-900 dark:text-white">Kontaktní adresa</h2>
-          <div>
-            <label className={label}>Ulice a číslo popisné</label>
-            <input
-              type="text"
+          <Field label="Ulice a číslo popisné" hint={adresaHint ? '✓ Adresa rozpoznána a rozdělena do polí' : undefined}>
+            <Input
               value={form.ulice}
               onChange={e => set('ulice', e.target.value)}
               onPaste={e => {
@@ -284,46 +262,30 @@ export default function NewClientPage() {
                   setTimeout(() => setAdresaHint(false), 3000)
                 }
               }}
-              className={inp}
+              autoComplete="street-address"
               placeholder="Nebo vložte celou adresu, např. Školní 27, 736 01 Havířov"
             />
-            {adresaHint && (
-              <p className="text-xs text-green-600 mt-1">✓ Adresa rozpoznána a rozdělena do polí</p>
-            )}
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className={label}>Město</label>
-              <input type="text" value={form.mesto} onChange={e => set('mesto', e.target.value)} className={inp} />
-            </div>
-            <div>
-              <label className={label}>PSČ</label>
-              <input type="text" value={form.psc} onChange={e => set('psc', e.target.value)} className={inp} placeholder="700 00" />
-            </div>
+          </Field>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="Město">
+              <Input value={form.mesto} onChange={e => set('mesto', e.target.value)} autoComplete="address-level2" />
+            </Field>
+            <Field label="PSČ">
+              <Input kind="psc" value={form.psc} onChange={e => set('psc', e.target.value)} placeholder="700 00" />
+            </Field>
           </div>
         </div>
 
         {/* Poznámka */}
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-6 space-y-4">
-          <h2 className="font-semibold text-gray-900 dark:text-white">Poznámka</h2>
-          <textarea
-            value={form.poznamka}
-            onChange={e => set('poznamka', e.target.value)}
-            rows={3}
-            className={inp}
-            placeholder="Interní poznámka ke klientovi…"
-          />
+        <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4 sm:p-6">
+          <Field label="Poznámka">
+            <Textarea value={form.poznamka} onChange={e => set('poznamka', e.target.value)} rows={3} placeholder="Interní poznámka ke klientovi…" />
+          </Field>
         </div>
 
         <div className="flex gap-3">
-          <button
-            type="submit"
-            disabled={saving}
-            className="bg-primary hover:bg-primary-hover disabled:opacity-50 text-white font-medium px-4 py-2 rounded-lg text-sm transition-colors"
-          >
-            {saving ? 'Ukládám…' : 'Vytvořit klienta'}
-          </button>
-          <Link href="/clients" className="px-4 py-2 text-sm text-gray-600 dark:text-slate-400 hover:text-gray-900">Zrušit</Link>
+          <Button type="submit" loading={saving}>Vytvořit klienta</Button>
+          <ButtonLink href="/clients" variant="ghost">Zrušit</ButtonLink>
         </div>
       </form>
     </div>
