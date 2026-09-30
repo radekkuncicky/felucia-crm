@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { getPerms } from '@/lib/permissions'
 import { prisma } from '@/lib/prisma'
+import { getOrgSettings } from '@/lib/orgSettings'
 import { redirect } from 'next/navigation'
 import CenovkaWizard from './CenovkaWizard'
 import type { TemplateItem } from './CenovkaWizard'
@@ -13,14 +14,15 @@ export default async function CenovkaPage() {
   if (!session) redirect('/auth/signin')
   if (!getPerms(session.user).obchod) redirect('/dashboard')
 
-  const templates = await prisma.quoteTemplate.findMany({
+  const [templates, orgSettings] = await Promise.all([prisma.quoteTemplate.findMany({
     where: { orgId: session.user.orgId },
     select: { id: true, nazev: true, popis: true, technologie: true, polozky: true },
     orderBy: { nazev: 'asc' },
-  })
+  }), getOrgSettings(session.user.orgId)])
 
   return (
     <CenovkaWizard
+      defaultDph={orgSettings.defaultDphSazba === 21 ? 21 : 12}
       templates={templates
         .filter(t => Array.isArray(t.polozky) && (t.polozky as unknown[]).length > 0)
         .map(t => ({

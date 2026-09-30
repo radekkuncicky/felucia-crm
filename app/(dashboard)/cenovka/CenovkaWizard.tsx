@@ -59,8 +59,13 @@ type ClientChoice =
 const KROKY = ['Klient', 'Vzor', 'Produkty', 'Souhrn']
 const TECHNOLOGIE = Object.keys(techLabels)
 
-export default function CenovkaWizard({ templates }: { templates: WizardTemplate[] }) {
+const DPH_SAZBY = [12, 21] as const
+type DphSazba = (typeof DPH_SAZBY)[number]
+
+export default function CenovkaWizard({ templates, defaultDph }: { templates: WizardTemplate[]; defaultDph: DphSazba }) {
   const router = useRouter()
+  // 12 % bydlení (RD, byty), 21 % firmy a nebytové stavby; výchozí z nastavení nabídek
+  const [dph, setDph] = useState<DphSazba>(defaultDph)
   const [step, setStep] = useState(0)
   const [error, setError] = useState('')
   const [creating, setCreating] = useState(false)
@@ -176,7 +181,7 @@ export default function CenovkaWizard({ templates }: { templates: WizardTemplate
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           nazev: template?.nazev ?? 'Cenovka',
-          dphSazba: 12,
+          dphSazba: dph,
           items: items.map((it, idx) => ({
             productId: it.productId,
             nazev: it.nazev,
@@ -487,9 +492,30 @@ export default function CenovkaWizard({ templates }: { templates: WizardTemplate
               <span className="text-gray-500 dark:text-slate-400">Bez DPH</span>
               <span className="text-gray-900 dark:text-white tabular-nums">{formatCislo(total)} Kč</span>
             </div>
+            <div className="flex items-center justify-between gap-3 text-sm mt-2">
+              <span className="text-gray-500 dark:text-slate-400">Sazba DPH</span>
+              <div className="flex gap-1 p-1 bg-gray-100 dark:bg-slate-700 rounded-lg" role="group" aria-label="Sazba DPH">
+                {DPH_SAZBY.map(sazba => (
+                  <button
+                    key={sazba}
+                    type="button"
+                    data-compact
+                    aria-pressed={dph === sazba}
+                    onClick={() => setDph(sazba)}
+                    className={`hit-area px-3 py-1 rounded-md text-sm font-medium tabular-nums transition-colors ${
+                      dph === sazba
+                        ? 'bg-white dark:bg-slate-800 text-gray-900 dark:text-white shadow-sm'
+                        : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200'
+                    }`}
+                  >
+                    {sazba} %
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="flex justify-between font-bold border-t border-gray-100 dark:border-slate-700 pt-2 mt-2">
-              <span className="text-gray-900 dark:text-white">S DPH 12 %</span>
-              <span className="text-primary dark:text-primary-light text-lg tabular-nums">{formatCislo(total * 1.12)} Kč</span>
+              <span className="text-gray-900 dark:text-white">S DPH {dph} %</span>
+              <span className="text-primary dark:text-primary-light text-lg tabular-nums">{formatCislo(total * (1 + dph / 100))} Kč</span>
             </div>
             <p className="text-xs text-gray-400 dark:text-slate-500 mt-2">
               Pro {client?.mode === 'existing' ? client.label : client ? `${client.jmeno} ${client.prijmeni}`.trim() : '?'} · {techLabels[technologie as keyof typeof techLabels]}
