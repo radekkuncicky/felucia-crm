@@ -67,7 +67,7 @@ export default async function NovaServisniAkcePage({
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 px-6 py-5">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Nová servisní akce</h1>
         <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
-          Zavolal klient? Zapiš kdo, co a kde — termín a technika lze doplnit později v plánu.
+          Zavolal klient? Zapište kdo, co a kde — termín a technika lze doplnit později v plánu.
         </p>
       </div>
       <NovaServisniAkceForm

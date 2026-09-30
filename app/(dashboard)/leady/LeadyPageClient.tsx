@@ -44,7 +44,7 @@ const STATUS_LABELS: Record<LeadStatus, string> = {
   KONTAKTOVAN: 'Kontaktován',
   KVALIFIKOVAN: 'Kvalifikován',
   PREVEDEN: 'Převeden',
-  ZRUSEN: 'Zrušen',
+  ZRUSEN: 'Zamítnut',
 }
 
 const STATUS_COLORS: Record<LeadStatus, string> = {

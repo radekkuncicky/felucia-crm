@@ -199,7 +199,7 @@ export default function PortfolioClient({ klienti, clients, orgUsers, canManage,
       {filtered.length === 0 ? (
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-12 text-center">
           <p className="text-gray-500 dark:text-slate-400">
-            {klienti.length === 0 ? 'Zatím žádné zařízení ani smlouvy. Začni novou servisní akcí nebo přidej zařízení.' : 'Nic neodpovídá filtru'}
+            {klienti.length === 0 ? 'Zatím žádné zařízení ani smlouvy. Začněte novou servisní akcí nebo přidejte zařízení.' : 'Nic neodpovídá filtru'}
           </p>
         </div>
       ) : (

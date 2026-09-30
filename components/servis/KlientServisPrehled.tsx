@@ -61,7 +61,7 @@ export default function KlientServisPrehled({ klientId, zarizeni, zakazky, canCr
           <h3 className="font-semibold text-gray-900 dark:text-white">Zařízení a smlouvy</h3>
         </div>
         {zarizeni.length === 0 ? (
-          <p className="px-5 py-6 text-sm text-gray-400 dark:text-slate-500 text-center">Žádné zařízení v evidenci — přidej ho v portfoliu nebo při nové servisní akci.</p>
+          <p className="px-5 py-6 text-sm text-gray-400 dark:text-slate-500 text-center">Žádné zařízení v evidenci — přidejte ho v portfoliu nebo při nové servisní akci.</p>
         ) : (
           <div className="divide-y divide-gray-100 dark:divide-slate-700">
             {zarizeni.map(z => (

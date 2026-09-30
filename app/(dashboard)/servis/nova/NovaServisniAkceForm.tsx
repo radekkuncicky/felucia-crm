@@ -151,7 +151,7 @@ export default function NovaServisniAkceForm({ clients, zarizeniList, orgUsers, 
   return (
     <form onSubmit={submit} className="space-y-4">
       {/* 1. Kdo */}
-      <Blok cislo={1} title="Kdo volá" hint="Vyhledej klienta, nebo ho rovnou založ — stačí příjmení a telefon.">
+      <Blok cislo={1} title="Kdo volá" hint="Vyhledejte klienta, nebo ho rovnou založte — stačí příjmení a telefon.">
         <ClientSelectWithCreate
           clients={clients}
           value={klientId}
@@ -173,7 +173,7 @@ export default function NovaServisniAkceForm({ clients, zarizeniList, orgUsers, 
       <Blok
         cislo={2}
         title="Jaké zařízení"
-        hint={klientId ? 'Vyber existující, založ nové, nebo nech prázdné — doplní technik na místě.' : 'Nejdřív vyber klienta.'}
+        hint={klientId ? 'Vyberte existující, založte nové, nebo nechte prázdné — doplní technik na místě.' : 'Nejdřív vyberte klienta.'}
         disabled={!klientId}
       >
         <div className="flex flex-wrap gap-2">

@@ -69,7 +69,7 @@ const STATUS_LABELS: Record<LeadStatus, string> = {
   KONTAKTOVAN: 'Kontaktován',
   KVALIFIKOVAN: 'Kvalifikován',
   PREVEDEN: 'Převeden',
-  ZRUSEN: 'Zrušen',
+  ZRUSEN: 'Zamítnut',
 }
 
 const ZDROJ_LABELS: Record<LeadZdroj, string> = {

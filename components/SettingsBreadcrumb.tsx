@@ -16,7 +16,7 @@ const PAGE_LABELS: Record<string, string> = {
   '/settings/features': 'Funkce a přepínače',
   '/settings/import-products': 'Import produktů',
   '/settings/categories': 'Kategorie produktů',
-  '/settings/quotes': 'Šablony nabídek',
+  '/settings/quotes': 'Vzhled nabídek',
   '/settings/email': 'Odesílání e-mailů',
 }
 

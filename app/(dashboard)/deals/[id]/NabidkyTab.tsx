@@ -435,7 +435,7 @@ function DuplicateToModal({
                   <p className="text-xs text-blue-500 dark:text-blue-400 truncate">{selectedDeal.client.jmeno} {selectedDeal.client.prijmeni}</p>
                 </>
               ) : (
-                <p className="text-sm text-gray-400 dark:text-slate-500 italic">vyber níže…</p>
+                <p className="text-sm text-gray-400 dark:text-slate-500 italic">vyberte níže…</p>
               )}
             </div>
           </div>

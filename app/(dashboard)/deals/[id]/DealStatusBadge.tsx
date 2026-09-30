@@ -152,7 +152,7 @@ export default function DealStatusBadge({ dealId, currentStav, plan, klientId, k
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-2xl max-w-md w-full mx-4">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Důvod prohry</h3>
-            <p className="text-sm text-gray-500 dark:text-slate-400 mb-4">Zadejte důvod, proč byl obchodní případ označen jako Pass.</p>
+            <p className="text-sm text-gray-500 dark:text-slate-400 mb-4">Zadejte důvod, proč byl obchodní případ označen jako Prohráno.</p>
             <textarea
               autoFocus
               rows={4}
@@ -174,7 +174,7 @@ export default function DealStatusBadge({ dealId, currentStav, plan, klientId, k
                 disabled={!duvodProhry.trim() || saving}
                 className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg disabled:opacity-50"
               >
-                Uložit a označit jako Pass
+                Uložit a označit jako Prohráno
               </button>
             </div>
           </div>
