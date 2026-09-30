@@ -3,104 +3,12 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
-import { IconHome, IconBriefcase, IconClipboard, IconUsers, IconActivity, IconDocument } from '@/components/ui/Icons'
 import { useOrgSettings } from '@/context/OrgSettingsContext'
-import { isTechnikView, type Permissions } from '@/lib/permissions'
+import type { Permissions } from '@/lib/permissions'
+import { bottomNavItems } from '@/lib/navigation'
+import { NavIcon } from '@/components/NavIcon'
 
-const homeItem = {
-  href: '/dashboard',
-  label: 'Domů',
-  exact: true,
-  icon: (
-    <IconHome className="w-5 h-5" />
-  ),
-}
-
-const adminItems = [
-  homeItem,
-  {
-    href: '/deals',
-    label: 'OP',
-    exact: false,
-    icon: (
-      <IconBriefcase className="w-5 h-5" />
-    ),
-  },
-  {
-    href: '/zakazky',
-    label: 'Zakázky',
-    exact: false,
-    icon: (
-      <IconClipboard className="w-5 h-5" />
-    ),
-  },
-  {
-    href: '/clients',
-    label: 'Klienti',
-    exact: false,
-    icon: (
-      <IconUsers className="w-5 h-5" />
-    ),
-  },
-]
-
-const obchodnikItems = [
-  homeItem,
-  {
-    href: '/deals',
-    label: 'OP',
-    exact: false,
-    icon: (
-      <IconBriefcase className="w-5 h-5" />
-    ),
-  },
-  {
-    href: '/clients',
-    label: 'Klienti',
-    exact: false,
-    icon: (
-      <IconUsers className="w-5 h-5" />
-    ),
-  },
-  {
-    href: '/activities',
-    label: 'Aktivity',
-    exact: false,
-    icon: (
-      <IconActivity className="w-5 h-5" />
-    ),
-  },
-]
-
-
-const technikItems = [
-  {
-    href: '/dashboard',
-    label: 'Domů',
-    exact: true,
-    icon: (
-      <IconHome className="w-5 h-5" />
-    ),
-  },
-  {
-    href: '/zakazky',
-    label: 'Zakázky',
-    exact: false,
-    icon: (
-      <IconClipboard className="w-5 h-5" />
-    ),
-  },
-  {
-    href: '/predavaky',
-    label: 'Protokoly',
-    exact: false,
-    icon: (
-      <IconDocument className="w-5 h-5" />
-    ),
-  },
-]
-
-export default function BottomNav({ perms }: { perms: Permissions }) {
+export default function BottomNav({ perms, plan }: { perms: Permissions; plan?: string }) {
   const pathname = usePathname()
   const orgSettings = useOrgSettings()
   const [dasaOpen, setDasaOpen] = useState(false)
@@ -117,17 +25,18 @@ export default function BottomNav({ perms }: { perms: Permissions }) {
     window.dispatchEvent(new Event('dasha:open'))
   }
 
-  // Technický pohled → zakázky/protokoly; kdo má zakázky i obchod → admin sada; jinak obchodní sada
-  const items = isTechnikView(perms) ? technikItems : perms.zakazky !== 'ZADNE' ? adminItems : obchodnikItems
+  // Sada podle role (technik / obchodník / manažer-admin) — viz lib/navigation.ts
+  const items = bottomNavItems({ perms, plan, orgSettings })
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-30 bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-green-900/40 md:hidden pb-safe">
       <div className="flex items-stretch">
         {items.map((item) => {
-          const isActive = item.exact ? pathname === item.href : pathname.startsWith(item.href)
+          const isActive = item.exact ? pathname === item.href : pathname === item.href || pathname.startsWith(item.href + '/')
           return (
             <Link
-              key={item.label}
+              key={item.id}
+              aria-current={isActive ? 'page' : undefined}
               href={item.href}
               className={`flex-1 flex flex-col items-center justify-center py-2 gap-0.5 text-xs min-h-[56px] transition-colors ${
                 isActive
@@ -135,8 +44,8 @@ export default function BottomNav({ perms }: { perms: Permissions }) {
                   : 'text-gray-400 dark:text-slate-500'
               }`}
             >
-              {item.icon}
-              <span>{item.label}</span>
+              <NavIcon name={item.icon} className="w-5 h-5" />
+              <span>{item.shortLabel ?? item.label}</span>
             </Link>
           )
         })}

@@ -73,7 +73,7 @@ export default function DashboardShell({ user, orgSettings, orgNazev, children }
           </main>
         </div>
 
-        <BottomNav perms={user.perms} />
+        <BottomNav perms={user.perms} plan={user.plan} />
       </div>
     </TabsProvider>
     </OrgSettingsProvider>
