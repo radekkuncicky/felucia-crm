@@ -1,12 +1,15 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useId } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { NavigateButton } from '@/components/NavigateButton'
 import { SignatureCanvas } from '@/components/SignatureCanvas'
 import VyuctovaniSekce from '@/components/servis/VyuctovaniSekce'
 import ConfirmModal from '@/components/ConfirmModal'
+import { Dialog } from '@/components/ui/Dialog'
+import { Button, buttonClasses } from '@/components/ui/Button'
+import { Field, Input, Select, Textarea } from '@/components/ui/Field'
 import { apiFetch, api } from '@/lib/api'
 import { toast } from 'sonner'
 import { confirmDialog } from '@/components/ui/confirm'
@@ -109,6 +112,9 @@ export default function ZakazkaDetailClient({ zakazka, orgUsers, canEdit, isAdmi
   const [confirmAction, setConfirmAction] = useState<'zrusit' | 'uzavrit' | null>(null)
   const [reklamaceOpen, setReklamaceOpen] = useState(false)
   const [cekaOpen, setCekaOpen] = useState(false)
+  const cekaFormId = useId()
+  const odeslatFormId = useId()
+  const reklamaceFormId = useId()
   const [cekaDuvodDraft, setCekaDuvodDraft] = useState('')
   const [reklamacePoznamka, setReklamacePoznamka] = useState('')
   const [manualStavOpen, setManualStavOpen] = useState(false)
@@ -301,11 +307,8 @@ export default function ZakazkaDetailClient({ zakazka, orgUsers, canEdit, isAdmi
     if (res.ok && res.data) setFotky(res.data.fotky)
   }
 
-  const inputClass = 'w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500'
-  const labelClass = 'block text-xs font-semibold text-gray-600 dark:text-slate-400 mb-1'
   const cardClass = 'bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-5'
-  const primaryBtn = 'inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold px-4 py-2 rounded-lg disabled:opacity-50 transition-colors'
-  const ghostBtn = 'px-4 py-2 rounded-lg text-sm font-semibold border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors'
+  const ghostBtn = buttonClasses({ variant: 'secondary' })
 
   const jeMimoCyklus = stav === 'ZRUSENA' || stav === 'REKLAMACE'
   const aktualniIndex = cyklusIndex(stav)
@@ -318,47 +321,32 @@ export default function ZakazkaDetailClient({ zakazka, orgUsers, canEdit, isAdmi
       case 'NAPLANOVANA':
       case 'REKLAMACE':
         return (
-          <button onClick={() => changeStav('PROBIHA')} disabled={acting} className={primaryBtn}>
-            {acting ? 'Ukládám…' : '▶ Zahájit práci'}
-          </button>
+          <Button onClick={() => changeStav('PROBIHA')} loading={acting}>▶ Zahájit práci</Button>
         )
       case 'PROBIHA':
         return (
           <>
-            <button onClick={dokoncitProtokol} disabled={acting} className={primaryBtn}>
-              {acting ? 'Ukládám…' : 'Dokončit protokol a předat'}
-            </button>
-            <button onClick={pozastavit} disabled={acting} className={ghostBtn}>
-              Pozastavit
-            </button>
+            <Button onClick={dokoncitProtokol} loading={acting}>Dokončit protokol a předat</Button>
+            <Button variant="secondary" onClick={pozastavit} disabled={acting}>Pozastavit</Button>
           </>
         )
       case 'CEKA':
         return (
-          <button onClick={() => changeStav('PROBIHA')} disabled={acting} className={primaryBtn}>
-            {acting ? 'Ukládám…' : '▶ Pokračovat v práci'}
-          </button>
+          <Button onClick={() => changeStav('PROBIHA')} loading={acting}>▶ Pokračovat v práci</Button>
         )
       case 'DOKONCENA':
         return (
-          <button
-            onClick={() => document.getElementById('vyuctovani-sekce')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-            className={primaryBtn}
-          >
+          <Button onClick={() => document.getElementById('vyuctovani-sekce')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
             Pokračovat vyúčtováním ↓
-          </button>
+          </Button>
         )
       case 'VYUCTOVANA':
         return (
-          <button onClick={() => setConfirmAction('uzavrit')} disabled={acting} className={primaryBtn}>
-            Uzavřít zakázku
-          </button>
+          <Button onClick={() => setConfirmAction('uzavrit')} disabled={acting}>Uzavřít zakázku</Button>
         )
       case 'ZRUSENA':
         return (
-          <button onClick={() => changeStav('NOVA')} disabled={acting} className={ghostBtn}>
-            Obnovit zakázku
-          </button>
+          <Button variant="secondary" onClick={() => changeStav('NOVA')} loading={acting}>Obnovit zakázku</Button>
         )
       default:
         return null
@@ -393,113 +381,69 @@ export default function ZakazkaDetailClient({ zakazka, orgUsers, canEdit, isAdmi
       />
 
       {/* Pozastavení — důvod čekání */}
-      {cekaOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md">
-            <div className="px-6 py-5 border-b border-gray-200 dark:border-slate-700">
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Pozastavit zakázku</h3>
-              <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
-                Zakázka přejde do stavu Čeká. Důvod uvidí dispečink i technik.
-              </p>
-            </div>
-            <div className="px-6 py-4">
-              <label className={labelClass}>Důvod čekání</label>
-              <input
-                type="text"
-                value={cekaDuvodDraft}
-                onChange={e => setCekaDuvodDraft(e.target.value)}
-                placeholder="Např. čeká na díly"
-                autoFocus
-                className={inputClass}
-                onKeyDown={e => { if (e.key === 'Enter') pozastavitPotvrdit() }}
-              />
-            </div>
-            <div className="px-6 py-4 border-t border-gray-200 dark:border-slate-700 flex gap-3 justify-end">
-              <button onClick={() => setCekaOpen(false)} className={ghostBtn}>Zpět</button>
-              <button onClick={pozastavitPotvrdit} disabled={acting} className={primaryBtn}>
-                {acting ? 'Ukládám…' : 'Pozastavit'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Dialog
+        open={cekaOpen}
+        onClose={() => setCekaOpen(false)}
+        title="Pozastavit zakázku"
+        footer={<>
+          <Button variant="secondary" onClick={() => setCekaOpen(false)}>Zpět</Button>
+          <Button type="submit" form={cekaFormId} loading={acting}>Pozastavit</Button>
+        </>}
+      >
+        <form id={cekaFormId} onSubmit={e => { e.preventDefault(); pozastavitPotvrdit() }} className="space-y-3">
+          <p className="text-sm text-gray-500 dark:text-slate-400">Zakázka přejde do stavu Čeká. Důvod uvidí dispečink i technik.</p>
+          <Field label="Důvod čekání">
+            <Input value={cekaDuvodDraft} onChange={e => setCekaDuvodDraft(e.target.value)} placeholder="Např. čeká na díly" autoFocus />
+          </Field>
+        </form>
+      </Dialog>
 
       {/* Odeslání protokolu klientovi */}
-      {odeslatOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md">
-            <div className="px-6 py-5 border-b border-gray-200 dark:border-slate-700">
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Odeslat protokol klientovi</h3>
-              <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
-                Protokol {zakazka.cislo ?? ''} přijde jako PDF v příloze.
-                {!klientPritomen
-                  ? ' Klient nebyl při zásahu přítomen — v PDF to bude uvedeno.'
-                  : !podpis && ' Klient ho ještě nepodepsal — v PDF bude uvedeno „Nepodepsáno klientem“.'}
-              </p>
-            </div>
-            <div className="px-6 py-4 space-y-3">
-              <div>
-                <label className={labelClass}>E-mail klienta</label>
-                <input
-                  type="email"
-                  value={odeslatTo}
-                  onChange={e => setOdeslatTo(e.target.value)}
-                  placeholder="klient@example.cz"
-                  className={inputClass}
-                  autoFocus
-                />
-              </div>
-              <div>
-                <label className={labelClass}>Zpráva (nepovinné)</label>
-                <textarea
-                  rows={3}
-                  value={odeslatZprava}
-                  onChange={e => setOdeslatZprava(e.target.value)}
-                  placeholder="Např. termín další prohlídky…"
-                  className={`${inputClass} resize-none`}
-                />
-              </div>
-            </div>
-            <div className="px-6 py-4 border-t border-gray-200 dark:border-slate-700 flex gap-3 justify-end">
-              <button onClick={() => setOdeslatOpen(false)} className={ghostBtn}>Zpět</button>
-              <button onClick={odeslatProtokol} disabled={odesilam || !odeslatTo.trim()} className={primaryBtn}>
-                {odesilam ? 'Odesílám…' : 'Odeslat'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Dialog
+        open={odeslatOpen}
+        onClose={() => setOdeslatOpen(false)}
+        title="Odeslat protokol klientovi"
+        footer={<>
+          <Button variant="secondary" onClick={() => setOdeslatOpen(false)}>Zpět</Button>
+          <Button type="submit" form={odeslatFormId} loading={odesilam} disabled={!odeslatTo.trim()}>Odeslat</Button>
+        </>}
+      >
+        <form id={odeslatFormId} onSubmit={e => { e.preventDefault(); odeslatProtokol() }} className="space-y-3">
+          <p className="text-sm text-gray-500 dark:text-slate-400">
+            Protokol {zakazka.cislo ?? ''} přijde jako PDF v příloze.
+            {!klientPritomen
+              ? ' Klient nebyl při zásahu přítomen — v PDF to bude uvedeno.'
+              : !podpis && ' Klient ho ještě nepodepsal — v PDF bude uvedeno „Nepodepsáno klientem“.'}
+          </p>
+          <Field label="E-mail klienta" required>
+            <Input kind="email" value={odeslatTo} onChange={e => setOdeslatTo(e.target.value)} placeholder="klient@example.cz" autoFocus />
+          </Field>
+          <Field label="Zpráva" hint="Nepovinné">
+            <Textarea rows={3} value={odeslatZprava} onChange={e => setOdeslatZprava(e.target.value)} placeholder="Např. termín další prohlídky…" className="resize-none" />
+          </Field>
+        </form>
+      </Dialog>
 
-      {/* Reklamace modal */}
-      {reklamaceOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md">
-            <div className="px-6 py-5 border-b border-gray-200 dark:border-slate-700">
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Vytvořit reklamaci</h3>
-              <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
-                Založí se nová servisní zakázka navázaná na {zakazka.cislo ?? 'tuto zakázku'}.
-                Objeví se v dispečinku mezi nezaplánovanými; tato zakázka zůstane beze změny.
-              </p>
-            </div>
-            <div className="px-6 py-4">
-              <label className={labelClass}>Co klient reklamuje</label>
-              <textarea
-                rows={3}
-                value={reklamacePoznamka}
-                onChange={e => setReklamacePoznamka(e.target.value)}
-                placeholder="Popis reklamované závady…"
-                className={`${inputClass} resize-none`}
-              />
-            </div>
-            <div className="px-6 py-4 border-t border-gray-200 dark:border-slate-700 flex gap-3 justify-end">
-              <button onClick={() => setReklamaceOpen(false)} className={ghostBtn}>Zpět</button>
-              <button onClick={vytvoritReklamaci} disabled={acting} className={primaryBtn}>
-                {acting ? 'Zakládám…' : 'Vytvořit reklamaci'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Reklamace */}
+      <Dialog
+        open={reklamaceOpen}
+        onClose={() => setReklamaceOpen(false)}
+        title="Vytvořit reklamaci"
+        footer={<>
+          <Button variant="secondary" onClick={() => setReklamaceOpen(false)}>Zpět</Button>
+          <Button type="submit" form={reklamaceFormId} loading={acting}>Vytvořit reklamaci</Button>
+        </>}
+      >
+        <form id={reklamaceFormId} onSubmit={e => { e.preventDefault(); vytvoritReklamaci() }} className="space-y-3">
+          <p className="text-sm text-gray-500 dark:text-slate-400">
+            Založí se nová servisní zakázka navázaná na {zakazka.cislo ?? 'tuto zakázku'}.
+            Objeví se v dispečinku mezi nezaplánovanými; tato zakázka zůstane beze změny.
+          </p>
+          <Field label="Co klient reklamuje">
+            <Textarea rows={3} value={reklamacePoznamka} onChange={e => setReklamacePoznamka(e.target.value)} placeholder="Popis reklamované závady…" className="resize-none" autoFocus />
+          </Field>
+        </form>
+      </Dialog>
 
       {/* Hlavička: identita, stepper, akce */}
       <div className={`${cardClass} space-y-4`}>
@@ -646,36 +590,29 @@ export default function ZakazkaDetailClient({ zakazka, orgUsers, canEdit, isAdmi
             <h2 className="font-semibold text-gray-900 dark:text-white mb-3">Plánování</h2>
             <div className="space-y-3">
               {stav === 'CEKA' && (
-                <div>
-                  <label className={labelClass}>Důvod čekání</label>
-                  <input type="text" value={form.cekaDuvod} onChange={e => set('cekaDuvod', e.target.value)} disabled={!canEdit} placeholder="Např. čeká na díly" className={inputClass} />
-                </div>
+                <Field label="Důvod čekání">
+                  <Input value={form.cekaDuvod} onChange={e => set('cekaDuvod', e.target.value)} disabled={!canEdit} placeholder="Např. čeká na díly" />
+                </Field>
               )}
-              <div>
-                <label className={labelClass}>Typ</label>
-                <select value={form.typ} onChange={e => set('typ', e.target.value as NavstevaTyp)} disabled={!canEdit} className={inputClass}>
-                  {Object.entries(TYP_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className={labelClass}>Technik</label>
-                <select value={form.technikId} onChange={e => set('technikId', e.target.value)} disabled={!canEdit || !isAdmin} className={inputClass}>
-                  <option value="">— nepřiřazen —</option>
-                  {orgUsers.map(u => <option key={u.id} value={u.id}>{u.jmeno}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className={labelClass}>Plánovaný termín</label>
-                <input type="datetime-local" value={form.planovanyTermin} onChange={e => set('planovanyTermin', e.target.value)} disabled={!canEdit || !isAdmin} className={inputClass} />
-              </div>
-              <div>
-                <label className={labelClass}>Skutečný termín</label>
-                <input type="datetime-local" value={form.skutecnyTermin} onChange={e => set('skutecnyTermin', e.target.value)} disabled={!canEdit} className={inputClass} />
-              </div>
+              <Field label="Typ">
+                <Select value={form.typ} onChange={e => set('typ', e.target.value as NavstevaTyp)} disabled={!canEdit}>
+                    {Object.entries(TYP_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                  </Select>
+              </Field>
+              <Field label="Technik">
+                <Select value={form.technikId} onChange={e => set('technikId', e.target.value)} disabled={!canEdit || !isAdmin}>
+                    <option value="">— nepřiřazen —</option>
+                    {orgUsers.map(u => <option key={u.id} value={u.id}>{u.jmeno}</option>)}
+                  </Select>
+              </Field>
+              <Field label="Plánovaný termín">
+                <Input type="datetime-local" value={form.planovanyTermin} onChange={e => set('planovanyTermin', e.target.value)} disabled={!canEdit || !isAdmin} />
+              </Field>
+              <Field label="Skutečný termín">
+                <Input type="datetime-local" value={form.skutecnyTermin} onChange={e => set('skutecnyTermin', e.target.value)} disabled={!canEdit} />
+              </Field>
               {canEdit && (
-                <button onClick={save} disabled={saving} className={`${primaryBtn} w-full justify-center`}>
-                  {saving ? 'Ukládám…' : 'Uložit změny'}
-                </button>
+                <Button onClick={save} loading={saving} block>Uložit změny</Button>
               )}
             </div>
           </div>
@@ -748,31 +685,24 @@ export default function ZakazkaDetailClient({ zakazka, orgUsers, canEdit, isAdmi
               </div>
             </div>
             <div className="space-y-3">
-              <div>
-                <label className={labelClass}>Popis závady / požadavku</label>
-                <textarea rows={2} value={form.popis} onChange={e => set('popis', e.target.value)} disabled={!canEdit} placeholder="Co klient hlásí…" className={`${inputClass} resize-none`} />
-              </div>
-              <div>
-                <label className={labelClass}>Adresa místa zásahu</label>
+              <Field label="Popis závady / požadavku">
+                <Textarea rows={2} value={form.popis} onChange={e => set('popis', e.target.value)} disabled={!canEdit} placeholder="Co klient hlásí…" className="resize-none" />
+              </Field>
+              <Field label="Adresa místa zásahu" hint={!form.adresaZasahu && zakazka.klient?.adresa ? 'Nevyplněno — použije se adresa klienta.' : undefined}>
                 <div className="flex gap-2 items-start">
-                  <input type="text" value={form.adresaZasahu} onChange={e => set('adresaZasahu', e.target.value)} disabled={!canEdit} placeholder={zakazka.klient?.adresa || 'Ulice 12, 110 00 Praha'} className={inputClass} />
+                  <Input value={form.adresaZasahu} onChange={e => set('adresaZasahu', e.target.value)} disabled={!canEdit} placeholder={zakazka.klient?.adresa || 'Ulice 12, 110 00 Praha'} autoComplete="street-address" />
                   {(form.adresaZasahu || zakazka.klient?.adresa) && (
                     <NavigateButton adresa={form.adresaZasahu || zakazka.klient?.adresa || ''} label="Navigovat" size="xs" />
                   )}
                 </div>
-                {!form.adresaZasahu && zakazka.klient?.adresa && (
-                  <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">Nevyplněno — použije se adresa klienta.</p>
-                )}
-              </div>
+              </Field>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className={labelClass}>Kontakt na místě</label>
-                  <input type="text" value={form.kontaktJmeno} onChange={e => set('kontaktJmeno', e.target.value)} disabled={!canEdit} placeholder="jméno (pokud není klient)" className={inputClass} />
-                </div>
-                <div>
-                  <label className={labelClass}>Telefon na místě</label>
-                  <input type="tel" value={form.kontaktTelefon} onChange={e => set('kontaktTelefon', e.target.value)} disabled={!canEdit} placeholder="+420 …" className={inputClass} />
-                </div>
+                <Field label="Kontakt na místě">
+                  <Input value={form.kontaktJmeno} onChange={e => set('kontaktJmeno', e.target.value)} disabled={!canEdit} placeholder="jméno (pokud není klient)" />
+                </Field>
+                <Field label="Telefon na místě">
+                  <Input kind="tel" value={form.kontaktTelefon} onChange={e => set('kontaktTelefon', e.target.value)} disabled={!canEdit} placeholder="+420 …" />
+                </Field>
               </div>
             </div>
           </div>
@@ -780,36 +710,30 @@ export default function ZakazkaDetailClient({ zakazka, orgUsers, canEdit, isAdmi
           <div className={cardClass}>
             <h2 className="font-semibold text-gray-900 dark:text-white mb-3">Výsledek práce</h2>
             <div className="space-y-3">
-              <div>
-                <label className={labelClass}>Nalezené závady</label>
-                <textarea rows={2} value={form.nalezeneZavady} onChange={e => set('nalezeneZavady', e.target.value)} disabled={!canEdit} className={`${inputClass} resize-none`} />
-              </div>
-              <div>
-                <label className={labelClass}>Provedená práce / zpráva</label>
-                <textarea rows={3} value={form.zprava} onChange={e => set('zprava', e.target.value)} disabled={!canEdit} className={`${inputClass} resize-none`} />
-              </div>
-              <div>
-                <label className={labelClass}>Doporučení</label>
-                <textarea rows={2} value={form.doporuceni} onChange={e => set('doporuceni', e.target.value)} disabled={!canEdit} className={`${inputClass} resize-none`} />
-              </div>
-              <div>
-                <label className={labelClass}>Interní poznámka</label>
-                <textarea rows={2} value={form.poznamka} onChange={e => set('poznamka', e.target.value)} disabled={!canEdit} className={`${inputClass} resize-none`} />
-              </div>
+              <Field label="Nalezené závady">
+                <Textarea rows={2} value={form.nalezeneZavady} onChange={e => set('nalezeneZavady', e.target.value)} disabled={!canEdit} className="resize-none" />
+              </Field>
+              <Field label="Provedená práce / zpráva">
+                <Textarea rows={3} value={form.zprava} onChange={e => set('zprava', e.target.value)} disabled={!canEdit} className="resize-none" />
+              </Field>
+              <Field label="Doporučení">
+                <Textarea rows={2} value={form.doporuceni} onChange={e => set('doporuceni', e.target.value)} disabled={!canEdit} className="resize-none" />
+              </Field>
+              <Field label="Interní poznámka">
+                <Textarea rows={2} value={form.poznamka} onChange={e => set('poznamka', e.target.value)} disabled={!canEdit} className="resize-none" />
+              </Field>
             </div>
           </div>
 
           <div className={cardClass}>
             <h2 className="font-semibold text-gray-900 dark:text-white mb-3">Náklady</h2>
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className={labelClass}>Práce (Kč)</label>
-                <input type="number" min="0" step="0.01" value={form.nakladyCas} onChange={e => set('nakladyCas', e.target.value)} disabled={!canEdit} className={inputClass} />
-              </div>
-              <div>
-                <label className={labelClass}>Materiál (Kč)</label>
-                <input type="number" min="0" step="0.01" value={form.nakladyMaterial} onChange={e => set('nakladyMaterial', e.target.value)} disabled={!canEdit} className={inputClass} />
-              </div>
+              <Field label="Práce (Kč)">
+                <Input type="number" min="0" step="0.01" value={form.nakladyCas} onChange={e => set('nakladyCas', e.target.value)} disabled={!canEdit} />
+              </Field>
+              <Field label="Materiál (Kč)">
+                <Input type="number" min="0" step="0.01" value={form.nakladyMaterial} onChange={e => set('nakladyMaterial', e.target.value)} disabled={!canEdit} />
+              </Field>
             </div>
           </div>
 
@@ -845,7 +769,7 @@ export default function ZakazkaDetailClient({ zakazka, orgUsers, canEdit, isAdmi
             )}
             {klientPritomen ? (
               <>
-                <label className={labelClass}>Podpis klienta</label>
+                <p className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Podpis klienta</p>
                 <SignatureCanvas onChange={setPodpis} existingDataUrl={podpis} disabled={!canEdit || !!zakazka.protokolDokoncen} />
               </>
             ) : (
@@ -882,9 +806,7 @@ export default function ZakazkaDetailClient({ zakazka, orgUsers, canEdit, isAdmi
                 Stáhnout PDF
               </a>
               {canEdit && (
-                <button onClick={() => setOdeslatOpen(true)} className={primaryBtn}>
-                  {odeslano ? 'Odeslat znovu' : 'Odeslat klientovi'}
-                </button>
+                <Button onClick={() => setOdeslatOpen(true)}>{odeslano ? 'Odeslat znovu' : 'Odeslat klientovi'}</Button>
               )}
               {odeslano && (
                 <span className="text-xs text-gray-500 dark:text-slate-400 w-full sm:w-auto">
