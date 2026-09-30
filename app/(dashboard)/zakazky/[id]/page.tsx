@@ -5,7 +5,6 @@ import { getPerms } from '@/lib/permissions'
 import { notFound } from 'next/navigation'
 import PolozkyTab from './PolozkyTab'
 import ObjednavkyTab from './ObjednavkyTab'
-import TechniciTab from './TechniciTab'
 import PredavakyTab from './PredavakyTab'
 import HistorieTab from './HistorieTab'
 import FotoTab from './FotoTab'
@@ -31,17 +30,13 @@ export default async function ZakazkaDetailPage({
   const canEdit = perms.zakazkyEdit
   const tab = searchParams.tab ?? 'polozky'
 
-  const [zakazka, vsichniTechnici, komentare, auditLogs, uzivateleOrg] = await Promise.all([
+  const [zakazka, komentare, auditLogs, uzivateleOrg] = await Promise.all([
     prisma.zakazka.findFirst({
       where: { id: params.id, orgId },
       include: {
         klient: true,
         vedouci: { select: { id: true, jmeno: true, email: true } },
         op: { select: { id: true, kod: true, predmet: true } },
-        techniciRel: {
-          include: { technik: { select: { id: true, jmeno: true, email: true, telefon: true } } },
-          orderBy: { prirazeno: 'asc' },
-        },
         polozky: { orderBy: { poradi: 'asc' } },
         predavaky: {
           orderBy: { vytvoreno: 'desc' },
@@ -70,13 +65,6 @@ export default async function ZakazkaDetailPage({
         ukoly: { orderBy: UKOL_ORDER_BY, select: UKOL_SELECT },
       },
     }),
-    !canEdit
-      ? Promise.resolve([])
-      : prisma.user.findMany({
-          where: { orgId, aktivni: true, role: { in: ['TECHNIK', 'HLAVNI_TECHNIK'] } },
-          select: { id: true, jmeno: true, email: true },
-          orderBy: { jmeno: 'asc' },
-        }),
     prisma.zakazkaKomentar.findMany({
       where: { zakazkaId: params.id },
       include: { user: { select: { id: true, jmeno: true, role: true } } },
@@ -129,21 +117,6 @@ export default async function ZakazkaDetailPage({
           canSklad={perms.sklad === 'PLNY'}
           showCeny={perms.financeProdejni}
           showNakupky={perms.financeNakupky}
-        />
-      )}
-
-      {tab === 'technici' && canEdit && (
-        <TechniciTab
-          zakazkaId={zakazka.id}
-          technici={zakazka.techniciRel.map(t => ({
-            id: t.technik.id,
-            jmeno: t.technik.jmeno,
-            email: t.technik.email,
-            telefon: t.technik.telefon ?? null,
-            prirazeno: t.prirazeno.toISOString(),
-          }))}
-          vsichniTechnici={vsichniTechnici}
-          canEdit={canEdit}
         />
       )}
 

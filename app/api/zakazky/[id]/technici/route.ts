@@ -1,9 +1,9 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
-import { sendPushToUsers } from '@/lib/push'
 import { NextResponse } from 'next/server'
 import { getPerms, forbidden } from '@/lib/permissions'
+import { priraditTechnikaKZakazce, odebratTechnikaZeZakazky } from '@/lib/techniciZakazky'
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
@@ -17,42 +17,12 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const zakazka = await db.zakazka.findFirst({ where: { id: params.id, orgId } })
   if (!zakazka) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const technik = await db.user.findFirst({ where: { id: technikId, orgId } })
+  const technik = await db.user.findFirst({ where: { id: technikId, orgId }, select: { id: true, jmeno: true, email: true } })
   if (!technik) return NextResponse.json({ error: 'Technik nenalezen' }, { status: 400 })
 
-  const rel = await db.technikZakazka.create({
-    data: { zakazkaId: params.id, technikId },
-    include: { technik: { select: { id: true, jmeno: true, email: true } } },
-  })
+  const { zakazkaNovyStav } = await priraditTechnikaKZakazce(db, { orgId, userId: session.user.id, zakazka, technikId })
 
-  // Auto state: NOVA → PRIRAZENA when first technician is assigned
-  if (zakazka.stav === 'NOVA') {
-    await db.$transaction([
-      db.zakazka.update({
-        where: { id: params.id },
-        data: { stav: 'PRIRAZENA' },
-      }),
-      db.auditLog.create({
-        data: {
-          orgId,
-          userId: session.user.id,
-          typAkce: 'UPDATE',
-          typZaznamu: 'Zakazka',
-          zaznamId: params.id,
-          zaznamNazev: zakazka.nazev,
-          zmeny: { from: 'NOVA', to: 'PRIRAZENA', duvod: 'Přiřazení technika' },
-        },
-      }),
-    ])
-  }
-
-  await sendPushToUsers(orgId, [technikId], {
-    title: 'Nová zakázka',
-    body: `${zakazka.cislo} — ${zakazka.nazev}`,
-    data: { type: 'zakazka', zakazkaId: zakazka.id },
-  })
-
-  return NextResponse.json({ ...rel, zakazkaNovyStav: zakazka.stav === 'NOVA' ? 'PRIRAZENA' : null }, { status: 201 })
+  return NextResponse.json({ zakazkaId: params.id, technikId, technik, zakazkaNovyStav }, { status: 201 })
 }
 
 export async function DELETE(req: Request, { params }: { params: { id: string } }) {
@@ -67,9 +37,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
   const zakazka = await db.zakazka.findFirst({ where: { id: params.id, orgId } })
   if (!zakazka) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  await db.technikZakazka.deleteMany({
-    where: { zakazkaId: params.id, technikId },
-  })
+  await odebratTechnikaZeZakazky(db, params.id, technikId)
 
   return NextResponse.json({ ok: true })
 }

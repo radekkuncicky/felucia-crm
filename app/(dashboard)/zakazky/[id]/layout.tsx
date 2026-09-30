@@ -18,6 +18,7 @@ import MistoStavbyEdit from './MistoStavbyEdit'
 import KdykolivToggle from './KdykolivToggle'
 import RychlaPoznamka from './RychlaPoznamka'
 import EtapySection from './EtapySection'
+import ZakazkaTechnici from './ZakazkaTechnici'
 import CopyLinkButton from './CopyLinkButton'
 import TitulniFotoUpload from './TitulniFotoUpload'
 
@@ -63,12 +64,13 @@ export default async function ZakazkaDetailLayout({
       vyuctovani: { select: { stav: true, etapaId: true, polozky: { select: { mnozstvi: true, prodejniCena: true } } } },
       _count: { select: { predavaky: { where: { etapaId: null } } } },
       objednavky: { where: { stav: { in: ['NAVRH', 'ODESLANA', 'CASTECNE_DORUCENA'] } }, select: { id: true } },
-      techniciRel: { select: { technikId: true } },
+      techniciRel: { orderBy: { prirazeno: 'asc' }, select: { technik: { select: { id: true, jmeno: true } } } },
       etapy: {
         orderBy: { cislo: 'asc' as const },
         include: {
           predavaky: { select: { id: true, cislo: true, stav: true } },
           vyuctovani: { select: { id: true, cislo: true, stav: true } },
+          technici: { orderBy: { prirazeno: 'asc' }, select: { technik: { select: { id: true, jmeno: true } } } },
         },
         // montazOd + montazDo included via model defaults
       },
@@ -76,6 +78,16 @@ export default async function ZakazkaDetailLayout({
   })
 
   if (!zakazka) notFound()
+
+  // Technici organizace pro výběr (hlavička + etapy) — jen pro editaci
+  const vsichniTechnici = canEdit
+    ? await prisma.user.findMany({
+        where: { orgId, aktivni: true, role: { in: ['TECHNIK', 'HLAVNI_TECHNIK'] } },
+        select: { id: true, jmeno: true },
+        orderBy: { jmeno: 'asc' },
+      })
+    : []
+  const techniciZakazky = zakazka.techniciRel.map(t => t.technik)
 
   // Polozky stats for progress bar
   const polozkyTotal = zakazka.polozky.length
@@ -201,6 +213,19 @@ export default async function ZakazkaDetailLayout({
                   </div>
                 </div>
                 <div>
+                  <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase mb-1">
+                    Technici{zakazka.etapy.length > 0 && <span className="normal-case font-normal"> · celá zakázka</span>}
+                  </p>
+                  <ZakazkaTechnici
+                    key={techniciZakazky.map(t => t.id).join(',')}
+                    zakazkaId={zakazka.id}
+                    technici={techniciZakazky}
+                    vsichni={vsichniTechnici}
+                    canEdit={canEdit}
+                    maEtapy={zakazka.etapy.length > 0}
+                  />
+                </div>
+                <div>
                   <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase mb-1">Místo instalace</p>
                   <MistoStavbyEdit
                     zakazkaId={zakazka.id}
@@ -300,7 +325,9 @@ export default async function ZakazkaDetailLayout({
           poznamka: e.poznamka,
           predavaky: e.predavaky,
           vyuctovani: e.vyuctovani,
+          technici: e.technici.map(t => t.technik),
         }))}
+        vsichniTechnici={vsichniTechnici}
         canEdit={canEdit}
         maPraciBezEtapy={zakazka._count.predavaky > 0 || zakazka.vyuctovani.some(v => !v.etapaId)}
       />
@@ -360,7 +387,7 @@ export default async function ZakazkaDetailLayout({
 
       {/* Tab bar — always visible, active tab determined from URL */}
       <Suspense fallback={<div className="border-b border-gray-200 dark:border-slate-700 h-10" />}>
-        <ZakazkyTabs zakazkaId={zakazka.id} showTechnici={canEdit} showVyuctovani={perms.financeProdejni} showHistorie={canEdit} showObjednavky={perms.sklad !== 'ZADNY'} />
+        <ZakazkyTabs zakazkaId={zakazka.id} showVyuctovani={perms.financeProdejni} showHistorie={canEdit} showObjednavky={perms.sklad !== 'ZADNY'} />
       </Suspense>
 
       {/* Page content */}

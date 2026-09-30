@@ -7,6 +7,7 @@ import { EtapaStav } from '@prisma/client'
 import { toast } from 'sonner'
 import { api } from '@/lib/api'
 import { etapaProgressFromRaw, etapaKompletni, lzePridatDalsiEtapu } from '@/lib/zakazkaEtapy'
+import TechniciPicker, { type TechnikRef } from '@/components/TechniciPicker'
 
 interface EtapaPredavak { id: string; cislo: string; stav: string }
 interface EtapaVyuctovani { id: string; cislo: string; stav: string }
@@ -21,11 +22,14 @@ interface Etapa {
   poznamka: string | null
   predavaky: EtapaPredavak[]
   vyuctovani: EtapaVyuctovani[]
+  technici: TechnikRef[]
 }
 
 interface Props {
   zakazkaId: string
   etapy: Etapa[]
+  /** Technici organizace pro výběr (prázdné bez práva editace) */
+  vsichniTechnici: TechnikRef[]
   canEdit: boolean
   /** Zakázka bez etap už má předávák/vyúčtování — při rozdělení se z nich stane Etapa 1 */
   maPraciBezEtapy?: boolean
@@ -58,7 +62,7 @@ function formatDate(iso: string | null) {
   return new Date(iso).toLocaleDateString('cs-CZ', { day: 'numeric', month: 'short' })
 }
 
-export default function EtapySection({ zakazkaId, etapy: initialEtapy, canEdit, maPraciBezEtapy = false }: Props) {
+export default function EtapySection({ zakazkaId, etapy: initialEtapy, vsichniTechnici, canEdit, maPraciBezEtapy = false }: Props) {
   const router = useRouter()
   const [etapy, setEtapy] = useState<Etapa[]>(initialEtapy)
   // router.refresh() (přeřazení protokolu, schválení…) posílá nová data ze serveru
@@ -133,6 +137,7 @@ export default function EtapySection({ zakazkaId, etapy: initialEtapy, canEdit, 
             key={e.id}
             etapa={e}
             zakazkaId={zakazkaId}
+            vsichniTechnici={vsichniTechnici}
             canEdit={canEdit}
             isExpanded={expandedId === e.id}
             isEditing={editingId === e.id}
@@ -140,7 +145,8 @@ export default function EtapySection({ zakazkaId, etapy: initialEtapy, canEdit, 
             onEditStart={() => { setEditingId(e.id); setExpandedId(e.id) }}
             onEditCancel={() => setEditingId(null)}
             onUpdate={updated => {
-              setEtapy(prev => prev.map(x => x.id === updated.id ? updated : x))
+              // PATCH nevrací techniky — ponechat ty z karty
+              setEtapy(prev => prev.map(x => x.id === updated.id ? { ...updated, technici: x.technici } : x))
               setEditingId(null)
             }}
             onDelete={() => {
@@ -164,7 +170,7 @@ export default function EtapySection({ zakazkaId, etapy: initialEtapy, canEdit, 
               if (res.ok && res.data) setEtapy(res.data)
               if (newEtapa.upozorneni) toast.info(newEtapa.upozorneni)
             } else {
-              setEtapy(prev => [...prev, newEtapa])
+              setEtapy(prev => [...prev, { ...newEtapa, technici: [] }])
             }
             setExpandedId(newEtapa.id)
             router.refresh()
@@ -177,11 +183,12 @@ export default function EtapySection({ zakazkaId, etapy: initialEtapy, canEdit, 
 }
 
 function EtapaRow({
-  etapa, zakazkaId, canEdit, isExpanded, isEditing,
+  etapa, zakazkaId, vsichniTechnici, canEdit, isExpanded, isEditing,
   onToggle, onEditStart, onEditCancel, onUpdate, onDelete,
 }: {
   etapa: Etapa
   zakazkaId: string
+  vsichniTechnici: TechnikRef[]
   canEdit: boolean
   isExpanded: boolean
   isEditing: boolean
@@ -228,6 +235,11 @@ function EtapaRow({
             </div>
             <div className="flex items-center gap-3 mt-0.5 flex-wrap">
               {termín && <span className="text-xs text-gray-500 dark:text-slate-400">{termín}</span>}
+              {etapa.technici.length > 0 && (
+                <span className="text-xs text-gray-600 dark:text-slate-300">
+                  {etapa.technici.map(t => t.jmeno).join(', ')}
+                </span>
+              )}
               <span className="text-xs text-gray-400 dark:text-slate-500">
                 {etapa.predavaky.length} protokol{etapa.predavaky.length === 1 ? '' : 'y/ů'}
                 {' · '}
@@ -260,6 +272,19 @@ function EtapaRow({
               {etapa.poznamka && (
                 <p className="text-sm text-gray-600 dark:text-slate-400 italic">{etapa.poznamka}</p>
               )}
+
+              <div>
+                <p className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">Technici etapy</p>
+                <TechniciPicker
+                  key={etapa.technici.map(t => t.id).join(',')}
+                  technici={etapa.technici}
+                  vsichni={vsichniTechnici}
+                  canEdit={canEdit}
+                  addUrl={`/api/zakazky/${zakazkaId}/etapy/${etapa.id}/technici`}
+                  onChange={technici => onUpdate({ ...etapa, technici })}
+                  emptyText="Zatím nikdo — přiřaďte, kdo etapu montuje"
+                />
+              </div>
 
               <div className="grid sm:grid-cols-2 gap-4">
                 <div>

@@ -147,7 +147,11 @@ export async function GET(req: Request) {
       include: {
         klient: { select: { jmeno: true, prijmeni: true, typKlienta: true } },
         techniciRel: { include: { technik: { select: { jmeno: true } } } },
-        etapy: { where: { montazOd: { not: null } }, orderBy: { cislo: 'asc' } },
+        etapy: {
+          where: { montazOd: { not: null } },
+          orderBy: { cislo: 'asc' },
+          include: { technici: { select: { technikId: true, technik: { select: { jmeno: true } } } } },
+        },
       },
     }),
   ])
@@ -235,9 +239,14 @@ export async function GET(req: Request) {
     const etapy = z.etapy.filter(e => e.montazOd)
     if (etapy.length >= 2 || (etapy.length === 1 && !z.montazOd)) {
       for (const e of etapy) {
+        // Etapa s vlastními techniky: jen pokud je na ní uživatel, v popisu jen oni
+        if (e.technici.length > 0 && !e.technici.some(t => t.technikId === uid)) continue
+        const etapaDesc = e.technici.length > 0
+          ? [`Klient: ${klient}`, `Zakázka: ${z.cislo}`, `Technici: ${e.technici.map(t => t.technik.jmeno).join(', ')}`].join('\n')
+          : desc
         const etapaLabel = e.nazev ? `${e.cislo}. etapa – ${e.nazev}` : `${e.cislo}. etapa`
         const r = dateRange(e.montazOd!, e.montazDo)
-        vevents.push(vevent(`montaz-${z.id}-etapa-${e.id}`, r.date, calendarTitle(klient, tech, `${DOPLNEK.MONTAZ}, ${etapaLabel}`), desc, url, undefined, r.dateTo))
+        vevents.push(vevent(`montaz-${z.id}-etapa-${e.id}`, r.date, calendarTitle(klient, tech, `${DOPLNEK.MONTAZ}, ${etapaLabel}`), etapaDesc, url, undefined, r.dateTo))
       }
       continue
     }

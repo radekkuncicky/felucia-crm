@@ -3,7 +3,7 @@ import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import CalendarClient, { CalendarEvent, KdykolivZakazka } from './CalendarClient'
-import { getPerms, dealScopeWhere, servisScopeWhere, zakazkyScopeWhere } from '@/lib/permissions'
+import { getPerms, dealScopeWhere, servisScopeWhere, zakazkyScopeWhere, isTechnikView } from '@/lib/permissions'
 import {
   AKTIVITA_DOPLNEK, DOPLNEK, SERVIS_DOPLNEK, calendarTitle, dateRange, fmtTime, klientJmeno, servisTechnologie, technologieLabel, utcDateStr, zarizeniTech,
 } from '@/lib/calendarEvents'
@@ -20,6 +20,8 @@ export default async function CalendarPage() {
   const dealScope = dealScopeWhere(perms, userId)
   const servisScope = servisScopeWhere(perms, userId)
   const zakazkyScope = zakazkyScopeWhere(perms, userId)
+  // Technik s přístupem jen ke svým zakázkám — u etap s přiřazenými techniky vidí jen ty svoje
+  const isTechnik = isTechnikView(perms) && perms.zakazky !== 'VSE'
 
   const [activities, leadActivities, deals, servisNavstevy, montazZakazky, kdykolivZakazky] = await Promise.all([
     !dealScope ? [] : prisma.activity.findMany({
@@ -68,7 +70,11 @@ export default async function CalendarPage() {
       include: {
         klient: { select: { jmeno: true, prijmeni: true, typKlienta: true } },
         techniciRel: { include: { technik: { select: { jmeno: true } } } },
-        etapy: { where: { montazOd: { not: null } }, orderBy: { cislo: 'asc' } },
+        etapy: {
+          where: { montazOd: { not: null } },
+          orderBy: { cislo: 'asc' },
+          include: { technici: { select: { technikId: true, technik: { select: { jmeno: true } } } } },
+        },
       },
     }),
     // Pool „Kdykoliv" — nezaplánované zakázky k výplni volných dnů (jen pro dispečera)
@@ -211,6 +217,9 @@ export default async function CalendarPage() {
     const etapy = z.etapy.filter(e => e.montazOd)
     if (etapy.length >= 2 || (etapy.length === 1 && !z.montazOd)) {
       for (const e of etapy) {
+        // Etapa s vlastními techniky ukazuje jen je; technik vidí jen etapy, na kterých je
+        if (isTechnik && e.technici.length > 0 && !e.technici.some(t => t.technikId === userId)) continue
+        const etapaTechnici = e.technici.length > 0 ? e.technici.map(t => t.technik.jmeno) : techniciNames
         const etapaLabel = e.nazev ? `${e.cislo}. etapa – ${e.nazev}` : `${e.cislo}. etapa`
         events.push({
           id: `montaz-${z.id}-etapa-${e.id}`,
@@ -221,9 +230,9 @@ export default async function CalendarPage() {
           klient: `${klient} (${e.cislo}. et.)`,
           tech: z.technologie ?? undefined,
           move: { zakazkaId: z.id, etapaId: e.id },
-          subtitle,
+          subtitle: etapaTechnici.length > 0 ? `${z.cislo} · ${etapaTechnici.join(', ')}` : z.cislo,
           href: `/zakazky/${z.id}`,
-          technici: techniciNames,
+          technici: etapaTechnici,
           kdykoliv: z.kdykoliv,
         })
       }

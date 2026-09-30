@@ -91,6 +91,12 @@ DROP POLICY IF EXISTS org_rls ON "dodavatele";
 CREATE POLICY org_rls ON "dodavatele" FOR ALL TO nanto_app
   USING ("orgId" = current_setting('app.org_id', true)) WITH CHECK ("orgId" = current_setting('app.org_id', true));
 
+-- EtapaTechnik
+ALTER TABLE "etapa_technici" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_rls ON "etapa_technici";
+CREATE POLICY org_rls ON "etapa_technici" FOR ALL TO nanto_app
+  USING ("orgId" = current_setting('app.org_id', true)) WITH CHECK ("orgId" = current_setting('app.org_id', true));
+
 -- Extension
 ALTER TABLE "extensions" ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS org_rls ON "extensions";

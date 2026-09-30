@@ -18,10 +18,11 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     include: {
       predavaky: { select: { id: true, cislo: true, stav: true } },
       vyuctovani: { select: { id: true, cislo: true, stav: true } },
+      technici: { orderBy: { prirazeno: 'asc' }, select: { technik: { select: { id: true, jmeno: true } } } },
     },
   })
 
-  return NextResponse.json(etapy)
+  return NextResponse.json(etapy.map(({ technici, ...e }) => ({ ...e, technici: technici.map(t => t.technik) })))
 }
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {

@@ -6,7 +6,6 @@ import { usePathname, useSearchParams } from 'next/navigation'
 // SVG icon paths (heroicons outline)
 const ICONS: Record<string, string> = {
   polozky:    'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2',
-  technici:   'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0',
   predavaky:  'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
   podklady:   'M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z',
   vyuctovani: 'M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z',
@@ -21,7 +20,6 @@ const TABS = [
   { key: 'polozky',    label: 'Položky' },
   { key: 'ukoly',      label: 'Úkoly' },
   { key: 'objednavky', label: 'Objednávky' },
-  { key: 'technici',   label: 'Technici' },
   { key: 'predavaky',  label: 'Protokoly' },
   { key: 'kontakty',   label: 'Kontakty' },
   { key: 'podklady',   label: 'Podklady' },
@@ -33,7 +31,6 @@ const TABS = [
 interface Props {
   zakazkaId: string
   /** zakazkyEdit */
-  showTechnici: boolean
   /** financeProdejni */
   showVyuctovani: boolean
   /** zakazkyEdit */
@@ -50,9 +47,8 @@ function Icon({ path }: { path: string }) {
   )
 }
 
-export default function ZakazkyTabs({ zakazkaId, showTechnici, showVyuctovani, showHistorie, showObjednavky }: Props) {
+export default function ZakazkyTabs({ zakazkaId, showVyuctovani, showHistorie, showObjednavky }: Props) {
   const tabs = TABS.filter(t =>
-    (t.key !== 'technici' || showTechnici) &&
     (t.key !== 'objednavky' || showObjednavky) &&
     (t.key !== 'vyuctovani' || showVyuctovani) &&
     (t.key !== 'historie' || showHistorie),

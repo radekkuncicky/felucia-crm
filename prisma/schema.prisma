@@ -305,6 +305,7 @@ model Organization {
   notifications        Notification[]
   zakazky              Zakazka[]
   zakazkaEtapy         ZakazkaEtapa[]
+  etapaTechnici        EtapaTechnik[]
   skladPohyby          SkladPohyb[]
   predavaky            Predavak[]
   vyuctovani           Vyuctovani[]
@@ -359,6 +360,7 @@ model User {
   notifications       Notification[]
   zakazkyVedouci      Zakazka[]            @relation("ZakazkaVedouci")
   technikZakazky      TechnikZakazka[]
+  technikEtapy        EtapaTechnik[]
   zakazkaFotky        ZakazkaFoto[]
   zakazkyDokumenty    ZakázkaDokument[]
   skladPohybyVytvoril SkladPohyb[]         @relation("SkladPohybVytvoril")
@@ -1166,10 +1168,29 @@ model ZakazkaEtapa {
   zakazka     Zakazka        @relation(fields: [zakazkaId], references: [id], onDelete: Cascade)
   predavaky   Predavak[]
   vyuctovani  Vyuctovani[]
+  technici    EtapaTechnik[]
 
   @@unique([zakazkaId, cislo])
   @@index([zakazkaId])
   @@map("zakazka_etapy")
+}
+
+/// Technik přiřazený k etapě. Přístup k zakázce dál řídí TechnikZakazka —
+/// přiřazení k etapě technika na zakázku přidá, odebrání z etapy ho tam nechá.
+model EtapaTechnik {
+  id         String       @id @default(cuid())
+  orgId      String
+  etapaId    String
+  technikId  String
+  prirazeno  DateTime     @default(now())
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  etapa      ZakazkaEtapa @relation(fields: [etapaId], references: [id], onDelete: Cascade)
+  technik    User         @relation(fields: [technikId], references: [id])
+
+  @@unique([etapaId, technikId])
+  @@index([technikId])
+  @@map("etapa_technici")
 }
 
 model ZakázkaDokument {

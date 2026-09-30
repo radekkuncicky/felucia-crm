@@ -37,6 +37,7 @@ export const TENANT_MODELS = new Set([
   'Notification',
   'Zakazka',
   'ZakazkaEtapa',
+  'EtapaTechnik',
   'ZakázkaDokument',
   'ZakazkaKontakt',
   'ZakazkaUkol',
