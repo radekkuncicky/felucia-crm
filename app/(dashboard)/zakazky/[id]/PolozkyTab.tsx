@@ -1,6 +1,9 @@
 'use client'
 
 import { confirmDialog } from '@/components/ui/confirm'
+import { Dialog } from '@/components/ui/Dialog'
+import { Button } from '@/components/ui/Button'
+import { Field, Input, Textarea } from '@/components/ui/Field'
 import { toast } from 'sonner'
 import { useState, useEffect } from 'react'
 import { ZakazkaPolozkaStav } from '@prisma/client'
@@ -125,124 +128,92 @@ function NaskladnitModal({ polozka, zakazkaId, onClose, onDone }: {
   }
 
   const fmtKc = formatKcPresne
-  const inputCls = 'w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary'
+
+  const formId = `naskladnit-${polozka.id}`
+  const modeBtn = (m: 'kc' | 'pct', label: string, extra = '') => (
+    <button
+      type="button"
+      data-compact
+      aria-pressed={mode === m}
+      onClick={() => handleModeSwitch(m)}
+      className={`hit-area px-2.5 py-1 font-medium transition-colors ${extra} ${mode === m ? 'bg-primary text-white' : 'text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700'}`}
+    >
+      {label}
+    </button>
+  )
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-sm">
-        <div className="px-5 py-4 border-b border-gray-200 dark:border-slate-700">
-          <h3 className="font-semibold text-gray-900 dark:text-white text-sm leading-snug">{polozka.nazev}</h3>
-          {polozka.kod && <p className="font-mono text-xs text-gray-400 dark:text-slate-500 mt-0.5">{polozka.kod}</p>}
-        </div>
-        <form onSubmit={handleSubmit} className="px-5 py-4 space-y-4">
+    <Dialog
+      open
+      onClose={onClose}
+      size="sm"
+      title={<>
+        <span className="block text-sm leading-snug">{polozka.nazev}</span>
+        {polozka.kod && <span className="block font-mono text-xs font-normal text-gray-400 dark:text-slate-500 mt-0.5">{polozka.kod}</span>}
+      </>}
+      footer={<>
+        <Button variant="secondary" onClick={onClose}>Zrušit</Button>
+        <Button type="submit" form={formId} loading={loading} disabled={finalNakupni === null}>Rezervovat</Button>
+      </>}
+    >
+      <form id={formId} onSubmit={handleSubmit} className="space-y-4">
+        {/* Prodejní cena reference */}
+        {prodejni !== null && (
+          <div className="flex items-center justify-between bg-gray-50 dark:bg-slate-700/50 rounded-lg px-3 py-2">
+            <span className="text-xs text-gray-500 dark:text-slate-400">Prod. cena z OP / ks</span>
+            <span className="text-sm font-semibold text-gray-900 dark:text-white">{fmtKc(prodejni)}</span>
+          </div>
+        )}
 
-          {/* Prodejní cena reference */}
+        {/* Dostupnost na skladě */}
+        {stav && (
+          <div className={`flex items-center justify-between rounded-lg px-3 py-2 ${chybi > 0 ? 'bg-amber-50 dark:bg-amber-900/20' : 'bg-gray-50 dark:bg-slate-700/50'}`}>
+            <span className="text-xs text-gray-500 dark:text-slate-400">Dostupné na skladě</span>
+            <span className={`text-sm font-semibold ${stav.dostupne <= 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}`}>
+              {fmtQty(stav.dostupne)} {polozka.jednotka}
+            </span>
+          </div>
+        )}
+
+        <Field
+          label={`Množství (${polozka.jednotka})`}
+          required
+          hint={chybi > 0 ? `Na skladě chybí ${fmtQty(chybi)} ${polozka.jednotka} — rezervace projde, dostupné množství půjde do minusu.` : undefined}
+        >
+          <Input type="number" kind="castka" value={mnozstvi} onChange={e => setMnozstvi(e.target.value)} min="0.01" step="0.01" data-autofocus />
+        </Field>
+
+        {/* Nákupní cena s přepínačem Kč / % rabat */}
+        <div className="relative">
           {prodejni !== null && (
-            <div className="flex items-center justify-between bg-gray-50 dark:bg-slate-700/50 rounded-lg px-3 py-2">
-              <span className="text-xs text-gray-500 dark:text-slate-400">Prod. cena z OP / ks</span>
-              <span className="text-sm font-semibold text-gray-900 dark:text-white">{fmtKc(prodejni)}</span>
+            <div className="absolute right-0 top-0 flex rounded-md overflow-hidden border border-gray-300 dark:border-slate-600 text-xs" role="group" aria-label="Zadání nákupní ceny">
+              {modeBtn('kc', 'Kč')}
+              {modeBtn('pct', '% rabat', 'border-l border-gray-300 dark:border-slate-600')}
             </div>
           )}
-
-          {/* Dostupnost na skladě */}
-          {stav && (
-            <div className={`flex items-center justify-between rounded-lg px-3 py-2 ${chybi > 0 ? 'bg-amber-50 dark:bg-amber-900/20' : 'bg-gray-50 dark:bg-slate-700/50'}`}>
-              <span className="text-xs text-gray-500 dark:text-slate-400">Dostupné na skladě</span>
-              <span className={`text-sm font-semibold ${stav.dostupne <= 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-900 dark:text-white'}`}>
-                {fmtQty(stav.dostupne)} {polozka.jednotka}
-              </span>
-            </div>
-          )}
-
-          {/* Množství */}
-          <div>
-            <label className="block text-xs font-medium text-gray-700 dark:text-slate-300 mb-1">Množství ({polozka.jednotka})</label>
-            <input type="number" value={mnozstvi} onChange={e => setMnozstvi(e.target.value)} min="0.01" step="0.01" required className={inputCls} style={{ fontSize: 16 }} />
-            {chybi > 0 && (
-              <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
-                Na skladě chybí {fmtQty(chybi)} {polozka.jednotka} — rezervace projde, dostupné množství půjde do minusu.
-              </p>
-            )}
-          </div>
-
-          {/* Nákupní cena s přepínačem */}
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-medium text-gray-700 dark:text-slate-300">Nákupní cena / ks *</label>
-              {prodejni !== null && (
-                <div className="flex rounded-md overflow-hidden border border-gray-300 dark:border-slate-600 text-xs">
-                  <button
-                    type="button"
-                    onClick={() => handleModeSwitch('kc')}
-                    className={`px-2.5 py-1 font-medium transition-colors ${mode === 'kc' ? 'bg-primary text-white' : 'text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700'}`}
-                  >
-                    Kč
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleModeSwitch('pct')}
-                    className={`px-2.5 py-1 font-medium transition-colors border-l border-gray-300 dark:border-slate-600 ${mode === 'pct' ? 'bg-primary text-white' : 'text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700'}`}
-                  >
-                    % rabat
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {mode === 'kc' ? (
-              <input
-                type="number"
-                value={nakupniCena}
-                onChange={e => setNakupniCena(e.target.value)}
-                min="0"
-                step="0.01"
-                required
-                placeholder="0"
-                className={inputCls}
-                style={{ fontSize: 16 }}
-              />
-            ) : (
-              <div className="space-y-1.5">
-                <div className="relative">
-                  <input
-                    type="number"
-                    value={rabat}
-                    onChange={e => setRabat(e.target.value)}
-                    min="0"
-                    max="100"
-                    step="0.01"
-                    required
-                    placeholder="54"
-                    className={inputCls}
-                    style={{ fontSize: 16 }}
-                    autoFocus
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 dark:text-slate-500 pointer-events-none">%</span>
-                </div>
-                {computedFromRabat !== null && (
-                  <p className="text-xs text-gray-500 dark:text-slate-400 pl-1">
-                    → Nákupní cena: <span className="font-semibold text-gray-900 dark:text-white">{fmtKc(computedFromRabat)}</span>
-                  </p>
-                )}
+          {mode === 'kc' ? (
+            <Field label="Nákupní cena / ks" required>
+              <Input type="number" kind="castka" value={nakupniCena} onChange={e => setNakupniCena(e.target.value)} min="0" step="0.01" placeholder="0" />
+            </Field>
+          ) : (
+            <Field
+              label="Rabat z prodejní ceny"
+              required
+              hint={computedFromRabat !== null ? `Nákupní cena: ${fmtKc(computedFromRabat)}` : undefined}
+            >
+              <div className="relative">
+                <Input type="number" kind="castka" value={rabat} onChange={e => setRabat(e.target.value)} min="0" max="100" step="0.01" placeholder="54" autoFocus />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 dark:text-slate-500 pointer-events-none">%</span>
               </div>
-            )}
-          </div>
+            </Field>
+          )}
+        </div>
 
-          {/* Poznámka */}
-          <div>
-            <label className="block text-xs font-medium text-gray-700 dark:text-slate-300 mb-1">Poznámka</label>
-            <input type="text" value={poznamka} onChange={e => setPoznamka(e.target.value)} className={inputCls} style={{ fontSize: 16 }} />
-          </div>
-
-          <div className="flex gap-3 justify-end pt-1">
-            <button type="button" onClick={onClose} className="px-3 py-2 text-sm text-gray-600 dark:text-slate-400 border border-gray-300 dark:border-slate-600 rounded-lg">Zrušit</button>
-            <button type="submit" disabled={loading || finalNakupni === null} className="px-3 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg disabled:opacity-50">
-              {loading ? 'Ukládám…' : 'Rezervovat'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <Field label="Poznámka">
+          <Input value={poznamka} onChange={e => setPoznamka(e.target.value)} />
+        </Field>
+      </form>
+    </Dialog>
   )
 }
 
@@ -267,29 +238,27 @@ function StornoModal({ polozka, zakazkaId, onClose, onDone }: {
     }
   }
 
+  const formId = `storno-${polozka.id}`
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-sm">
-        <div className="px-5 py-4 border-b border-gray-200 dark:border-slate-700">
-          <h3 className="font-semibold text-gray-900 dark:text-white">Storno rezervace</h3>
-        </div>
-        <form onSubmit={handleSubmit} className="px-5 py-4 space-y-3">
-          <p className="text-sm text-gray-600 dark:text-slate-400">
-            Opravdu chcete zrušit rezervaci pro <strong>{polozka.nazev}</strong>?
-          </p>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Důvod storna *</label>
-            <textarea value={duvod} onChange={e => setDuvod(e.target.value)} required rows={3} className="w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary" />
-          </div>
-          <div className="flex gap-3 justify-end pt-1">
-            <button type="button" onClick={onClose} className="px-3 py-2 text-sm text-gray-600 dark:text-slate-400 border border-gray-300 dark:border-slate-600 rounded-lg">Zrušit</button>
-            <button type="submit" disabled={loading || !duvod.trim()} className="px-3 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg disabled:opacity-50">
-              {loading ? 'Ukládám…' : 'Stornovat'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <Dialog
+      open
+      onClose={onClose}
+      title="Storno rezervace"
+      size="sm"
+      footer={<>
+        <Button variant="secondary" onClick={onClose}>Zrušit</Button>
+        <Button variant="danger" type="submit" form={formId} loading={loading} disabled={!duvod.trim()}>Stornovat</Button>
+      </>}
+    >
+      <form id={formId} onSubmit={handleSubmit} className="space-y-3">
+        <p className="text-sm text-gray-600 dark:text-slate-400">
+          Opravdu chcete zrušit rezervaci pro <strong>{polozka.nazev}</strong>?
+        </p>
+        <Field label="Důvod storna" required>
+          <Textarea value={duvod} onChange={e => setDuvod(e.target.value)} rows={3} data-autofocus />
+        </Field>
+      </form>
+    </Dialog>
   )
 }
 
@@ -323,40 +292,35 @@ function UpravitPolozkaModal({ polozka, zakazkaId, onClose, onDone }: {
     }
   }
 
+  const formId = `upravit-${polozka.id}`
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-sm">
-        <div className="px-5 py-4 border-b border-gray-200 dark:border-slate-700">
-          <h3 className="font-semibold text-gray-900 dark:text-white">Upravit položku</h3>
+    <Dialog
+      open
+      onClose={onClose}
+      title="Upravit položku"
+      size="sm"
+      footer={<>
+        <Button variant="secondary" onClick={onClose}>Zrušit</Button>
+        <Button type="submit" form={formId} loading={loading} disabled={!nazev.trim()}>Uložit</Button>
+      </>}
+    >
+      <form id={formId} onSubmit={handleSubmit} className="space-y-3">
+        <Field label="Název" required>
+          <Input value={nazev} onChange={e => setNazev(e.target.value)} data-autofocus />
+        </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Množství">
+            <Input type="number" kind="castka" value={mnozstvi} onChange={e => setMnozstvi(e.target.value)} min="0.01" step="0.01" />
+          </Field>
+          <Field label="Jednotka">
+            <Input value={jednotka} onChange={e => setJednotka(e.target.value)} />
+          </Field>
         </div>
-        <form onSubmit={handleSubmit} className="px-5 py-4 space-y-3">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Název *</label>
-            <input type="text" value={nazev} onChange={e => setNazev(e.target.value)} required className="w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary" />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Množství</label>
-              <input type="number" value={mnozstvi} onChange={e => setMnozstvi(e.target.value)} min="0.01" step="0.01" className="w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Jednotka</label>
-              <input type="text" value={jednotka} onChange={e => setJednotka(e.target.value)} className="w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary" />
-            </div>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Prod. cena / ks (Kč)</label>
-            <input type="number" value={prodejniCena} onChange={e => setProdejniCena(e.target.value)} min="0" step="0.01" className="w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary" />
-          </div>
-          <div className="flex gap-3 justify-end pt-1">
-            <button type="button" onClick={onClose} className="px-3 py-2 text-sm text-gray-600 dark:text-slate-400 border border-gray-300 dark:border-slate-600 rounded-lg">Zrušit</button>
-            <button type="submit" disabled={loading || !nazev.trim()} className="px-3 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-hover rounded-lg disabled:opacity-50">
-              {loading ? 'Ukládám…' : 'Uložit'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <Field label="Prod. cena / ks (Kč)">
+          <Input type="number" kind="castka" value={prodejniCena} onChange={e => setProdejniCena(e.target.value)} min="0" step="0.01" />
+        </Field>
+      </form>
+    </Dialog>
   )
 }
 
