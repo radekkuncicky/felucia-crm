@@ -83,7 +83,7 @@ const I = {
   leady: { id: 'leady', href: '/leady', label: 'Leady', icon: 'bell' },
   deals: { id: 'deals', href: '/deals', label: 'Obchodní případy', shortLabel: 'OP', icon: 'briefcase' },
   quotes: { id: 'quotes', href: '/quotes', label: 'Nabídky', icon: 'document' },
-  zakazky: { id: 'zakazky', href: '/zakazky', label: 'Zakázky', icon: 'clipboard', exact: true },
+  zakazky: { id: 'zakazky', href: '/zakazky', label: 'Zakázky', icon: 'clipboard' },
   predavaky: { id: 'predavaky', href: '/predavaky', label: 'Předávací protokoly', shortLabel: 'Protokoly', icon: 'contract' },
   sklad: { id: 'sklad', href: '/sklad', label: 'Sklad', icon: 'warehouse' },
   servis: { id: 'servis', href: '/servis', label: 'Přehled', shortLabel: 'Servis', icon: 'wrench', exact: true },

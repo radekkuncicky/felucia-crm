@@ -1,17 +1,14 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
 import { useOrgSettings } from '@/context/OrgSettingsContext'
-import { isTechnikView, ROLE_LABELS, type Permissions } from '@/lib/permissions'
-import {
-  IconHome, IconUsers, IconBriefcase, IconCoins, IconDocument, IconBox,
-  IconActivity, IconChart, IconCog, IconLogout, IconChevronDown, IconChevronLeft,
-  IconChevronRight, IconSearch, IconCalendar, IconKey, IconWrench, IconClipboard,
-  IconWarehouse, IconBell,
-} from '@/components/ui/Icons'
+import { ROLE_LABELS, type Permissions } from '@/lib/permissions'
+import { sidebarSections, footerItems, type NavItem as NavItemDef } from '@/lib/navigation'
+import { NavIcon } from '@/components/NavIcon'
+import { IconLogout, IconChevronLeft, IconChevronRight, IconSearch } from '@/components/ui/Icons'
 
 interface SidebarUser {
   jmeno: string
@@ -27,188 +24,50 @@ interface Props {
 }
 
 
-interface SearchResult {
-  type: 'client' | 'deal' | 'servis'
-  id: string
-  label: string
-  sub: string
-  href: string
+interface ItemProps {
+  item: NavItemDef
+  collapsed: boolean
+  pathname: string
 }
 
-function SidebarSearch() {
-  const [query, setQuery] = useState('')
-  const [results, setResults] = useState<SearchResult[]>([])
-  const [loading, setLoading] = useState(false)
-  const [open, setOpen] = useState(false)
-  const router = useRouter()
-  const ref = useRef<HTMLDivElement>(null)
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  const search = useCallback(async (q: string) => {
-    if (q.length < 2) { setResults([]); setOpen(false); return }
-    setLoading(true)
-    try {
-      const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`)
-      if (res.ok) {
-        const data = await res.json()
-        setResults(data)
-        setOpen(true)
-      }
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    if (timer.current) clearTimeout(timer.current)
-    timer.current = setTimeout(() => search(query), 300)
-    return () => { if (timer.current) clearTimeout(timer.current) }
-  }, [query, search])
-
-  useEffect(() => {
-    function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [])
-
+function NavLink({ item, collapsed, pathname }: ItemProps) {
+  const isActive = item.exact ? pathname === item.href : pathname === item.href || pathname.startsWith(item.href + '/')
   return (
-    <div ref={ref} className="relative px-3 py-2">
-      <div className="relative">
-        <IconSearch className="absolute left-2.5 top-2 w-4 h-4 text-slate-400" />
-        <input
-          type="text"
-          value={query}
-          onChange={e => setQuery(e.target.value)}
-          onFocus={() => results.length > 0 && setOpen(true)}
-          placeholder="Hledat…"
-          className="w-full bg-[#0D1A0E] border border-green-900/60 rounded-lg pl-8 pr-3 py-1.5 text-sm text-green-100 placeholder-green-400/40 focus:outline-none focus:border-[#4CAF50] focus:ring-1 focus:ring-[#4CAF50]/50"
-        />
-        {loading && (
-          <div className="absolute right-2.5 top-2 w-4 h-4 border-2 border-[#4CAF50] border-t-transparent rounded-full animate-spin" />
-        )}
-      </div>
-      {open && results.length > 0 && (
-        <div className="absolute left-3 right-3 top-full mt-1 bg-[#0D1A0E] border border-green-900/60 rounded-lg shadow-xl z-50 overflow-hidden">
-          {results.map((r, i) => (
-            <button
-              key={i}
-              onClick={() => { router.push(r.href); setOpen(false); setQuery('') }}
-              className="w-full px-3 py-2 flex items-start gap-2 hover:bg-green-900/30 text-left transition-colors"
-            >
-              <span className={`text-xs mt-0.5 px-1.5 py-0.5 rounded font-medium flex-shrink-0 ${r.type === 'client' ? 'bg-green-900/60 text-green-300' : r.type === 'servis' ? 'bg-purple-900/60 text-purple-300' : 'bg-[#4CAF50]/20 text-[#4CAF50]'}`}>
-                {r.type === 'client' ? 'KL' : r.type === 'servis' ? 'SZ' : 'OP'}
-              </span>
-              <div className="min-w-0">
-                <p className="text-sm text-green-100 truncate">{r.label}</p>
-                <p className="text-xs text-green-400/50 truncate">{r.sub}</p>
-              </div>
-            </button>
-          ))}
-        </div>
-      )}
-      {open && query.length >= 2 && results.length === 0 && !loading && (
-        <div className="absolute left-3 right-3 top-full mt-1 bg-[#0D1A0E] border border-green-900/60 rounded-lg shadow-xl z-50 px-3 py-2">
-          <p className="text-sm text-green-400/50">Žádné výsledky</p>
-        </div>
-      )}
-    </div>
+    <Link
+      href={item.href}
+      title={collapsed ? item.label : undefined}
+      aria-current={isActive ? 'page' : undefined}
+      className={`flex items-center gap-3 px-3 py-1.5 rounded-lg text-sm transition-colors ${collapsed ? 'justify-center' : ''} ${
+        isActive
+          ? 'bg-[#4CAF50]/15 text-[#4CAF50] border-l-[3px] border-[#4CAF50] pl-[9px]'
+          : 'text-green-200/70 hover:bg-green-900/30 hover:text-green-100'
+      }`}
+    >
+      <NavIcon name={item.icon} />
+      {!collapsed && <span className="truncate">{item.label}</span>}
+    </Link>
   )
 }
 
 export default function Sidebar({ user, orgNazev }: Props) {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
-  const [activeGroup, setActiveGroup] = useState<string | null>(null)
-  const isPlatinum = user.plan === 'PROFESSIONAL' || user.plan === 'ENTERPRISE'
   const orgSettings = useOrgSettings()
 
-  const perms = user.perms
-  // Technický pohled = bez obchodu, jen zakázky (TECHNIK / HLAVNI_TECHNIK preset)
-  const isTechnik = isTechnikView(perms)
-  const hasServiceAccess = perms.servis !== 'ZADNY'
-  const showZakazky = perms.zakazky !== 'ZADNE'
-  const showSklad = perms.sklad !== 'ZADNY'
-  const showSettings = perms.spravaUzivatelu || perms.nastaveniOrg || perms.fakturace || perms.analytiky
+  const ctx = { perms: user.perms, plan: user.plan, orgSettings, isSuperAdmin: user.isSuperAdmin }
+  const sections = sidebarSections(ctx)
+  const footer = footerItems(ctx)
 
   useEffect(() => {
-    const saved = localStorage.getItem('sidebar-collapsed')
-    if (saved === 'true') setCollapsed(true)
-    if (pathname.startsWith('/deals') || pathname.startsWith('/products') || pathname.startsWith('/quote-templates') || pathname.startsWith('/quotes')) {
-      setActiveGroup('obchod')
-    } else if (pathname.startsWith('/activities')) {
-      setActiveGroup('aktivity')
-    } else if (pathname.startsWith('/servis')) {
-      // Servisní zakázky žijí ve skupině Servis (mimo techniky, ti je mají ve skupině Zakázky)
-      setActiveGroup(isTechnik ? 'zakazky' : 'servis')
-    } else if (pathname.startsWith('/zakazky')) {
-      setActiveGroup('zakazky')
-    } else if (pathname.startsWith('/leady')) {
-      setActiveGroup(null)
-    } else {
-      setActiveGroup(null)
-    }
-  }, [pathname, isTechnik])
+    try {
+      if (localStorage.getItem('sidebar-collapsed') === 'true') setCollapsed(true)
+    } catch {}
+  }, [])
 
   function toggleCollapse() {
     const next = !collapsed
     setCollapsed(next)
-    localStorage.setItem('sidebar-collapsed', String(next))
-  }
-
-  const isSuperAdmin = user.isSuperAdmin ?? false
-
-  function NavItem({ href, icon, label, exact = false }: { href: string; icon: React.ReactNode; label: string; exact?: boolean }) {
-    const isActive = exact ? pathname === href : pathname.startsWith(href)
-    return (
-      <Link
-        href={href}
-        title={collapsed ? label : undefined}
-        className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${collapsed ? 'justify-center' : ''} ${
-          isActive
-            ? 'bg-[#4CAF50]/15 text-[#4CAF50] border-l-[3px] border-[#4CAF50] pl-[9px]'
-            : 'text-green-200/70 hover:bg-green-900/30 hover:text-green-100'
-        }`}
-      >
-        {icon}
-        {!collapsed && <span className="truncate">{label}</span>}
-      </Link>
-    )
-  }
-
-  function GroupToggle({ open, onToggle, icon, label }: { open: boolean; onToggle: () => void; icon: React.ReactNode; label: string }) {
-    return (
-      <button
-        onClick={collapsed ? undefined : onToggle}
-        title={collapsed ? label : undefined}
-        className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-green-200/70 hover:bg-green-900/30 hover:text-green-100 transition-colors ${collapsed ? 'justify-center' : ''}`}
-      >
-        {icon}
-        {!collapsed && (
-          <>
-            <span className="flex-1 text-left truncate">{label}</span>
-            <IconChevronDown className={`w-4 h-4 flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
-          </>
-        )}
-      </button>
-    )
-  }
-
-  function SubNavItem({ href, label, exact = false }: { href: string; label: string; exact?: boolean }) {
-    const isActive = exact ? pathname === href : pathname.startsWith(href)
-    if (collapsed) return null
-    return (
-      <Link
-        href={href}
-        className={`flex items-center gap-2 pl-9 pr-3 py-1.5 rounded-lg text-sm transition-colors ${
-          isActive ? 'text-[#4CAF50] bg-[#4CAF50]/10' : 'text-green-200/60 hover:text-green-100 hover:bg-green-900/30'
-        }`}
-      >
-        <span className="w-1 h-1 rounded-full bg-current flex-shrink-0" />
-        <span className="truncate">{label}</span>
-      </Link>
-    )
+    try { localStorage.setItem('sidebar-collapsed', String(next)) } catch {}
   }
 
   const initials = user.jmeno.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
@@ -234,149 +93,31 @@ export default function Sidebar({ user, orgNazev }: Props) {
         )}
       </div>
 
-      {/* Search */}
-      {!collapsed && <SidebarSearch />}
+      {/* Hledání = paleta ⌘K (jedno hledání pro celou aplikaci) */}
+      <div className="px-3 py-2">
+        <button
+          type="button"
+          onClick={() => window.dispatchEvent(new Event('felucia:command-palette'))}
+          title={collapsed ? 'Hledat' : undefined}
+          className={`w-full flex items-center gap-2 bg-[#0D1A0E] border border-green-900/60 rounded-lg px-2.5 py-1.5 text-sm text-green-400/50 hover:border-[#4CAF50]/60 hover:text-green-200 transition-colors ${collapsed ? 'justify-center' : ''}`}
+        >
+          <IconSearch className="w-4 h-4 flex-shrink-0" />
+          {!collapsed && <><span className="flex-1 text-left">Hledat…</span><kbd className="text-[11px] text-green-400/40 font-sans">⌘K</kbd></>}
+        </button>
+      </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-2 py-2 space-y-0.5 overflow-y-auto overflow-x-hidden scrollbar-none">
-        {isTechnik ? (
-          <>
-            {isPlatinum && orgSettings.modulServis && hasServiceAccess ? (
-              <>
-                <GroupToggle
-                  open={activeGroup === 'zakazky'}
-                  onToggle={() => setActiveGroup(g => g === 'zakazky' ? null : 'zakazky')}
-                  icon={<IconClipboard className="w-5 h-5 flex-shrink-0" />}
-                  label="Zakázky"
-                />
-                {(activeGroup === 'zakazky' || collapsed) && (
-                  <div className="space-y-0.5">
-                    {collapsed ? (
-                      <>
-                        <NavItem href="/zakazky" icon={<IconClipboard className="w-5 h-5 flex-shrink-0" />} label="Obchodní zakázky" exact />
-                        <NavItem href="/servis/zakazky" icon={<IconWrench className="w-5 h-5 flex-shrink-0" />} label="Servisní zakázky" />
-                      </>
-                    ) : (
-                      <>
-                        <SubNavItem href="/zakazky" label="Obchodní zakázky" exact />
-                        <SubNavItem href="/servis/zakazky" label="Servisní zakázky" />
-                      </>
-                    )}
-                  </div>
-                )}
-              </>
-            ) : (
-              <NavItem href="/zakazky" icon={<IconClipboard className="w-5 h-5 flex-shrink-0" />} label="Moje zakázky" />
+      <nav className="flex-1 px-2 pb-2 overflow-y-auto overflow-x-hidden scrollbar-none">
+        {sections.map((sec, i) => (
+          <div key={sec.id} className={i > 0 ? (collapsed || !sec.title ? 'mt-2 pt-2 border-t border-green-900/40' : 'mt-3') : ''}>
+            {sec.title && !collapsed && (
+              <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-green-400/45">{sec.title}</p>
             )}
-            <NavItem href="/predavaky" icon={<IconDocument className="w-5 h-5 flex-shrink-0" />} label="Předávací protokoly" />
-            {showSklad && <NavItem href="/sklad" icon={<IconWarehouse className="w-5 h-5 flex-shrink-0" />} label="Sklad" />}
-            <NavItem href="/calendar" icon={<IconCalendar className="w-5 h-5 flex-shrink-0" />} label="Kalendář" />
-          </>
-        ) : (
-          <>
-            <NavItem href="/dashboard" icon={<IconHome className="w-5 h-5 flex-shrink-0" />} label="Nástěnka" exact />
-            {perms.obchod && <NavItem href="/clients" icon={<IconUsers className="w-5 h-5 flex-shrink-0" />} label="Klienti" />}
-
-            {/* Leady - STANDARD+ only, jen s právem obchodu */}
-            {perms.obchod && user.plan !== 'STARTER' && orgSettings?.modulLeady !== false && (
-              <NavItem href="/leady" icon={<IconBell className="w-5 h-5 flex-shrink-0" />} label="Leady" />
-            )}
-
-            {/* Obchod group */}
-            {perms.obchod && (
-              <>
-            <GroupToggle
-              open={activeGroup === 'obchod'}
-              onToggle={() => setActiveGroup(g => g === 'obchod' ? null : 'obchod')}
-              icon={<IconCoins className="w-5 h-5 flex-shrink-0" />}
-              label="Obchod"
-            />
-            {(activeGroup === 'obchod' || collapsed) && (
-              <div className="space-y-0.5">
-                {collapsed ? (
-                  <>
-                    <NavItem href="/deals" icon={<IconBriefcase className="w-5 h-5 flex-shrink-0" />} label="Obchodní případy" />
-                    <NavItem href="/quote-templates" icon={<IconDocument className="w-5 h-5 flex-shrink-0" />} label="Vzorové nabídky" />
-                    <NavItem href="/products" icon={<IconBox className="w-5 h-5 flex-shrink-0" />} label="Produkty" />
-                  </>
-                ) : (
-                  <>
-                    <SubNavItem href="/deals" label="Obchodní případy" />
-                    <SubNavItem href="/quote-templates" label="Vzorové nabídky" />
-                    <SubNavItem href="/products" label="Produkty" />
-                  </>
-                )}
-              </div>
-            )}
-              </>
-            )}
-
-            {/* Zakázky + Sklad podle oprávnění */}
-            {/* Servisní zakázky žijí ve skupině Servis (Professional+ s modulem), ne tady */}
-            {showZakazky && <NavItem href="/zakazky" icon={<IconClipboard className="w-5 h-5 flex-shrink-0" />} label="Zakázky" exact />}
-            {showSklad && <NavItem href="/sklad" icon={<IconWarehouse className="w-5 h-5 flex-shrink-0" />} label="Sklad" />}
-
-            {/* Aktivity group */}
-            {perms.obchod && (
-              <>
-            <GroupToggle
-              open={activeGroup === 'aktivity'}
-              onToggle={() => setActiveGroup(g => g === 'aktivity' ? null : 'aktivity')}
-              icon={<IconActivity className="w-5 h-5 flex-shrink-0" />}
-              label="Aktivity"
-            />
-            {(activeGroup === 'aktivity' || collapsed) && (
-              <div className="space-y-0.5">
-                {collapsed ? (
-                  <NavItem href="/activities" icon={<IconActivity className="w-5 h-5 flex-shrink-0" />} label="Aktivity" exact />
-                ) : (
-                  <>
-                    <SubNavItem href="/activities" label="Přehled" exact />
-                    <SubNavItem href="/activities?typ=UKOL" label="Úkoly" />
-                    <SubNavItem href="/activities?typ=SCHUZKA" label="Schůzky" />
-                    <SubNavItem href="/activities?typ=EMAIL" label="Emaily" />
-                    <SubNavItem href="/activities?typ=HOVOR" label="Telefonáty" />
-                    <SubNavItem href="/activities?typ=POZNAMKA" label="Poznámky" />
-                  </>
-                )}
-              </div>
-            )}
-              </>
-            )}
-
-            {/* Servis group - Professional/Enterprise only + module enabled */}
-            {isPlatinum && orgSettings.modulServis && hasServiceAccess && (
-              <>
-                <GroupToggle
-                  open={activeGroup === 'servis'}
-                  onToggle={() => setActiveGroup(g => g === 'servis' ? null : 'servis')}
-                  icon={<IconWrench className="w-5 h-5 flex-shrink-0" />}
-                  label="Servis"
-                />
-                {(activeGroup === 'servis' || collapsed) && (
-                  <div className="space-y-0.5">
-                    {collapsed ? (
-                      <>
-                        <NavItem href="/servis" icon={<IconWrench className="w-5 h-5 flex-shrink-0" />} label="Servis přehled" exact />
-                        <NavItem href="/servis/zakazky" icon={<IconClipboard className="w-5 h-5 flex-shrink-0" />} label="Zakázky" />
-                      </>
-                    ) : (
-                      <>
-                        <SubNavItem href="/servis" label="Přehled" exact />
-                        <SubNavItem href="/servis/zakazky" label="Zakázky" />
-                        <SubNavItem href="/servis/plan" label="Plán servisů" />
-                      </>
-                    )}
-                  </div>
-                )}
-              </>
-            )}
-
-            <NavItem href="/calendar" icon={<IconCalendar className="w-5 h-5 flex-shrink-0" />} label="Kalendář" />
-            {orgSettings.modulDokumenty && <NavItem href="/documents" icon={<IconDocument className="w-5 h-5 flex-shrink-0" />} label="Dokumenty" />}
-            {orgSettings.modulAnalytiky && perms.analytiky && <NavItem href="/analytics" icon={<IconChart className="w-5 h-5 flex-shrink-0" />} label="Analýzy" />}
-          </>
-        )}
+            <div className="space-y-0.5">
+              {sec.items.map(item => <NavLink key={item.id} item={item} collapsed={collapsed} pathname={pathname} />)}
+            </div>
+          </div>
+        ))}
       </nav>
 
       {/* Collapse toggle - desktop only */}
@@ -389,12 +130,7 @@ export default function Sidebar({ user, orgNazev }: Props) {
 
       {/* Bottom */}
       <div className="border-t border-green-900/50 p-2 space-y-0.5">
-        {showSettings && (
-          <NavItem href="/settings" icon={<IconCog className="w-5 h-5 flex-shrink-0" />} label="Nastavení" />
-        )}
-        {isSuperAdmin && (
-          <NavItem href="/superadmin" icon={<IconKey className="w-5 h-5 flex-shrink-0" />} label="Superadmin" />
-        )}
+        {footer.map(item => <NavLink key={item.id} item={item} collapsed={collapsed} pathname={pathname} />)}
 
         <Link
           href="/settings/profile"
