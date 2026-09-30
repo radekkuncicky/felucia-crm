@@ -50,7 +50,10 @@ interface Props {
   kdykolivPool?: KdykolivZakazka[]  // jen s canDispatch; přetažením na den se naplánuje
 }
 
-type ViewMode = 'month' | 'week' | 'day' | 'kapacita'
+type ViewMode = 'agenda' | 'month' | 'week' | 'day' | 'kapacita'
+
+/** Agenda = seznam po dnech (výchozí na mobilu, kde měsíční mřížka nejde přečíst) */
+const AGENDA_DNU = 14
 
 const MONTHS_CS = ['Leden', 'Únor', 'Březen', 'Duben', 'Květen', 'Červen', 'Červenec', 'Srpen', 'Září', 'Říjen', 'Listopad', 'Prosinec']
 const DAYS_CS = ['Po', 'Út', 'St', 'Čt', 'Pá', 'So', 'Ne']
@@ -512,6 +515,43 @@ function WeekView({ pivot, events, onSelectDate, todayStr, dropEnabled = false }
   )
 }
 
+// ─── Agenda view ─────────────────────────────────────────────────────────────
+
+function AgendaView({ pivot, events, todayStr }: { pivot: Date; events: CalendarEvent[]; todayStr: string }) {
+  const dny = useMemo(() => {
+    const byDate = indexByDate(events)
+    return Array.from({ length: AGENDA_DNU }, (_, i) => {
+      const d = new Date(pivot); d.setDate(d.getDate() + i)
+      const ds = toDateStr(d)
+      const list = [...(byDate[ds] ?? [])].sort((a, b) => (a.time ?? '').localeCompare(b.time ?? ''))
+      return { ds, list }
+    }).filter(d => d.list.length > 0 || d.ds === todayStr)
+  }, [pivot, events, todayStr])
+
+  if (dny.length === 0) {
+    return <div className="text-center py-12 text-gray-400 dark:text-slate-500 text-base">V příštích {AGENDA_DNU} dnech nic naplánovaného</div>
+  }
+
+  return (
+    <div className="flex-1 overflow-auto divide-y divide-gray-100 dark:divide-slate-700">
+      {dny.map(({ ds, list }) => (
+        <section key={ds} className="p-4" aria-label={fmtDate(ds)}>
+          <h3 className={`text-sm font-semibold mb-2 ${ds === todayStr ? 'text-green-700 dark:text-green-400' : 'text-gray-500 dark:text-slate-400'}`}>
+            {ds === todayStr ? 'Dnes · ' : ''}{fmtDate(ds)}
+          </h3>
+          {list.length === 0 ? (
+            <p className="text-sm text-gray-400 dark:text-slate-500">Nic naplánovaného</p>
+          ) : (
+            <div className="space-y-2">
+              {list.map(ev => <EventCard key={`${ev.id}-${ds}`} ev={ev} />)}
+            </div>
+          )}
+        </section>
+      ))}
+    </div>
+  )
+}
+
 // ─── Day view ────────────────────────────────────────────────────────────────
 
 function DayView({ date, events }: { date: string; events: CalendarEvent[] }) {
@@ -682,13 +722,19 @@ export default function CalendarClient({ events: serverEvents, canDispatch = fal
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }))
 
   const [view, setView] = useState<ViewMode>('month')
+  // Na mobilu výchozí Agenda (měsíční mřížka má na 390 px buňky po ~50 px)
+  useEffect(() => {
+    if (window.matchMedia('(max-width: 767px)').matches) setView('agenda')
+  }, [])
   const [year, setYear] = useState(today.getFullYear())
   const [month, setMonth] = useState(today.getMonth())
   const [pivot, setPivot] = useState(today)
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
 
   function prevPeriod() {
-    if (view === 'month') {
+    if (view === 'agenda') {
+      const d = new Date(pivot); d.setDate(d.getDate() - AGENDA_DNU); setPivot(d)
+    } else if (view === 'month') {
       if (month === 0) { setYear(y => y - 1); setMonth(11) }
       else setMonth(m => m - 1)
     } else if (view === 'week' || view === 'kapacita') {
@@ -700,7 +746,9 @@ export default function CalendarClient({ events: serverEvents, canDispatch = fal
   }
 
   function nextPeriod() {
-    if (view === 'month') {
+    if (view === 'agenda') {
+      const d = new Date(pivot); d.setDate(d.getDate() + AGENDA_DNU); setPivot(d)
+    } else if (view === 'month') {
       if (month === 11) { setYear(y => y + 1); setMonth(0) }
       else setMonth(m => m + 1)
     } else if (view === 'week' || view === 'kapacita') {
@@ -727,6 +775,10 @@ export default function CalendarClient({ events: serverEvents, canDispatch = fal
   }
 
   const headerLabel = useMemo(() => {
+    if (view === 'agenda') {
+      const konec = new Date(pivot); konec.setDate(konec.getDate() + AGENDA_DNU - 1)
+      return `${pivot.getDate()}. ${pivot.getMonth() + 1}. – ${konec.getDate()}. ${konec.getMonth() + 1}. ${konec.getFullYear()}`
+    }
     if (view === 'month') {
       const nextMonth = (month + 1) % 12
       const nextYear = month === 11 ? year + 1 : year
@@ -744,7 +796,7 @@ export default function CalendarClient({ events: serverEvents, canDispatch = fal
     return fmtDate(toDateStr(pivot))
   }, [view, month, year, pivot])
 
-  const dropEnabled = canDispatch && view !== 'day'
+  const dropEnabled = canDispatch && view !== 'day' && view !== 'agenda'
   const showPool = dropEnabled
   const activePoolItem = activeId?.startsWith('pool:') ? pool.find(z => `pool:${z.id}` === activeId) ?? null : null
   const activeEvent = useMemo(() => {
@@ -825,7 +877,7 @@ export default function CalendarClient({ events: serverEvents, canDispatch = fal
             <button onClick={prevPeriod} className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-slate-400 transition-colors">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
             </button>
-            <span className="font-bold text-gray-900 dark:text-white min-w-[220px] text-center text-base">{headerLabel}</span>
+            <span className="font-bold text-gray-900 dark:text-white sm:min-w-[220px] text-center text-sm sm:text-base">{headerLabel}</span>
             <button onClick={nextPeriod} className="w-9 h-9 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 text-gray-500 dark:text-slate-400 transition-colors">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
             </button>
@@ -835,24 +887,28 @@ export default function CalendarClient({ events: serverEvents, canDispatch = fal
           </div>
 
           {/* View tabs */}
-          <div className="flex rounded-lg border border-gray-200 dark:border-slate-600 overflow-hidden">
-            {(['month', 'week', 'day'] as ViewMode[]).map(v => (
+          <div className="flex w-full sm:w-auto rounded-lg border border-gray-200 dark:border-slate-600 overflow-hidden" role="group" aria-label="Pohled kalendáře">
+            {(['agenda', 'month', 'week', 'day'] as ViewMode[]).map(v => (
               <button
                 key={v}
-                onClick={() => setView(v)}
-                className={`px-4 py-2 text-sm font-medium transition-colors ${
+                type="button"
+                aria-pressed={view === v}
+                onClick={() => { if (v === 'agenda') setPivot(new Date(today)); setView(v) }}
+                className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 text-sm font-medium transition-colors ${
                   view === v
                     ? 'bg-green-600 text-white'
                     : 'text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700'
                 }`}
               >
-                {v === 'month' ? 'Měsíc' : v === 'week' ? 'Týden' : 'Den'}
+                {v === 'agenda' ? 'Agenda' : v === 'month' ? 'Měsíc' : v === 'week' ? 'Týden' : 'Den'}
               </button>
             ))}
             {canDispatch && (
               <button
+                type="button"
+                aria-pressed={view === 'kapacita'}
                 onClick={() => setView('kapacita')}
-                className={`px-4 py-2 text-sm font-medium transition-colors border-l border-gray-200 dark:border-slate-600 ${
+                className={`hidden md:block px-4 py-2 text-sm font-medium transition-colors border-l border-gray-200 dark:border-slate-600 ${
                   view === 'kapacita'
                     ? 'bg-red-600 text-white'
                     : 'text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700'
@@ -889,6 +945,9 @@ export default function CalendarClient({ events: serverEvents, canDispatch = fal
               dropEnabled={dropEnabled}
             />
           )}
+          {view === 'agenda' && (
+            <AgendaView pivot={pivot} events={events} todayStr={todayStr} />
+          )}
           {view === 'day' && (
             <DayView date={dayDate} events={events.filter(e => occursOn(e, dayDate))} />
           )}
@@ -898,7 +957,7 @@ export default function CalendarClient({ events: serverEvents, canDispatch = fal
         </div>
 
         {/* Side panel: selected day details (month + week views) */}
-        {view !== 'day' && selectedDate && (
+        {view !== 'day' && view !== 'agenda' && selectedDate && (
           <div className="lg:w-96 lg:self-start lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4 flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-gray-900 dark:text-white text-base">{fmtDate(selectedDate)}</h3>

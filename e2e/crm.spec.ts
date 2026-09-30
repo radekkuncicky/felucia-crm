@@ -251,3 +251,27 @@ test('kalendář: dva měsíce, chip s klientem a přetažení montáže posune 
   await expect(page.getByRole('heading', { name: /Kdykoliv \(\d+\)/ })).toBeVisible()
   expect(errors).toEqual([])
 })
+
+test('kalendář na mobilu: výchozí Agenda po dnech, bez vodorovného posunu stránky', async ({ page }) => {
+  const errors = trackErrors(page)
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/zakazky')
+  const detail = page.getByRole('row', { name: /E2E Zakázka/ }).getByRole('link', { name: /Detail/ })
+    .or(page.getByRole('link', { name: /E2E Zakázka/ })).first()
+  const zakazkaId = (await detail.getAttribute('href'))!.split('/').filter(Boolean)[1]
+  const dnes = new Date()
+  const ds = `${dnes.getFullYear()}-${String(dnes.getMonth() + 1).padStart(2, '0')}-${String(dnes.getDate()).padStart(2, '0')}`
+  const set = await page.request.patch(`/api/zakazky/${zakazkaId}`, {
+    data: { montazOd: new Date(ds).toISOString(), montazDo: new Date(ds).toISOString() },
+  })
+  expect(set.ok()).toBeTruthy()
+
+  await page.goto('/calendar')
+  await expect(page.getByRole('button', { name: 'Agenda', pressed: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /^Dnes · / })).toBeVisible()
+  await expect(page.locator(`a[href="/zakazky/${zakazkaId}"]`).first()).toContainText('Klient E2E')
+  const preteka = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)
+  expect(preteka).toBe(false)
+  await page.screenshot({ path: 'e2e/.results/kalendar-agenda-390.png', fullPage: true })
+  expect(errors).toEqual([])
+})
