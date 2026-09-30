@@ -2,6 +2,9 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Dialog } from '@/components/ui/Dialog'
+import { Button } from '@/components/ui/Button'
+import { Field, Input, Select, Textarea } from '@/components/ui/Field'
 
 interface Props {
   zakazkaId: string
@@ -96,57 +99,35 @@ function DeleteModal({ zakazkaId, opId, onClose }: { zakazkaId: string; opId: st
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-sm">
-        <div className="px-5 py-4 border-b border-gray-200 dark:border-slate-700 flex items-center justify-between">
-          <h3 className="font-semibold text-gray-900 dark:text-white">Smazat zakázku</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-300">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-          </button>
+    <Dialog
+      open
+      onClose={() => { if (!loading) onClose() }}
+      title="Smazat zakázku"
+      size="sm"
+      footer={<>
+        <Button variant="secondary" onClick={onClose} disabled={loading} data-autofocus>Zrušit</Button>
+        <Button variant="danger" onClick={handleDelete} loading={loading}>Smazat zakázku</Button>
+      </>}
+    >
+      <div className="flex gap-3">
+        <div className="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center flex-shrink-0" aria-hidden>
+          <svg className="w-5 h-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+          </svg>
         </div>
-
-        <div className="px-5 py-5 space-y-4">
-          <div className="flex gap-3">
-            <div className="w-10 h-10 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center flex-shrink-0">
-              <svg className="w-5 h-5 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-              </svg>
-            </div>
-            <div className="space-y-1">
-              <p className="text-sm text-gray-700 dark:text-slate-300">
-                Zakázka bude trvale smazána včetně všech položek, předávacích protokolů a vyúčtování.
-              </p>
-              {opId && (
-                <p className="text-sm text-gray-500 dark:text-slate-400">
-                  Propojené OP zůstane nedotčené — nová zakázka z něj půjde vytvořit znovu.
-                </p>
-              )}
-            </div>
-          </div>
-
-          {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
-
-          <div className="flex gap-3 justify-end pt-1">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={loading}
-              className="px-4 py-2 text-sm text-gray-600 dark:text-slate-400 border border-gray-300 dark:border-slate-600 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-50"
-            >
-              Zrušit
-            </button>
-            <button
-              type="button"
-              onClick={handleDelete}
-              disabled={loading}
-              className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg disabled:opacity-50"
-            >
-              {loading ? 'Mazání…' : 'Smazat zakázku'}
-            </button>
-          </div>
+        <div className="space-y-1">
+          <p className="text-sm text-gray-700 dark:text-slate-300">
+            Zakázka bude trvale smazána včetně všech položek, předávacích protokolů a vyúčtování.
+          </p>
+          {opId && (
+            <p className="text-sm text-gray-500 dark:text-slate-400">
+              Propojené OP zůstane nedotčené — nová zakázka z něj půjde vytvořit znovu.
+            </p>
+          )}
         </div>
       </div>
-    </div>
+      {error && <p className="text-sm text-red-600 dark:text-red-400 mt-3" role="alert">{error}</p>}
+    </Dialog>
   )
 }
 
@@ -184,112 +165,65 @@ function ServisModal({ zakazkaId, onClose }: { zakazkaId: string; onClose: () =>
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-md">
-        <div className="px-5 py-4 border-b border-gray-200 dark:border-slate-700 flex items-center justify-between">
-          <h3 className="font-semibold text-gray-900 dark:text-white">Vytvořit servisní zakázku</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-          </button>
-        </div>
-
-        {done ? (
-          <div className="px-5 py-6 text-center space-y-4">
-            <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto">
-              <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-            <p className="text-gray-900 dark:text-white font-medium">Servisní zakázka vytvořena!</p>
-            <div className="flex gap-3 justify-center">
-              <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 dark:text-slate-400 border border-gray-300 dark:border-slate-600 rounded-lg">Zavřít</button>
-              <button
-                onClick={() => { router.push(`/servis/portfolio?zarizeni=${done.zarizeniId}`); onClose() }}
-                className="px-4 py-2 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-lg"
-              >
-                → Přejít na servisní modul
-              </button>
-            </div>
+    <Dialog open onClose={onClose} title="Vytvořit servisní zakázku" size="md">
+      {done ? (
+        <div className="py-2 text-center space-y-4">
+          <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto" aria-hidden>
+            <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
           </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="px-5 py-4 space-y-4">
-            {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+          <p className="text-gray-900 dark:text-white font-medium">Servisní zakázka vytvořena</p>
+          <div className="flex gap-3 justify-center">
+            <Button variant="secondary" onClick={onClose}>Zavřít</Button>
+            <Button onClick={() => { router.push(`/servis/portfolio?zarizeni=${done.zarizeniId}`); onClose() }}>
+              Přejít na servis
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {error && <p className="text-sm text-red-600 dark:text-red-400" role="alert">{error}</p>}
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Název zařízení *</label>
-              <input
-                type="text"
-                value={nazevZarizeni}
-                onChange={e => setNazevZarizeni(e.target.value)}
-                required
-                placeholder="např. Tepelné čerpadlo Daikin"
-                className="w-full border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm"
-                style={{ fontSize: 16 }}
-              />
-            </div>
+          <Field label="Název zařízení" required>
+            <Input value={nazevZarizeni} onChange={e => setNazevZarizeni(e.target.value)} placeholder="např. Tepelné čerpadlo Daikin" />
+          </Field>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Typ zařízení</label>
-              <select
-                value={typZarizeni}
-                onChange={e => setTypZarizeni(e.target.value)}
-                className="w-full border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm"
-              >
-                <option value="TEPELNE_CERPADLO">Tepelné čerpadlo</option>
-                <option value="KLIMATIZACE">Klimatizace</option>
-                <option value="REKUPERACE">Rekuperace</option>
-                <option value="PODLAHOVE_VYTAPENI">Podlahové vytápění</option>
-                <option value="VZDUCHOTECHNIKA">Vzduchotechnika</option>
-                <option value="OHREV_TV">Ohřev TUV</option>
-                <option value="JINE">Jiné</option>
-              </select>
-            </div>
+          <Field label="Typ zařízení">
+            <Select value={typZarizeni} onChange={e => setTypZarizeni(e.target.value)}>
+              <option value="TEPELNE_CERPADLO">Tepelné čerpadlo</option>
+              <option value="KLIMATIZACE">Klimatizace</option>
+              <option value="REKUPERACE">Rekuperace</option>
+              <option value="PODLAHOVE_VYTAPENI">Podlahové vytápění</option>
+              <option value="VZDUCHOTECHNIKA">Vzduchotechnika</option>
+              <option value="OHREV_TV">Ohřev TUV</option>
+              <option value="JINE">Jiné</option>
+            </Select>
+          </Field>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Typ kontraktu</label>
-              <select
-                value={typKontraktu}
-                onChange={e => setTypKontraktu(e.target.value)}
-                className="w-full border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm"
-              >
-                <option value="JEDNOURAZOVY">Jednorázový</option>
-                <option value="ROCNI">Roční</option>
-                <option value="POLOLETNI">Pololetní</option>
-                <option value="DVOULETNI">Dvouletní</option>
-              </select>
-            </div>
+          <Field label="Typ kontraktu">
+            <Select value={typKontraktu} onChange={e => setTypKontraktu(e.target.value)}>
+              <option value="JEDNOURAZOVY">Jednorázový</option>
+              <option value="ROCNI">Roční</option>
+              <option value="POLOLETNI">Pololetní</option>
+              <option value="DVOULETNI">Dvouletní</option>
+            </Select>
+          </Field>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Příští servis *</label>
-              <input
-                type="date"
-                value={pristiServis}
-                onChange={e => setPristiServis(e.target.value)}
-                required
-                className="w-full border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm"
-              />
-            </div>
+          <Field label="Příští servis" required>
+            <Input type="date" value={pristiServis} onChange={e => setPristiServis(e.target.value)} />
+          </Field>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Poznámka</label>
-              <textarea
-                value={poznamka}
-                onChange={e => setPoznamka(e.target.value)}
-                rows={2}
-                placeholder="Volitelná poznámka k servisní zakázce"
-                className="w-full border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-white rounded-lg px-3 py-2 text-sm resize-none"
-              />
-            </div>
+          <Field label="Poznámka">
+            <Textarea value={poznamka} onChange={e => setPoznamka(e.target.value)} rows={2} placeholder="Volitelná poznámka k servisní zakázce" className="resize-none" />
+          </Field>
 
-            <div className="flex gap-3 justify-end pt-1">
-              <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-600 dark:text-slate-400 border border-gray-300 dark:border-slate-600 rounded-lg">Zrušit</button>
-              <button type="submit" disabled={loading || !nazevZarizeni.trim() || !pristiServis} className="px-4 py-2 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-lg disabled:opacity-50">
-                {loading ? 'Vytváří…' : 'Vytvořit servisní ZAK'}
-              </button>
-            </div>
-          </form>
-        )}
-      </div>
-    </div>
+          <div className="flex gap-3 justify-end pt-1">
+            <Button variant="secondary" onClick={onClose}>Zrušit</Button>
+            <Button type="submit" loading={loading} disabled={!nazevZarizeni.trim() || !pristiServis}>Vytvořit servisní zakázku</Button>
+          </div>
+        </form>
+      )}
+    </Dialog>
   )
 }
