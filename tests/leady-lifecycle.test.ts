@@ -93,6 +93,29 @@ describe('DELETE /api/leady/[id]', () => {
   })
 })
 
+describe('převod leadu na klienta', () => {
+  it('firemní lead založí FIRMA klienta s názvem firmy a kontaktní osobou', async () => {
+    const id = await novyLead({ jmeno: 'Jan Novák', firma: 'Vzorová stavba s.r.o.' })
+    const res = await leadConvert(post(id, {}), { params: { id } })
+    expect(res.status).toBe(201)
+    const { clientId } = await res.json()
+    const klient = await prisma.client.findUniqueOrThrow({ where: { id: clientId } })
+    expect(klient.typKlienta).toBe('FIRMA')
+    expect(klient.jmeno).toBe('Vzorová stavba s.r.o.')
+    expect(klient.prijmeni).toBe('Jan Novák')
+  })
+
+  it('lead osoby rozdělí jméno a příjmení', async () => {
+    const id = await novyLead({ jmeno: 'Jana Nováková' })
+    const res = await leadConvert(post(id, {}), { params: { id } })
+    const { clientId } = await res.json()
+    const klient = await prisma.client.findUniqueOrThrow({ where: { id: clientId } })
+    expect(klient.typKlienta).toBe('FYZICKA_OSOBA')
+    expect(klient.jmeno).toBe('Jana')
+    expect(klient.prijmeni).toBe('Nováková')
+  })
+})
+
 describe('status leadu odpovídá skutečnosti', () => {
   it('převod nastaví PREVEDEN i vazbu na OP a klienta', async () => {
     const id = await novyLead({ sluzba: 'rekuperace' })

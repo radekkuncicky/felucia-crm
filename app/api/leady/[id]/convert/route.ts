@@ -47,15 +47,17 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     if (!lead.jmeno?.trim()) {
       return NextResponse.json({ error: 'Lead nemá vyplněné jméno, klienta nelze založit.' }, { status: 400 })
     }
-    // Rozděl jméno na jmeno + prijmeni
+    // Firma: jmeno = název firmy, prijmeni = kontaktní osoba (jako clients/new).
+    // Osoba: rozděl jméno na jmeno + prijmeni.
+    const firma = lead.firma?.trim()
     const nameParts = lead.jmeno.trim().split(' ')
-    const jmeno = nameParts[0] || lead.jmeno
-    const prijmeni = nameParts.slice(1).join(' ') || ''
+    const jmeno = firma || nameParts[0] || lead.jmeno
+    const prijmeni = firma ? lead.jmeno.trim() : (nameParts.slice(1).join(' ') || '')
 
     const klient = await db.client.create({
       data: {
         orgId,
-        typKlienta: lead.firma ? 'FIRMA' : (body.typKlienta || 'FYZICKA_OSOBA'),
+        typKlienta: firma ? 'FIRMA' : (body.typKlienta || 'FYZICKA_OSOBA'),
         jmeno,
         prijmeni,
         email: lead.email || null,
