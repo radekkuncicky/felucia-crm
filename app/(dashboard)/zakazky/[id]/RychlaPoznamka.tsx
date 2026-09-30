@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { usePathname } from 'next/navigation'
 import { api } from '@/lib/api'
 
 interface Props {
@@ -26,6 +27,8 @@ export default function RychlaPoznamka({ zakazkaId }: Props) {
   const [hasSpeech, setHasSpeech] = useState(false)
   const recRef = useRef<AnySpeechRecognition | null>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  // Podstránky (předávák, vyúčtování, objednávka) mají vlastní sticky lištu akcí — FAB by ji překryl
+  const naDetailu = usePathname() === `/zakazky/${zakazkaId}`
 
   useEffect(() => {
     setHasSpeech(!!(window.SpeechRecognition || window.webkitSpeechRecognition))
@@ -76,17 +79,17 @@ export default function RychlaPoznamka({ zakazkaId }: Props) {
 
   return (
     <>
-      {/* Floating button — mobile only */}
-      <button
+      {/* Floating button — mobile only, nad BottomNavem */}
+      {naDetailu && <button
         onClick={() => setOpen(true)}
-        className="md:hidden fixed bottom-6 right-4 z-40 w-14 h-14 rounded-full bg-amber-500 hover:bg-amber-600 text-white shadow-lg flex items-center justify-center transition-all active:scale-95"
+        className="md:hidden fab-bottom fixed right-4 z-40 w-14 h-14 rounded-full bg-amber-500 hover:bg-amber-600 text-white shadow-lg flex items-center justify-center transition-all active:scale-95"
         title="Rychlá poznámka"
         aria-label="Rychlá poznámka"
       >
         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
         </svg>
-      </button>
+      </button>}
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4">

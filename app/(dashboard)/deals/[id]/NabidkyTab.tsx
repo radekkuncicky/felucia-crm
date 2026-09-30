@@ -1882,14 +1882,15 @@ export default function NabidkyTab({
         </div>
       )}
 
-      {/* Mobile sticky bottom bar */}
+      {/* Mobile sticky bottom bar (+ rezerva, aby nepřekryla konec obsahu) */}
+      {selectedQuote && isMobile && <div className="h-24" aria-hidden />}
       {selectedQuote && isMobile && (
         <div className="fixed bottom-16 left-0 right-0 z-40 px-4 pb-2">
-          <div className="bg-[#0D1A0E] border border-green-900/50 rounded-2xl p-3 flex gap-2 shadow-xl">
+          <div className="bg-white dark:bg-[#0D1A0E] border border-gray-200 dark:border-green-900/50 rounded-2xl p-3 flex gap-2 shadow-xl">
             <button
               onClick={addInlineItem}
               disabled={saving}
-              className="flex-1 bg-white/10 text-white rounded-xl py-3 text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50"
+              className="flex-1 bg-gray-100 dark:bg-white/10 text-gray-800 dark:text-white rounded-xl py-3 text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50"
             >
               <span>+</span> Přidat
             </button>
@@ -1901,7 +1902,8 @@ export default function NabidkyTab({
             </button>
             <button
               onClick={() => setMoreOpen(true)}
-              className="w-12 bg-white/10 text-white rounded-xl py-3 text-sm font-medium flex items-center justify-center"
+              aria-label="Další akce"
+              className="w-12 bg-gray-100 dark:bg-white/10 text-gray-800 dark:text-white rounded-xl py-3 text-sm font-medium flex items-center justify-center"
             >
               ⋯
             </button>
