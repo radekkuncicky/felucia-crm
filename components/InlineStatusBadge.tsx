@@ -104,7 +104,8 @@ export default function InlineStatusBadge({ dealId, stav: initialStav, onChange 
 
       <button
         onClick={() => !saving && setOpen(o => !o)}
-        className="flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-semibold transition-all hover:opacity-80 active:scale-95 focus:outline-none"
+        data-compact
+        className="hit-area flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-semibold transition-all hover:opacity-80 active:scale-95 focus:outline-none"
         style={{ background: style.bg, color: style.text }}
         title="Změnit stav"
       >

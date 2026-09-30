@@ -279,7 +279,8 @@ export default function DealStatusBadge({ dealId, currentStav, plan, klientId, k
         <button
           onClick={() => setOpen(o => !o)}
           disabled={saving}
-          className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full cursor-pointer hover:opacity-80 transition-opacity disabled:opacity-60 ${current.color}`}
+          data-compact
+          className={`hit-area flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full cursor-pointer hover:opacity-80 transition-opacity disabled:opacity-60 ${current.color}`}
           title="Klikněte pro změnu stavu"
         >
           <span>{current.label}</span>

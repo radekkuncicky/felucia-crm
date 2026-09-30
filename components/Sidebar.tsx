@@ -37,7 +37,7 @@ function NavLink({ item, collapsed, pathname }: ItemProps) {
       href={item.href}
       title={collapsed ? item.label : undefined}
       aria-current={isActive ? 'page' : undefined}
-      className={`flex items-center gap-3 px-3 py-1.5 rounded-lg text-sm transition-colors ${collapsed ? 'justify-center' : ''} ${
+      className={`flex items-center gap-3 px-3 py-1.5 max-md:min-h-11 rounded-lg text-sm transition-colors ${collapsed ? 'justify-center' : ''} ${
         isActive
           ? 'bg-[#4CAF50]/15 text-[#4CAF50] border-l-[3px] border-[#4CAF50] pl-[9px]'
           : 'text-green-200/70 hover:bg-green-900/30 hover:text-green-100'

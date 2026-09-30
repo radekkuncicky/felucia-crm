@@ -232,7 +232,8 @@ export default function DealsTable({ deals, showZneplatnene = false, showMarze =
           <button
             key={qf.key}
             onClick={() => setQuick(qf.key)}
-            className={`px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+            data-compact
+            className={`hit-area px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
               quickFilter === qf.key
                 ? 'bg-green-600 text-white border-green-600'
                 : 'bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-300 border-gray-300 dark:border-slate-600 hover:border-green-400 hover:text-green-600'

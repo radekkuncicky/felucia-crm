@@ -338,16 +338,13 @@ body {
   overflow-x: hidden;
 }
 
-/* Touch targets min 44×44 on mobile */
+/* Touch targets min 44×44 on mobile — jen tlačítka, ne odkazy v textu.
+   Malé štítky/přepínače mají data-compact + .hit-area (rozšířená plocha bez nafouknutí).
+   Nová tlačítka řeší velikost sama (ui/Button, ui/IconButton) — pravidlo zmizí po převodu zbytku. */
 @media (max-width: 768px) {
-  button, a, [role="button"] {
+  button:not([data-compact]), [role="button"]:not([data-compact]):not(span) {
     min-height: 44px;
     min-width: 44px;
-  }
-  /* Exception: inline text links and badges */
-  a.inline-link, a.badge-link, span[role="button"] {
-    min-height: unset;
-    min-width: unset;
   }
 }
 

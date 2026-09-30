@@ -56,10 +56,11 @@ export default function KdykolivToggle({ zakazkaId, kdykoliv, canEdit }: Props) 
       type="button"
       role="switch"
       aria-checked={value}
+      data-compact
       onClick={toggle}
       disabled={saving}
       title={TITLE}
-      className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border font-medium transition-colors disabled:opacity-60 ${
+      className={`hit-area inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border font-medium transition-colors disabled:opacity-60 ${
         value
           ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800 hover:bg-amber-100 dark:hover:bg-amber-900/50'
           : 'bg-transparent text-gray-500 dark:text-slate-400 border-gray-300 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700'
