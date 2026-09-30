@@ -13,7 +13,11 @@ import {
   IconHammer, IconCreditCard, IconSparkles,
 } from '@/components/ui/Icons'
 import { formatKcCompact } from '@/lib/format'
-import { getPerms, isTechnikView, dealScopeWhere } from '@/lib/permissions'
+import { getPerms, isTechnikView, dealScopeWhere, type Permissions } from '@/lib/permissions'
+import { orgPrisma } from '@/lib/orgPrisma'
+import { getOrgSettings } from '@/lib/orgSettings'
+import { dnesniVyjezdy } from '@/lib/dnesniVyjezdy'
+import { NavigateButton } from '@/components/NavigateButton'
 
 const stavLabels: Record<StavDealu, string> = {
   NOVY: 'Nový', JEDNANI: 'Jednání', NABIDKA: 'Nabídka',
@@ -406,7 +410,7 @@ export default async function DashboardPage() {
 
       {/* Technik: assigned orders & protocols */}
       {isTechnikView(perms) && (
-        <TechnikDashboardSection userId={session!.user.id} orgId={orgId} />
+        <TechnikDashboardSection userId={session!.user.id} orgId={orgId} perms={perms} plan={session!.user.plan} />
       )}
     </div>
     </div>
@@ -473,9 +477,12 @@ function UpcomingActivitiesGroups({
   )
 }
 
-async function TechnikDashboardSection({ userId, orgId }: { userId: string; orgId: string }) {
-  const [zakazky, predavaky] = await Promise.all([
-    prisma.technikZakazka.findMany({
+async function TechnikDashboardSection({ userId, orgId, perms, plan }: { userId: string; orgId: string; perms: Permissions; plan?: string }) {
+  const db = orgPrisma(orgId)
+  const orgSettings = await getOrgSettings(orgId)
+  const [vyjezdy, zakazky, predavaky] = await Promise.all([
+    dnesniVyjezdy(db, { orgId, userId, perms, plan, modulServis: orgSettings.modulServis }),
+    db.technikZakazka.findMany({
       where: { technikId: userId, zakazka: { orgId, stav: { notIn: ['HOTOVO'] } } },
       include: {
         zakazka: {
@@ -485,7 +492,7 @@ async function TechnikDashboardSection({ userId, orgId }: { userId: string; orgI
       orderBy: { prirazeno: 'desc' },
       take: 10,
     }),
-    prisma.predavak.findMany({
+    db.predavak.findMany({
       where: { technikId: userId, orgId, stav: 'ROZPRACOVAN' },
       include: {
         zakazka: { select: { id: true, cislo: true, nazev: true } },
@@ -505,6 +512,40 @@ async function TechnikDashboardSection({ userId, orgId }: { userId: string; orgI
   }
 
   return (
+    <>
+    {/* Dnes: montáže a servisní zásahy na dnešek (lib/dnesniVyjezdy.ts) */}
+    <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-5">
+      <h2 className="font-semibold text-gray-900 dark:text-white mb-3">Dnes {vyjezdy.length > 0 && <span className="text-sm font-normal text-gray-500 dark:text-slate-400">({vyjezdy.length})</span>}</h2>
+      {vyjezdy.length === 0 ? (
+        <p className="text-sm text-gray-500 dark:text-slate-400">Dnes nemáte naplánovaný žádný výjezd.</p>
+      ) : (
+        <ul className="divide-y divide-gray-100 dark:divide-slate-700">
+          {vyjezdy.map(v => (
+            <li key={`${v.typ}-${v.id}`} className="py-3 first:pt-0 last:pb-0">
+              <Link href={v.href} className="block group">
+                <p className="text-xs font-semibold text-gray-500 dark:text-slate-400">
+                  <span className={v.typ === 'servis' ? 'text-purple-600 dark:text-purple-400' : 'text-primary dark:text-primary-light'}>
+                    {v.typ === 'servis' ? 'Servis' : 'Montáž'}
+                  </span>
+                  {' · '}{v.cas ?? 'celý den'}{v.cislo && ` · ${v.cislo}`}
+                </p>
+                <p className="font-medium text-gray-900 dark:text-white group-hover:text-primary truncate">{v.titulek}</p>
+                <p className="text-sm text-gray-500 dark:text-slate-400 truncate">{[v.klient, v.adresa].filter(Boolean).join(' · ')}</p>
+              </Link>
+              <div className="flex flex-wrap items-center gap-2 mt-2">
+                <NavigateButton adresa={v.adresa} size="xs" />
+                {v.telefon && (
+                  <a href={`tel:${v.telefon}`} className="inline-flex items-center gap-1 px-2 py-0.5 text-xs rounded-lg font-medium border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700">
+                    Volat {v.telefon}
+                  </a>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-5">
         <div className="flex items-center justify-between mb-4">
@@ -557,5 +598,6 @@ async function TechnikDashboardSection({ userId, orgId }: { userId: string; orgI
         )}
       </div>
     </div>
+    </>
   )
 }
