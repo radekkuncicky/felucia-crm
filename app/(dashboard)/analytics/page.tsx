@@ -1,12 +1,15 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { redirect } from 'next/navigation'
+import { getPerms } from '@/lib/permissions'
 import { stavLabels } from '@/lib/constants'
 import AnalyticsCharts from './AnalyticsCharts'
 
 export default async function AnalyticsPage() {
   const session = await getServerSession(authOptions)
   const orgId = session!.user.orgId
+  if (!getPerms(session!.user).analytiky) redirect('/dashboard')
 
   const deals = await prisma.deal.findMany({
     where: { orgId },

@@ -1,6 +1,8 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { redirect } from 'next/navigation'
+import { getPerms, dealScopeWhere } from '@/lib/permissions'
 import Link from 'next/link'
 import EmptyState from '@/components/ui/EmptyState'
 import { formatDate, formatCislo } from '@/lib/format'
@@ -8,9 +10,11 @@ import { formatDate, formatCislo } from '@/lib/format'
 export default async function QuotesPage() {
   const session = await getServerSession(authOptions)
   const orgId = session!.user.orgId
+  const dealScope = dealScopeWhere(getPerms(session!.user), session!.user.id)
+  if (dealScope === null) redirect('/dashboard')
 
   const quotes = await prisma.quote.findMany({
-    where: { orgId },
+    where: { orgId, deal: dealScope },
     include: {
       deal: {
         include: { client: true },
