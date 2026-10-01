@@ -1,3 +1,5 @@
+import { DASA_KREDITY_MESICNE } from './dasaLimits'
+
 /** Délka bezplatné zkušební doby nové firmy (dny) */
 export const TRIAL_DNI = 30
 
@@ -10,8 +12,7 @@ export const PLAN_LIMITS = {
     maxContractTemplates: 1,
     canEditTemplateFooter: false,
     canUseAI: false,
-    aiTokensPerMonth: 0,
-    aiCreditsPerMonth: 0,
+    aiCreditsPerMonth: DASA_KREDITY_MESICNE.STARTER,
     hasSubdomain: true,
     hasWhiteLabel: false,
     hasServiceModule: false,
@@ -27,8 +28,7 @@ export const PLAN_LIMITS = {
     maxContractTemplates: 10,
     canEditTemplateFooter: true,
     canUseAI: true,
-    aiTokensPerMonth: 500,
-    aiCreditsPerMonth: 200,
+    aiCreditsPerMonth: DASA_KREDITY_MESICNE.STANDARD,
     hasSubdomain: true,
     hasWhiteLabel: false,
     hasServiceModule: false,
@@ -44,8 +44,7 @@ export const PLAN_LIMITS = {
     maxContractTemplates: Infinity,
     canEditTemplateFooter: true,
     canUseAI: true,
-    aiTokensPerMonth: Infinity,
-    aiCreditsPerMonth: 1000,
+    aiCreditsPerMonth: DASA_KREDITY_MESICNE.PROFESSIONAL,
     hasSubdomain: true,
     hasWhiteLabel: true,
     hasServiceModule: true,
@@ -61,8 +60,7 @@ export const PLAN_LIMITS = {
     maxContractTemplates: Infinity,
     canEditTemplateFooter: true,
     canUseAI: true,
-    aiTokensPerMonth: Infinity,
-    aiCreditsPerMonth: Infinity,
+    aiCreditsPerMonth: DASA_KREDITY_MESICNE.ENTERPRISE,
     hasSubdomain: true,
     hasWhiteLabel: true,
     hasServiceModule: true,

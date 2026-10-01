@@ -1,6 +1,8 @@
 // Sdílená data veřejného webu — čte je landing (UI), JSON-LD a llms.txt,
 // aby se viditelný obsah, strukturovaná data a text pro LLM nerozešly.
 
+import { formatDasaLimit, formatDasaPlany } from './dasaLimits'
+
 export const SITE_URL = 'https://felucia.io'
 export const SITE_NAME = 'Felucia'
 export const SITE_TAGLINE = 'Software pro montážní a servisní firmy'
@@ -41,11 +43,11 @@ export const PLANS: Plan[] = [
   },
   {
     id: 'STANDARD', name: 'Standard', price: 1490,
-    features: ['2–5 uživatelů', 'Neomezené zakázky', 'Všechny šablony + editace', 'AI Dáša (500/měsíc)', 'Ceníky a analytiky'],
+    features: ['2–5 uživatelů', 'Neomezené zakázky', 'Všechny šablony + editace', `AI Dáša (${formatDasaLimit('STANDARD')})`, 'Ceníky a analytiky'],
   },
   {
     id: 'PROFESSIONAL', name: 'Professional', price: 2490,
-    features: ['5–20 uživatelů', 'Vše ze Standard', 'Servisní modul', 'AI Dáša neomezená', 'White-label + API'],
+    features: ['5–20 uživatelů', 'Vše ze Standard', 'Servisní modul', `AI Dáša (${formatDasaLimit('PROFESSIONAL')})`, 'White-label + API'],
   },
   {
     id: 'ENTERPRISE', name: 'Enterprise', price: null,
@@ -65,20 +67,6 @@ export const FAQS: { q: string; a: string }[] = [
   { q: 'Jaká data lze importovat?', a: 'Podporujeme import produktů z Excel souboru (XLSX) přes průvodce v nastavení. Kompletní migraci klientů, zakázek a historie z předchozího systému aktuálně neděláme — probereme na ukázce, co je u vás potřeba.' },
   { q: 'Je nutné připojení k internetu?', a: 'Felucia běží jako webová a mobilní aplikace, takže část funkcí vyžaduje internetové připojení. Plně offline provoz negarantujeme.' },
 ]
-
-/**
- * Účetní software, do kterého umíme předat podklady z vyúčtování.
- * Seznam je připravený na další systémy - stačí doplnit další položku,
- * viditelný text i llms.txt se poskládají samy.
- */
-export const ACCOUNTING_SOFTWARE = ['ABRA Flexi']
-
-/** "ABRA Flexi" / "ABRA Flexi a Pohoda" / "ABRA Flexi, Pohoda a Money S3" */
-export function formatAccountingSoftware(list: string[] = ACCOUNTING_SOFTWARE): string {
-  if (list.length === 0) return ''
-  if (list.length === 1) return list[0]
-  return `${list.slice(0, -1).join(', ')} a ${list[list.length - 1]}`
-}
 
 export interface WorkflowStep {
   /** Pořadí v celém procesu (1-9), ne v rámci fáze. */
@@ -126,7 +114,7 @@ export const WORKFLOW_PHASES: WorkflowPhase[] = [
         title: 'Klient podepíše smlouvu o dílo online',
         desc: 'Smlouvu podepíše klient z počítače nebo mobilu, bez tisku a skenování.',
         bullets: [
-          'Certifikovaný elektronický podpis',
+          'Elektronický podpis ověřený SMS kódem',
           'Podepsaný dokument uložený přímo u obchodního případu',
           'Okamžitý přehled, které smlouvy jsou podepsané',
         ],
@@ -186,11 +174,10 @@ export const WORKFLOW_PHASES: WorkflowPhase[] = [
       },
       {
         n: 8,
-        title: 'Schválíte vyúčtování a odešlete podklady do účetnictví',
-        desc: 'Po kontrole protokolu schválíte vyúčtování a podklady odejdou do účetního softwaru.',
+        title: 'Schválíte vyúčtování',
+        desc: 'Po kontrole protokolu schválíte vyúčtování, které z protokolu vzniklo.',
         bullets: [
           'Schválení vyúčtování odpovědnou osobou',
-          `Export podkladů do účetního softwaru ${formatAccountingSoftware()}`,
           'Zakázka připravená pro navazující servisní návštěvy',
         ],
       },
@@ -232,12 +219,12 @@ export const FEATURE_LIST = [
   'Evidence zařízení, servisní kontrakty a plánované návštěvy',
   'Servisní zásah se zprávou, závadami, doporučením, podpisem a podklady k vyúčtování',
   'Mobilní aplikace Felucia Tech pro techniky v terénu',
-  'AI asistentka Dáša (plány Standard a Professional)',
+  `AI asistentka Dáša (plány ${formatDasaPlany()})`,
 ]
 
 /** Poslední věcná změna obsahu veřejných stránek — pro sitemap <lastmod>. */
 export const CONTENT_UPDATED = {
-  home: '2026-09-16',
+  home: '2026-10-01',
   terms: '2026-07-15',
   privacy: '2026-07-15',
   support: '2026-07-15',

@@ -7,14 +7,7 @@ import { checkRateLimit } from '@/lib/rateLimit'
 import { formatDate } from '@/lib/format'
 import { DASA_TOOLS, executeDasaTool } from '@/lib/dasaTools'
 import { getPerms } from '@/lib/permissions'
-
-// ─── Credit calculation ───────────────────────────────────────────────────────
-
-function calcCredits(inputTokens: number, outputTokens: number, cacheReadTokens: number): number {
-  // Output is 5× more expensive than input; cache reads are near-free (10%)
-  const effective = (inputTokens - cacheReadTokens) + cacheReadTokens * 0.1 + outputTokens * 5
-  return Math.max(1, Math.ceil(effective / 1000))
-}
+import { dasaKredity } from '@/lib/dasaLimits'
 
 // ─── GET — token/credit status ────────────────────────────────────────────────
 
@@ -36,9 +29,6 @@ export async function GET() {
     creditsUsed,
     creditsLimit: creditsLimit === Infinity ? null : creditsLimit,
     creditsTotal: creditsLimit === Infinity ? null : (creditsLimit as number) + creditsExtra,
-    // legacy fields for backwards compat
-    tokensUsed: org?.aiTokensUsed ?? 0,
-    tokenLimit: planLimits.aiTokensPerMonth === Infinity ? null : planLimits.aiTokensPerMonth,
   })
 }
 
@@ -259,7 +249,7 @@ NIKDY nevracej plain text — vždy JSON objekt.`
         }
 
         // Save usage log + update credits
-        const credits = calcCredits(totalInputTokens, totalOutputTokens, totalCacheReadTokens)
+        const credits = dasaKredity(totalInputTokens, totalOutputTokens, totalCacheReadTokens)
         await Promise.all([
           db.aiUsageLog.create({
             data: {
@@ -286,9 +276,6 @@ NIKDY nevracej plain text — vždy JSON objekt.`
           navigateTo,
           creditsUsed: newCreditsUsed,
           creditsLimit: creditsLimit === Infinity ? null : creditsLimit,
-          // legacy
-          tokensUsed: (org?.aiTokensUsed ?? 0) + 1,
-          tokenLimit: planLimits.aiTokensPerMonth === Infinity ? null : planLimits.aiTokensPerMonth,
         })
       }
 

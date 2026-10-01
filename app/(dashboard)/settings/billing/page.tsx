@@ -21,7 +21,8 @@ export default async function BillingPage() {
       select: {
         plan: true,
         planActiveTo: true,
-        aiTokensUsed: true,
+        aiCreditsUsed: true,
+        aiCreditsExtra: true,
         stripeCustomerId: true,
         stripePlanId: true,
         stripeSubscriptionStatus: true,
@@ -67,10 +68,11 @@ export default async function BillingPage() {
         currentPlan={currentPlan}
         userCount={userCount}
         dealCount={dealCount}
-        aiUsed={org?.aiTokensUsed ?? 0}
+        aiCreditsUsed={org?.aiCreditsUsed ?? 0}
         maxUsers={toSafeInt(planLimits.maxUsers)}
         maxDeals={toSafeInt(planLimits.maxDeals)}
-        maxAiTokens={toSafeInt(planLimits.aiTokensPerMonth)}
+        // Stejný strop jako vynucení v /api/ai-assistant: plán + dokoupené kredity
+        maxAiCredits={toSafeInt(planLimits.aiCreditsPerMonth + (org?.aiCreditsExtra ?? 0))}
         canUseAI={planLimits.canUseAI}
         stripeCustomerId={org?.stripeCustomerId ?? null}
         subscriptionStatus={org?.stripeSubscriptionStatus ?? null}

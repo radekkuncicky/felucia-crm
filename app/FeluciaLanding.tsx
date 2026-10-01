@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
+import { formatDasaDostupnost } from '@/lib/dasaLimits'
 import { CONTACT, FAQS, OPERATOR, PLANS, WORKFLOW_HEADING, WORKFLOW_PEREX, WORKFLOW_PHASES, formatPrice, type PlanId } from '@/lib/landing'
 
 // ─── SVG Components ──────────────────────────────────────────────────────────
@@ -543,7 +544,7 @@ function WorkflowSteps({ isDark }: { isDark: boolean }) {
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                           <PhoneCarousel isDark={isDark} shots={TECH_SHOTS} width={260} />
                           <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 11.5, color: isDark ? '#4A6B4A' : '#6B8F6B', marginTop: 14, lineHeight: 1.6, textAlign: 'center', maxWidth: 360 }}>
-                            Aplikace Felucia Tech pro iOS a Android. Ostrý provoz s technikem v terénu doplňujeme postupně s prvními firmami.
+                            Aplikace Felucia Tech pro iOS, verzi pro Android připravujeme. Ostrý provoz s technikem v terénu doplňujeme postupně s prvními firmami.
                           </p>
                         </div>
                       )}
@@ -830,7 +831,7 @@ function DasaSection({ isDark }: { isDark: boolean }) {
                 </div>
               ))}
             </div>
-            <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: '#4A6B4A', marginTop: 20 }}>Dostupná v plánech Standard a Professional · 500 dotazů/měsíc (Standard) nebo neomezeně (Professional)</p>
+            <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: '#4A6B4A', marginTop: 20 }}>{formatDasaDostupnost()}</p>
           </div>
 
           {/* Animated chat */}

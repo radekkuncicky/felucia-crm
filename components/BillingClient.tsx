@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
+import { formatDasaLimit } from '@/lib/dasaLimits'
 
 const PLANS = [
   {
@@ -30,7 +31,7 @@ const PLANS = [
       '2–5 uživatelů',
       'Neomezené obchodní případy',
       'Všechny šablony + editace',
-      'AI asistentka Dáša (500/měs)',
+      `AI asistentka Dáša (${formatDasaLimit('STANDARD')})`,
       'Ceníky a analytiky',
       'Podpora do 24 h',
     ],
@@ -45,7 +46,7 @@ const PLANS = [
       '5–20 uživatelů',
       'Vše ze Standard',
       'Servisní modul',
-      'AI Dáša neomezená',
+      `AI Dáša (${formatDasaLimit('PROFESSIONAL')})`,
       'White-label + API přístup',
       'Prioritní podpora do 4 h',
     ],
@@ -118,10 +119,10 @@ export interface BillingClientProps {
   currentPlan: string
   userCount: number
   dealCount: number
-  aiUsed: number
+  aiCreditsUsed: number
   maxUsers: number
   maxDeals: number
-  maxAiTokens: number
+  maxAiCredits: number
   canUseAI: boolean
   stripeCustomerId: string | null
   subscriptionStatus: string | null
@@ -135,10 +136,10 @@ export default function BillingClient({
   currentPlan,
   userCount,
   dealCount,
-  aiUsed,
+  aiCreditsUsed,
   maxUsers,
   maxDeals,
-  maxAiTokens,
+  maxAiCredits,
   canUseAI,
   stripeCustomerId,
   subscriptionStatus,
@@ -404,9 +405,9 @@ export default function BillingClient({
           {canUseAI && (
             <div>
               <p className="text-sm font-medium text-gray-700 dark:text-slate-300">
-                AI dotazy (tento měsíc)
+                Dáša - kredity (tento měsíc)
               </p>
-              <ProgressBar used={aiUsed} limit={maxAiTokens} />
+              <ProgressBar used={aiCreditsUsed} limit={maxAiCredits} />
             </div>
           )}
         </div>

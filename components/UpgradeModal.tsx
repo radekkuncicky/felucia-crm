@@ -1,4 +1,5 @@
 'use client'
+import { formatDasaLimit } from '@/lib/dasaLimits'
 import { IconSparkles } from '@/components/ui/Icons'
 
 interface Props {
@@ -9,7 +10,7 @@ interface Props {
 const FEATURES = [
   { label: 'Obchodní případy', starter: '20', standard: 'Neomezeno' },
   { label: 'Uživatelé', starter: '1', standard: '5' },
-  { label: 'AI asistentka Dáša', starter: '✗', standard: '500 zpráv/měs' },
+  { label: 'AI asistentka Dáša', starter: '✗', standard: formatDasaLimit('STANDARD') },
   { label: 'Šablony nabídek', starter: '1 šablona', standard: 'Všechny šablony' },
   { label: 'Prioritní podpora', starter: '48 h', standard: '24 h' },
   { label: 'Export PDF', starter: '✓', standard: '✓' },
