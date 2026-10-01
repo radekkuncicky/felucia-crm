@@ -29,7 +29,7 @@ export default function BottomNav({ perms, plan }: { perms: Permissions; plan?: 
   const items = bottomNavItems({ perms, plan, orgSettings })
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-30 bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-green-900/40 md:hidden pb-safe">
+    <nav className="fixed bottom-0 left-0 right-0 z-30 bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-700 md:hidden pb-safe">
       <div className="flex items-stretch">
         {items.map((item) => {
           const isActive = item.exact ? pathname === item.href : pathname === item.href || pathname.startsWith(item.href + '/')

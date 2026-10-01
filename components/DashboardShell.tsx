@@ -43,7 +43,7 @@ export default function DashboardShell({ user, orgSettings, orgNazev, children }
   return (
     <OrgSettingsProvider settings={orgSettings}>
     <TabsProvider showDeals={!!user.perms?.obchod}>
-      <div className="flex h-[100dvh] bg-[#F9FBF9] dark:bg-[#0A120A] transition-colors overflow-hidden">
+      <div className="flex h-[100dvh] bg-[#F9FBF9] dark:bg-slate-900 transition-colors overflow-hidden">
         {/* Mobile overlay backdrop */}
         {sidebarOpen && (
           <div

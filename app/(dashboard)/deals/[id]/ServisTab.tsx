@@ -289,7 +289,7 @@ export default function ServisTab({ zarizeni, kontrakty, orgUsers, klientId }: P
 
           <div className="px-5 py-4">
             {addNavsteva === k.id && (
-              <div className="mb-4 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg space-y-3 border border-green-100 dark:border-green-900/40">
+              <div className="mb-4 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg space-y-3 border border-green-100 dark:border-slate-700">
                 <div className="grid grid-cols-3 gap-3">
                   <div>
                     <label className="block text-xs font-medium text-gray-600 dark:text-slate-400 mb-1">Termín</label>

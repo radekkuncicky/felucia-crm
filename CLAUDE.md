@@ -26,7 +26,13 @@
 - **ENTERPRISE**: neomezené vše, SLA 1h support
 
 ## Branding
-- Felucia: Cyan `#00D4C8`, Purple `#7B2FBE`, Dark `#0A0F1E`
+- Felucia: zelená `#4CAF50` (`primary`, hover `#43A047`, tmavá `#2E7D32`), světlé plochy `#F9FBF9`/`#F4FAF4`, rámečky `#C8E6C9`;
+  sidebar ve světlém režimu lesní `#1A2E1B`. Marketing (landing, přihlášení) má záměrně tmavě zelenou „noc“.
+- Tmavý režim aplikace = neutrální slate (stránka slate-900, karty slate-800, rámečky slate-700), zelená jen akcent.
+  Žádné `#0D1A0E`/`#0A120A` v aplikaci.
+- Barvy v novém kódu: sémantické tokeny z `app/globals.css` (Tailwind `bg-canvas`, `bg-surface`, `bg-surface-2/3`,
+  `border-line`, `text-fg`, `text-muted`) nebo `dark:` třídy ze slate — ne hexy. Globální `.dark` přemapování
+  (`.bg-white` → surface…) jede z týchž tokenů.
 - NANTO interní: Yellow `#FFC93C`, Gray `#4A4A4A`
 
 ## Feature Flags (OrgSettings)

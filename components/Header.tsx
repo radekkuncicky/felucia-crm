@@ -31,7 +31,7 @@ function ThemeToggle() {
     <button
       onClick={() => setTheme(next)}
       title={titles[current]}
-      className="w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 dark:text-green-300/60 hover:bg-[#E8F5E9] dark:hover:bg-green-900/30 transition-colors"
+      className="w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 dark:text-slate-400 hover:bg-[#E8F5E9] dark:hover:bg-slate-800 transition-colors"
     >
       {current === 'dark' ? (
         <svg className="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -52,12 +52,12 @@ function ThemeToggle() {
 
 export default function Header({ user, onMenuClick }: HeaderProps) {
   return (
-    <header className="bg-[#F9FBF9] dark:bg-[#0D1A0E] border-b border-[#C8E6C9] dark:border-green-900/50 px-4 py-3 flex items-center justify-between flex-shrink-0 transition-colors relative">
+    <header className="bg-[#F9FBF9] dark:bg-slate-900 border-b border-[#C8E6C9] dark:border-slate-700 px-4 py-3 flex items-center justify-between flex-shrink-0 transition-colors relative">
       {/* Hamburger + hledání - mobile only (vpravo by lupa lezla přes logo) */}
       <div className="md:hidden flex items-center gap-1">
       <button
         onClick={onMenuClick}
-        className="md:hidden w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 dark:text-green-300/60 hover:bg-[#E8F5E9] dark:hover:bg-green-900/30 transition-colors flex-shrink-0"
+        className="md:hidden w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 dark:text-slate-400 hover:bg-[#E8F5E9] dark:hover:bg-slate-800 transition-colors flex-shrink-0"
         aria-label="Otevřít menu"
       >
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -67,7 +67,7 @@ export default function Header({ user, onMenuClick }: HeaderProps) {
         <button
           onClick={() => window.dispatchEvent(new Event('felucia:command-palette'))}
           aria-label="Hledat"
-          className="w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 dark:text-green-300/60 hover:bg-[#E8F5E9] dark:hover:bg-green-900/30 transition-colors"
+          className="w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 dark:text-slate-400 hover:bg-[#E8F5E9] dark:hover:bg-slate-800 transition-colors"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -83,27 +83,27 @@ export default function Header({ user, onMenuClick }: HeaderProps) {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 7v8M9 10l3-3 3 3" />
           </svg>
         </div>
-        <span className="font-bold text-sm text-gray-900 dark:text-green-100 tracking-wide font-space">FELUCIA</span>
+        <span className="font-bold text-sm text-gray-900 dark:text-slate-100 tracking-wide font-space">FELUCIA</span>
       </div>
 
       {/* Search trigger - desktop (mobil má lupu vlevo u menu) */}
       <button
         onClick={() => window.dispatchEvent(new Event('felucia:command-palette'))}
-        className="hidden md:flex items-center gap-2 w-64 px-3 py-1.5 rounded-lg border border-[#C8E6C9] dark:border-green-900/50 text-gray-400 dark:text-green-300/40 hover:border-primary dark:hover:border-primary text-sm transition-colors"
+        className="hidden md:flex items-center gap-2 w-64 px-3 py-1.5 rounded-lg border border-[#C8E6C9] dark:border-slate-700 text-gray-400 dark:text-slate-400 hover:border-primary dark:hover:border-primary text-sm transition-colors"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
         </svg>
         <span className="flex-1 text-left">Hledat…</span>
-        <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded border border-gray-200 dark:border-green-900/60 text-gray-400 dark:text-green-300/40">⌘K</kbd>
+        <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded border border-gray-200 dark:border-slate-700 text-gray-400 dark:text-slate-400">⌘K</kbd>
       </button>
 
       <div className="flex items-center gap-2 md:gap-3">
         <NotificationBell />
         <ThemeToggle />
-        <div className="hidden sm:block h-5 w-px bg-[#C8E6C9] dark:bg-green-900/50" />
+        <div className="hidden sm:block h-5 w-px bg-[#C8E6C9] dark:bg-slate-700" />
         <div className="hidden sm:block text-right">
-          <p className="text-sm font-semibold text-gray-900 dark:text-green-100">{user.jmeno}</p>
+          <p className="text-sm font-semibold text-gray-900 dark:text-slate-100">{user.jmeno}</p>
           <p className="text-xs text-gray-500 dark:text-green-400/50">{roleLabels[user.role as keyof typeof roleLabels] ?? user.role}</p>
         </div>
       </div>

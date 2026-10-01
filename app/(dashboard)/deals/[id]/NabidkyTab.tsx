@@ -1633,7 +1633,7 @@ export default function NabidkyTab({
               </div>
 
               {/* Mobile souhrn cen */}
-              <div className="bg-green-50 dark:bg-[#0D1A0E] border border-green-200 dark:border-green-900/30 rounded-xl p-4 mb-20">
+              <div className="bg-green-50 dark:bg-slate-800 border border-green-200 dark:border-green-900/30 rounded-xl p-4 mb-20">
                 <div className="flex justify-between text-sm mb-1">
                   <span className="text-green-700/70 dark:text-green-400/60">Bez DPH</span>
                   <span className="text-gray-900 dark:text-white">{formatCena(total)} Kč</span>
@@ -1841,7 +1841,7 @@ export default function NabidkyTab({
       {selectedQuote && isMobile && <div className="h-24" aria-hidden />}
       {selectedQuote && isMobile && (
         <div className="fixed bottom-16 left-0 right-0 z-40 px-4 pb-2">
-          <div className="bg-white dark:bg-[#0D1A0E] border border-gray-200 dark:border-green-900/50 rounded-2xl p-3 flex gap-2 shadow-xl">
+          <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-2xl p-3 flex gap-2 shadow-xl">
             <button
               onClick={addInlineItem}
               disabled={saving}

@@ -129,7 +129,7 @@ export default function KontraktDetailPanel({ kontrakt, orgUsers, onClose, onCha
           </div>
 
           {kontrakt.zarizeni && (
-            <div className="bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-900/40 rounded-lg px-4 py-3 flex items-center gap-3">
+            <div className="bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-slate-700 rounded-lg px-4 py-3 flex items-center gap-3">
               <IconCog className="w-6 h-6 text-green-600 dark:text-green-400" />
               <div>
                 <p className="font-medium text-gray-900 dark:text-white text-sm">{kontrakt.zarizeni.nazev}</p>
@@ -168,7 +168,7 @@ export default function KontraktDetailPanel({ kontrakt, orgUsers, onClose, onCha
             </div>
 
             {addOpen && (
-              <div className="mb-4 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg space-y-3 border border-green-100 dark:border-green-900/40">
+              <div className="mb-4 p-4 bg-green-50 dark:bg-green-900/20 rounded-lg space-y-3 border border-green-100 dark:border-slate-700">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className={lbl}>Plánovaný termín</label>

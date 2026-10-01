@@ -19,6 +19,12 @@ const config: Config = {
           light: '#81C784',
           pale: '#E8F5E9',
         },
+        // Sémantické tokeny (app/globals.css) — samy se přepnou ve tmavém režimu
+        canvas: 'var(--canvas)',
+        surface: { DEFAULT: 'var(--surface)', 2: 'var(--surface-2)', 3: 'var(--surface-3)' },
+        line: { DEFAULT: 'var(--line)', strong: 'var(--line-strong)' },
+        fg: { DEFAULT: 'var(--fg)', 2: 'var(--fg-2)' },
+        muted: 'var(--muted)',
         'fel-green': '#4CAF50',
         'fel-green-dark': '#2E7D32',
         'fel-green-light': '#81C784',

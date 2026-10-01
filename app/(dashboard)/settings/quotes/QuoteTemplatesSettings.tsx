@@ -210,7 +210,7 @@ function PlaceholderPanel({ onInsert }: { onInsert: (text: string) => void }) {
         </svg>
       </button>
       {open && (
-        <div className="px-4 py-3 space-y-3 bg-[#0D1A0E] dark:bg-[#0D1A0E] bg-white">
+        <div className="px-4 py-3 space-y-3 bg-white dark:bg-slate-800">
           {PLACEHOLDER_GROUPS.map(g => (
             <div key={g.label}>
               <div className="text-xs uppercase tracking-widest text-green-600 dark:text-green-500 mb-1.5">{g.label}</div>
@@ -264,13 +264,13 @@ function InstructionsPanel({ onUseStarter }: { onUseStarter: () => void }) {
         </svg>
       </button>
       {open && (
-        <div className="px-4 py-3 text-xs space-y-3 bg-white dark:bg-[#0D1A0E] text-gray-700 dark:text-slate-300">
+        <div className="px-4 py-3 text-xs space-y-3 bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-300">
           <p>Váš HTML bude vykreslen přes Puppeteer na formát <strong>A4</strong> (210 × 297 mm, max obsah 180 mm).</p>
           <ul className="space-y-1.5 list-disc list-inside">
-            <li>Google Fonts přes <code className="bg-gray-100 dark:bg-[#1C3B1C] px-1 rounded">@import url(...)</code> v &lt;style&gt;</li>
-            <li>Okraje stránky: <code className="bg-gray-100 dark:bg-[#1C3B1C] px-1 rounded">@page {'{ margin: 15mm }'}</code></li>
-            <li>Logo: <code className="bg-gray-100 dark:bg-[#1C3B1C] px-1 rounded">{'<img src="{{firma_logo_url}}" style="height:40px">'}</code></li>
-            <li>Položky musí obsahovat smyčku <code className="bg-gray-100 dark:bg-[#1C3B1C] px-1 rounded">{'{{#polozky}}...{{/polozky}}'}</code></li>
+            <li>Google Fonts přes <code className="bg-gray-100 dark:bg-slate-700 px-1 rounded">@import url(...)</code> v &lt;style&gt;</li>
+            <li>Okraje stránky: <code className="bg-gray-100 dark:bg-slate-700 px-1 rounded">@page {'{ margin: 15mm }'}</code></li>
+            <li>Logo: <code className="bg-gray-100 dark:bg-slate-700 px-1 rounded">{'<img src="{{firma_logo_url}}" style="height:40px">'}</code></li>
+            <li>Položky musí obsahovat smyčku <code className="bg-gray-100 dark:bg-slate-700 px-1 rounded">{'{{#polozky}}...{{/polozky}}'}</code></li>
           </ul>
           <div className="pt-1">
             <button
@@ -503,7 +503,7 @@ function InlineTechEditor({
 
   if (template.isSystem) {
     return (
-      <div className="px-5 py-4 bg-gray-50 dark:bg-slate-800/50 border-t border-[#C8E6C9] dark:border-[#1C3B1C] flex items-center gap-2 text-xs text-gray-500 dark:text-slate-400">
+      <div className="px-5 py-4 bg-gray-50 dark:bg-slate-800/50 border-t border-[#C8E6C9] dark:border-slate-700 flex items-center gap-2 text-xs text-gray-500 dark:text-slate-400">
         <span>SYSTEM šablona — nelze upravovat. Systémové šablony mají dynamické sekce dle technologie zakázky.</span>
       </div>
     )
@@ -511,7 +511,7 @@ function InlineTechEditor({
 
   if (template.typ === 'CUSTOM_HTML') {
     return (
-      <div className="px-5 py-5 bg-[#F4FAF4] dark:bg-[#061206] border-t border-[#C8E6C9] dark:border-[#1C3B1C]">
+      <div className="px-5 py-5 bg-[#F4FAF4] dark:bg-slate-900 border-t border-[#C8E6C9] dark:border-slate-700">
         {isPro ? (
           <HtmlTextareaEditor
             templateId={template.id}
@@ -536,7 +536,7 @@ function InlineTechEditor({
 
   if (template.typ === 'BASE' || template.typ === 'STANDARD') {
     return (
-      <div className="px-5 py-5 bg-[#F4FAF4] dark:bg-[#061206] border-t border-[#C8E6C9] dark:border-[#1C3B1C] space-y-4">
+      <div className="px-5 py-5 bg-[#F4FAF4] dark:bg-slate-900 border-t border-[#C8E6C9] dark:border-slate-700 space-y-4">
         <div>
           <label className="block text-xs font-medium text-gray-700 dark:text-slate-300 mb-1">Záhlaví</label>
           <textarea
@@ -1210,14 +1210,14 @@ export default function QuoteTemplatesSettings({
     return mappings.some(m => m.templateId === templateId)
   }
 
-  const sel = 'w-full border border-[#C8E6C9] dark:border-[#1C3B1C] rounded-lg px-3 py-2 text-sm bg-white dark:bg-[#0D1A0E] text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500'
+  const sel = 'w-full border border-[#C8E6C9] dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500'
 
   // Helper: get template for single-mode inline editor
   const singleMappedId = getMappedTemplateId(null)
   const singleMappedTemplate = singleMappedId ? templates.find(t => t.id === singleMappedId) ?? null : null
 
   return (
-    <div className="space-y-6 min-h-screen bg-[#F4FAF4] dark:bg-[#0A120A] -m-6 p-6">
+    <div className="space-y-6 min-h-screen bg-[#F4FAF4] dark:bg-slate-900 -m-6 p-6">
       <ConfirmModal
         isOpen={deleteTemplateId !== null}
         title="Smazat šablonu"
@@ -1245,8 +1245,8 @@ export default function QuoteTemplatesSettings({
       </div>
 
       {/* ── SEKCE 1: Přiřazení ─────────────────────────────────────────────────── */}
-      <div className="bg-white dark:bg-[#0D1A0E] rounded-xl border border-[#C8E6C9] dark:border-[#1C3B1C] overflow-hidden">
-        <div className="px-5 py-4 border-b border-[#C8E6C9] dark:border-[#1C3B1C]">
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-[#C8E6C9] dark:border-slate-700 overflow-hidden">
+        <div className="px-5 py-4 border-b border-[#C8E6C9] dark:border-slate-700">
           <h2 className="font-semibold text-gray-900 dark:text-white">Přiřazení šablon</h2>
           <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">Vyberte, která šablona se použije při exportu PDF nabídky</p>
         </div>
@@ -1263,7 +1263,7 @@ export default function QuoteTemplatesSettings({
         )}
 
         {/* Mode radio */}
-        <div className="px-5 py-4 space-y-2 border-b border-[#C8E6C9] dark:border-[#1C3B1C]">
+        <div className="px-5 py-4 space-y-2 border-b border-[#C8E6C9] dark:border-slate-700">
           {[
             { value: true, label: 'Jedna šablona pro všechny technologie', desc: 'Všechny nabídky použijí stejnou šablonu' },
             { value: false, label: 'Různé šablony podle technologie', desc: 'Každá technologie může mít vlastní šablonu' },
@@ -1274,7 +1274,7 @@ export default function QuoteTemplatesSettings({
               className={`flex items-start gap-3 px-4 py-3 rounded-lg border cursor-pointer transition-colors ${
                 singleTemplate === opt.value
                   ? 'bg-[#F4FAF4] dark:bg-emerald-900/20 border-[#C8E6C9] dark:border-emerald-700'
-                  : 'border-[#C8E6C9] dark:border-[#1C3B1C] hover:bg-[#F4FAF4] dark:hover:bg-[#0A120A]'
+                  : 'border-[#C8E6C9] dark:border-slate-700 hover:bg-[#F4FAF4] dark:hover:bg-slate-700/50'
               }`}
             >
               <div className={`mt-0.5 w-4 h-4 rounded-full border-2 flex-shrink-0 flex items-center justify-center ${singleTemplate === opt.value ? 'border-emerald-600 bg-emerald-600' : 'border-gray-400 dark:border-slate-500'}`}>
@@ -1292,7 +1292,7 @@ export default function QuoteTemplatesSettings({
         {/* Mapping section */}
         {singleTemplate ? (
           /* ── REŽIM A: Jedna šablona ── */
-          <div className="divide-y divide-[#C8E6C9] dark:divide-[#1C3B1C]">
+          <div className="divide-y divide-[#C8E6C9] dark:divide-slate-700">
             <div className="px-5 py-4">
               <label className="block text-xs font-medium text-gray-700 dark:text-slate-300 mb-2">Výchozí šablona</label>
               <div className="flex items-center gap-3">
@@ -1338,7 +1338,7 @@ export default function QuoteTemplatesSettings({
           </div>
         ) : (
           /* ── REŽIM B: Různé šablony podle technologie ── */
-          <div className="divide-y divide-[#C8E6C9] dark:divide-[#1C3B1C]">
+          <div className="divide-y divide-[#C8E6C9] dark:divide-slate-700">
             {TECHNOLOGIES.map(tech => {
               const mappedId = getMappedTemplateId(tech.value)
               const mappedTemplate = mappedId ? templates.find(t => t.id === mappedId) ?? null : null
@@ -1349,8 +1349,8 @@ export default function QuoteTemplatesSettings({
                   {/* Tech row */}
                   <div
                     className={`flex items-center gap-3 px-5 py-3 transition-colors ${
-                      mappedTemplate ? 'cursor-pointer hover:bg-[#F4FAF4] dark:hover:bg-[#0A120A]' : ''
-                    } ${isExpanded ? 'bg-[#F4FAF4] dark:bg-[#0A120A]' : ''}`}
+                      mappedTemplate ? 'cursor-pointer hover:bg-[#F4FAF4] dark:hover:bg-slate-700/50' : ''
+                    } ${isExpanded ? 'bg-[#F4FAF4] dark:bg-slate-900' : ''}`}
                     onClick={() => mappedTemplate && handleTechExpand(tech.value, mappedId)}
                   >
                     {/* Icon + name */}
@@ -1427,7 +1427,7 @@ export default function QuoteTemplatesSettings({
       <div>
         <h2 className="font-semibold text-gray-900 dark:text-white mb-3">Moje šablony</h2>
         {templates.length === 0 ? (
-          <div className="bg-white dark:bg-[#0D1A0E] rounded-xl border border-[#C8E6C9] dark:border-[#1C3B1C] p-8 text-center text-sm text-gray-400">
+          <div className="bg-white dark:bg-slate-800 rounded-xl border border-[#C8E6C9] dark:border-slate-700 p-8 text-center text-sm text-gray-400">
             Žádné šablony
           </div>
         ) : (
@@ -1473,7 +1473,7 @@ export default function QuoteTemplatesSettings({
         <>
           <div className="fixed inset-0 bg-black/40 z-40" onClick={() => setNewModalOpen(false)} />
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="bg-white dark:bg-[#0D1A0E] rounded-xl border border-[#C8E6C9] dark:border-[#1C3B1C] shadow-xl p-6 w-full max-w-sm space-y-4">
+            <div className="bg-white dark:bg-slate-800 rounded-xl border border-[#C8E6C9] dark:border-slate-700 shadow-xl p-6 w-full max-w-sm space-y-4">
               <h3 className="font-semibold text-gray-900 dark:text-white">Nová šablona</h3>
               <div>
                 <label className="block text-xs font-medium text-gray-700 dark:text-slate-300 mb-1">Název</label>
@@ -1488,7 +1488,7 @@ export default function QuoteTemplatesSettings({
                 </select>
               </div>
               <div className="flex gap-2 justify-end pt-1">
-                <button onClick={() => setNewModalOpen(false)} className="text-sm text-gray-500 px-3 py-2 rounded-lg hover:bg-[#F4FAF4] dark:hover:bg-[#0A120A]">Zrušit</button>
+                <button onClick={() => setNewModalOpen(false)} className="text-sm text-gray-500 px-3 py-2 rounded-lg hover:bg-[#F4FAF4] dark:hover:bg-slate-700/50">Zrušit</button>
                 <button onClick={handleNewTemplate} disabled={saving || !newName.trim()} className="text-sm text-white bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 px-4 py-2 rounded-lg">
                   {saving ? 'Vytvářím…' : 'Vytvořit'}
                 </button>
@@ -1520,10 +1520,10 @@ function TemplateCard({
 }) {
   const canEdit = canEditType(plan, template.typ)
   return (
-    <div className={`bg-white dark:bg-[#0D1A0E] rounded-xl border transition-colors ${
+    <div className={`bg-white dark:bg-slate-800 rounded-xl border transition-colors ${
       isAssigned
         ? 'border-emerald-400 dark:border-emerald-600 shadow-sm shadow-emerald-100 dark:shadow-emerald-900/30'
-        : 'border-[#C8E6C9] dark:border-[#1C3B1C]'
+        : 'border-[#C8E6C9] dark:border-slate-700'
     } p-4 flex flex-col gap-3`}>
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
@@ -1540,7 +1540,7 @@ function TemplateCard({
           </span>
         )}
       </div>
-      <div className="flex items-center gap-2 mt-auto pt-1 border-t border-[#C8E6C9] dark:border-[#1C3B1C]">
+      <div className="flex items-center gap-2 mt-auto pt-1 border-t border-[#C8E6C9] dark:border-slate-700">
         {canEdit && <button onClick={onEdit} className="text-xs text-gray-600 dark:text-slate-300 hover:text-emerald-700 dark:hover:text-emerald-400 font-medium">Upravit</button>}
         {template.isSystem && <button onClick={onEdit} className="text-xs text-gray-500 dark:text-slate-400">Zobrazit</button>}
         <button onClick={onPreview} className="text-xs text-emerald-600 dark:text-emerald-400 hover:text-emerald-800 dark:hover:text-emerald-300 font-medium">Náhled PDF</button>

@@ -199,14 +199,14 @@ export default async function SettingsPage() {
                   key={card.href}
                   href={card.href}
                   className="group flex items-start gap-3 p-4 rounded-[14px] border transition-all duration-150
-                    bg-white dark:bg-[#0D1A0E]
+                    bg-white dark:bg-slate-800
                     border-green-200 dark:border-[rgba(76,175,80,0.2)]
                     hover:bg-[#F4FAF4] dark:hover:bg-[#0F2010]
                     hover:border-green-500 dark:hover:border-[#4CAF50]"
                 >
                   <CardIcon>{card.iconPath}</CardIcon>
                   <div className="min-w-0">
-                    <p className="font-semibold truncate text-[#1A2E1B] dark:text-[#E8F5E9]" style={{ fontSize: 13, fontFamily: "'Space Grotesk', sans-serif" }}>
+                    <p className="font-semibold truncate text-[#1A2E1B] dark:text-slate-100" style={{ fontSize: 13, fontFamily: "'Space Grotesk', sans-serif" }}>
                       {card.label}
                     </p>
                     <p className="mt-0.5 text-[#4A6B4A] dark:text-[#81C784]" style={{ fontSize: 11, lineHeight: 1.5 }}>

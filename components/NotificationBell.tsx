@@ -160,7 +160,7 @@ export default function NotificationBell() {
     <div ref={ref} className="relative">
       <button
         onClick={handleOpen}
-        className="relative w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 dark:text-green-300/60 hover:bg-[#E8F5E9] dark:hover:bg-green-900/30 transition-colors"
+        className="relative w-9 h-9 flex items-center justify-center rounded-lg text-gray-500 dark:text-slate-400 hover:bg-[#E8F5E9] dark:hover:bg-green-900/30 transition-colors"
         title="Notifikace"
       >
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -174,9 +174,9 @@ export default function NotificationBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-96 bg-white dark:bg-[#0D1A0E] rounded-xl border border-[#C8E6C9] dark:border-green-900/50 shadow-xl z-50 overflow-hidden">
+        <div className="absolute right-0 top-full mt-2 w-96 bg-white dark:bg-slate-800 rounded-xl border border-[#C8E6C9] dark:border-slate-700 shadow-xl z-50 overflow-hidden">
           {/* Header */}
-          <div className="px-4 py-3 border-b border-[#C8E6C9] dark:border-green-900/50 flex items-center justify-between">
+          <div className="px-4 py-3 border-b border-[#C8E6C9] dark:border-slate-700 flex items-center justify-between">
             <span className="font-semibold text-gray-900 dark:text-white text-sm">
               Notifikace{unreadCount > 0 && <span className="ml-1 text-[#4CAF50]">({unreadCount})</span>}
             </span>
@@ -262,7 +262,7 @@ export default function NotificationBell() {
                     {/* OP bez aktivity */}
                     {data.opBezAktivity.length > 0 && (
                       <div>
-                        <p className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-green-300/50 uppercase tracking-wide bg-[#F4FAF4] dark:bg-[#1A2E1B]/50">
+                        <p className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide bg-[#F4FAF4] dark:bg-slate-700/40">
                           OP bez aktivity ({data.opBezAktivity.length})
                         </p>
                         {data.opBezAktivity.map(d => (
@@ -287,7 +287,7 @@ export default function NotificationBell() {
                     {/* Nesplněné úkoly */}
                     {data.nesplneneUkoly.length > 0 && (
                       <div>
-                        <p className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-green-300/50 uppercase tracking-wide bg-[#F4FAF4] dark:bg-[#1A2E1B]/50">
+                        <p className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide bg-[#F4FAF4] dark:bg-slate-700/40">
                           Nesplněné úkoly ({data.nesplneneUkoly.length})
                         </p>
                         {data.nesplneneUkoly.map(u => (
@@ -314,7 +314,7 @@ export default function NotificationBell() {
                     {/* Nové OP */}
                     {data.noveOP.length > 0 && (
                       <div>
-                        <p className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-green-300/50 uppercase tracking-wide bg-[#F4FAF4] dark:bg-[#1A2E1B]/50">
+                        <p className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide bg-[#F4FAF4] dark:bg-slate-700/40">
                           Nové OP za 24h ({data.noveOP.length})
                         </p>
                         {data.noveOP.map(d => (

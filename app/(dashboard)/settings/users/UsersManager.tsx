@@ -188,8 +188,8 @@ export default function UsersManager({ users: initUsers, maxUsers, activeUserCou
         <div className="flex flex-wrap items-center gap-3 rounded-lg border border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20 px-4 py-3 text-sm text-green-900 dark:text-green-200">
           <div className="min-w-0 flex-1">
             <p className="font-semibold">{linkInfo.title}</p>
-            <p className="truncate font-mono text-xs text-green-800/80 dark:text-green-300/80">{linkInfo.url}</p>
-            <p className="mt-1 text-xs text-green-800/80 dark:text-green-300/80">Pokud e-mail nedorazí, pošlete odkaz jiným kanálem (SMS, WhatsApp…).</p>
+            <p className="truncate font-mono text-xs text-green-800/80 dark:text-slate-300">{linkInfo.url}</p>
+            <p className="mt-1 text-xs text-green-800/80 dark:text-slate-300">Pokud e-mail nedorazí, pošlete odkaz jiným kanálem (SMS, WhatsApp…).</p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <button

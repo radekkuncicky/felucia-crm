@@ -34,7 +34,7 @@ const PRESET_COLORS = ['#4CAF50', '#1565C0', '#E65100', '#6A1B9A', '#C62828', '#
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function LogoLeaf({ dark = false }: { dark?: boolean }) {
-  const bg = dark ? '#0A120A' : 'white'
+  const bg = dark ? '#0f172a' : 'white'
   return (
     <svg width="32" height="32" viewBox="0 0 40 40" fill="none">
       <path d="M20 4C14 4 9 9.5 9 16c0 4 1.5 7.5 4 10l7 10 7-10c2.5-2.5 4-6 4-10 0-6.5-5-12-11-12z" fill="#4CAF50"/>
@@ -340,10 +340,10 @@ export default function OnboardingWizard({
   }
 
   // ── Styles ───────────────────────────────────────────────────────────────────
-  const bg = isDark ? '#0A120A' : '#F4FAF4'
-  const cardBg = isDark ? '#0D1A0E' : '#ffffff'
+  const bg = isDark ? '#0f172a' : '#F4FAF4'
+  const cardBg = isDark ? '#1e293b' : '#ffffff'
   const border = isDark ? 'rgba(76,175,80,0.18)' : '#C8E6C9'
-  const textMain = isDark ? '#E8F5E9' : '#1A2E1B'
+  const textMain = isDark ? '#f1f5f9' : '#1A2E1B'
   const textMuted = isDark ? '#6B8F6B' : '#4A6B4A'
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '11px 14px', borderRadius: 10,

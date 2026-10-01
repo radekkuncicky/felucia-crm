@@ -42,7 +42,7 @@ export function PaywallModal() {
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-6 bg-black/85 dark:bg-black/90">
-      <div className="bg-white dark:bg-[#0D1A0E] rounded-[20px] p-10 max-w-[560px] w-full text-center border border-[rgba(76,175,80,0.2)]">
+      <div className="bg-white dark:bg-slate-800 rounded-[20px] p-10 max-w-[560px] w-full text-center border border-[rgba(76,175,80,0.2)]">
 
         {/* Icon */}
         <div className="w-14 h-14 rounded-[14px] bg-[#4CAF50] mx-auto mb-5 flex items-center justify-center">
@@ -52,7 +52,7 @@ export function PaywallModal() {
           </svg>
         </div>
 
-        <h2 className="font-bold text-2xl text-[#1A2E1B] dark:text-[#E8F5E9] mb-2">
+        <h2 className="font-bold text-2xl text-[#1A2E1B] dark:text-slate-100 mb-2">
           Zkušební verze skončila
         </h2>
         <p className="text-sm text-[#6B8C6B] dark:text-[#7aaa7a] leading-relaxed mb-8 max-w-sm mx-auto">
@@ -71,7 +71,7 @@ export function PaywallModal() {
                 loading && loading !== plan ? 'opacity-60' : '',
                 popular
                   ? 'border-2 border-[#4CAF50] bg-[rgba(76,175,80,0.05)] dark:bg-[rgba(76,175,80,0.08)]'
-                  : 'border border-[#C8E6C9] dark:border-[rgba(76,175,80,0.15)] bg-white dark:bg-[#0A120A]',
+                  : 'border border-[#C8E6C9] dark:border-[rgba(76,175,80,0.15)] bg-white dark:bg-slate-900',
               ].join(' ')}
             >
               {popular && (
@@ -79,7 +79,7 @@ export function PaywallModal() {
                   Nejoblíbenější
                 </div>
               )}
-              <div className="font-bold text-sm text-[#1A2E1B] dark:text-[#E8F5E9] mb-1">
+              <div className="font-bold text-sm text-[#1A2E1B] dark:text-slate-100 mb-1">
                 {label}
               </div>
               <div className="text-lg font-bold text-[#4CAF50] mb-1">

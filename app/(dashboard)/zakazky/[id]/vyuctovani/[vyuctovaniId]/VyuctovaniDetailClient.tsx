@@ -697,18 +697,18 @@ export default function VyuctovaniDetailClient({ vyuctovani: initial, canApprove
 
       {/* ─── Mobile sticky footer — above BottomNav ─── */}
       {stav === 'NAVRH' && (
-        <div className="fixed left-0 right-0 z-40 bg-[#0D1A0E] border-t border-green-900/50 md:hidden"
+        <div className="fixed left-0 right-0 z-40 bg-white dark:bg-slate-800 border-t border-gray-200 dark:border-slate-700 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] md:hidden"
           style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom, 0px))', padding: '10px 16px' }}>
           <div className="flex gap-2">
             <button
               onClick={() => { fetch(`/api/vyuctovani/${initial.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ poznamka }) }); setToast('Uloženo') }}
               disabled={loading}
-              className="flex-1 bg-white/10 text-white rounded-xl py-3.5 font-medium text-sm disabled:opacity-50 min-h-[52px]"
+              className="flex-1 bg-gray-100 dark:bg-white/10 text-gray-800 dark:text-white rounded-xl py-3.5 font-medium text-sm disabled:opacity-50 min-h-[52px]"
             >
               Uložit
             </button>
             <button onClick={handleKeSchvaleni} disabled={loading}
-              className="flex-1 bg-white/10 text-white rounded-xl py-3.5 font-medium text-sm disabled:opacity-50 min-h-[52px]">
+              className="flex-1 bg-gray-100 dark:bg-white/10 text-gray-800 dark:text-white rounded-xl py-3.5 font-medium text-sm disabled:opacity-50 min-h-[52px]">
               {loading ? '…' : 'Odeslat'}
             </button>
             {isManager && (
@@ -721,19 +721,19 @@ export default function VyuctovaniDetailClient({ vyuctovani: initial, canApprove
         </div>
       )}
       {stav === 'KE_SCHVALENI' && isManager && (
-        <div className="fixed left-0 right-0 z-40 bg-[#0D1A0E] border-t border-green-900/50 md:hidden"
+        <div className="fixed left-0 right-0 z-40 bg-white dark:bg-slate-800 border-t border-gray-200 dark:border-slate-700 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] md:hidden"
           style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom, 0px))', padding: '10px 16px' }}>
           <div className="flex gap-3">
-            <button onClick={handleVratit} disabled={loading} className="flex-1 bg-white/10 text-white rounded-xl py-3.5 font-medium text-sm min-h-[52px]">Vrátit</button>
+            <button onClick={handleVratit} disabled={loading} className="flex-1 bg-gray-100 dark:bg-white/10 text-gray-800 dark:text-white rounded-xl py-3.5 font-medium text-sm min-h-[52px]">Vrátit</button>
             <button onClick={() => setConfirmSchvalit(true)} disabled={loading} className="flex-1 bg-green-600 text-white rounded-xl py-3.5 font-medium text-sm min-h-[52px]">Schválit</button>
           </div>
         </div>
       )}
       {stav === 'SCHVALENO' && (
-        <div className="fixed left-0 right-0 z-40 bg-[#0D1A0E] border-t border-green-900/50 md:hidden"
+        <div className="fixed left-0 right-0 z-40 bg-white dark:bg-slate-800 border-t border-gray-200 dark:border-slate-700 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] md:hidden"
           style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom, 0px))', padding: '10px 16px' }}>
           <a href={`/api/vyuctovani/${initial.id}/pdf`} target="_blank" rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 w-full bg-white/10 text-white rounded-xl py-3.5 font-medium text-sm min-h-[52px]">
+            className="flex items-center justify-center gap-2 w-full bg-gray-100 dark:bg-white/10 text-gray-800 dark:text-white rounded-xl py-3.5 font-medium text-sm min-h-[52px]">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
             Stáhnout PDF
           </a>

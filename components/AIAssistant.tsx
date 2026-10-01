@@ -47,33 +47,33 @@ export default function AIAssistant() {
   const dk = resolvedTheme === 'dark'
 
   const c = {
-    panelBg:          dk ? '#0D1A0E' : '#FAFAFA',
-    panelBorder:      dk ? 'rgba(76,175,80,0.12)' : 'rgba(0,0,0,0.06)',
+    panelBg:          dk ? '#1e293b' : '#FAFAFA',
+    panelBorder:      dk ? '#334155' : 'rgba(0,0,0,0.06)',
     panelShadow:      dk ? '0 12px 48px rgba(0,0,0,0.5), 0 2px 8px rgba(0,0,0,0.3)' : '0 12px 48px rgba(0,0,0,0.16), 0 2px 8px rgba(0,0,0,0.08)',
-    headerBg:         dk ? '#0D1A0E' : '#fff',
-    headerBorder:     dk ? '#1A2E1B' : '#F0F0F0',
-    msgAreaBg:        dk ? '#0D1A0E' : '#FAFAFA',
+    headerBg:         dk ? '#1e293b' : '#fff',
+    headerBorder:     dk ? '#334155' : '#F0F0F0',
+    msgAreaBg:        dk ? '#1e293b' : '#FAFAFA',
     titleText:        dk ? '#f1f5f9' : '#111827',
     subtitleText:     dk ? '#81C784' : '#6B7280',
-    hintBoxBg:        dk ? '#0A120A' : '#F9FAFB',
-    hintBoxBorder:    dk ? '#1A2E1B' : '#E5E7EB',
+    hintBoxBg:        dk ? '#0f172a' : '#F9FAFB',
+    hintBoxBorder:    dk ? '#334155' : '#E5E7EB',
     hintLabel:        dk ? '#f1f5f9' : '#111827',
-    hintSub:          dk ? '#6B8C6B' : '#9CA3AF',
-    chipBg:           dk ? '#0A120A' : '#fff',
-    asstBubbleBg:     dk ? '#1A2E1B' : '#fff',
-    asstBubbleBorder: dk ? '#2D4A2E' : '#EBEBEB',
+    hintSub:          dk ? '#94a3b8' : '#9CA3AF',
+    chipBg:           dk ? '#0f172a' : '#fff',
+    asstBubbleBg:     dk ? '#334155' : '#fff',
+    asstBubbleBorder: dk ? '#475569' : '#EBEBEB',
     msgText:          dk ? '#f1f5f9' : '#111827',
-    footerBg:         dk ? '#0D1A0E' : '#fff',
-    footerBorder:     dk ? '#1A2E1B' : '#F0F0F0',
-    inputBg:          dk ? '#0A120A' : '#FAFAFA',
-    inputBorder:      dk ? '#2D4A2E' : '#E5E7EB',
+    footerBg:         dk ? '#1e293b' : '#fff',
+    footerBorder:     dk ? '#334155' : '#F0F0F0',
+    inputBg:          dk ? '#0f172a' : '#FAFAFA',
+    inputBorder:      dk ? '#475569' : '#E5E7EB',
     inputText:        dk ? '#f1f5f9' : '#111827',
-    closeBtnBg:       dk ? '#1A2E1B' : '#F3F4F6',
-    closeBtnText:     dk ? '#81C784' : '#6B7280',
-    micBtnBg:         dk ? '#1A2E1B' : '#F3F4F6',
-    iconColor:        dk ? '#81C784' : '#6B7280',
-    sendDisabledBg:   dk ? '#1A2E1B' : '#E5E7EB',
-    sendDisabledIcon: dk ? '#6B8C6B' : '#9CA3AF',
+    closeBtnBg:       dk ? '#334155' : '#F3F4F6',
+    closeBtnText:     dk ? '#cbd5e1' : '#6B7280',
+    micBtnBg:         dk ? '#334155' : '#F3F4F6',
+    iconColor:        dk ? '#94a3b8' : '#6B7280',
+    sendDisabledBg:   dk ? '#334155' : '#E5E7EB',
+    sendDisabledIcon: dk ? '#64748b' : '#9CA3AF',
   }
 
   useEffect(() => {
@@ -248,7 +248,7 @@ export default function AIAssistant() {
           <span style={{ fontSize: 24 }}>✦</span>
         </button>
         {isOpen && (
-          <div style={{ position: 'fixed', bottom: 90, right: 24, width: 360, zIndex: 1000, background: '#0D1A0E', border: '1px solid rgba(76,175,80,0.2)', borderRadius: 16, padding: '28px 24px', boxShadow: '0 12px 48px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+          <div style={{ position: 'fixed', bottom: 90, right: 24, width: 360, zIndex: 1000, background: '#1e293b', border: '1px solid #334155', borderRadius: 16, padding: '28px 24px', boxShadow: '0 12px 48px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
             <button onClick={() => setIsOpen(false)} style={{ position: 'absolute', top: 12, right: 12, background: 'none', border: 'none', color: '#6B8C6B', cursor: 'pointer', fontSize: 18 }}>✕</button>
             <div style={{ fontSize: 36 }}>✦</div>
             <p style={{ color: '#f1f5f9', fontWeight: 700, fontSize: 15, margin: 0, textAlign: 'center' }}>Dáša — AI asistentka</p>

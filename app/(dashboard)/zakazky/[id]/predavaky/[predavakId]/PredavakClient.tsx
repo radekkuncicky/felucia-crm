@@ -998,7 +998,7 @@ export default function PredavakClient({ predavak: initial, currentUserId, canAp
       {/* ─── Sticky footer (mobile) — positioned ABOVE the BottomNav ─── */}
       {canEdit && stav !== 'PODPISAN' && (
         <div
-          className="fixed left-0 right-0 z-40 bg-white dark:bg-[#0D1A0E] border-t border-gray-200 dark:border-green-900/50 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] md:hidden"
+          className="fixed left-0 right-0 z-40 bg-white dark:bg-slate-800 border-t border-gray-200 dark:border-slate-700 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] md:hidden"
           style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom, 0px))', padding: '10px 16px' }}
         >
           <div className="flex gap-3">
@@ -1026,7 +1026,7 @@ export default function PredavakClient({ predavak: initial, currentUserId, canAp
       {/* Technik editing a submitted protocol */}
       {canEdit && stav === 'PODPISAN' && !isManager && (
         <div
-          className="fixed left-0 right-0 z-40 bg-white dark:bg-[#0D1A0E] border-t border-gray-200 dark:border-green-900/50 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] md:hidden"
+          className="fixed left-0 right-0 z-40 bg-white dark:bg-slate-800 border-t border-gray-200 dark:border-slate-700 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] md:hidden"
           style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom, 0px))', padding: '10px 16px' }}
         >
           <button
@@ -1042,7 +1042,7 @@ export default function PredavakClient({ predavak: initial, currentUserId, canAp
       {/* Manager approve buttons mobile */}
       {isManager && stav === 'PODPISAN' && (
         <div
-          className="fixed left-0 right-0 z-40 bg-white dark:bg-[#0D1A0E] border-t border-gray-200 dark:border-green-900/50 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] md:hidden"
+          className="fixed left-0 right-0 z-40 bg-white dark:bg-slate-800 border-t border-gray-200 dark:border-slate-700 shadow-[0_-4px_12px_rgba(0,0,0,0.06)] md:hidden"
           style={{ bottom: 'calc(3.5rem + env(safe-area-inset-bottom, 0px))', padding: '10px 16px' }}
         >
           <div className="flex gap-3">

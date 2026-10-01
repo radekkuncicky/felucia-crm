@@ -20,13 +20,13 @@ export default function TabBar() {
     const active = isActive(href)
     return `relative flex items-center gap-1.5 px-3 h-9 text-xs font-medium whitespace-nowrap cursor-pointer select-none transition-colors ${
       active
-        ? 'text-gray-900 dark:text-green-100 bg-white dark:bg-[#0D1A0E] border-b-2 border-[#4CAF50]'
-        : 'text-gray-500 dark:text-green-300/50 hover:text-gray-700 dark:hover:text-green-200 hover:bg-[#F4FAF4] dark:hover:bg-[#0D1A0E]/60'
+        ? 'text-gray-900 dark:text-slate-100 bg-white dark:bg-slate-800 border-b-2 border-[#4CAF50]'
+        : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 hover:bg-[#F4FAF4] dark:hover:bg-slate-800/60'
     }`
   }
 
   return (
-    <div className="bg-[#F4FAF4] dark:bg-[#0A120A] border-b border-[#C8E6C9] dark:border-green-900/50 flex items-stretch overflow-hidden shrink-0">
+    <div className="bg-[#F4FAF4] dark:bg-slate-900 border-b border-[#C8E6C9] dark:border-slate-700 flex items-stretch overflow-hidden shrink-0">
       <div className="flex items-stretch overflow-x-auto scrollbar-none flex-1 min-w-0">
         {staticTabs.map(tab => (
           <button
@@ -39,7 +39,7 @@ export default function TabBar() {
         ))}
 
         {dynamicTabs.length > 0 && (
-          <div className="w-px bg-[#C8E6C9] dark:bg-green-900/50 my-2 shrink-0" />
+          <div className="w-px bg-[#C8E6C9] dark:bg-slate-700 my-2 shrink-0" />
         )}
 
         {dynamicTabs.map(tab => (
@@ -62,7 +62,7 @@ export default function TabBar() {
       {dynamicTabs.length > 0 && (
         <button
           onClick={closeAll}
-          className="shrink-0 px-3 h-9 text-xs text-gray-400 dark:text-green-300/40 hover:text-red-500 dark:hover:text-red-400 border-l border-[#C8E6C9] dark:border-green-900/50 whitespace-nowrap transition-colors"
+          className="shrink-0 px-3 h-9 text-xs text-gray-400 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 border-l border-[#C8E6C9] dark:border-slate-700 whitespace-nowrap transition-colors"
         >
           Zavřít vše
         </button>

@@ -5,7 +5,7 @@ export function DalsiKrokCard(props: DalsiKrokVstup) {
   const krok = urcitDalsiKrok(props)
   if (!krok) return null
   return (
-    <div className="bg-primary-pale dark:bg-green-950/30 rounded-xl border border-primary-light/60 dark:border-green-900/60 p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+    <div className="bg-primary-pale dark:bg-green-950/30 rounded-xl border border-primary-light/60 dark:border-slate-700 p-4 flex flex-col sm:flex-row sm:items-center gap-3">
       <div className="flex-1 min-w-0">
         <p className="text-xs font-semibold text-primary-dark dark:text-primary-light uppercase">Další krok</p>
         <p className="font-semibold text-gray-900 dark:text-white mt-0.5">{krok.titulek}</p>
