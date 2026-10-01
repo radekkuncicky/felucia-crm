@@ -337,3 +337,36 @@ test('nový klient: stačí příjmení, po uložení detail klienta + toast; fi
   expect(preteka).toBe(false)
   expect(errors).toEqual([])
 })
+
+test('lead: nový lead v dialogu (Esc zavře), po uložení detail + toast', async ({ page }) => {
+  const errors = trackErrors(page)
+  const jmeno = `Lead E2E ${Date.now()}`
+  await page.goto('/leady')
+  await page.getByRole('button', { name: 'Přidat lead', exact: true }).click()
+  await expect(page.getByRole('dialog', { name: 'Nový lead' })).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog')).toBeHidden()
+
+  await page.getByRole('button', { name: 'Přidat lead', exact: true }).click()
+  await page.getByLabel('Jméno').fill(jmeno)
+  await page.getByLabel('Odh. hodnota (Kč)').fill('150 000')
+  await page.getByRole('button', { name: 'Vytvořit lead' }).click()
+  await page.waitForURL(/\/leady\/[^/]+$/)
+  await expect(page.getByText('Lead vytvořen')).toBeVisible()
+  await expect(page.locator('body')).toContainText(jmeno)
+  const leadId = page.url().split('/').pop()!
+  const lead = await (await page.request.get(`/api/leady/${leadId}`)).json()
+  expect(Number(lead.odhadovanaHodnota)).toBe(150000)
+  expect(errors).toEqual([])
+})
+
+test('zakázky: prázdný výsledek filtru nabídne cestu zpět', async ({ page }) => {
+  const errors = trackErrors(page)
+  await page.goto('/zakazky')
+  await page.getByPlaceholder('Hledat zakázku…').fill('neexistuje-xyz-123')
+  await expect(page.getByRole('heading', { name: 'Nic neodpovídá filtru' })).toBeVisible()
+  await page.getByRole('button', { name: 'Zobrazit všechny zakázky' }).click()
+  await expect(page.getByPlaceholder('Hledat zakázku…')).toHaveValue('')
+  await expect(page.getByRole('row', { name: /E2E Zakázka/ })).toBeVisible()
+  expect(errors).toEqual([])
+})

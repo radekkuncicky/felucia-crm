@@ -43,3 +43,27 @@ export function SkeletonPageHeader() {
     </div>
   )
 }
+
+/** Kostra detailu (klient, OP, lead, produkt, servisní akce) — hlavička, taby, obsah */
+export function SkeletonDetail() {
+  return (
+    <div className="space-y-4" aria-busy="true" aria-label="Načítání">
+      <Skeleton className="h-4 w-40" />
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-5 space-y-3">
+        <Skeleton className="h-7 w-2/3 sm:w-1/3" />
+        <Skeleton className="h-4 w-1/2 sm:w-1/4" />
+        <div className="flex gap-2 pt-1">
+          <Skeleton className="h-9 w-24" />
+          <Skeleton className="h-9 w-24" />
+        </div>
+      </div>
+      <div className="flex gap-2 overflow-hidden">
+        {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-9 w-24 shrink-0" />)}
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <SkeletonCard className="lg:col-span-2" />
+        <SkeletonCard />
+      </div>
+    </div>
+  )
+}

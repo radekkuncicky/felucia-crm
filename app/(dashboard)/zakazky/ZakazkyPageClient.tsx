@@ -10,6 +10,7 @@ import { api } from '@/lib/api'
 import { toast } from 'sonner'
 import { formatKc } from '@/lib/format'
 import FilterDropdown from '@/components/ui/FilterDropdown'
+import EmptyState from '@/components/ui/EmptyState'
 import KeSchvaleniBar, { type KeSchvaleniPolozka } from './KeSchvaleniBar'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -319,7 +320,11 @@ function NovaZakazkaModal({ open, onClose }: { open: boolean; onClose: () => voi
       })
       if (res.ok) {
         const z = await res.json()
+        toast.success('Zakázka vytvořena')
         router.push(`/zakazky/${z.id}`)
+      } else {
+        const d = await res.json().catch(() => ({}))
+        toast.error(d.message ?? d.error ?? 'Zakázku se nepodařilo vytvořit')
       }
     } finally {
       setLoading(false)
@@ -779,12 +784,21 @@ export default function ZakazkyPageClient({ zakazky, vedouci, isTechnik, canCrea
         )}
 
         {filtered.length === 0 ? (
-          <div className="text-center py-16 text-gray-500 dark:text-slate-400">
-            <svg className="w-12 h-12 mx-auto mb-3 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
-            <p className="text-sm">Žádné zakázky nebyly nalezeny</p>
-          </div>
+          localZakazky.length === 0 ? (
+            <EmptyState
+              title={isTechnik ? 'Zatím vám nebyla přidělena žádná zakázka' : 'Zatím žádné zakázky'}
+              description={isTechnik ? undefined : 'Zakázka vznikne z obchodního případu po podpisu smlouvy, nebo ji založte ručně.'}
+              actionLabel={canCreate ? '+ Nová zakázka' : undefined}
+              onAction={() => setShowModal(true)}
+            />
+          ) : (
+            <EmptyState
+              title="Nic neodpovídá filtru"
+              description={pohled === 'aktivni' ? 'Zobrazují se jen aktivní zakázky.' : undefined}
+              actionLabel="Zobrazit všechny zakázky"
+              onAction={() => { setSearch(''); setPohled('vse'); setStavFilter(''); setVedouciFilter(''); setMontazFilter('') }}
+            />
+          )
         ) : (
           <>
             {/* Desktop: table or kanban */}

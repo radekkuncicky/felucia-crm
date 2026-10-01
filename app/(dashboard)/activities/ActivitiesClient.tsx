@@ -1,5 +1,6 @@
 'use client'
 
+import EmptyState from '@/components/ui/EmptyState'
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
@@ -7,6 +8,9 @@ import { useTableColumns, ColumnDef } from '@/hooks/useTableColumns'
 import ColumnConfigButton from '@/components/ColumnConfigButton'
 import { ResizeHandle } from '@/components/ResizeHandle'
 import ConfirmModal from '@/components/ConfirmModal'
+import { Dialog } from '@/components/ui/Dialog'
+import { Button } from '@/components/ui/Button'
+import { Field, Input, Select, Textarea } from '@/components/ui/Field'
 import { formatDate } from '@/lib/format'
 import { ActivityTypeIcon } from '@/components/ui/ActivityTypeIcon'
 import FilterDropdown from '@/components/ui/FilterDropdown'
@@ -75,7 +79,6 @@ interface Props {
 }
 
 const inp = 'border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary w-full'
-const inpDisabled = 'w-full border border-gray-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-gray-50 dark:bg-slate-800 text-gray-400 dark:text-slate-500 cursor-not-allowed'
 
 function StavDot({ stav }: { stav: Stav }) {
   return <span className={`inline-block w-2.5 h-2.5 rounded-full flex-shrink-0 ${stavConfig[stav]?.dot ?? 'bg-gray-400'}`} />
@@ -190,47 +193,52 @@ function ActivityModal({ act, onClose, onSaved, onDeleted, onFollowUp }: {
         }}
       />
     )}
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={e => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <ActivityTypeIcon typ={typ} className="w-6 h-6" />
-            <div>
-              <p className="font-semibold text-gray-900 dark:text-white">Upravit aktivitu</p>
-              <Link href={parentHref(act)} className="text-xs text-green-600 hover:underline" onClick={e => e.stopPropagation()}>
-                {act.deal
-                  ? <>{act.deal.kod ? `${act.deal.kod} · ` : ''}{act.deal.predmet ?? 'Bez předmětu'} — {act.deal.client.jmeno} {act.deal.client.prijmeni}</>
-                  : <>Lead — {act.lead?.jmeno}{act.lead?.firma ? ` (${act.lead.firma})` : ''}</>}
-              </Link>
-            </div>
-          </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-white p-1 rounded">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-          </button>
-        </div>
-
-        <div className="px-6 py-4 space-y-4 max-h-[70vh] overflow-y-auto">
-          {/* Typ + Datum */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">Typ</label>
-              <select value={typ} onChange={e => setTyp(e.target.value)} className={inp}>
-                {typy.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">Datum</label>
-              <input type="date" value={datum} onChange={e => setDatum(e.target.value)} className={inp} />
-            </div>
-          </div>
-
-          {/* Stav switcher */}
+    <Dialog
+      open
+      // Esc / klik mimo nezavře editaci, dokud je nad ní dialog dokončení
+      onClose={() => { if (!dokoncit) onClose() }}
+      size="lg"
+      ariaLabel="Upravit aktivitu"
+      title={
+        <div className="flex items-center gap-3">
+          <ActivityTypeIcon typ={typ} className="w-6 h-6" />
           <div>
-            <label className="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-2">Stav aktivity</label>
+            <p className="font-semibold text-gray-900 dark:text-white">Upravit aktivitu</p>
+            <Link href={parentHref(act)} className="text-xs font-normal text-green-600 hover:underline">
+              {act.deal
+                ? <>{act.deal.kod ? `${act.deal.kod} · ` : ''}{act.deal.predmet ?? 'Bez předmětu'} — {act.deal.client.jmeno} {act.deal.client.prijmeni}</>
+                : <>Lead — {act.lead?.jmeno}{act.lead?.firma ? ` (${act.lead.firma})` : ''}</>}
+            </Link>
+          </div>
+        </div>
+      }
+      footer={
+        <div className="flex w-full items-center justify-between gap-3">
+          <Button variant="ghost" className="text-red-600 dark:text-red-400" onClick={() => setConfirmDelete(true)} loading={deleting}>Smazat</Button>
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={onClose}>Zrušit</Button>
+            <Button onClick={handleSave} loading={saving}>Uložit</Button>
+          </div>
+        </div>
+      }
+    >
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Field label="Typ">
+              <Select value={typ} onChange={e => setTyp(e.target.value)}>
+                {typy.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </Select>
+            </Field>
+            <Field label="Datum">
+              <Input type="date" value={datum} onChange={e => setDatum(e.target.value)} />
+            </Field>
+          </div>
+
+          <div role="group" aria-label="Stav aktivity">
+            <p className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Stav aktivity</p>
             <div className="flex gap-2">
               {(['PLANOVANA', 'DOKONCENA', 'ZRUSENA'] as Stav[]).map(s => (
-                <button key={s} onClick={() => setStav(s)}
+                <button key={s} type="button" aria-pressed={stav === s} onClick={() => setStav(s)}
                   className={`flex-1 px-3 py-2 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5 ${stav === s ? `ring-2 ${stavConfig[s].btn}` : 'bg-gray-50 dark:bg-slate-700/50 text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700'}`}>
                   <StavDot stav={s} />
                   {stavConfig[s].label}
@@ -239,48 +247,22 @@ function ActivityModal({ act, onClose, onSaved, onDeleted, onFollowUp }: {
             </div>
           </div>
 
-          {/* Popis */}
-          <div>
-            <label className="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">Popis / průběh</label>
-            <textarea rows={2} value={popis} onChange={e => setPopis(e.target.value)} className={inp} placeholder="Volitelně — o čem to bude, co se plánuje…" />
-          </div>
-
-          {/* Cíl */}
-          <div>
-            <label className="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">Cíl aktivity</label>
-            <textarea rows={2} value={cil} onChange={e => setCil(e.target.value)} className={inp} placeholder="Co je cílem aktivity..." />
-          </div>
-
-          {/* Výsledek */}
-          <div>
-            <label className="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">Výsledek</label>
-            {stav === 'PLANOVANA' ? (
-              <textarea rows={2} className={inpDisabled} disabled placeholder="Dostupné po změně stavu..." />
-            ) : (
-              <textarea rows={2} value={vysledek} onChange={e => setVysledek(e.target.value)} className={inp} placeholder="Co bylo výsledkem, na čem se dohodli..." />
-            )}
-          </div>
+          <Field label="Popis / průběh">
+            <Textarea rows={2} value={popis} onChange={e => setPopis(e.target.value)} placeholder="Volitelně — o čem to bude, co se plánuje…" />
+          </Field>
+          <Field label="Cíl aktivity">
+            <Textarea rows={2} value={cil} onChange={e => setCil(e.target.value)} placeholder="Co je cílem aktivity..." />
+          </Field>
+          <Field label="Výsledek" hint={stav === 'PLANOVANA' ? 'Dostupné po změně stavu' : undefined}>
+            <Textarea rows={2} value={stav === 'PLANOVANA' ? '' : vysledek} disabled={stav === 'PLANOVANA'} onChange={e => setVysledek(e.target.value)} placeholder="Co bylo výsledkem, na čem se dohodli..." />
+          </Field>
 
           {stav === 'DOKONCENA' && act.stav !== 'DOKONCENA' && (
             <p className="text-xs text-blue-700 dark:text-blue-300">Po uložení můžete rovnou naplánovat navazující aktivitu.</p>
           )}
-          {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+          {error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{error}</p>}
         </div>
-
-        {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-100 dark:border-slate-700 flex items-center justify-between gap-3">
-          <button onClick={() => setConfirmDelete(true)} disabled={deleting} className="text-sm text-red-500 hover:text-red-700 dark:hover:text-red-400 disabled:opacity-50">
-            {deleting ? 'Mažu…' : 'Smazat'}
-          </button>
-          <div className="flex gap-2">
-            <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 dark:text-slate-400 hover:text-gray-800">Zrušit</button>
-            <button onClick={handleSave} disabled={saving} className="px-4 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-hover rounded-lg disabled:opacity-50">
-              {saving ? 'Ukládám…' : 'Uložit'}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    </Dialog>
     </>
   )
 }
@@ -365,9 +347,11 @@ export default function ActivitiesClient({ activities: initActivities, defaultTy
 
       {/* Mobile card layout */}
       <div className="sm:hidden bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 divide-y divide-gray-100 dark:divide-slate-700">
-        {filtered.length === 0 && (
-          <div className="px-4 py-10 text-center text-sm text-gray-400 dark:text-slate-500">Žádné aktivity</div>
-        )}
+        {filtered.length === 0 && (activities.length === 0 ? (
+          <EmptyState compact title="Zatím žádné aktivity" description="Hovory, schůzky a úkoly zapisujete na obchodním případu nebo leadu." actionLabel="Obchodní případy" actionHref="/deals" />
+        ) : (
+          <EmptyState compact title="Nic neodpovídá filtru" actionLabel="Zrušit filtry" onAction={() => { setTyp(''); setOd(''); setDo(''); setStavFilter('') }} />
+        ))}
         {filtered.map(act => (
           <div key={act.id} onClick={() => setSelectedAct(act)} className={`p-4 space-y-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700/50 ${act.stav === 'DOKONCENA' ? 'opacity-60' : ''}`}>
             <div className="flex items-start justify-between gap-2">
@@ -418,8 +402,12 @@ export default function ActivitiesClient({ activities: initActivities, defaultTy
             <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={visibleColumns.length} className="px-5 py-10 text-center text-sm text-gray-400 dark:text-slate-500">
-                    Žádné aktivity
+                  <td colSpan={visibleColumns.length}>
+                    {(activities.length === 0 ? (
+          <EmptyState compact title="Zatím žádné aktivity" description="Hovory, schůzky a úkoly zapisujete na obchodním případu nebo leadu." actionLabel="Obchodní případy" actionHref="/deals" />
+        ) : (
+          <EmptyState compact title="Nic neodpovídá filtru" actionLabel="Zrušit filtry" onAction={() => { setTyp(''); setOd(''); setDo(''); setStavFilter('') }} />
+        ))}
                   </td>
                 </tr>
               )}

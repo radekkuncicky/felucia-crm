@@ -1,5 +1,6 @@
 'use client'
 
+import EmptyState from '@/components/ui/EmptyState'
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import FilterDropdown from '@/components/ui/FilterDropdown'
@@ -191,10 +192,23 @@ export default function ZakazkySeznamClient({ zakazky, orgUsers, canCreate }: Pr
 
       {/* Seznam */}
       {filtered.length === 0 ? (
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-12 text-center">
-          <p className="text-gray-500 dark:text-slate-400">
-            {pohled === 'aktualni' && !fStav && !hledat ? 'Žádná aktuální práce — nic nehoří.' : 'Žádné zakázky odpovídající filtru'}
-          </p>
+        <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700">
+          {zakazky.length === 0 ? (
+            <EmptyState
+              title="Zatím žádné servisní akce"
+              description="Založte servisní akci pro klienta — i pro nového „z ulice“."
+              actionLabel={canCreate ? '+ Nová servisní akce' : undefined}
+              actionHref="/servis/nova"
+            />
+          ) : pohled === 'aktualni' && !fStav && !fTechnik && !fTyp && !hledat ? (
+            <EmptyState title="Žádná aktuální práce — nic nehoří" actionLabel="Plánované ze smluv" onAction={() => setPohled('smlouvy')} />
+          ) : (
+            <EmptyState
+              title="Nic neodpovídá filtru"
+              actionLabel="Zrušit filtry"
+              onAction={() => { setPohled('vse'); setFStav(''); setFTechnik(''); setFTyp(''); setHledat('') }}
+            />
+          )}
         </div>
       ) : (
         <div className="space-y-4">

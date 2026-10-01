@@ -1,5 +1,6 @@
 'use client'
 
+import { toast } from 'sonner'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -42,6 +43,7 @@ export default function GenerujVyuctovaniClient({ zakazka, etapaId }: { zakazka:
       })
       if (res.ok) {
         const v = await res.json()
+        toast.success('Vyúčtování vytvořeno')
         router.push(`/zakazky/${zakazka.id}/vyuctovani/${v.id}`)
       } else {
         const err = await res.json()

@@ -1,5 +1,6 @@
 'use client'
 
+import { toast } from 'sonner'
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -141,6 +142,7 @@ export default function NovaServisniAkceForm({ clients, zarizeniList, orgUsers, 
       { errorMessage: 'Servisní akci se nepodařilo založit.' },
     )
     if (res.ok && res.data) {
+      toast.success('Servisní akce založena')
       router.push(`/servis/zakazky/${res.data.id}`)
       return
     }

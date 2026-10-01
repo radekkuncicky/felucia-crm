@@ -1,5 +1,6 @@
 'use client'
 
+import { toast } from 'sonner'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { SOD_PLACEHOLDER_LABELS } from '@/lib/sodPlaceholders'
@@ -173,6 +174,7 @@ export default function GenerateSodModal({ dealId, templates, onClose }: Props) 
       })
       if (res.ok) {
         const sod = await res.json()
+        toast.success('Smlouva vytvořena')
         router.push(`/sod/${sod.id}`)
       } else {
         const d = await res.json()

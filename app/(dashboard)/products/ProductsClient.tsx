@@ -1,5 +1,6 @@
 'use client'
 
+import EmptyState from '@/components/ui/EmptyState'
 import { toast } from 'sonner'
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
@@ -359,9 +360,22 @@ function ProductsTab({ products, categories, showNakladoveCeny = true, showSklad
             </tbody>
           </table>
         </div>
-        {filtered.length === 0 && (
-          <div className="py-10 text-center text-sm text-gray-400 dark:text-slate-500">Žádné produkty.</div>
-        )}
+        {filtered.length === 0 && (products.length === 0 ? (
+          <EmptyState
+            compact
+            title="Zatím žádné produkty"
+            description="Naimportujte ceník dodavatele z XLSX, nebo přidejte produkt ručně."
+            actionLabel="Import z XLSX"
+            actionHref="/settings/import-products"
+          />
+        ) : (
+          <EmptyState
+            compact
+            title="Nic neodpovídá filtru"
+            actionLabel="Zrušit filtry"
+            onAction={() => { setSearch(''); setCatFilter(''); setShowInactive(true) }}
+          />
+        ))}
       </div>
 
       {/* Bottom bar: count + bulk actions */}

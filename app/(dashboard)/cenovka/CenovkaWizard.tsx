@@ -1,5 +1,6 @@
 'use client'
 
+import { toast } from 'sonner'
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { techLabels } from '@/lib/constants'
@@ -214,6 +215,7 @@ export default function CenovkaWizard({ templates, defaultDph }: { templates: Wi
       })
       if (!quoteRes.ok) throw new Error('Nabídku se nepodařilo vytvořit')
 
+      toast.success('Obchodní případ a nabídka vytvořeny')
       router.push(`/deals/${deal.id}?tab=nabidky`)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Něco se nepovedlo, zkuste to znovu')

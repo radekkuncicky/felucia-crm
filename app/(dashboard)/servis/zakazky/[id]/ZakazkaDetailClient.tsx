@@ -266,6 +266,7 @@ export default function ZakazkaDetailClient({ zakazka, orgUsers, canEdit, isAdmi
       )
       if (!res.ok || !res.data) return
       setReklamaceOpen(false)
+      toast.success('Reklamace založena')
       router.push(`/servis/zakazky/${res.data.id}`)
     } finally {
       setActing(false)

@@ -1,4 +1,5 @@
 import { getServerSession } from 'next-auth'
+import EmptyState from '@/components/ui/EmptyState'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
@@ -61,8 +62,13 @@ export default async function PredavakyPage() {
       </div>
 
       {predavaky.length === 0 ? (
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-12 text-center">
-          <p className="text-gray-400 dark:text-slate-500">Žádné protokoly</p>
+        <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700">
+          <EmptyState
+            title="Zatím žádné protokoly"
+            description="Předávací protokol vyplníte na zakázce v záložce Protokoly a vyúčtování."
+            actionLabel={isTechnik ? 'Moje zakázky' : 'Zakázky'}
+            actionHref="/zakazky"
+          />
         </div>
       ) : (
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">
