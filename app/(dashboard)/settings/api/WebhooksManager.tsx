@@ -21,7 +21,7 @@ const ENTITY_LABELS: Record<string, string> = {
   client: 'Klienti',
   deal: 'Obchodní případy',
   zakazka: 'Zakázky',
-  servisni_zakazka: 'Servisní zakázky',
+  servisni_zakazka: 'Servisní akce',
   lead: 'Leady',
 }
 

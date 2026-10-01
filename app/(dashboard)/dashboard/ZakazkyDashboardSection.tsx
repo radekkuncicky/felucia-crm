@@ -23,7 +23,7 @@ export default async function ZakazkyDashboardSection({ orgId }: { orgId: string
   const kpis = [
     { label: 'Aktivní zakázky', value: aktivni, icon: <IconWrench className="w-[18px] h-[18px]" />, href: '/zakazky', color: 'text-primary dark:text-primary-light' },
     { label: 'V realizaci', value: vRealizaci, icon: <IconCog className="w-[18px] h-[18px]" />, href: '/zakazky?stav=V_REALIZACI', color: 'text-orange-600 dark:text-orange-400' },
-    { label: 'Čekají na schválení PP', value: cekajPP, icon: <IconClipboard className="w-[18px] h-[18px]" />, href: '/predavaky', color: cekajPP > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-500 dark:text-slate-400' },
+    { label: 'Protokoly ke schválení', value: cekajPP, icon: <IconClipboard className="w-[18px] h-[18px]" />, href: '/predavaky', color: cekajPP > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-500 dark:text-slate-400' },
     { label: 'Nevyúčtováno', value: nevyuctovano, icon: <IconCreditCard className="w-[18px] h-[18px]" />, href: '/zakazky?stav=PREDANA', color: nevyuctovano > 0 ? 'text-yellow-600 dark:text-yellow-400' : 'text-gray-500 dark:text-slate-400' },
   ]
 

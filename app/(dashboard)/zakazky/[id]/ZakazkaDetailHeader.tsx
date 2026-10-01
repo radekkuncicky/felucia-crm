@@ -35,7 +35,7 @@ export default function ZakazkaDetailHeader({ zakazkaId, stav, opId, hasServiceM
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
-            + Servisní zakázka
+            + Servisní akce
           </button>
         )}
 
@@ -165,7 +165,7 @@ function ServisModal({ zakazkaId, onClose }: { zakazkaId: string; onClose: () =>
   }
 
   return (
-    <Dialog open onClose={onClose} title="Vytvořit servisní zakázku" size="md">
+    <Dialog open onClose={onClose} title="Vytvořit servisní akci" size="md">
       {done ? (
         <div className="py-2 text-center space-y-4">
           <div className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mx-auto" aria-hidden>
@@ -173,7 +173,7 @@ function ServisModal({ zakazkaId, onClose }: { zakazkaId: string; onClose: () =>
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <p className="text-gray-900 dark:text-white font-medium">Servisní zakázka vytvořena</p>
+          <p className="text-gray-900 dark:text-white font-medium">Servisní akce vytvořena</p>
           <div className="flex gap-3 justify-center">
             <Button variant="secondary" onClick={onClose}>Zavřít</Button>
             <Button onClick={() => { router.push(`/servis/portfolio?zarizeni=${done.zarizeniId}`); onClose() }}>
@@ -215,12 +215,12 @@ function ServisModal({ zakazkaId, onClose }: { zakazkaId: string; onClose: () =>
           </Field>
 
           <Field label="Poznámka">
-            <Textarea value={poznamka} onChange={e => setPoznamka(e.target.value)} rows={2} placeholder="Volitelná poznámka k servisní zakázce" className="resize-none" />
+            <Textarea value={poznamka} onChange={e => setPoznamka(e.target.value)} rows={2} placeholder="Volitelná poznámka k servisní akci" className="resize-none" />
           </Field>
 
           <div className="flex gap-3 justify-end pt-1">
             <Button variant="secondary" onClick={onClose}>Zrušit</Button>
-            <Button type="submit" loading={loading} disabled={!nazevZarizeni.trim() || !pristiServis}>Vytvořit servisní zakázku</Button>
+            <Button type="submit" loading={loading} disabled={!nazevZarizeni.trim() || !pristiServis}>Vytvořit servisní akci</Button>
           </div>
         </form>
       )}

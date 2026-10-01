@@ -437,7 +437,7 @@ export default function ZakazkaDetailClient({ zakazka, orgUsers, canEdit, isAdmi
       >
         <form id={reklamaceFormId} onSubmit={e => { e.preventDefault(); vytvoritReklamaci() }} className="space-y-3">
           <p className="text-sm text-gray-500 dark:text-slate-400">
-            Založí se nová servisní zakázka navázaná na {zakazka.cislo ?? 'tuto zakázku'}.
+            Založí se nová servisní akce navázaná na {zakazka.cislo ?? 'tuto zakázku'}.
             Objeví se v dispečinku mezi nezaplánovanými; tato zakázka zůstane beze změny.
           </p>
           <Field label="Co klient reklamuje">
@@ -453,7 +453,7 @@ export default function ZakazkaDetailClient({ zakazka, orgUsers, canEdit, isAdmi
             <Link href="/servis/zakazky" className="text-sm text-gray-500 dark:text-slate-400 hover:underline">← Zpět na seznam</Link>
             <div className="flex items-center gap-3 mt-1">
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                {zakazka.cislo ?? 'Servisní zakázka'}
+                {zakazka.cislo ?? 'Servisní akce'}
               </h1>
               <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${stavColor(stav)}`}>{stavLabel(stav)}</span>
               {jeUrgentni(form.priorita) && (

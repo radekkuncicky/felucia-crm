@@ -50,14 +50,14 @@ export default function PrivacyPage() {
 
           <Section title="2. Jaká data zpracováváme">
             <p>2.1 <strong>Údaje o uživatelském účtu</strong> — jméno, e-mail, hashované heslo, přiřazená organizace a role. Zde jsme správcem.</p>
-            <p>2.2 <strong>Data klientů, která do Služby vkládá Uživatel</strong> — jméno, telefon, e-mail, adresa, IČO/DIČ, a obchodní historie (obchodní případy, zakázky, servisní zakázky, vyúčtování). Zde jsme zpracovatelem, Uživatel je správcem.</p>
+            <p>2.2 <strong>Data klientů, která do Služby vkládá Uživatel</strong> — jméno, telefon, e-mail, adresa, IČO/DIČ, a obchodní historie (obchodní případy, zakázky, servisní akce, vyúčtování). Zde jsme zpracovatelem, Uživatel je správcem.</p>
             <p>2.3 <strong>Technická a provozní data</strong> — přihlašovací a auditní logy (kdo, kdy, jakou akci provedl — tabulka auditních záznamů), technická metadata (IP adresa u API požadavků kvůli rate-limitingu, chybové logy).</p>
           </Section>
 
           <Section title="3. Právní základ a doba uchování">
             <p>3.1 Údaje uživatelského účtu zpracováváme po dobu trvání smluvního vztahu (plnění smlouvy), účetní a auditní záznamy po dobu vyžadovanou zákonem.</p>
             <p>3.2 Data klientů Uživatele zpracováváme po dobu, po kterou je Uživatel sám potřebuje a udržuje ve Službě — o rozsahu a délce rozhoduje Uživatel jako správce.</p>
-            <p>3.3 Klienta s navázanou obchodní historií (obchodní případ, zakázka, servisní zakázka, vyúčtování) nelze technicky smazat, protože účetní doklady mají zákonnou dobu uchování. Právo na výmaz se u takového klienta naplňuje <strong>anonymizací</strong> — jméno, kontakty, adresa a IČO/DIČ se nevratně nahradí anonymním záznamem, zatímco vazba na obchodní a účetní historii zůstává zachována. Klienta bez jakékoli navázané historie lze smazat rovnou.</p>
+            <p>3.3 Klienta s navázanou obchodní historií (obchodní případ, zakázka, servisní akce, vyúčtování) nelze technicky smazat, protože účetní doklady mají zákonnou dobu uchování. Právo na výmaz se u takového klienta naplňuje <strong>anonymizací</strong> — jméno, kontakty, adresa a IČO/DIČ se nevratně nahradí anonymním záznamem, zatímco vazba na obchodní a účetní historii zůstává zachována. Klienta bez jakékoli navázané historie lze smazat rovnou.</p>
             <p>3.4 Zálohy databáze pořizujeme denně a uchováváme 14 dní, včetně offsite kopie u externího úložiště. Zálohy slouží výhradně pro obnovu provozu po havárii — nejsou samostatným úložištěm osobních údajů a s běžnou rotací automaticky zanikají. Údaje anonymizované nebo smazané v produkční databázi se z již existujících záloh nemažou zvlášť — zaniknou až uplynutím retenční doby dané zálohy (nejdéle 14 dní od jejího pořízení).</p>
           </Section>
 

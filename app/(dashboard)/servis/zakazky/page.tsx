@@ -66,7 +66,7 @@ export default async function ServisZakazkyPage() {
   return (
     <div className="space-y-4">
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 px-6 py-5">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Servisní zakázky</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Servisní akce</h1>
         <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">Všechny servisní zásahy — plánované i reaktivní</p>
       </div>
       <ZakazkySeznamClient

@@ -91,10 +91,10 @@ export default function KlientServisPrehled({ klientId, zarizeni, zakazky, canCr
       {/* Zakázky */}
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">
         <div className="px-5 py-3 border-b border-gray-200 dark:border-slate-700">
-          <h3 className="font-semibold text-gray-900 dark:text-white">Servisní zakázky</h3>
+          <h3 className="font-semibold text-gray-900 dark:text-white">Servisní akce</h3>
         </div>
         {zakazky.length === 0 ? (
-          <p className="px-5 py-6 text-sm text-gray-400 dark:text-slate-500 text-center">Zatím žádná servisní zakázka.</p>
+          <p className="px-5 py-6 text-sm text-gray-400 dark:text-slate-500 text-center">Zatím žádná servisní akce.</p>
         ) : (
           <div className="divide-y divide-gray-100 dark:divide-slate-700">
             {[...otevrene, ...historie].map(z => {

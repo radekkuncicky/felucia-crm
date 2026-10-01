@@ -117,7 +117,7 @@ export default function EtapySection({ zakazkaId, etapy: initialEtapy, vsichniTe
           <p className="text-sm text-gray-400 dark:text-slate-500">Žádné etapy. Zakázka probíhá jako jednofázová montáž.</p>
           {maPraciBezEtapy && (
             <p className="mt-1 text-xs text-gray-400 dark:text-slate-500">
-              Stávající předávák a vyúčtování se při rozdělení zařadí jako Etapa 1.
+              Stávající předávací protokol a vyúčtování se při rozdělení zařadí jako Etapa 1.
             </p>
           )}
           {canEdit && (
@@ -518,7 +518,7 @@ function AddEtapaForm({ zakazkaId, adoptuje, onSave, onCancel }: {
       </p>
       {adoptuje && (
         <p className="text-xs text-gray-500 dark:text-slate-400">
-          Dosavadní práce (předávák a vyúčtování) se zařadí jako Etapa 1. Tady vyplňte, co přijde teď.
+          Dosavadní práce (předávací protokol a vyúčtování) se zařadí jako Etapa 1. Tady vyplňte, co přijde teď.
         </p>
       )}
       <div className="grid sm:grid-cols-3 gap-3">

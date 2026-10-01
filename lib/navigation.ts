@@ -87,7 +87,7 @@ const I = {
   predavaky: { id: 'predavaky', href: '/predavaky', label: 'Předávací protokoly', shortLabel: 'Protokoly', icon: 'contract' },
   sklad: { id: 'sklad', href: '/sklad', label: 'Sklad', icon: 'warehouse' },
   servis: { id: 'servis', href: '/servis', label: 'Přehled', shortLabel: 'Servis', icon: 'wrench', exact: true },
-  servisZakazky: { id: 'servis-zakazky', href: '/servis/zakazky', label: 'Servisní zakázky', icon: 'wrench' },
+  servisZakazky: { id: 'servis-zakazky', href: '/servis/zakazky', label: 'Servisní akce', icon: 'wrench' },
   servisPlan: { id: 'servis-plan', href: '/servis/plan', label: 'Plán servisů', icon: 'calendar' },
   servisPortfolio: { id: 'servis-portfolio', href: '/servis/portfolio', label: 'Portfolio zařízení', icon: 'box' },
   activities: { id: 'activities', href: '/activities', label: 'Úkoly a aktivity', shortLabel: 'Úkoly', icon: 'activity' },

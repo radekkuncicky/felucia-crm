@@ -73,8 +73,8 @@ export const ROLE_DESCRIPTIONS: Record<RoleName, string> = {
   ADMIN: 'Vše včetně nastavení organizace, uživatelů a fakturace.',
   MANAZER: 'Obchod, zakázky, sklad, servis a schvalování. Bez nastavení organizace, uživatelů a fakturace.',
   OBCHODNIK: 'Klienti, leady, obchodní případy a nabídky. Zakázky ze svých OP jen ke čtení, bez nákupních cen.',
-  HLAVNI_TECHNIK: 'Mistr: vidí všechny zakázky, přiřazuje techniky, zakládá předáváky, sklad ke čtení, servis.',
-  TECHNIK: 'Jen přiřazené zakázky, předáváky a fotky. Servis podle oprávnění.',
+  HLAVNI_TECHNIK: 'Mistr: vidí všechny zakázky, přiřazuje techniky, zakládá předávací protokoly, sklad ke čtení, servis.',
+  TECHNIK: 'Jen přiřazené zakázky, předávací protokoly a fotky. Servis podle oprávnění.',
 }
 
 const ALL: Permissions = {
@@ -184,7 +184,7 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     items: [
       { key: 'financeNakupky', label: 'Vidí nákupní ceny a marže', hint: 'OP, zakázky, produkty, sklad, klient, vyúčtování i PDF' },
       { key: 'financeNakupkyEdit', label: 'Edituje nákupní ceny', hint: 'Nákupky a rabaty na položkách, nákladové ceny produktů' },
-      { key: 'financeProdejni', label: 'Vidí prodejní ceny na zakázkách', hint: 'Položky zakázky, předáváky, PDF pro technika' },
+      { key: 'financeProdejni', label: 'Vidí prodejní ceny na zakázkách', hint: 'Položky zakázky, předávací protokoly, PDF pro technika' },
     ],
   },
   {
@@ -209,7 +209,7 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
         ],
       },
       { key: 'zakazkyEdit', label: 'Zakládá a edituje zakázky', hint: 'Etapy, položky, přiřazení techniků, stav' },
-      { key: 'zakazkySchvalovani', label: 'Schvaluje', hint: 'Předáváky, vyúčtování; může být vedoucím zakázky' },
+      { key: 'zakazkySchvalovani', label: 'Schvaluje', hint: 'Předávací protokoly, vyúčtování; může být vedoucím zakázky' },
       { key: 'zakazkyMazani', label: 'Maže zakázky a etapy' },
     ],
   },
@@ -232,7 +232,7 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
     label: 'Servis',
     items: [
       {
-        key: 'servis', label: 'Servisní zakázky', hint: 'Vyžaduje plán Professional a zapnutý modul',
+        key: 'servis', label: 'Servisní akce', hint: 'Vyžaduje plán Professional a zapnutý modul',
         options: [
           { value: 'ZADNY', label: 'Bez přístupu' },
           { value: 'VLASTNI', label: 'Jen vlastní' },

@@ -216,7 +216,7 @@ export async function GET(req: Request) {
     const tech = servisTechnologie(n.zarizeni ?? n.kontrakt?.zarizeni)
     const desc = [
       `Klient: ${klient}`,
-      n.cislo ? `Servisní zakázka: ${n.cislo}` : '',
+      n.cislo ? `Servisní akce: ${n.cislo}` : '',
       n.kontrakt?.nazev ? `Kontrakt: ${n.kontrakt.nazev}` : '',
       n.zarizeni?.nazev ? `Zařízení: ${n.zarizeni.nazev}` : '',
       n.technik ? `Technik: ${n.technik.jmeno}` : '',

@@ -127,7 +127,7 @@ export function generateServisFakturaHtml(
     </div>
     <div style="text-align:right;">
       <div class="doc-title">Podklad pro fakturaci</div>
-      <div class="doc-sub">Servisní zakázka č. ${cislo}</div>
+      <div class="doc-sub">Servisní akce č. ${cislo}</div>
     </div>
   </div>
 
