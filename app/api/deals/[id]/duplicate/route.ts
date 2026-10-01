@@ -5,11 +5,16 @@ import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { StavDealu } from '@prisma/client'
+import { checkDealLimit } from '@/lib/checkPlanLimit'
+import { generateDealKod } from '@/lib/dealKod'
+import { createWithUniqueKod } from '@/lib/uniqueKod'
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (!(await canAccessDeal(session.user, getPerms(session.user), params.id))) return forbidden()
+  const perms = getPerms(session.user)
+  if (!perms.obchod) return forbidden()
+  if (!(await canAccessDeal(session.user, perms, params.id))) return forbidden()
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)
   const userId = session.user.id
@@ -20,11 +25,23 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   })
   if (!deal) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const newDeal = await db.deal.create({
+  // Kopie je nový OP — stejná pravidla jako POST /api/deals (limit plánu, číslo z řady)
+  if (!(await checkDealLimit(orgId))) {
+    return NextResponse.json({
+      error: 'PLAN_LIMIT_REACHED',
+      message: 'Dosáhli jste limitu obchodních případů pro váš plán. Vyšší plán má neomezený počet.',
+      upgradeUrl: '/settings/billing',
+    }, { status: 403 })
+  }
+
+  const newDeal = await createWithUniqueKod(
+    () => generateDealKod(orgId),
+    kod => db.deal.create({
     data: {
       orgId,
       clientId: deal.clientId,
       userId,
+      kod,
       technologie: deal.technologie,
       stav: StavDealu.NOVY,
       predmet: deal.predmet ? `${deal.predmet} (kopie)` : 'Kopie',
@@ -43,7 +60,8 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         })),
       },
     },
-  })
+  }),
+  )
 
   return NextResponse.json(newDeal, { status: 201 })
 }
