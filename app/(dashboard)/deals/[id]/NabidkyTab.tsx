@@ -24,6 +24,7 @@ import ConfirmModal from '@/components/ConfirmModal'
 import { toast } from 'sonner'
 import { Button, buttonClasses } from '@/components/ui/Button'
 import { Menu } from '@/components/ui/Menu'
+import { IconEye, IconDownload, IconCopy, IconArrowRight, IconBell } from '@/components/ui/Icons'
 import { IconButton } from '@/components/ui/IconButton'
 import { Field, Select } from '@/components/ui/Field'
 import MobileSheet from '@/components/MobileSheet'
@@ -1469,22 +1470,22 @@ export default function NabidkyTab({
                 href={`/api/quotes/${selectedQuote.id}/preview`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={buttonClasses({ variant: 'secondary', size: 'sm' })}
+                className={buttonClasses({ variant: 'soft-info', size: 'sm' })}
               >
-                Náhled
+                <IconEye className="w-3.5 h-3.5" aria-hidden />Náhled
               </a>
               {/* Denně používané akce přímo v liště (Radek 2026-10-01) — v menu „⋯“ jen zbytek */}
-              <Button size="sm" variant="secondary" onClick={() => handleExportPdf(selectedQuote.id)} disabled={pdfLoading}>
-                {pdfLoading ? 'Generuji…' : '⬇ PDF'}
+              <Button size="sm" variant="soft-info" onClick={() => handleExportPdf(selectedQuote.id)} disabled={pdfLoading}>
+                <IconDownload className="w-3.5 h-3.5" aria-hidden />{pdfLoading ? 'Generuji…' : 'PDF'}
               </Button>
-              <Button size="sm" variant="secondary" onClick={() => duplicateQuote(selectedQuote.id)} disabled={saving} title="Nová verze nabídky v tomto OP">
-                Duplikovat
+              <Button size="sm" variant="soft-accent" onClick={() => duplicateQuote(selectedQuote.id)} disabled={saving} title="Nová verze nabídky v tomto OP">
+                <IconCopy className="w-3.5 h-3.5" aria-hidden />Duplikovat
               </Button>
-              <Button size="sm" variant="secondary" onClick={() => setShowDuplicateToModal(true)} title="Zkopírovat nabídku do OP jiného klienta">
-                Duplikovat →
+              <Button size="sm" variant="soft-accent" onClick={() => setShowDuplicateToModal(true)} title="Zkopírovat nabídku do OP jiného klienta">
+                <IconCopy className="w-3.5 h-3.5" aria-hidden />Jinému klientovi<IconArrowRight className="w-3.5 h-3.5" aria-hidden />
               </Button>
-              <Button size="sm" variant="secondary" onClick={() => setShowKontrolaModal(true)} title="Naplánovat hovor / e-mail klientovi k této nabídce">
-                Kontrolní kontakt
+              <Button size="sm" variant="soft-attention" onClick={() => setShowKontrolaModal(true)} title="Naplánovat hovor / e-mail klientovi k této nabídce">
+                <IconBell className="w-3.5 h-3.5" aria-hidden />Kontrolní kontakt
               </Button>
               <Button size="sm" onClick={() => setShowShareModal(true)}>Poslat klientovi</Button>
               <Menu

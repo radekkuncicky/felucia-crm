@@ -1,5 +1,6 @@
 'use client'
 
+import { IconDots } from './Icons'
 import { useEffect, useId, useRef, useState } from 'react'
 import { cn } from '@/lib/cn'
 
@@ -68,7 +69,7 @@ export function Menu({ label = 'Další akce', items, trigger, align = 'right', 
         onClick={() => setOpen(o => !o)}
         className="inline-flex items-center justify-center h-8 min-w-8 px-2 rounded-lg border border-gray-300 dark:border-slate-600 text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700 text-sm"
       >
-        {trigger ?? <span aria-hidden>⋯</span>}
+        {trigger ?? <IconDots className="w-4 h-4" aria-hidden />}
       </button>
       {open && (
         <div

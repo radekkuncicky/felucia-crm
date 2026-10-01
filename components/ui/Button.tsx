@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { cn } from '@/lib/cn'
 
 export type ButtonVariant = 'primary' | 'secondary' | 'danger' | 'warning' | 'ghost' | 'link'
+  /** Jemně podbarvené vedlejší akce — barva podle významu (dokument / kopie / připomínka) */
+  | 'soft-info' | 'soft-accent' | 'soft-attention'
 export type ButtonSize = 'sm' | 'md' | 'lg'
 
 const VARIANT: Record<ButtonVariant, string> = {
@@ -14,6 +16,10 @@ const VARIANT: Record<ButtonVariant, string> = {
   warning: 'bg-orange-600 hover:bg-orange-700 text-white font-medium shadow-sm',
   ghost: 'text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700/60',
   link: 'text-primary dark:text-primary-light hover:underline font-medium',
+  // průhledné odstíny (/10, /40) — globální .dark přemapování bg-*-50 by je jinak přebilo
+  'soft-info': 'bg-sky-500/10 hover:bg-sky-500/20 text-sky-800 dark:text-sky-300 border border-sky-500/40 font-medium',
+  'soft-accent': 'bg-violet-500/10 hover:bg-violet-500/20 text-violet-800 dark:text-violet-300 border border-violet-500/40 font-medium',
+  'soft-attention': 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/40 font-medium',
 }
 
 // md = výška 40 px (na mobilu 44 px), sm vizuálně menší s rozšířenou klikací plochou
