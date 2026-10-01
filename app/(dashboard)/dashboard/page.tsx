@@ -90,6 +90,7 @@ export default async function DashboardPage() {
     recentWins,
     dealsThisMonth,
     clientsThisMonth,
+    winsThisMonth,
   ] = await Promise.all([
     showObchod ? prisma.client.count({ where: { orgId } }) : 0,
     showObchod ? prisma.deal.groupBy({ by: ['stav'], where: { orgId, ...ds }, _count: true }) : [],
@@ -143,6 +144,8 @@ export default async function DashboardPage() {
     }),
     showObchod ? prisma.deal.count({ where: { orgId, ...ds, vytvoreno: { gte: startOfMonth } } }) : 0,
     showObchod ? prisma.client.count({ where: { orgId, vytvoreno: { gte: startOfMonth } } }) : 0,
+    // KPI počítá všechny výhry měsíce — recentWins je jen výpis posledních 5
+    showObchod ? prisma.deal.count({ where: { orgId, ...ds, stav: 'USPECH', vytvoreno: { gte: startOfMonth } } }) : 0,
   ])
 
   const countByStav = Object.fromEntries(dealsByStav.map(d => [d.stav, d._count])) as Partial<Record<StavDealu, number>>
@@ -198,7 +201,7 @@ export default async function DashboardPage() {
             iconBg: 'bg-primary-pale dark:bg-green-950/40 text-primary dark:text-primary-light',
             color: 'text-primary dark:text-primary-light',
             delta: dealsThisMonth > 0 ? `+${dealsThisMonth} tento měsíc` : undefined,
-            href: '/deals',
+            href: '/deals?filtr=aktivni',
           },
           {
             label: 'Celkem klientů',
@@ -216,15 +219,15 @@ export default async function DashboardPage() {
             iconBg: 'bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400',
             color: 'text-green-600 dark:text-green-400',
             small: pipeline > 0,
-            href: '/deals',
+            href: '/deals?filtr=aktivni',
           }]),
           {
             label: 'Vyhráno (měsíc)',
-            value: recentWins.length,
+            value: winsThisMonth,
             icon: <IconTrophy className="w-[18px] h-[18px]" />,
             iconBg: 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400',
             color: 'text-amber-600 dark:text-amber-400',
-            href: '/deals',
+            href: '/deals?filtr=vyhraMesic',
           },
           {
             label: 'Win rate',
@@ -233,7 +236,7 @@ export default async function DashboardPage() {
             iconBg: winRate !== null && winRate >= 50 ? 'bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400' : 'bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400',
             color: winRate !== null && winRate >= 50 ? 'text-green-600 dark:text-green-400' : 'text-orange-600 dark:text-orange-400',
             small: true,
-            href: '/deals',
+            href: '/deals?filtr=vyrizene',
           },
         ].map(stat => (
           <Link
@@ -272,7 +275,7 @@ export default async function DashboardPage() {
             const count = countByStav[stage.stav] ?? 0
             const pct = Math.round((count / maxStageCount) * 100)
             return (
-              <Link key={stage.stav} href={`/deals`} className="flex items-center gap-3 group">
+              <Link key={stage.stav} href={`/deals?stav=${stage.stav}`} className="flex items-center gap-3 group">
                 <span className="text-xs text-gray-500 dark:text-slate-400 w-28 flex-shrink-0 text-right">
                   {stavLabels[stage.stav]}
                 </span>

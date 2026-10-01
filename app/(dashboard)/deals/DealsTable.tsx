@@ -59,7 +59,12 @@ function thisYear(dateStr: string) {
   return new Date(dateStr).getFullYear() === new Date().getFullYear()
 }
 
-type QuickFilter = '' | 'vyhraLetos' | 'uzavreniLetos' | 'aktivni' | 'vyrizene' | 'zneplatnene'
+function thisMonth(dateStr: string) {
+  const d = new Date(dateStr), now = new Date()
+  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
+}
+
+type QuickFilter = '' | 'vyhraMesic' | 'vyhraLetos' | 'uzavreniLetos' | 'aktivni' | 'vyrizene' | 'zneplatnene'
 
 const DEFS: ColumnDef[] = [
   { id: 'kod', label: 'Kód', defaultVisible: true, defaultWidth: 96 },
@@ -126,6 +131,7 @@ export default function DealsTable({ deals, showZneplatnene = false, showMarze =
     } else {
       // By default, hide ZNEPLATNENO unless explicitly filtered
       rows = rows.filter(d => (stavOverrides[d.id] ?? d.stav) !== 'ZNEPLATNENO')
+      if (quickFilter === 'vyhraMesic') rows = rows.filter(d => (stavOverrides[d.id] ?? d.stav) === 'USPECH' && thisMonth(d.vytvoreno))
       if (quickFilter === 'vyhraLetos') rows = rows.filter(d => (stavOverrides[d.id] ?? d.stav) === 'USPECH' && thisYear(d.vytvoreno))
       if (quickFilter === 'uzavreniLetos') rows = rows.filter(d => (['USPECH', 'PAS'] as StavDealu[]).includes(stavOverrides[d.id] ?? d.stav) && thisYear(d.vytvoreno))
       if (quickFilter === 'aktivni') rows = rows.filter(d => !(['USPECH', 'PAS'] as StavDealu[]).includes(stavOverrides[d.id] ?? d.stav))
@@ -192,6 +198,7 @@ export default function DealsTable({ deals, showZneplatnene = false, showMarze =
   ]
 
   const quickFilters: { key: QuickFilter; label: string }[] = [
+    { key: 'vyhraMesic', label: 'Výhra tento měsíc' },
     { key: 'vyhraLetos', label: 'Výhra tento rok' },
     { key: 'uzavreniLetos', label: 'Uzavřeno tento rok' },
     { key: 'aktivni', label: 'Aktivní' },

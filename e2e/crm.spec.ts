@@ -440,3 +440,14 @@ test('seznamy na mobilu: hledání + Filtry v panelu, první řádek vysoko', as
   await page.screenshot({ path: 'e2e/.results/zakazky-seznam-390.png', fullPage: false })
   expect(errors).toEqual([])
 })
+
+test('nástěnka: KPI a pipeline vedou do filtrovaných seznamů', async ({ page }) => {
+  const errors = trackErrors(page)
+  await page.goto('/dashboard')
+  await page.getByRole('link', { name: /Aktivní OP/ }).click()
+  await expect(page).toHaveURL(/\/deals\?filtr=aktivni/)
+  await expect(page.getByRole('button', { name: 'Aktivní', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  await page.goto('/zakazky?stav=V_REALIZACI')
+  await expect(page.getByRole('button', { name: /^V realizaci/ })).toBeVisible() // FilterDropdown ukazuje vybraný stav
+  expect(errors).toEqual([])
+})

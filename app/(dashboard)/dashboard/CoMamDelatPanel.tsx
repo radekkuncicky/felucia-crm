@@ -234,7 +234,7 @@ export default function CoMamDelatPanel() {
             <Section title="Servisy po termínu" badge={servisyOpo.length} open={openSection === 'servisyopo'} onToggle={() => toggle('servisyopo')}>
               <div className="space-y-0.5">
                 {servisyOpo.map(s => (
-                  <Link key={s.id} href="/servis/plan" className={rowCls}>
+                  <Link key={s.id} href={`/servis/zakazky/${s.id}`} className={rowCls}>
                     <div className="min-w-0">
                       <p className="text-gray-800 dark:text-slate-200 truncate">
                         {s.kontrakt?.klient.jmeno} {s.kontrakt?.klient.prijmeni}{s.zarizeniNazev ? ` · ${s.zarizeniNazev}` : ''}
@@ -252,7 +252,7 @@ export default function CoMamDelatPanel() {
             <Section title="Blížící se servisy" badge={servisy.length} open={openSection === 'servisy'} onToggle={() => toggle('servisy')}>
               <div className="space-y-0.5">
                 {servisy.map(s => (
-                  <Link key={s.id} href="/servis/plan" className={rowCls}>
+                  <Link key={s.id} href={`/servis/zakazky/${s.id}`} className={rowCls}>
                     <div className="min-w-0">
                       <p className="text-gray-800 dark:text-slate-200 truncate">{s.kontrakt?.klient.jmeno} {s.kontrakt?.klient.prijmeni}</p>
                       {s.kontrakt && <p className="text-xs text-gray-500 dark:text-slate-400 truncate">{s.kontrakt.nazev}</p>}
