@@ -348,7 +348,7 @@ test('lead: nový lead v dialogu (Esc zavře), po uložení detail + toast', asy
   await expect(page.getByRole('dialog')).toBeHidden()
 
   await page.getByRole('button', { name: '+ Přidat lead', exact: true }).first().click()
-  await page.getByLabel('Jméno').fill(jmeno)
+  await page.getByRole('dialog', { name: 'Nový lead' }).getByLabel('Jméno').fill(jmeno)
   await page.getByLabel('Odh. hodnota (Kč)').fill('150 000')
   await page.getByRole('button', { name: 'Vytvořit lead' }).click()
   await page.waitForURL(/\/leady\/[^/]+$/)
@@ -363,10 +363,10 @@ test('lead: nový lead v dialogu (Esc zavře), po uložení detail + toast', asy
 test('zakázky: prázdný výsledek filtru nabídne cestu zpět', async ({ page }) => {
   const errors = trackErrors(page)
   await page.goto('/zakazky')
-  await page.getByPlaceholder('Hledat zakázku…').fill('neexistuje-xyz-123')
+  await page.getByPlaceholder(/Hledat zakázku/).fill('neexistuje-xyz-123')
   await expect(page.getByRole('heading', { name: 'Nic neodpovídá filtru' })).toBeVisible()
   await page.getByRole('button', { name: 'Zobrazit všechny zakázky' }).click()
-  await expect(page.getByPlaceholder('Hledat zakázku…')).toHaveValue('')
+  await expect(page.getByPlaceholder(/Hledat zakázku/)).toHaveValue('')
   await expect(page.getByRole('row', { name: /E2E Zakázka/ })).toBeVisible()
   expect(errors).toEqual([])
 })
@@ -394,4 +394,49 @@ test('detail zakázky: vysvětlivka stavů se otevře klepnutím (ne jen title)'
   await expect(page.getByRole('tooltip')).toBeVisible()
   await page.keyboard.press('Escape')
   await expect(page.getByRole('tooltip')).toBeHidden()
+})
+
+test('seznamy: filtry v URL přežijí reload a návrat z detailu', async ({ page }) => {
+  const errors = trackErrors(page)
+  await page.goto('/zakazky')
+  await page.getByPlaceholder(/Hledat zakázku/).fill('E2E')
+  await page.getByRole('button', { name: 'Vše', exact: true }).click()
+  await expect(page).toHaveURL(/q=E2E/)
+  await expect(page).toHaveURL(/pohled=vse/)
+  await page.reload()
+  await expect(page.getByPlaceholder(/Hledat zakázku/)).toHaveValue('E2E')
+  await expect(page.getByRole('button', { name: 'Vše', exact: true })).toHaveAttribute('aria-pressed', 'true')
+
+  await page.goto('/clients?q=E2E')
+  await expect(page.getByPlaceholder(/Hledat \(jméno/)).toHaveValue('E2E')
+  await page.getByRole('row', { name: /E2E/ }).first().getByRole('link', { name: /Detail/ }).click()
+  await expect(page).toHaveURL(/\/clients\/[^?]+$/)
+  await page.goBack()
+  await expect(page.getByPlaceholder(/Hledat \(jméno/)).toHaveValue('E2E')
+  expect(errors).toEqual([])
+})
+
+test('seznamy na mobilu: hledání + Filtry v panelu, první řádek vysoko', async ({ page }) => {
+  const errors = trackErrors(page)
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/deals')
+  // Selecty filtrů nejsou v řádku — jen tlačítko Filtry
+  const filtry = page.getByRole('button', { name: /^Filtry/ })
+  await expect(filtry).toBeVisible()
+  await filtry.click()
+  const panel = page.getByRole('dialog', { name: 'Filtry' })
+  await expect(panel).toBeVisible()
+  await panel.getByRole('combobox', { name: 'Stav' }).selectOption('NOVY')
+  await panel.getByRole('button', { name: 'Hotovo' }).click()
+  await expect(panel).toBeHidden()
+  await expect(filtry).toHaveText('Filtry (1)')
+  await expect(page).toHaveURL(/stav=NOVY/)
+
+  for (const url of ['/zakazky', '/leady', '/products', '/activities', '/servis/zakazky', '/clients']) {
+    await page.goto(url)
+    const preteka = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)
+    expect(preteka, url).toBe(false)
+  }
+  await page.screenshot({ path: 'e2e/.results/zakazky-seznam-390.png', fullPage: false })
+  expect(errors).toEqual([])
 })

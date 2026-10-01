@@ -10,6 +10,10 @@ import { api } from '@/lib/api'
 import { toast } from 'sonner'
 import { formatKc } from '@/lib/format'
 import FilterDropdown from '@/components/ui/FilterDropdown'
+import ListToolbar from '@/components/ui/ListToolbar'
+import ShowMore from '@/components/ui/ShowMore'
+import { useUrlFilters } from '@/hooks/useUrlFilters'
+import { useShowMore } from '@/hooks/useShowMore'
 import EmptyState from '@/components/ui/EmptyState'
 import KeSchvaleniBar, { type KeSchvaleniPolozka } from './KeSchvaleniBar'
 
@@ -494,11 +498,18 @@ export default function ZakazkyPageClient({ zakazky, vedouci, isTechnik, canCrea
 
   // View & filter state
   const [view, setView] = useState<'table' | 'kanban'>('table')
-  const [search, setSearch] = useState('')
-  const [pohled, setPohled] = useState<'aktivni' | 'hotove' | 'vse'>('aktivni')
-  const [stavFilter, setStavFilter] = useState<ZakazkaStav | ''>('')
-  const [vedouciFilter, setVedouciFilter] = useState('')
-  const [montazFilter, setMontazFilter] = useState<'' | 'tento_tyden' | 'pristy_tyden' | 'bez_terminu' | 'po_terminu' | 'kdykoliv'>('')
+  // Filtry v URL — návrat z detailu i odkaz z nástěnky zachová pohled
+  const { values: uf, set: setUf, reset: resetUf, activeCount: filterCount } = useUrlFilters({ q: '', pohled: 'aktivni', stav: '', vedouci: '', montaz: '' })
+  const search = uf.q
+  const pohled = uf.pohled as 'aktivni' | 'hotove' | 'vse'
+  const stavFilter = uf.stav as ZakazkaStav | ''
+  const vedouciFilter = uf.vedouci
+  const montazFilter = uf.montaz as '' | 'tento_tyden' | 'pristy_tyden' | 'bez_terminu' | 'po_terminu' | 'kdykoliv'
+  const setSearch = (v: string) => setUf('q', v)
+  const setPohled = (v: 'aktivni' | 'hotove' | 'vse') => setUf('pohled', v)
+  const setStavFilter = (v: ZakazkaStav | '') => setUf('stav', v)
+  const setVedouciFilter = (v: string) => setUf('vedouci', v)
+  const setMontazFilter = (v: typeof montazFilter) => setUf('montaz', v)
   const [sortByMontaz, setSortByMontaz] = useState<'asc' | 'desc' | null>(null)
   const [showModal, setShowModal] = useState(false)
   const [hotoveExpanded, setHotoveExpanded] = useState(false)
@@ -642,8 +653,9 @@ export default function ZakazkyPageClient({ zakazky, vedouci, isTechnik, canCrea
     activeFilters.push({ key: 'montaz', label: montazLabels[montazFilter], clear: () => setMontazFilter('') })
   }
 
+  const more = useShowMore(filtered, [uf, view])
   const selectedSet = new Set(selectedIds)
-  const allFilteredSelected = filtered.length > 0 && filtered.every(z => selectedSet.has(z.id))
+  const allFilteredSelected = more.visible.length > 0 && more.visible.every(z => selectedSet.has(z.id))
 
   const stavOptions = [
     { value: '', label: 'Všechny stavy' },
@@ -725,44 +737,38 @@ export default function ZakazkyPageClient({ zakazky, vedouci, isTechnik, canCrea
 
         {canApprove && <KeSchvaleniBar polozky={keSchvaleni} />}
 
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
-          {view !== 'kanban' && (
-            <div className="flex gap-2">
-              {([['aktivni', 'Aktivní', activeCount], ['hotove', 'Hotové', hotoveCount], ['vse', 'Vše', null]] as const).map(([key, label, count]) => (
-                <button
-                  key={key}
-                  onClick={() => { setPohled(key); setStavFilter('') }}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    pohled === key && !stavFilter
-                      ? 'bg-green-600 text-white'
-                      : 'bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700'
-                  }`}
-                >
-                  {label}
-                  {count !== null && (
-                    <span className={`ml-1.5 text-xs font-semibold ${pohled === key && !stavFilter ? 'text-green-100' : 'text-gray-400 dark:text-slate-500'}`}>
-                      {count}
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
-          )}
-          <div className="relative flex-1 min-w-48 max-w-xs">
-            <svg className="absolute left-2.5 top-2.5 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Hledat zakázku…"
-              className="w-full pl-9 pr-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary" />
-          </div>
+        <ListToolbar
+          search={search}
+          onSearch={setSearch}
+          searchPlaceholder="Hledat zakázku (číslo, název, klient)…"
+          activeCount={filterCount(['q', 'pohled'])}
+          onReset={() => resetUf(['pohled'])}
+          chips={view !== 'kanban' && ([['aktivni', 'Aktivní', activeCount], ['hotove', 'Hotové', hotoveCount], ['vse', 'Vše', null]] as const).map(([key, label, count]) => (
+            <button
+              key={key}
+              onClick={() => { setPohled(key); setStavFilter('') }}
+              aria-pressed={pohled === key && !stavFilter}
+              className={`flex-shrink-0 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                pohled === key && !stavFilter
+                  ? 'bg-green-600 text-white'
+                  : 'bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700'
+              }`}
+            >
+              {label}
+              {count !== null && (
+                <span className={`ml-1.5 text-xs font-semibold ${pohled === key && !stavFilter ? 'text-green-100' : 'text-gray-500 dark:text-slate-400'}`}>
+                  {count}
+                </span>
+              )}
+            </button>
+          ))}
+        >
           <FilterDropdown value={stavFilter} onChange={v => setStavFilter(v as ZakazkaStav | '')} options={stavOptions} />
           {!isTechnik && vedouci.length > 0 && (
             <FilterDropdown value={vedouciFilter} onChange={setVedouciFilter} options={vedouciOptions} />
           )}
           <FilterDropdown value={montazFilter} onChange={v => setMontazFilter(v as typeof montazFilter)} options={montazOptions} />
-        </div>
+        </ListToolbar>
 
         {/* Filter chips + count */}
         {(activeFilters.length > 0 || filtered.length !== localZakazky.length) && (
@@ -775,7 +781,7 @@ export default function ZakazkyPageClient({ zakazky, vedouci, isTechnik, canCrea
               </span>
             ))}
             {activeFilters.length > 1 && (
-              <button onClick={() => { setSearch(''); setStavFilter(''); setVedouciFilter(''); setMontazFilter('') }}
+              <button onClick={() => resetUf(['pohled'])}
                 className="text-xs text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 underline">
                 Zrušit vše
               </button>
@@ -796,7 +802,7 @@ export default function ZakazkyPageClient({ zakazky, vedouci, isTechnik, canCrea
               title="Nic neodpovídá filtru"
               description={pohled === 'aktivni' ? 'Zobrazují se jen aktivní zakázky.' : undefined}
               actionLabel="Zobrazit všechny zakázky"
-              onAction={() => { setSearch(''); setPohled('vse'); setStavFilter(''); setVedouciFilter(''); setMontazFilter('') }}
+              onAction={() => { resetUf(); setPohled('vse') }}
             />
           )
         ) : (
@@ -816,7 +822,7 @@ export default function ZakazkyPageClient({ zakazky, vedouci, isTechnik, canCrea
                           <input type="checkbox" ref={selectAllRef}
                             checked={allFilteredSelected}
                             onChange={e => {
-                              if (e.target.checked) setSelectedIds(filtered.map(z => z.id))
+                              if (e.target.checked) setSelectedIds(more.visible.map(z => z.id))
                               else setSelectedIds([])
                             }}
                             className="rounded border-gray-300 dark:border-slate-600 text-blue-600 focus:ring-primary" />
@@ -845,7 +851,7 @@ export default function ZakazkyPageClient({ zakazky, vedouci, isTechnik, canCrea
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
-                    {filtered.map(z => (
+                    {more.visible.map(z => (
                       <ZakazkaTableRow
                         key={z.id}
                         z={z}
@@ -905,7 +911,10 @@ export default function ZakazkyPageClient({ zakazky, vedouci, isTechnik, canCrea
 
             {/* Mobile cards — always shown on mobile regardless of view */}
             <div className="md:hidden space-y-3">
-              {filtered.map(z => <ZakazkaCard key={z.id} z={z} />)}
+              {more.visible.map(z => <ZakazkaCard key={z.id} z={z} />)}
+            </div>
+            <div className={view === 'kanban' ? 'md:hidden' : ''}>
+              <ShowMore remaining={more.remaining} total={more.total} step={more.step} onClick={more.showMore} />
             </div>
           </>
         )}

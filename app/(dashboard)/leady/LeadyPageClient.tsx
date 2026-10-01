@@ -11,6 +11,10 @@ import { Field, Input, Select, Textarea } from '@/components/ui/Field'
 import { LeadZdroj, LeadStatus } from '@prisma/client'
 import { formatDate, formatKcPresne } from '@/lib/format'
 import FilterDropdown from '@/components/ui/FilterDropdown'
+import ListToolbar from '@/components/ui/ListToolbar'
+import ShowMore from '@/components/ui/ShowMore'
+import { useUrlFilters } from '@/hooks/useUrlFilters'
+import { useShowMore } from '@/hooks/useShowMore'
 import { confirmDialog } from '@/components/ui/confirm'
 import { sluzbaLabel } from '@/lib/leadService'
 
@@ -74,10 +78,11 @@ const ZDROJ_COLORS: Record<LeadZdroj, string> = {
 
 export default function LeadyPageClient({ leady, users, novychCount, currentUserId, canEdit, canDelete }: Props) {
   const router = useRouter()
-  const [search, setSearch] = useState('')
-  const [filterStatus, setFilterStatus] = useState<string>('all')
-  const [filterZdroj, setFilterZdroj] = useState<string>('all')
-  const [filterAssigned, setFilterAssigned] = useState<string>('all')
+  const { values: f, set, reset, activeCount } = useUrlFilters({ q: '', status: 'all', zdroj: 'all', obchodnik: 'all' })
+  const search = f.q
+  const filterStatus = f.status
+  const filterZdroj = f.zdroj
+  const filterAssigned = f.obchodnik
   const [showModal, setShowModal] = useState(false)
   const [selected, setSelected] = useState<string[]>([])
   const [deleting, setDeleting] = useState(false)
@@ -117,15 +122,17 @@ export default function LeadyPageClient({ leady, users, novychCount, currentUser
     })
   }, [leady, search, filterStatus, filterZdroj, filterAssigned, currentUserId])
 
+  const more = useShowMore(filtered, f)
+
   const selectedSet = useMemo(() => new Set(selected), [selected])
-  const vsechnyVybrane = filtered.length > 0 && filtered.every(l => selectedSet.has(l.id))
+  const vsechnyVybrane = more.visible.length > 0 && more.visible.every(l => selectedSet.has(l.id))
 
   function toggleLead(id: string) {
     setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
   }
 
   function toggleVse() {
-    setSelected(vsechnyVybrane ? [] : filtered.map(l => l.id))
+    setSelected(vsechnyVybrane ? [] : more.visible.map(l => l.id))
   }
 
   async function smazatVybrane() {
@@ -155,19 +162,17 @@ export default function LeadyPageClient({ leady, users, novychCount, currentUser
         actions={canEdit && <Button onClick={() => setShowModal(true)}>+ Přidat lead</Button>}
       />
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-2">
-        <input
-          type="text"
-          placeholder="Hledat jméno, email, firma..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="px-3 py-1.5 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:border-[#4CAF50]/60 w-56"
-        />
-        <FilterDropdown value={filterStatus} onChange={setFilterStatus} options={statusOptions} />
-        <FilterDropdown value={filterZdroj} onChange={setFilterZdroj} options={zdrojOptions} />
-        <FilterDropdown value={filterAssigned} onChange={setFilterAssigned} options={assignedOptions} />
-      </div>
+      <ListToolbar
+        search={search}
+        onSearch={v => set('q', v)}
+        searchPlaceholder="Hledat jméno, email, firma…"
+        activeCount={activeCount(['q'])}
+        onReset={() => reset()}
+      >
+        <FilterDropdown value={filterStatus} onChange={v => set('status', v)} options={statusOptions} />
+        <FilterDropdown value={filterZdroj} onChange={v => set('zdroj', v)} options={zdrojOptions} />
+        <FilterDropdown value={filterAssigned} onChange={v => set('obchodnik', v)} options={assignedOptions} />
+      </ListToolbar>
 
       {/* Hromadné akce */}
       {canDelete && selected.length > 0 && (
@@ -234,13 +239,13 @@ export default function LeadyPageClient({ leady, users, novychCount, currentUser
                       compact
                       title="Nic neodpovídá filtru"
                       actionLabel="Zrušit filtry"
-                      onAction={() => { setSearch(''); setFilterStatus('all'); setFilterZdroj('all'); setFilterAssigned('all') }}
+                      onAction={() => reset()}
                     />
                   )}
                 </td>
               </tr>
             ) : (
-              filtered.map(lead => (
+              more.visible.map(lead => (
                 <tr
                   key={lead.id}
                   onClick={() => router.push(`/leady/${lead.id}`)}
@@ -301,6 +306,7 @@ export default function LeadyPageClient({ leady, users, novychCount, currentUser
             )}
           </tbody>
         </table>
+        <ShowMore remaining={more.remaining} total={more.total} step={more.step} onClick={more.showMore} />
         <div className="px-4 py-2 border-t border-gray-200 dark:border-slate-700 text-xs text-gray-500 dark:text-slate-400 bg-gray-50 dark:bg-slate-900">
           {filtered.length} z {leady.length} leadů
         </div>

@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useMemo, useEffect } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useState, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { StavDealu, Technologie } from '@prisma/client'
 import { stavLabels, techLabels, techColors } from '@/lib/constants'
@@ -10,6 +10,8 @@ import ColumnConfigButton from '@/components/ColumnConfigButton'
 import InlineStatusBadge from '@/components/InlineStatusBadge'
 import EmptyState from '@/components/ui/EmptyState'
 import FilterDropdown from '@/components/ui/FilterDropdown'
+import ListToolbar from '@/components/ui/ListToolbar'
+import { useUrlFilters } from '@/hooks/useUrlFilters'
 import { ResizeHandle } from '@/components/ResizeHandle'
 import { formatDate, formatKcPresne } from '@/lib/format'
 
@@ -76,7 +78,6 @@ const DEFS: ColumnDef[] = [
 
 export default function DealsTable({ deals, showZneplatnene = false, showMarze = false }: Props) {
   const router = useRouter()
-  const searchParams = useSearchParams()
   const { data: session } = useSession()
   const userId = session?.user?.id ?? 'anon'
   const { columns, visibleColumns, updateColumn, resizeColumn, resetColumns, reorderColumns } = useTableColumns(
@@ -85,27 +86,13 @@ export default function DealsTable({ deals, showZneplatnene = false, showMarze =
     showMarze ? DEFS : DEFS.filter(d => d.id !== 'marze')
   )
 
-  const [search, setSearch] = useState(searchParams.get('q') ?? '')
-  const [filterStav, setFilterStav] = useState(searchParams.get('stav') ?? '')
-  const [filterTech, setFilterTech] = useState(searchParams.get('tech') ?? '')
-  const [filterUser, setFilterUser] = useState(searchParams.get('vlastnik') ?? '')
-  const [quickFilter, setQuickFilter] = useState<QuickFilter>((searchParams.get('filtr') as QuickFilter) ?? '')
-
   // Filtry do URL — refresh i sdílení odkazu zachová pohled
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const set = (key: string, val: string) => {
-      if (val) params.set(key, val)
-      else params.delete(key)
-    }
-    set('q', search)
-    set('stav', filterStav)
-    set('tech', filterTech)
-    set('vlastnik', filterUser)
-    set('filtr', quickFilter)
-    const qs = params.toString()
-    window.history.replaceState(null, '', qs ? `?${qs}` : window.location.pathname)
-  }, [search, filterStav, filterTech, filterUser, quickFilter])
+  const { values: f, set, reset, activeCount } = useUrlFilters({ q: '', stav: '', tech: '', vlastnik: '', filtr: '' })
+  const search = f.q
+  const filterStav = f.stav
+  const filterTech = f.tech
+  const filterUser = f.vlastnik
+  const quickFilter = f.filtr as QuickFilter
   const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'vytvoreno', dir: 'desc' })
   const [pageSize, setPageSize] = useState(50)
   const [page, setPage] = useState(1)
@@ -117,7 +104,7 @@ export default function DealsTable({ deals, showZneplatnene = false, showMarze =
   }
 
   function setQuick(qf: QuickFilter) {
-    setQuickFilter(prev => prev === qf ? '' : qf)
+    set('filtr', quickFilter === qf ? '' : qf)
     setPage(1)
   }
 
@@ -226,14 +213,19 @@ export default function DealsTable({ deals, showZneplatnene = false, showMarze =
 
   return (
     <div className="flex flex-col gap-3">
-      {/* Quick pill filters */}
-      <div className="flex items-center gap-2 flex-wrap">
-        {quickFilters.map(qf => (
+      <ListToolbar
+        search={search}
+        onSearch={v => { set('q', v); resetPage() }}
+        searchPlaceholder="Hledat (kód, předmět, klient)…"
+        activeCount={activeCount(['q', 'filtr'])}
+        onReset={() => { reset(); resetPage() }}
+        chips={quickFilters.map(qf => (
           <button
             key={qf.key}
             onClick={() => setQuick(qf.key)}
             data-compact
-            className={`hit-area px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+            aria-pressed={quickFilter === qf.key}
+            className={`hit-area flex-shrink-0 whitespace-nowrap px-3 py-1.5 rounded-full text-sm font-medium border transition-colors ${
               quickFilter === qf.key
                 ? 'bg-green-600 text-white border-green-600'
                 : 'bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-300 border-gray-300 dark:border-slate-600 hover:border-green-400 hover:text-green-600'
@@ -242,55 +234,20 @@ export default function DealsTable({ deals, showZneplatnene = false, showMarze =
             {qf.label}
           </button>
         ))}
-      </div>
-
-      {/* Dropdown filters + search */}
-      <div className="flex flex-col sm:flex-row gap-2 sm:flex-wrap sm:items-center">
-        <input
-          type="search"
-          placeholder="Hledat (kód, předmět, klient)…"
-          value={search}
-          onChange={e => { setSearch(e.target.value); resetPage() }}
-          className="border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary w-full sm:w-56 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-400"
-        />
-        <div className="flex gap-2 flex-wrap flex-1">
-          <FilterDropdown
-            value={filterStav}
-            onChange={v => { setFilterStav(v); resetPage() }}
-            options={stavFilterOptions}
-            className="flex-1 sm:flex-none"
+        trailing={
+          <ColumnConfigButton
+            columns={columns}
+            defs={DEFS}
+            onToggle={(id, vis) => updateColumn(id, { visible: vis })}
+            onReorder={reorderColumns}
+            onReset={resetColumns}
           />
-          <FilterDropdown
-            value={filterTech}
-            onChange={v => { setFilterTech(v); resetPage() }}
-            options={techFilterOptions}
-            className="flex-1 sm:flex-none"
-          />
-          <FilterDropdown
-            value={filterUser}
-            onChange={v => { setFilterUser(v); resetPage() }}
-            options={userFilterOptions}
-            className="flex-1 sm:flex-none"
-          />
-          {(search || filterStav || filterTech || filterUser || quickFilter) && (
-            <button
-              onClick={() => { setSearch(''); setFilterStav(''); setFilterTech(''); setFilterUser(''); setQuickFilter(''); resetPage() }}
-              className="text-sm text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 px-2"
-            >
-              ✕ Zrušit filtry
-            </button>
-          )}
-          <div className="ml-auto">
-            <ColumnConfigButton
-              columns={columns}
-              defs={DEFS}
-              onToggle={(id, vis) => updateColumn(id, { visible: vis })}
-              onReorder={reorderColumns}
-              onReset={resetColumns}
-            />
-          </div>
-        </div>
-      </div>
+        }
+      >
+        <FilterDropdown value={filterStav} onChange={v => { set('stav', v); resetPage() }} options={stavFilterOptions} />
+        <FilterDropdown value={filterTech} onChange={v => { set('tech', v); resetPage() }} options={techFilterOptions} />
+        <FilterDropdown value={filterUser} onChange={v => { set('vlastnik', v); resetPage() }} options={userFilterOptions} />
+      </ListToolbar>
 
       {/* Mobile card layout */}
       <div className="sm:hidden bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">

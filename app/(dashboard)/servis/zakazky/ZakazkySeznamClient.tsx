@@ -1,9 +1,13 @@
 'use client'
 
 import EmptyState from '@/components/ui/EmptyState'
-import { useState, useMemo } from 'react'
+import { useMemo } from 'react'
 import Link from 'next/link'
 import FilterDropdown from '@/components/ui/FilterDropdown'
+import ListToolbar from '@/components/ui/ListToolbar'
+import ShowMore from '@/components/ui/ShowMore'
+import { useUrlFilters } from '@/hooks/useUrlFilters'
+import { useShowMore } from '@/hooks/useShowMore'
 import {
   SERVIS_STAV_LABELS,
   TYP_LABELS,
@@ -74,11 +78,10 @@ function mesicLabel(klic: string): string {
 }
 
 export default function ZakazkySeznamClient({ zakazky, orgUsers, canCreate }: Props) {
-  const [pohled, setPohled] = useState<Pohled>('aktualni')
-  const [fStav, setFStav] = useState<string>('')
-  const [fTechnik, setFTechnik] = useState<string>('')
-  const [fTyp, setFTyp] = useState<string>('')
-  const [hledat, setHledat] = useState('')
+  const { values: f, set, reset, activeCount } = useUrlFilters({ q: '', pohled: 'aktualni', stav: '', technik: '', typ: '' })
+  const pohled = f.pohled as Pohled
+  const { stav: fStav, technik: fTechnik, typ: fTyp, q: hledat } = f
+  const setPohled = (v: Pohled) => set('pohled', v)
 
   const now = useMemo(() => new Date(), [])
 
@@ -113,11 +116,13 @@ export default function ZakazkySeznamClient({ zakazky, orgUsers, canCreate }: Pr
     return rows
   }, [zakazky, pohled, fStav, fTechnik, fTyp, hledat, now])
 
+  const more = useShowMore(filtered, f)
+
   // Plánované ze smluv seskupené po měsících (ostatní pohledy = jedna skupina bez hlavičky).
   const skupiny = useMemo(() => {
-    if (pohled !== 'smlouvy' || fStav) return [{ klic: '', label: null as string | null, rows: filtered as Row[] }]
+    if (pohled !== 'smlouvy' || fStav) return [{ klic: '', label: null as string | null, rows: more.visible as Row[] }]
     const map = new Map<string, Row[]>()
-    for (const z of filtered) {
+    for (const z of more.visible) {
       const k = z.planovanyTermin ? mesicKlic(z.planovanyTermin) : 'bez'
       if (!map.has(k)) map.set(k, [])
       map.get(k)!.push(z)
@@ -125,7 +130,7 @@ export default function ZakazkySeznamClient({ zakazky, orgUsers, canCreate }: Pr
     return Array.from(map.entries())
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([klic, rows]) => ({ klic, label: klic === 'bez' ? 'Bez termínu' : mesicLabel(klic), rows }))
-  }, [filtered, pohled, fStav])
+  }, [more.visible, pohled, fStav])
 
   const stavFilterOptions = [
     { value: '', label: 'Stav — podle pohledu' },
@@ -142,53 +147,58 @@ export default function ZakazkySeznamClient({ zakazky, orgUsers, canCreate }: Pr
 
   return (
     <>
-      {/* Filtry + akce */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex gap-2 flex-wrap">
-          {([
-            ['aktualni', 'Aktuální', counts.aktualni, `Reaktivní práce + smluvní návštěvy do ${SERVIS_HORIZONT_DNI} dní`],
-            ['smlouvy', 'Plánované ze smluv', counts.smlouvy, `Generované návštěvy za horizontem ${SERVIS_HORIZONT_DNI} dní`],
-            ['hotove', 'Hotové', counts.hotove, 'Dokončené, vyúčtované a uzavřené'],
-            ['vse', 'Vše', null, 'Všechny včetně zrušených'],
-          ] as const).map(([key, label, count, title]) => (
-            <button
-              key={key}
-              title={title}
-              onClick={() => { setPohled(key); setFStav('') }}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                pohled === key && !fStav
-                  ? 'bg-green-600 text-white'
-                  : 'bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700'
-              }`}
-            >
-              {label}
-              {count !== null && (
-                <span className={`ml-1.5 text-xs font-semibold ${pohled === key && !fStav ? 'text-green-100' : 'text-gray-400 dark:text-slate-500'}`}>
-                  {count}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
-        <input
-          type="search"
-          value={hledat}
-          onChange={e => setHledat(e.target.value)}
-          placeholder="Hledat číslo, klienta, popis, zařízení…"
-          className="w-full sm:w-64 border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500 placeholder-gray-400 dark:placeholder-slate-500"
-        />
-        <FilterDropdown value={fStav} onChange={setFStav} options={stavFilterOptions} />
-        <FilterDropdown value={fTechnik} onChange={setFTechnik} options={technikFilterOptions} />
-        <FilterDropdown value={fTyp} onChange={setFTyp} options={typFilterOptions} />
-        {canCreate && (
+      {canCreate && (
+        <Link
+          href="/servis/nova"
+          className="sm:hidden text-center px-4 py-2 rounded-lg text-sm font-semibold bg-green-600 hover:bg-green-700 text-white transition-colors"
+        >
+          + Nová servisní akce
+        </Link>
+      )}
+      <ListToolbar
+        search={hledat}
+        onSearch={v => set('q', v)}
+        searchPlaceholder="Hledat číslo, klienta, popis, zařízení…"
+        activeCount={activeCount(['q', 'pohled'])}
+        onReset={() => reset(['pohled'])}
+        chips={([
+          ['aktualni', 'Aktuální', counts.aktualni, `Reaktivní práce + smluvní návštěvy do ${SERVIS_HORIZONT_DNI} dní`],
+          ['smlouvy', 'Plánované ze smluv', counts.smlouvy, `Generované návštěvy za horizontem ${SERVIS_HORIZONT_DNI} dní`],
+          ['hotove', 'Hotové', counts.hotove, 'Dokončené, vyúčtované a uzavřené'],
+          ['vse', 'Vše', null, 'Všechny včetně zrušených'],
+        ] as const).map(([key, label, count, title]) => (
+          <button
+            key={key}
+            title={title}
+            onClick={() => { setPohled(key); set('stav', '') }}
+            aria-pressed={pohled === key && !fStav}
+            className={`flex-shrink-0 whitespace-nowrap px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              pohled === key && !fStav
+                ? 'bg-green-600 text-white'
+                : 'bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 text-gray-600 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700'
+            }`}
+          >
+            {label}
+            {count !== null && (
+              <span className={`ml-1.5 text-xs font-semibold ${pohled === key && !fStav ? 'text-green-100' : 'text-gray-500 dark:text-slate-400'}`}>
+                {count}
+              </span>
+            )}
+          </button>
+        ))}
+        trailing={canCreate && (
           <Link
             href="/servis/nova"
-            className="ml-auto px-4 py-2 rounded-lg text-sm font-semibold bg-green-600 hover:bg-green-700 text-white transition-colors"
+            className="px-4 py-2 rounded-lg text-sm font-semibold bg-green-600 hover:bg-green-700 text-white transition-colors"
           >
             + Nová servisní akce
           </Link>
         )}
-      </div>
+      >
+        <FilterDropdown value={fStav} onChange={v => set('stav', v)} options={stavFilterOptions} />
+        <FilterDropdown value={fTechnik} onChange={v => set('technik', v)} options={technikFilterOptions} />
+        <FilterDropdown value={fTyp} onChange={v => set('typ', v)} options={typFilterOptions} />
+      </ListToolbar>
 
       {/* Seznam */}
       {filtered.length === 0 ? (
@@ -206,7 +216,7 @@ export default function ZakazkySeznamClient({ zakazky, orgUsers, canCreate }: Pr
             <EmptyState
               title="Nic neodpovídá filtru"
               actionLabel="Zrušit filtry"
-              onAction={() => { setPohled('vse'); setFStav(''); setFTechnik(''); setFTyp(''); setHledat('') }}
+              onAction={() => { reset(); setPohled('vse') }}
             />
           )}
         </div>
@@ -284,6 +294,7 @@ export default function ZakazkySeznamClient({ zakazky, orgUsers, canCreate }: Pr
           </div>
         </div>
         ))}
+        <ShowMore remaining={more.remaining} total={more.total} step={more.step} onClick={more.showMore} />
         </div>
       )}
 

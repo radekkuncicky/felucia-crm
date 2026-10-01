@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, useMemo, KeyboardEvent } from 'react'
+import { useState, useRef, useEffect, useMemo, KeyboardEvent, createContext, useContext } from 'react'
 import { IconChevronDown, IconCheck } from './Icons'
 
 export interface FilterDropdownOption {
@@ -37,6 +37,9 @@ const VARIANT_CLS = {
     optionSelected: 'text-primary-light',
   },
 } as const
+
+/** Uvnitř mobilního panelu filtrů (ListToolbar) — nativní select se systémovým výběrem, absolutní panel by se v posuvném dialogu ořízl. */
+export const NativeFilterContext = createContext(false)
 
 /** Vlastní stylovaný dropdown pro filtry — na rozdíl od native <select> jde nastylovat i otevřený panel. */
 export default function FilterDropdown({ value, onChange, options, className = '', variant = 'light' }: FilterDropdownProps) {
@@ -94,6 +97,20 @@ export default function FilterDropdown({ value, onChange, options, className = '
       e.preventDefault()
       select(highlighted)
     }
+  }
+
+  const native = useContext(NativeFilterContext)
+  if (native) {
+    return (
+      <select
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        aria-label={options[0]?.label}
+        className={`w-full rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-gray-900 dark:text-white px-3 py-2.5 text-base ${className}`}
+      >
+        {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
+    )
   }
 
   return (

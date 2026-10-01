@@ -1,11 +1,15 @@
 'use client'
-import { useState, useMemo } from 'react'
+import { useMemo } from 'react'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
 import { useTableColumns, ColumnDef } from '@/hooks/useTableColumns'
 import ColumnConfigButton from '@/components/ColumnConfigButton'
 import { ResizeHandle } from '@/components/ResizeHandle'
 import EmptyState from '@/components/ui/EmptyState'
+import ListToolbar from '@/components/ui/ListToolbar'
+import ShowMore from '@/components/ui/ShowMore'
+import { useUrlFilters } from '@/hooks/useUrlFilters'
+import { useShowMore } from '@/hooks/useShowMore'
 import { formatDate } from '@/lib/format'
 
 interface ClientRow {
@@ -49,7 +53,8 @@ export default function ClientsTable({ clients }: Props) {
     DEFS
   )
 
-  const [search, setSearch] = useState('')
+  const { values: f, set, reset } = useUrlFilters({ q: '' })
+  const search = f.q
 
   const filtered = useMemo(() => {
     if (!search.trim()) return clients
@@ -63,30 +68,29 @@ export default function ClientsTable({ clients }: Props) {
       (c.mesto ?? '').toLowerCase().includes(q)
     )
   }, [clients, search])
+  const more = useShowMore(filtered, search)
 
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <input
-          type="search"
-          placeholder="Hledat (jméno, email, telefon, IČO, město)…"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary w-full sm:w-80 bg-white dark:bg-slate-700 text-gray-900 dark:text-white placeholder-gray-400"
-        />
-        {search && (
-          <button onClick={() => setSearch('')} className="text-sm text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 flex-shrink-0">✕ Zrušit</button>
-        )}
-        <span className="text-sm text-gray-500 dark:text-slate-400 ml-auto flex-shrink-0">{filtered.length} klientů</span>
-        <ColumnConfigButton
-          columns={columns}
-          defs={DEFS}
-          onToggle={(id, visible) => updateColumn(id, { visible })}
-          onReorder={reorderColumns}
-          onReset={resetColumns}
-        />
-      </div>
+      <ListToolbar
+        search={search}
+        onSearch={v => set('q', v)}
+        searchPlaceholder="Hledat (jméno, email, telefon, IČO, město)…"
+        onReset={() => reset()}
+        trailing={
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-gray-500 dark:text-slate-400">{filtered.length} klientů</span>
+            <ColumnConfigButton
+              columns={columns}
+              defs={DEFS}
+              onToggle={(id, visible) => updateColumn(id, { visible })}
+              onReorder={reorderColumns}
+              onReset={resetColumns}
+            />
+          </div>
+        }
+      />
 
       {/* Mobile card layout */}
       <div className="sm:hidden bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 divide-y divide-gray-100 dark:divide-slate-700">
@@ -102,7 +106,7 @@ export default function ClientsTable({ clients }: Props) {
             <div className="px-4 py-8 text-center text-sm text-gray-400 dark:text-slate-500">Žádní klienti neodpovídají hledání.</div>
           )
         )}
-        {filtered.map(client => (
+        {more.visible.map(client => (
           <div key={client.id} className="p-4">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
@@ -180,7 +184,7 @@ export default function ClientsTable({ clients }: Props) {
                   </td>
                 </tr>
               )}
-              {filtered.map(client => (
+              {more.visible.map(client => (
                 <tr key={client.id} className="hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
                   {visibleColumns.map(col => {
                     switch (col.id) {
@@ -240,6 +244,7 @@ export default function ClientsTable({ clients }: Props) {
           </table>
         </div>
       </div>
+      <ShowMore remaining={more.remaining} total={more.total} step={more.step} onClick={more.showMore} />
     </div>
   )
 }

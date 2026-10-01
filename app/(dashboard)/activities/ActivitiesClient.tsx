@@ -14,6 +14,10 @@ import { Field, Input, Select, Textarea } from '@/components/ui/Field'
 import { formatDate } from '@/lib/format'
 import { ActivityTypeIcon } from '@/components/ui/ActivityTypeIcon'
 import FilterDropdown from '@/components/ui/FilterDropdown'
+import ListToolbar from '@/components/ui/ListToolbar'
+import ShowMore from '@/components/ui/ShowMore'
+import { useUrlFilters } from '@/hooks/useUrlFilters'
+import { useShowMore } from '@/hooks/useShowMore'
 import DokoncitAktivituModal from '@/components/DokoncitAktivituModal'
 
 const ACT_DEFS: ColumnDef[] = [
@@ -273,10 +277,9 @@ export default function ActivitiesClient({ activities: initActivities, defaultTy
   const { columns, visibleColumns, updateColumn, resizeColumn, resetColumns, reorderColumns } = useTableColumns('activities', userId, ACT_DEFS)
 
   const [activities, setActivities] = useState(initActivities)
-  const [typ, setTyp] = useState(defaultTyp)
-  const [od, setOd] = useState('')
-  const [do_, setDo] = useState('')
-  const [stavFilter, setStavFilter] = useState('')
+  // ?typ= z odkazu (např. menu Úkoly) přebírá i server; ostatní filtry jen klient
+  const { values: f, set, reset, activeCount } = useUrlFilters({ q: '', typ: defaultTyp, od: '', do: '', stav: '' })
+  const { q: search, typ, od, do: do_, stav: stavFilter } = f
   const [selectedAct, setSelectedAct] = useState<Activity | null>(null)
 
   const filtered = useMemo(() => {
@@ -285,11 +288,18 @@ export default function ActivitiesClient({ activities: initActivities, defaultTy
       if (od && a.datum < od) return false
       if (do_ && a.datum > do_) return false
       if (stavFilter && a.stav !== stavFilter) return false
+      if (search) {
+        const q = search.toLowerCase()
+        const hay = [
+          a.popis, a.deal?.kod, a.deal?.predmet, a.deal?.client.jmeno, a.deal?.client.prijmeni,
+          a.lead?.jmeno, a.lead?.firma, a.user?.jmeno,
+        ].filter(Boolean).join(' ').toLowerCase()
+        if (!hay.includes(q)) return false
+      }
       return true
     })
-  }, [activities, typ, od, do_, stavFilter])
-
-  const hasFilter = !!(typ || od || do_ || stavFilter)
+  }, [activities, typ, od, do_, stavFilter, search])
+  const more = useShowMore(filtered, f)
 
   return (
     <div className="space-y-4">
@@ -303,35 +313,13 @@ export default function ActivitiesClient({ activities: initActivities, defaultTy
         />
       )}
 
-      {/* Filters */}
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 px-4 py-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-          <div>
-            <label className="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">Typ</label>
-            <FilterDropdown value={typ} onChange={setTyp} options={typOptions} />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">Datum od</label>
-            <input type="date" value={od} onChange={e => setOd(e.target.value)} className={inp} />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">Datum do</label>
-            <input type="date" value={do_} onChange={e => setDo(e.target.value)} className={inp} />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">Stav</label>
-            <FilterDropdown value={stavFilter} onChange={setStavFilter} options={stavFilterOptions} />
-          </div>
-        </div>
-        <div className="flex items-center justify-between mt-3">
-          {hasFilter ? (
-            <button
-              onClick={() => { setTyp(defaultTyp); setOd(''); setDo(''); setStavFilter('') }}
-              className="text-sm text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-white"
-            >
-              Zrušit filtry
-            </button>
-          ) : <span />}
+      <ListToolbar
+        search={search}
+        onSearch={v => set('q', v)}
+        searchPlaceholder="Hledat (popis, případ, klient)…"
+        activeCount={activeCount(['q'])}
+        onReset={() => reset()}
+        trailing={
           <div className="flex items-center gap-3">
             <span className="text-sm text-gray-500 dark:text-slate-400">{filtered.length} záznamů</span>
             <ColumnConfigButton
@@ -342,17 +330,28 @@ export default function ActivitiesClient({ activities: initActivities, defaultTy
               onReset={resetColumns}
             />
           </div>
-        </div>
-      </div>
+        }
+      >
+        <FilterDropdown value={typ} onChange={v => set('typ', v)} options={typOptions} />
+        <FilterDropdown value={stavFilter} onChange={v => set('stav', v)} options={stavFilterOptions} />
+        <label className="flex items-center gap-2 text-sm text-gray-500 dark:text-slate-400">
+          Od
+          <input type="date" value={od} onChange={e => set('od', e.target.value)} className={inp} />
+        </label>
+        <label className="flex items-center gap-2 text-sm text-gray-500 dark:text-slate-400">
+          Do
+          <input type="date" value={do_} onChange={e => set('do', e.target.value)} className={inp} />
+        </label>
+      </ListToolbar>
 
       {/* Mobile card layout */}
       <div className="sm:hidden bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 divide-y divide-gray-100 dark:divide-slate-700">
         {filtered.length === 0 && (activities.length === 0 ? (
           <EmptyState compact title="Zatím žádné aktivity" description="Hovory, schůzky a úkoly zapisujete na obchodním případu nebo leadu." actionLabel="Obchodní případy" actionHref="/deals" />
         ) : (
-          <EmptyState compact title="Nic neodpovídá filtru" actionLabel="Zrušit filtry" onAction={() => { setTyp(''); setOd(''); setDo(''); setStavFilter('') }} />
+          <EmptyState compact title="Nic neodpovídá filtru" actionLabel="Zrušit filtry" onAction={() => reset()} />
         ))}
-        {filtered.map(act => (
+        {more.visible.map(act => (
           <div key={act.id} onClick={() => setSelectedAct(act)} className={`p-4 space-y-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-slate-700/50 ${act.stav === 'DOKONCENA' ? 'opacity-60' : ''}`}>
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-center gap-2">
@@ -406,12 +405,12 @@ export default function ActivitiesClient({ activities: initActivities, defaultTy
                     {(activities.length === 0 ? (
           <EmptyState compact title="Zatím žádné aktivity" description="Hovory, schůzky a úkoly zapisujete na obchodním případu nebo leadu." actionLabel="Obchodní případy" actionHref="/deals" />
         ) : (
-          <EmptyState compact title="Nic neodpovídá filtru" actionLabel="Zrušit filtry" onAction={() => { setTyp(''); setOd(''); setDo(''); setStavFilter('') }} />
+          <EmptyState compact title="Nic neodpovídá filtru" actionLabel="Zrušit filtry" onAction={() => reset()} />
         ))}
                   </td>
                 </tr>
               )}
-              {filtered.map(act => (
+              {more.visible.map(act => (
                 <tr
                   key={act.id}
                   onClick={() => setSelectedAct(act)}
@@ -475,6 +474,7 @@ export default function ActivitiesClient({ activities: initActivities, defaultTy
           </table>
         </div>
       </div>
+      <ShowMore remaining={more.remaining} total={more.total} step={more.step} onClick={more.showMore} />
     </div>
   )
 }

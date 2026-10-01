@@ -12,6 +12,10 @@ import CenikDetail from './CenikDetail'
 import { ResizeHandle } from '@/components/ResizeHandle'
 import { formatDate, formatCislo } from '@/lib/format'
 import FilterDropdown from '@/components/ui/FilterDropdown'
+import ListToolbar from '@/components/ui/ListToolbar'
+import ShowMore from '@/components/ui/ShowMore'
+import { useUrlFilters } from '@/hooks/useUrlFilters'
+import { useShowMore } from '@/hooks/useShowMore'
 
 const PROD_DEFS: ColumnDef[] = [
   { id: 'kod', label: 'Kód', defaultVisible: true, defaultWidth: 100 },
@@ -69,9 +73,10 @@ function ProductsTab({ products, categories, showNakladoveCeny = true, showSklad
   const defs = PROD_DEFS.filter(d => (showNakladoveCeny || (d.id !== 'nakCena' && d.id !== 'marze')) && (showSklad || d.id !== 'sklad'))
   const { columns, visibleColumns, updateColumn, resizeColumn, resetColumns, reorderColumns } = useTableColumns('products', userId, defs)
 
-  const [search, setSearch] = useState('')
-  const [catFilter, setCatFilter] = useState('')
-  const [showInactive, setShowInactive] = useState(false)
+  const { values: f, set, reset, activeCount } = useUrlFilters({ q: '', kategorie: '', neaktivni: '' })
+  const search = f.q
+  const catFilter = f.kategorie
+  const showInactive = f.neaktivni === '1'
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [editingCell, setEditingCell] = useState<{ id: string; field: 'standardniCena' | 'nakladovaCena' } | null>(null)
   const [editingVal, setEditingVal] = useState('')
@@ -89,12 +94,14 @@ function ProductsTab({ products, categories, showNakladoveCeny = true, showSklad
     const matchCat = !catFilter || p.categories.some(c => c.id === catFilter)
     return matchSearch && matchCat
   })
+  const more = useShowMore(filtered, f)
 
-  const inp = 'border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary'
   const catFilterOptions = [
     { value: '', label: 'Všechny kategorie' },
     ...categories.map(c => ({ value: c.id, label: c.nazev })),
   ]
+
+  const allSelected = more.visible.length > 0 && more.visible.every(p => selected.has(p.id))
 
   function getPrice(p: Product) {
     const local = localPrices[p.id]
@@ -113,10 +120,11 @@ function ProductsTab({ products, categories, showNakladoveCeny = true, showSklad
   }
 
   function toggleAll() {
-    if (selected.size === filtered.length && filtered.length > 0) {
+    // jen zobrazené řádky — hromadná změna ceny nesmí zasáhnout skryté za „Zobrazit další“
+    if (allSelected) {
       setSelected(new Set())
     } else {
-      setSelected(new Set(filtered.map(p => p.id)))
+      setSelected(new Set(more.visible.map(p => p.id)))
     }
   }
 
@@ -175,36 +183,47 @@ function ProductsTab({ products, categories, showNakladoveCeny = true, showSklad
     }
   }
 
-  const allSelected = filtered.length > 0 && selected.size === filtered.length
 
   return (
     <div className="space-y-4">
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-3">
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Hledat (název, kód, řada)…" className={`${inp} w-full sm:w-72`} />
-        <div className="flex flex-wrap gap-3 items-center w-full sm:w-auto">
-          <FilterDropdown value={catFilter} onChange={setCatFilter} options={catFilterOptions} className="flex-1 sm:flex-none" />
-          <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-400 cursor-pointer whitespace-nowrap">
-            <input type="checkbox" checked={showInactive} onChange={e => setShowInactive(e.target.checked)} className="rounded" />
-            Zobrazit neaktivní
-          </label>
-        </div>
-        <div className="flex gap-2 w-full sm:w-auto sm:ml-auto items-center">
-          <ColumnConfigButton
-            columns={columns}
-            defs={defs}
-            onToggle={(id, vis) => updateColumn(id, { visible: vis })}
-            onReorder={reorderColumns}
-            onReset={resetColumns}
-          />
-          <Link href="/settings/import-products" className="flex-1 sm:flex-none text-center px-3 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-lg text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700">
-            Import z XLSX
-          </Link>
-          <Link href="/products/new" className="flex-1 sm:flex-none text-center bg-primary hover:bg-primary-hover text-white font-medium px-4 py-2 rounded-lg text-sm">
-            + Nový produkt
-          </Link>
-        </div>
+      <div className="flex gap-2 sm:hidden">
+        <Link href="/settings/import-products" className="flex-1 text-center px-3 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-lg text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700">
+          Import z XLSX
+        </Link>
+        <Link href="/products/new" className="flex-1 text-center bg-primary hover:bg-primary-hover text-white font-medium px-4 py-2 rounded-lg text-sm">
+          + Nový produkt
+        </Link>
       </div>
+      <ListToolbar
+        search={search}
+        onSearch={v => set('q', v)}
+        searchPlaceholder="Hledat (název, kód, řada)…"
+        activeCount={activeCount(['q'])}
+        onReset={() => reset()}
+        trailing={
+          <div className="flex gap-2 items-center">
+            <ColumnConfigButton
+              columns={columns}
+              defs={defs}
+              onToggle={(id, vis) => updateColumn(id, { visible: vis })}
+              onReorder={reorderColumns}
+              onReset={resetColumns}
+            />
+            <Link href="/settings/import-products" className="text-center px-3 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-lg text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700">
+              Import z XLSX
+            </Link>
+            <Link href="/products/new" className="text-center bg-primary hover:bg-primary-hover text-white font-medium px-4 py-2 rounded-lg text-sm">
+              + Nový produkt
+            </Link>
+          </div>
+        }
+      >
+        <FilterDropdown value={catFilter} onChange={v => set('kategorie', v)} options={catFilterOptions} />
+        <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-400 cursor-pointer whitespace-nowrap">
+          <input type="checkbox" checked={showInactive} onChange={e => set('neaktivni', e.target.checked ? '1' : '')} className="rounded" />
+          Zobrazit neaktivní
+        </label>
+      </ListToolbar>
 
       {/* Table */}
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">
@@ -232,7 +251,7 @@ function ProductsTab({ products, categories, showNakladoveCeny = true, showSklad
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
-              {filtered.map(p => {
+              {more.visible.map(p => {
                 const { std, nak } = getPrice(p)
                 const m = marze(nak, std)
                 const isEditingStd = editingCell?.id === p.id && editingCell.field === 'standardniCena'
@@ -373,10 +392,11 @@ function ProductsTab({ products, categories, showNakladoveCeny = true, showSklad
             compact
             title="Nic neodpovídá filtru"
             actionLabel="Zrušit filtry"
-            onAction={() => { setSearch(''); setCatFilter(''); setShowInactive(true) }}
+            onAction={() => { reset(); set('neaktivni', '1') }}
           />
         ))}
       </div>
+      <ShowMore remaining={more.remaining} total={more.total} step={more.step} onClick={more.showMore} />
 
       {/* Bottom bar: count + bulk actions */}
       <div className="flex items-center justify-between flex-wrap gap-3">
