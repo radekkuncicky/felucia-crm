@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
   DndContext, DragEndEvent, DragOverlay, DragStartEvent,
-  PointerSensor, useSensor, useSensors,
+  PointerSensor, pointerWithin, useSensor, useSensors,
   useDroppable, useDraggable,
 } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
@@ -925,6 +925,9 @@ export default function CalendarClient({ events: serverEvents, canDispatch = fal
       {/* Calendar body */}
       <DndContext
         sensors={sensors}
+        // cíl = den pod kurzorem (výchozí rectIntersection bral den s největším
+        // překryvem chipu → široký chip padal o den vedle)
+        collisionDetection={pointerWithin}
         onDragStart={(e: DragStartEvent) => setActiveId(String(e.active.id))}
         onDragEnd={handleDragEnd}
       >
