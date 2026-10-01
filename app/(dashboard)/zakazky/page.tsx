@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
 import ZakazkyPageClient from './ZakazkyPageClient'
 import type { KeSchvaleniPolozka } from './KeSchvaleniBar'
-import { aktualniFazeLabel, etapaProgressFromRaw } from '@/lib/zakazkaEtapy'
+import { aktualniFazeLabel, etapaKompletni, etapaProgressFromRaw } from '@/lib/zakazkaEtapy'
 import { getPerms, zakazkyScopeWhere, isTechnikView } from '@/lib/permissions'
 import { listVedouciKandidati } from '@/lib/zakazkyHelpers'
 
@@ -51,6 +51,8 @@ export default async function ZakazkyPage() {
             cislo: true,
             nazev: true,
             stav: true,
+            montazOd: true,
+            montazDo: true,
             predavaky: { select: { stav: true } },
             vyuctovani: { select: { stav: true } },
           },
@@ -119,6 +121,23 @@ export default async function ZakazkyPage() {
       0
     )
 
+    // Termín v přehledu = termín aktuální (první nedokončené) etapy; po dokončení etapy
+    // se tak ukáže termín další etapy, a dokud ho nemá, „Bez termínu“.
+    // Uzavřené zakázky drží svůj původní termín.
+    const progress = z.etapy.map(etapaProgressFromRaw)
+    const fazeHotova = progress.length > 0 && etapaKompletni(progress[progress.length - 1])
+    let montazOd = z.montazOd
+    let montazDo = z.montazDo
+    let terminEtapa: number | null = null
+    if (z.etapy.length > 0 && z.stav !== 'VYUCTOVANA' && z.stav !== 'HOTOVO') {
+      const i = progress.findIndex(p => !etapaKompletni(p))
+      const e = i >= 0 ? z.etapy[i] : null
+      if (!e) { montazOd = null; montazDo = null }
+      else if (e.montazOd || e.cislo > 1) { montazOd = e.montazOd; montazDo = e.montazDo }
+      // etapa 1 bez vlastního termínu → platí termín zakázky
+      terminEtapa = e && e.cislo > 1 ? e.cislo : null
+    }
+
     return {
       id: z.id,
       cislo: z.cislo,
@@ -133,13 +152,16 @@ export default async function ZakazkyPage() {
       pocetPolozek: z._count.polozky,
       pocetPredavaku: z._count.predavaky,
       vytvoreno: z.vytvoreno.toISOString(),
-      montazOd: z.montazOd?.toISOString() ?? null,
-      montazDo: z.montazDo?.toISOString() ?? null,
+      montazOd: montazOd?.toISOString() ?? null,
+      montazDo: montazDo?.toISOString() ?? null,
+      terminEtapa,
+      maEtapy: z.etapy.length > 0,
       kdykoliv: z.kdykoliv,
       updatedAt: z.updatedAt.toISOString(),
       cenaOP,
       cenaVyuctovani,
-      aktualniFaze: aktualniFazeLabel(z.etapy.map(etapaProgressFromRaw)),
+      aktualniFaze: aktualniFazeLabel(progress),
+      fazeHotova,
     }
   })
 

@@ -12,6 +12,8 @@ const TYP_OPTIONS: [string, string][] = [
   ['JINE', 'Jiné'],
 ]
 
+const DPH_SAZBY = ['21', '12', '0']
+
 type Row = {
   typ: string
   popis: string
@@ -154,7 +156,11 @@ export default function VyuctovaniSekce({ zakazkaId, protokolDokoncen, vyfakturo
                     <td className="py-1 pr-2 w-16"><input value={r.mnozstvi} onChange={e => patch(i, { mnozstvi: e.target.value })} disabled={!canEdit} className={`${inp} text-right`} /></td>
                     <td className="py-1 pr-2 w-14"><input value={r.jednotka} onChange={e => patch(i, { jednotka: e.target.value })} disabled={!canEdit} className={inp} /></td>
                     <td className="py-1 pr-2 w-24"><input value={r.cenaZaJednotku} onChange={e => patch(i, { cenaZaJednotku: e.target.value })} disabled={!canEdit || r.krytoKontraktem} className={`${inp} text-right`} placeholder="0" /></td>
-                    <td className="py-1 pr-2 w-16"><input value={r.dphSazba} onChange={e => patch(i, { dphSazba: e.target.value })} disabled={!canEdit} className={`${inp} text-right`} /></td>
+                    <td className="py-1 pr-2 w-20">
+                      <select value={r.dphSazba} onChange={e => patch(i, { dphSazba: e.target.value })} disabled={!canEdit} className={`${inp} text-right`} aria-label="Sazba DPH">
+                        {(DPH_SAZBY.includes(r.dphSazba) ? DPH_SAZBY : [...DPH_SAZBY, r.dphSazba]).map(v => <option key={v} value={v}>{v} %</option>)}
+                      </select>
+                    </td>
                     <td className="py-1 pr-2 text-center"><input type="checkbox" checked={r.krytoKontraktem} onChange={e => patch(i, { krytoKontraktem: e.target.checked })} disabled={!canEdit} className="accent-green-600" /></td>
                     <td className="py-1">
                       {canEdit && (

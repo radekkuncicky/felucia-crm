@@ -1,5 +1,6 @@
 'use client'
 
+import { cn } from '@/lib/cn'
 import { useState, useMemo, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -40,6 +41,11 @@ interface ZakazkaRow {
   cenaOP: number | null
   cenaVyuctovani: number
   aktualniFaze: string | null
+  /** poslední etapa je kompletně vyúčtovaná */
+  fazeHotova: boolean
+  /** termín patří etapě č. N (≥ 2) — v tabulce s prefixem „NE“ */
+  terminEtapa: number | null
+  maEtapy: boolean
 }
 
 interface Props {
@@ -435,7 +441,7 @@ function ZakazkaTableRow({ z, isTechnik, showCeny, canCreate, isSelected, onTogg
       <td className="px-4 py-3 text-gray-600 dark:text-slate-400 text-sm truncate max-w-[140px]">{z.klientJmeno}</td>
       <td className="px-4 py-3 text-gray-900 dark:text-white font-medium truncate max-w-[200px]">{z.nazev}</td>
       <td className="px-4 py-3"><StavBadge stav={z.stav} /></td>
-      <td className="px-4 py-3 text-sm text-gray-600 dark:text-slate-400 whitespace-nowrap">
+      <td className={cn('px-4 py-3 text-sm whitespace-nowrap', z.fazeHotova ? 'text-green-600 dark:text-green-400 font-medium' : 'text-gray-600 dark:text-slate-400')}>
         {z.aktualniFaze ?? <span className="text-gray-400 text-xs">—</span>}
       </td>
       <td className="px-4 py-3 whitespace-nowrap">
@@ -452,9 +458,12 @@ function ZakazkaTableRow({ z, isTechnik, showCeny, canCreate, isSelected, onTogg
       <td className="px-4 py-3 text-sm text-gray-600 dark:text-slate-400 whitespace-nowrap">
         {z.montazOd ? (
           <span className={urgency === 'red' ? 'text-red-600 dark:text-red-400 font-medium' : urgency === 'orange' ? 'text-orange-600 dark:text-orange-400' : ''}>
+            {z.terminEtapa && <span className="text-xs text-gray-400 dark:text-slate-500 mr-1">{z.terminEtapa}E</span>}
             {formatMontaz(z.montazOd, z.montazDo)}
           </span>
-        ) : !z.kdykoliv && <span className="text-gray-300 dark:text-slate-600">—</span>}
+        ) : !z.kdykoliv && (z.maEtapy
+          ? <span className="text-xs text-gray-400 dark:text-slate-500">Bez termínu</span>
+          : <span className="text-gray-300 dark:text-slate-600">—</span>)}
         {z.kdykoliv && <span className={z.montazOd ? 'ml-1.5' : ''}><KdykolivBadge /></span>}
       </td>
       {showCeny && (
