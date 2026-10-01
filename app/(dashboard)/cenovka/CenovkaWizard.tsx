@@ -4,6 +4,8 @@ import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { techLabels } from '@/lib/constants'
 import { formatCislo } from '@/lib/format'
+import ClientFormFields, { PRAZDNY_KLIENT, clientPayload, najdiDuplicitu, validateClient, type ClientFormData } from '@/components/ClientForm'
+import { Button } from '@/components/ui/Button'
 
 /**
  * Rychlá cenovka — mobilní wizard pro obchodníka u klienta.
@@ -54,7 +56,12 @@ interface WizardItem {
 
 type ClientChoice =
   | { mode: 'existing'; id: string; label: string; email: string | null }
-  | { mode: 'new'; jmeno: string; prijmeni: string; telefon: string; email: string }
+  | { mode: 'new'; data: ClientFormData }
+
+function klientLabel(c: ClientChoice): string {
+  if (c.mode === 'existing') return c.label
+  return c.data.typKlienta === 'FIRMA' ? c.data.jmeno.trim() : `${c.data.jmeno} ${c.data.prijmeni}`.trim()
+}
 
 const KROKY = ['Klient', 'Vzor', 'Produkty', 'Souhrn']
 const TECHNOLOGIE = Object.keys(techLabels)
@@ -75,7 +82,23 @@ export default function CenovkaWizard({ templates, defaultDph }: { templates: Wi
   const [clientResults, setClientResults] = useState<ClientOption[]>([])
   const [clientLoading, setClientLoading] = useState(false)
   const [showNewClient, setShowNewClient] = useState(false)
-  const [novyKlient, setNovyKlient] = useState({ jmeno: '', prijmeni: '', telefon: '', email: '' })
+  const [novyKlient, setNovyKlient] = useState<ClientFormData>(PRAZDNY_KLIENT)
+  const [novyKlientChyba, setNovyKlientChyba] = useState('')
+  const [overujiKlienta, setOverujiKlienta] = useState(false)
+
+  // Nový klient: povinná pole + kontrola duplicity (shoda → použít existujícího)
+  async function pouzitNovehoKlienta() {
+    const chyba = validateClient(novyKlient)
+    if (chyba) { setNovyKlientChyba(chyba); return }
+    setNovyKlientChyba('')
+    setOverujiKlienta(true)
+    const existujici = await najdiDuplicitu(novyKlient)
+    setOverujiKlienta(false)
+    setClient(existujici
+      ? { mode: 'existing', id: existujici.id, label: `${existujici.jmeno} ${existujici.prijmeni}`.trim(), email: existujici.email }
+      : { mode: 'new', data: novyKlient })
+    setShowNewClient(false)
+  }
   const [client, setClient] = useState<ClientChoice | null>(null)
 
   useEffect(() => {
@@ -153,15 +176,12 @@ export default function CenovkaWizard({ templates, defaultDph }: { templates: Wi
         const res = await fetch('/api/clients', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            typKlienta: 'FYZICKA_OSOBA',
-            jmeno: client.jmeno,
-            prijmeni: client.prijmeni,
-            telefon: client.telefon || null,
-            email: client.email || null,
-          }),
+          body: JSON.stringify(clientPayload(client.data)),
         })
-        if (!res.ok) throw new Error('Klienta se nepodařilo vytvořit')
+        if (!res.ok) {
+          const d = await res.json().catch(() => ({}))
+          throw new Error(d.error ?? 'Klienta se nepodařilo vytvořit')
+        }
         clientId = (await res.json()).id
       }
 
@@ -248,7 +268,7 @@ export default function CenovkaWizard({ templates, defaultDph }: { templates: Wi
             <div className="flex items-center justify-between bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl px-4 py-3">
               <div>
                 <p className="text-sm font-semibold text-green-800 dark:text-green-300">
-                  {client.mode === 'existing' ? client.label : `${client.jmeno} ${client.prijmeni}`.trim()}
+                  {klientLabel(client)}
                 </p>
                 <p className="text-xs text-green-600 dark:text-green-500">
                   {client.mode === 'existing' ? 'Existující klient' : 'Nový klient — vytvoří se s nabídkou'}
@@ -295,24 +315,14 @@ export default function CenovkaWizard({ templates, defaultDph }: { templates: Wi
           )}
 
           {!client && showNewClient && (
-            <div className="space-y-2">
-              <div className="grid grid-cols-2 gap-2">
-                <input placeholder="Jméno *" value={novyKlient.jmeno} onChange={e => setNovyKlient(p => ({ ...p, jmeno: e.target.value }))} className={inputCls} />
-                <input placeholder="Příjmení" value={novyKlient.prijmeni} onChange={e => setNovyKlient(p => ({ ...p, prijmeni: e.target.value }))} className={inputCls} />
-              </div>
-              <input placeholder="Telefon" type="tel" value={novyKlient.telefon} onChange={e => setNovyKlient(p => ({ ...p, telefon: e.target.value }))} className={inputCls} />
-              <input placeholder="E-mail" type="email" value={novyKlient.email} onChange={e => setNovyKlient(p => ({ ...p, email: e.target.value }))} className={inputCls} />
+            <div className="space-y-3">
+              {novyKlientChyba && (
+                <div role="alert" className="bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-sm px-3 py-2 rounded-lg">{novyKlientChyba}</div>
+              )}
+              <ClientFormFields value={novyKlient} onChange={setNovyKlient} variant="compact" />
               <div className="flex gap-2 pt-1">
-                <button onClick={() => setShowNewClient(false)} className="flex-1 px-4 py-2.5 text-sm text-gray-600 dark:text-slate-400 border border-gray-300 dark:border-slate-600 rounded-xl">
-                  Zpět
-                </button>
-                <button
-                  disabled={!novyKlient.jmeno.trim()}
-                  onClick={() => { setClient({ mode: 'new', ...novyKlient, jmeno: novyKlient.jmeno.trim() }); setShowNewClient(false) }}
-                  className="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-primary rounded-xl disabled:opacity-40"
-                >
-                  Použít
-                </button>
+                <Button variant="secondary" block onClick={() => setShowNewClient(false)}>Zpět</Button>
+                <Button block loading={overujiKlienta} onClick={pouzitNovehoKlienta}>Použít</Button>
               </div>
             </div>
           )}
@@ -518,7 +528,7 @@ export default function CenovkaWizard({ templates, defaultDph }: { templates: Wi
               <span className="text-primary dark:text-primary-light text-lg tabular-nums">{formatCislo(total * (1 + dph / 100))} Kč</span>
             </div>
             <p className="text-xs text-gray-400 dark:text-slate-500 mt-2">
-              Pro {client?.mode === 'existing' ? client.label : client ? `${client.jmeno} ${client.prijmeni}`.trim() : '?'} · {techLabels[technologie as keyof typeof techLabels]}
+              Pro {client ? klientLabel(client) : '?'} · {techLabels[technologie as keyof typeof techLabels]}
               {template ? ` · vzor ${template.nazev}` : ''}
             </p>
           </div>

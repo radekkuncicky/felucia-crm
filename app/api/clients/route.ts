@@ -46,15 +46,16 @@ export async function POST(req: Request) {
   const body = await req.json()
   const { jmeno, prijmeni, telefon, email, ulice, mesto, psc, ico, dic, poznamka, typKlienta } = body
 
-  if (!jmeno) {
-    return NextResponse.json({ error: 'Jméno je povinné' }, { status: 400 })
+  // Firma: povinný název (jmeno). Osoba: stačí jméno, nebo příjmení („pan Novák")
+  if (typKlienta === 'FIRMA' ? !jmeno : !jmeno && !prijmeni) {
+    return NextResponse.json({ error: typKlienta === 'FIRMA' ? 'Název firmy je povinný' : 'Jméno nebo příjmení je povinné' }, { status: 400 })
   }
 
   const client = await orgPrisma(orgId).client.create({
     data: {
       orgId,
       typKlienta: typKlienta === 'FIRMA' ? 'FIRMA' : 'FYZICKA_OSOBA',
-      jmeno,
+      jmeno: jmeno || '',
       prijmeni: prijmeni || '',
       telefon: telefon || null,
       email: email || null,

@@ -65,8 +65,8 @@ test('servis: nová servisní akce pro klienta z ulice (nový klient + nové za�
   await page.getByRole('button', { name: /Vytvořit klienta/ }).click()
   // unikátní telefon — jinak test DB z minulého běhu vyvolá dialog „Nemyslíte tohoto klienta?"
   await page.getByPlaceholder('+420 …').first().fill(`+420 6${String(Date.now()).slice(-8)}`)
-  await page.getByPlaceholder('Dlouhá 12').fill('Testovací 7')
-  await page.getByPlaceholder('Praha', { exact: true }).fill('Brno')
+  await page.getByLabel('Ulice a číslo popisné').fill('Testovací 7')
+  await page.getByLabel('Město').fill('Brno')
   await page.getByRole('button', { name: 'Vytvořit a použít' }).click()
   await expect(page.locator('body')).toContainText(prijmeni)
 
@@ -311,4 +311,29 @@ test('detail zakázky na desktopu: hlavička celá, bez mobilního přepínače'
   await expect(page.getByText('Termín montáže', { exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Detail zakázky' })).toBeHidden()
   await expect(page.getByRole('link', { name: 'Volat', exact: true })).toBeHidden()
+})
+
+test('nový klient: stačí příjmení, po uložení detail klienta + toast; firma má IČO a ARES', async ({ page }) => {
+  const errors = trackErrors(page)
+  const prijmeni = `Novak${Date.now()}`
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/clients/new')
+  await page.getByRole('button', { name: 'Rozumím' }).click()
+  await page.getByRole('button', { name: 'Firma' }).click()
+  await expect(page.getByLabel('IČO')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'ARES', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Fyzická osoba' }).click()
+
+  await page.getByRole('button', { name: 'Vytvořit klienta' }).click()
+  await expect(page.getByRole('alert').filter({ hasText: 'Příjmení je povinné' })).toBeVisible()
+
+  await page.getByLabel('Příjmení').fill(prijmeni)
+  await page.getByLabel('Telefon').fill(`+420 7${String(Date.now()).slice(-8)}`)
+  await page.getByRole('button', { name: 'Vytvořit klienta' }).click()
+  await page.waitForURL(/\/clients\/(?!new)[^/]+$/)
+  await expect(page.getByText('Klient založen')).toBeVisible()
+  await expect(page.locator('body')).toContainText(prijmeni)
+  const preteka = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)
+  expect(preteka).toBe(false)
+  expect(errors).toEqual([])
 })

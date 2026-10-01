@@ -1,11 +1,9 @@
 'use client'
 
 import { useState, useRef, useEffect, useId } from 'react'
-import { confirmDialog } from '@/components/ui/confirm'
 import { Dialog } from '@/components/ui/Dialog'
 import { Button } from '@/components/ui/Button'
-import { Field, Input } from '@/components/ui/Field'
-import type { AresFirma } from '@/hooks/useAresLookup'
+import ClientFormFields, { PRAZDNY_KLIENT, clientPayload, najdiDuplicitu, validateClient, type ClientFormData } from '@/components/ClientForm'
 
 export interface Client {
   id: string
@@ -27,20 +25,6 @@ interface Props {
   placeholder?: string
 }
 
-interface CreateForm {
-  /** Osoba: křestní jméno · firma: název firmy (jako clients/new) */
-  jmeno: string
-  /** Osoba: příjmení · firma: kontaktní osoba */
-  prijmeni: string
-  telefon: string
-  email: string
-  ico: string
-  dic: string
-  ulice: string
-  mesto: string
-  psc: string
-}
-
 function CreateClientModal({
   initialText,
   onCreated,
@@ -51,65 +35,15 @@ function CreateClientModal({
   onCancel: () => void
 }) {
   const formId = useId()
-  // Parse initial text: last space-separated word = jmeno, rest = prijmeni (Czech CRM convention)
-  const parts = initialText.trim().split(' ')
-  const [firma, setFirma] = useState(false)
-  const [form, setForm] = useState<CreateForm>({
-    prijmeni: parts.length > 1 ? parts.slice(0, -1).join(' ') : initialText,
+  // Text z vyhledávání: „Novák Jan" → příjmení Novák, jméno Jan (zvyk v CRM)
+  const parts = initialText.trim().split(/\s+/)
+  const [form, setForm] = useState<ClientFormData>({
+    ...PRAZDNY_KLIENT,
+    prijmeni: parts.length > 1 ? parts.slice(0, -1).join(' ') : initialText.trim(),
     jmeno: parts.length > 1 ? parts[parts.length - 1] : '',
-    telefon: '',
-    email: '',
-    ico: '',
-    dic: '',
-    ulice: '',
-    mesto: '',
-    psc: '',
   })
   const [saving, setSaving] = useState(false)
-  const [aresLoading, setAresLoading] = useState(false)
   const [error, setError] = useState('')
-
-  function set(field: keyof CreateForm, value: string) {
-    setForm(f => ({ ...f, [field]: value }))
-  }
-
-  // Přepnutí typu: text z vyhledávání patří do názvu firmy, resp. zpět do příjmení
-  function zmenitTyp(naFirmu: boolean) {
-    if (naFirmu === firma) return
-    setFirma(naFirmu)
-    setForm(f => naFirmu
-      ? { ...f, jmeno: `${f.prijmeni} ${f.jmeno}`.trim(), prijmeni: '' }
-      : { ...f, prijmeni: f.jmeno, jmeno: '' })
-  }
-
-  // Přes vlastní /api/ares — přímé volání ares.gov.cz z prohlížeče blokuje CSP (connect-src)
-  async function loadFromAres() {
-    if (!form.ico.trim()) return
-    setAresLoading(true)
-    setError('')
-    try {
-      const res = await fetch(`/api/ares?q=${encodeURIComponent(form.ico.trim())}`)
-      const firmy = res.ok ? await res.json() as AresFirma[] : []
-      if (!firmy.length) { setError('IČO nenalezeno v ARES'); return }
-      const f0 = firmy[0]
-      // Firma z ARES: název celý do jmeno, kontaktní osoba zůstává prázdná
-      setFirma(true)
-      setForm(f => ({
-        ...f,
-        jmeno: f0.nazev.trim(),
-        prijmeni: '',
-        ico: f0.ico || f.ico,
-        dic: f0.dic || f.dic,
-        ulice: f0.ulice || f.ulice,
-        mesto: f0.mesto || f.mesto,
-        psc: f0.psc || f.psc,
-      }))
-    } catch {
-      setError('Nepodařilo se načíst data z ARES')
-    } finally {
-      setAresLoading(false)
-    }
-  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -117,53 +51,24 @@ function CreateClientModal({
     // (vnořený <form> v DOM nevznikne) a stopPropagation brání tomu, aby React
     // probublal submit do vnějšího formuláře.
     e.stopPropagation()
-    if (firma ? !form.jmeno.trim() : !form.prijmeni.trim()) {
-      setError(firma ? 'Název firmy je povinný' : 'Příjmení je povinné')
-      return
-    }
+    const chyba = validateClient(form)
+    if (chyba) { setError(chyba); return }
     setSaving(true)
     setError('')
     try {
-      const dupRes = await fetch('/api/clients/check-duplicate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jmeno: form.jmeno, prijmeni: form.prijmeni, telefon: form.telefon, email: form.email }),
-      })
-      if (dupRes.ok) {
-        const { match } = await dupRes.json()
-        if (match) {
-          const popis = [`${match.jmeno} ${match.prijmeni}`.trim(), match.telefon, match.email].filter(Boolean).join(' · ')
-          const pouzitStavajiciho = await confirmDialog(popis, {
-            title: 'Nemyslíte náhodou tohoto klienta?',
-            confirmLabel: 'Ano, použít tohoto klienta',
-            cancelLabel: 'Ne, jde o jiného',
-            danger: false,
-          })
-          if (pouzitStavajiciho) {
-            onCreated({ ...match, id: match.id, jmeno: match.jmeno, prijmeni: match.prijmeni })
-            return
-          }
-        }
+      const existujici = await najdiDuplicitu(form)
+      if (existujici) {
+        onCreated(existujici)
+        return
       }
 
       const res = await fetch('/api/clients', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          typKlienta: firma ? 'FIRMA' : 'FYZICKA_OSOBA',
-          jmeno: form.jmeno.trim() || '-',
-          prijmeni: form.prijmeni.trim(),
-          telefon: form.telefon || null,
-          email: form.email || null,
-          ico: form.ico || null,
-          dic: form.dic || null,
-          ulice: form.ulice || null,
-          mesto: form.mesto || null,
-          psc: form.psc || null,
-        }),
+        body: JSON.stringify(clientPayload(form)),
       })
       if (!res.ok) {
-        const d = await res.json()
+        const d = await res.json().catch(() => ({}))
         setError(d.error || 'Chyba při vytváření klienta')
         return
       }
@@ -196,84 +101,9 @@ function CreateClientModal({
         <Button type="submit" form={formId} loading={saving}>Vytvořit a použít</Button>
       </>}
     >
-      <form id={formId} onSubmit={handleSubmit} className="space-y-3">
+      <form id={formId} onSubmit={handleSubmit} className="space-y-3" noValidate>
         {error && <div role="alert" className="bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-sm px-3 py-2 rounded-lg">{error}</div>}
-
-        <div className="flex gap-1 p-1 bg-gray-100 dark:bg-slate-700 rounded-lg w-fit" role="group" aria-label="Typ klienta">
-          {([false, true] as const).map(jeFirma => (
-            <button
-              key={String(jeFirma)}
-              type="button"
-              data-compact
-              aria-pressed={firma === jeFirma}
-              onClick={() => zmenitTyp(jeFirma)}
-              className={`hit-area px-3 py-1 rounded-md text-sm font-medium transition-colors ${
-                firma === jeFirma
-                  ? 'bg-white dark:bg-slate-800 text-gray-900 dark:text-white shadow-sm'
-                  : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200'
-              }`}
-            >
-              {jeFirma ? 'Firma' : 'Fyzická osoba'}
-            </button>
-          ))}
-        </div>
-
-        {firma ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Field label="Název firmy" required className="sm:col-span-2">
-              <Input value={form.jmeno} onChange={e => set('jmeno', e.target.value)} placeholder="Vzorová stavba s.r.o." autoComplete="organization" />
-            </Field>
-            <Field label="Kontaktní osoba" className="sm:col-span-2">
-              <Input value={form.prijmeni} onChange={e => set('prijmeni', e.target.value)} placeholder="Jan Novák" autoComplete="name" />
-            </Field>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Field label="Příjmení" required>
-              <Input value={form.prijmeni} onChange={e => set('prijmeni', e.target.value)} placeholder="Novák" autoComplete="family-name" />
-            </Field>
-            <Field label="Jméno">
-              <Input value={form.jmeno} onChange={e => set('jmeno', e.target.value)} placeholder="Jan" autoComplete="given-name" />
-            </Field>
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Field label="Telefon">
-            <Input kind="tel" value={form.telefon} onChange={e => set('telefon', e.target.value)} placeholder="+420 …" />
-          </Field>
-          <Field label="E-mail">
-            <Input kind="email" value={form.email} onChange={e => set('email', e.target.value)} placeholder="jan@…" />
-          </Field>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Field label="IČO" hint={firma ? undefined : 'Po načtení z ARES se klient přepne na firmu'}>
-            <div className="flex gap-2">
-              <Input kind="ico" value={form.ico} onChange={e => set('ico', e.target.value)} placeholder="12345678" />
-              <Button variant="secondary" onClick={loadFromAres} disabled={!form.ico.trim()} loading={aresLoading} title="Načíst údaje z ARES podle IČO">
-                ARES
-              </Button>
-            </div>
-          </Field>
-          {firma && (
-            <Field label="DIČ">
-              <Input value={form.dic} onChange={e => set('dic', e.target.value)} placeholder="CZ12345678" />
-            </Field>
-          )}
-        </div>
-
-        <Field label="Ulice a č. p.">
-          <Input value={form.ulice} onChange={e => set('ulice', e.target.value)} placeholder="Dlouhá 12" autoComplete="street-address" />
-        </Field>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <Field label="Město" className="sm:col-span-2">
-            <Input value={form.mesto} onChange={e => set('mesto', e.target.value)} placeholder="Praha" autoComplete="address-level2" />
-          </Field>
-          <Field label="PSČ">
-            <Input kind="psc" value={form.psc} onChange={e => set('psc', e.target.value)} placeholder="110 00" />
-          </Field>
-        </div>
+        <ClientFormFields value={form} onChange={setForm} variant="compact" />
       </form>
     </Dialog>
   )

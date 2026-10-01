@@ -1,147 +1,44 @@
 'use client'
 
 import { Button, ButtonLink } from '@/components/ui/Button'
-import { Field, Input, Textarea } from '@/components/ui/Field'
 import { toast } from 'sonner'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import AresAutocomplete from '@/components/AresAutocomplete'
-import type { AresFirma } from '@/hooks/useAresLookup'
-import { parseEmailInput } from '@/lib/parseEmail'
-import { confirmDialog } from '@/components/ui/confirm'
-
-function parseFullAddress(text: string): { ulice: string; psc: string; mesto: string } | null {
-  const trimmed = text.trim()
-  const match = trimmed.match(/^(.+?),?\s+(\d{3}\s?\d{2})\s+(.+)$/)
-  if (!match) return null
-  const pscRaw = match[2].replace(/\s/g, '')
-  return {
-    ulice: match[1].trim(),
-    psc: `${pscRaw.slice(0, 3)} ${pscRaw.slice(3)}`,
-    mesto: match[3].trim(),
-  }
-}
-
-
-type TypKlienta = 'FYZICKA_OSOBA' | 'FIRMA'
+import ClientFormFields, { PRAZDNY_KLIENT, clientPayload, najdiDuplicitu, validateClient, type ClientFormData } from '@/components/ClientForm'
 
 export default function NewClientPage() {
   const router = useRouter()
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  const [aresLoading, setAresLoading] = useState(false)
-  const [typKlienta, setTypKlienta] = useState<TypKlienta>('FYZICKA_OSOBA')
-  const [adresaHint, setAdresaHint] = useState(false)
-  const [form, setForm] = useState({
-    jmeno: '', prijmeni: '', telefon: '', email: '',
-    ulice: '', mesto: '', psc: '', ico: '', dic: '',
-    kontaktniOsoba: '', poznamka: '',
-  })
-
-  function set(field: string, value: string) {
-    setForm(f => ({ ...f, [field]: value }))
-  }
-
-  function handleAresSelect(firma: AresFirma) {
-    setForm(f => ({
-      ...f,
-      jmeno: firma.nazev || f.jmeno,
-      ico: firma.ico || f.ico,
-      dic: firma.dic ?? f.dic,
-      ulice: firma.ulice || f.ulice,
-      mesto: firma.mesto || f.mesto,
-      psc: firma.psc || f.psc,
-    }))
-  }
-
-  async function loadFromAres() {
-    const ico = form.ico.trim()
-    if (!ico) return
-    setAresLoading(true)
-    try {
-      const res = await fetch(`/api/ares?q=${encodeURIComponent(ico)}`)
-      if (!res.ok) { toast.error('IČO nenalezeno v ARES'); return }
-      const firmy = await res.json() as AresFirma[]
-      if (!firmy.length) { toast.error('IČO nenalezeno v ARES'); return }
-      handleAresSelect(firmy[0])
-    } catch {
-      toast.error('Nepodařilo se načíst data z ARES')
-    } finally {
-      setAresLoading(false)
-    }
-  }
+  const [form, setForm] = useState<ClientFormData>(PRAZDNY_KLIENT)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    const chyba = validateClient(form)
+    if (chyba) { setError(chyba); return }
     setSaving(true)
     setError('')
     try {
-      const dupRes = await fetch('/api/clients/check-duplicate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jmeno: form.jmeno,
-          prijmeni: typKlienta === 'FIRMA' ? form.kontaktniOsoba : form.prijmeni,
-          telefon: form.telefon,
-          email: form.email,
-        }),
-      })
-      if (dupRes.ok) {
-        const { match } = await dupRes.json()
-        if (match) {
-          const popis = [`${match.jmeno} ${match.prijmeni}`.trim(), match.telefon, match.email].filter(Boolean).join(' · ')
-          const pouzitStavajiciho = await confirmDialog(popis, {
-            title: 'Nemyslíte náhodou tohoto klienta?',
-            confirmLabel: 'Ano, použít tohoto klienta',
-            cancelLabel: 'Ne, jde o jiného',
-            danger: false,
-          })
-          if (pouzitStavajiciho) {
-            router.push(`/deals/new?clientId=${match.id}`)
-            return
-          }
-        }
+      // Shoda s existujícím klientem → otevřít jeho detail (ne zakládání OP)
+      const existujici = await najdiDuplicitu(form, 'Ano, otevřít tohoto klienta')
+      if (existujici) {
+        router.push(`/clients/${existujici.id}`)
+        return
       }
-
-      const payload =
-        typKlienta === 'FIRMA'
-          ? {
-              typKlienta: 'FIRMA',
-              jmeno: form.jmeno,
-              prijmeni: form.kontaktniOsoba || '',
-              telefon: form.telefon || null,
-              email: form.email || null,
-              ulice: form.ulice || null,
-              mesto: form.mesto || null,
-              psc: form.psc || null,
-              ico: form.ico || null,
-              dic: form.dic || null,
-              poznamka: form.poznamka || null,
-            }
-          : {
-              typKlienta: 'FYZICKA_OSOBA',
-              jmeno: form.jmeno,
-              prijmeni: form.prijmeni,
-              telefon: form.telefon || null,
-              email: form.email || null,
-              ulice: form.ulice || null,
-              mesto: form.mesto || null,
-              psc: form.psc || null,
-              poznamka: form.poznamka || null,
-            }
 
       const res = await fetch('/api/clients', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(clientPayload(form)),
       })
       if (!res.ok) {
-        const data = await res.json()
+        const data = await res.json().catch(() => ({}))
         setError(data.error || 'Chyba při ukládání')
         return
       }
       const client = await res.json()
+      toast.success('Klient založen')
       router.push(`/clients/${client.id}`)
     } catch {
       setError('Chyba při ukládání')
@@ -152,135 +49,16 @@ export default function NewClientPage() {
 
   return (
     <div className="max-w-2xl space-y-6">
-      <div className="flex items-center gap-3">
-        <Link href="/clients" className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-300">← Klienti</Link>
+      <div className="space-y-1">
+        <Link href="/clients" className="text-sm text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200">← Klienti</Link>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Nový klient</h1>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-6" noValidate>
         {error && <div role="alert" className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-sm px-4 py-3 rounded-lg">{error}</div>}
 
-        {/* Toggle typ klienta */}
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4">
-          <div className="flex gap-1 p-1 bg-gray-100 dark:bg-slate-700 rounded-lg w-fit" role="group" aria-label="Typ klienta">
-            {(['FYZICKA_OSOBA', 'FIRMA'] as TypKlienta[]).map(typ => (
-              <button
-                key={typ}
-                type="button"
-                aria-pressed={typKlienta === typ}
-                onClick={() => setTypKlienta(typ)}
-                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  typKlienta === typ
-                    ? 'bg-white dark:bg-slate-600 text-gray-900 dark:text-white shadow-sm'
-                    : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200'
-                }`}
-              >
-                {typ === 'FYZICKA_OSOBA' ? 'Fyzická osoba' : 'Firma'}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Kontaktní údaje — na mobilu jeden sloupec */}
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4 sm:p-6 space-y-4">
-          <h2 className="font-semibold text-gray-900 dark:text-white">
-            {typKlienta === 'FIRMA' ? 'Firemní údaje' : 'Kontaktní údaje'}
-          </h2>
-
-          {typKlienta === 'FYZICKA_OSOBA' ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field label="Jméno" required>
-                <Input value={form.jmeno} onChange={e => set('jmeno', e.target.value)} placeholder="Karel" autoComplete="given-name" />
-              </Field>
-              <Field label="Příjmení" required>
-                <Input value={form.prijmeni} onChange={e => set('prijmeni', e.target.value)} placeholder="Novák" autoComplete="family-name" />
-              </Field>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div>
-                <p className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Vyhledat firmu v ARES</p>
-                <AresAutocomplete onSelect={handleAresSelect} />
-                <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">Zadejte název firmy nebo IČO — po výběru se pole vyplní automaticky</p>
-              </div>
-              <Field label="Název firmy" required>
-                <Input value={form.jmeno} onChange={e => set('jmeno', e.target.value)} placeholder="Vzorová stavba s.r.o." autoComplete="organization" />
-              </Field>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field label="IČO">
-                  <div className="flex gap-2">
-                    <Input kind="ico" value={form.ico} onChange={e => set('ico', e.target.value)} placeholder="12345678" />
-                    <Button variant="secondary" onClick={loadFromAres} disabled={!form.ico.trim()} loading={aresLoading} title="Načíst údaje z ARES podle IČO">
-                      ARES
-                    </Button>
-                  </div>
-                </Field>
-                <Field label="DIČ">
-                  <Input value={form.dic} onChange={e => set('dic', e.target.value)} placeholder="CZ12345678" />
-                </Field>
-              </div>
-              <Field label="Kontaktní osoba">
-                <Input value={form.kontaktniOsoba} onChange={e => set('kontaktniOsoba', e.target.value)} placeholder="Jan Novák" autoComplete="name" />
-              </Field>
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Telefon">
-              <Input kind="tel" value={form.telefon} onChange={e => set('telefon', e.target.value)} />
-            </Field>
-            <Field label="E-mail">
-              <Input
-                kind="email"
-                value={form.email}
-                onChange={e => set('email', e.target.value)}
-                onPaste={e => {
-                  const text = e.clipboardData.getData('text')
-                  const parsed = parseEmailInput(text)
-                  if (parsed !== text) { e.preventDefault(); set('email', parsed) }
-                }}
-                onBlur={e => set('email', parseEmailInput(e.target.value))}
-              />
-            </Field>
-          </div>
-        </div>
-
-        {/* Adresa */}
-        <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4 sm:p-6 space-y-4">
-          <h2 className="font-semibold text-gray-900 dark:text-white">Kontaktní adresa</h2>
-          <Field label="Ulice a číslo popisné" hint={adresaHint ? '✓ Adresa rozpoznána a rozdělena do polí' : undefined}>
-            <Input
-              value={form.ulice}
-              onChange={e => set('ulice', e.target.value)}
-              onPaste={e => {
-                const text = e.clipboardData.getData('text')
-                const parsed = parseFullAddress(text)
-                if (parsed) {
-                  e.preventDefault()
-                  setForm(f => ({ ...f, ulice: parsed.ulice, psc: parsed.psc, mesto: parsed.mesto }))
-                  setAdresaHint(true)
-                  setTimeout(() => setAdresaHint(false), 3000)
-                }
-              }}
-              autoComplete="street-address"
-              placeholder="Nebo vložte celou adresu, např. Školní 27, 736 01 Havířov"
-            />
-          </Field>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Město">
-              <Input value={form.mesto} onChange={e => set('mesto', e.target.value)} autoComplete="address-level2" />
-            </Field>
-            <Field label="PSČ">
-              <Input kind="psc" value={form.psc} onChange={e => set('psc', e.target.value)} placeholder="700 00" />
-            </Field>
-          </div>
-        </div>
-
-        {/* Poznámka */}
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4 sm:p-6">
-          <Field label="Poznámka">
-            <Textarea value={form.poznamka} onChange={e => set('poznamka', e.target.value)} rows={3} placeholder="Interní poznámka ke klientovi…" />
-          </Field>
+          <ClientFormFields value={form} onChange={setForm} />
         </div>
 
         <div className="flex gap-3">
