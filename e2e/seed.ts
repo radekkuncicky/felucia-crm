@@ -2,6 +2,7 @@ import { PrismaClient, Role } from '@prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
 import bcrypt from 'bcryptjs'
 import 'dotenv/config'
+import { E2E_ADMIN_EMAIL, E2E_ADMIN_PASSWORD } from './credentials'
 import { E2E_PODPIS_ORG_SLUG, E2E_PODPIS_TOKEN, E2E_PODPIS_OTP, sha256, otpHash } from './podpis-fixture'
 
 const url = process.env.DATABASE_URL!
@@ -26,14 +27,14 @@ async function main() {
     },
   })
 
-  const hash = await bcrypt.hash('e2e-Heslo-123', 12)
+  const hash = await bcrypt.hash(E2E_ADMIN_PASSWORD, 12)
   const admin = await prisma.user.upsert({
-    where: { orgId_email: { orgId: org.id, email: 'e2e-admin@felucia.io' } },
+    where: { orgId_email: { orgId: org.id, email: E2E_ADMIN_EMAIL } },
     update: { hesloHash: hash, aktivni: true, role: Role.ADMIN },
     create: {
       orgId: org.id,
       jmeno: 'E2E Admin',
-      email: 'e2e-admin@felucia.io',
+      email: E2E_ADMIN_EMAIL,
       hesloHash: hash,
       role: Role.ADMIN,
     },
