@@ -39,6 +39,8 @@
   --mk-dark-ink: #edf0ec;
   --mk-dark-muted: #a7afa9;
 
+  --mk-danger: #b42318;
+
   /* Telefon */
   --mk-phone: #151917;
   --mk-phone-edge: #2a2f2c;
@@ -173,6 +175,32 @@
 .mk-progress[data-paused='true'] {
   animation-play-state: paused;
 }
+
+/* Náběh obsahu při scrollu (jednou). Skrývá se jen s JS a bez reduced motion
+   - třídu mk-reveal-on přidá RevealObserver. */
+.mk [data-reveal] {
+  transition: opacity 300ms ease-out, transform 300ms ease-out;
+}
+.mk-reveal-on [data-reveal]:not([data-revealed]) {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+/* Tabulky: globální .dark přemapování aplikace sem nesmí */
+.mk .mk-table thead th,
+.mk .mk-table tbody th,
+.mk .mk-table td {
+  background-color: transparent;
+  color: inherit;
+  border-color: var(--mk-line);
+}
+.mk .mk-table tbody tr:hover {
+  background-color: transparent !important;
+}
+
+/* details/summary bez výchozího trojúhelníku */
+.mk summary { list-style: none; }
+.mk summary::-webkit-details-marker { display: none; }
 
 @media (prefers-reduced-motion: reduce) {
   .mk *,

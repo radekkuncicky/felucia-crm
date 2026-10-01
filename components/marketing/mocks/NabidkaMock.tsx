@@ -4,7 +4,7 @@ import { DocChip, MockFigure, UiFrame } from '../primitives'
 import { Callout, FakeButton } from './parts'
 
 /** Nabídka z položek materiálu a práce, součet bez DPH, akce v liště jako v aplikaci. */
-export function NabidkaMock({ className }: { className?: string }) {
+export function NabidkaMock({ className, callout = true }: { className?: string; callout?: boolean }) {
   return (
     <div className={className}>
       <MockFigure label={`Ukázka nabídky ${DEMO_DOKLADY.nabidka} pro ${DEMO_KLIENT.jmeno}: ${DEMO_POLOZKY.length} položek materiálu a práce, celkem ${kc(soucetNabidky())} bez DPH.`}>
@@ -48,7 +48,7 @@ export function NabidkaMock({ className }: { className?: string }) {
           </div>
         </UiFrame>
       </MockFigure>
-      <Callout>Položky z katalogu s cenami podle ceníku. Hotovou nabídku zkopírujete do jiného obchodního případu, PDF má vzhled vaší firmy.</Callout>
+      {callout && <Callout>Položky z katalogu s cenami podle ceníku. Hotovou nabídku zkopírujete do jiného obchodního případu, PDF má vzhled vaší firmy.</Callout>}
     </div>
   )
 }

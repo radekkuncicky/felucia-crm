@@ -10,7 +10,7 @@ const TON: Record<MaterialStav, PillTone> = {
 }
 
 /** Stav materiálu u položek zakázky (názvy stavů jako v aplikaci). */
-export function MaterialMock({ className }: { className?: string }) {
+export function MaterialMock({ className, callout = true }: { className?: string; callout?: boolean }) {
   const vydano = DEMO_MATERIAL.filter(p => p.stav === 'Vydáno').length
   return (
     <div className={className}>
@@ -36,7 +36,7 @@ export function MaterialMock({ className }: { className?: string }) {
           </div>
         </UiFrame>
       </MockFigure>
-      <Callout>U každé položky zakázky je vidět, jestli je materiál objednaný, rezervovaný na skladě, nebo už vydaný.</Callout>
+      {callout && <Callout>U každé položky zakázky je vidět, jestli je materiál objednaný, rezervovaný na skladě, nebo už vydaný.</Callout>}
     </div>
   )
 }

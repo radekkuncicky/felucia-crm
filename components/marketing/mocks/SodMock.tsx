@@ -13,7 +13,7 @@ const DUKAZY: { label: string; value: string; mobil: boolean }[] = [
 ]
 
 /** Smlouva o dílo se dvěma podpisy; klient ověřený SMS kódem a uložené důkazy. */
-export function SodMock({ className }: { className?: string }) {
+export function SodMock({ className, callout = true }: { className?: string; callout?: boolean }) {
   return (
     <div className={className}>
       <MockFigure label={`Ukázka smlouvy o dílo ${DEMO_DOKLADY.sod}: podepsáno za zhotovitele i objednatelkou ${DEMO_KLIENT.jmeno}, elektronický podpis ověřený SMS kódem; uložen čas, ověřený telefon, IP adresa a otisk dokumentu.`}>
@@ -50,7 +50,7 @@ export function SodMock({ className }: { className?: string }) {
           </div>
         </UiFrame>
       </MockFigure>
-      <Callout>Elektronický podpis ověřený SMS kódem. Ke každému podpisu klienta se uloží čas, ověřené telefonní číslo, IP adresa a otisk dokumentu.</Callout>
+      {callout && <Callout>Elektronický podpis ověřený SMS kódem. Ke každému podpisu klienta se uloží čas, ověřené telefonní číslo, IP adresa a otisk dokumentu.</Callout>}
     </div>
   )
 }

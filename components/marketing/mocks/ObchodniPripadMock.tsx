@@ -4,7 +4,7 @@ import { IconCheck } from '../icons'
 import { Callout, FakeButton, Field, StateTrack } from './parts'
 
 /** Obchodní případ vzniklý z poptávky: údaje klienta převzaté, hlídání duplicit. */
-export function ObchodniPripadMock({ className }: { className?: string }) {
+export function ObchodniPripadMock({ className, callout = true }: { className?: string; callout?: boolean }) {
   const stav = OP_STAVY.indexOf('Nabídka')
   return (
     <div className={className}>
@@ -39,7 +39,7 @@ export function ObchodniPripadMock({ className }: { className?: string }) {
           </div>
         </UiFrame>
       </MockFigure>
-      <Callout>Lead se převede jedním kliknutím. Při zakládání klienta Felucia hlídá duplicity podle telefonu, e-mailu a jména.</Callout>
+      {callout && <Callout>Lead se převede jedním kliknutím. Při zakládání klienta Felucia hlídá duplicity podle telefonu, e-mailu a jména.</Callout>}
     </div>
   )
 }

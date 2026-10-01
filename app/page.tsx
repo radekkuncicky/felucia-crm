@@ -3,7 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
-import FeluciaLanding from './FeluciaLanding'
+import { HomePage } from '@/components/marketing/homepage/HomePage'
 import { CONTACT, FAQS, FEATURE_LIST, PLANS, SITE_NAME, SITE_TITLE, SITE_URL, WORKFLOW_HEADING, WORKFLOW_PEREX, WORKFLOW_PHASES } from '@/lib/landing'
 
 const TITLE = SITE_TITLE
@@ -130,7 +130,7 @@ export default async function Home() {
         nonce={nonce}
         dangerouslySetInnerHTML={{ __html: JSON.stringify(homeJsonLd()).replace(/</g, '\\u003c') }}
       />
-      <FeluciaLanding />
+      <HomePage />
     </>
   )
 }

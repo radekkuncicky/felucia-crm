@@ -114,6 +114,13 @@ export const DEMO_SERVIS = {
   dalsi: { termin: DEMO_TERMIN.dalsiProhlidka, typ: 'Plánovaný servis', cislo: DEMO_DOKLADY.servis, stav: 'Naplánovaná' as const },
 }
 
+/** Pohled Servis - Plánované (další klienti jsou jen do počtu, smyšlení). */
+export const DEMO_SERVIS_PLAN: { termin: string; klient: string; zarizeni: string; typ: string; cislo: string; stav: 'Nová' | 'Naplánovaná' }[] = [
+  { termin: 'listopad 2026', klient: 'Tomáš Král', zarizeni: 'Klimatizace 3,5 kW', typ: 'Plánovaný servis', cislo: 'SZ-26-0099', stav: 'Naplánovaná' },
+  { termin: 'březen 2027', klient: 'Eva Horká', zarizeni: 'Rekuperace', typ: 'Kontrola', cislo: 'SZ-26-0100', stav: 'Nová' },
+  { termin: 'říjen 2027', klient: DEMO_KLIENT.jmeno, zarizeni: 'Tepelné čerpadlo 9 kW', typ: 'Plánovaný servis', cislo: DEMO_DOKLADY.servis, stav: 'Naplánovaná' },
+]
+
 // ─── Felucia Tech ────────────────────────────────────────────────────────────
 
 export const DEMO_TECH = {

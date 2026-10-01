@@ -3,7 +3,7 @@ import { DocChip, MockFigure, StatusPill, UiFrame } from '../primitives'
 import { Callout, Field, StateTrack } from './parts'
 
 /** Karta zařízení po montáži + šest fází servisní zakázky (lib/servisStav.ts). */
-export function ServisZarizeniMock({ className }: { className?: string }) {
+export function ServisZarizeniMock({ className, callout = true }: { className?: string; callout?: boolean }) {
   const s = DEMO_SERVIS
   return (
     <div className={className}>
@@ -42,7 +42,7 @@ export function ServisZarizeniMock({ className }: { className?: string }) {
           </div>
         </UiFrame>
       </MockFigure>
-      <Callout>Po dokončení prohlídky z kontraktu Felucia sama založí další podle intervalu. Servisní modul je v plánech Professional a Enterprise.</Callout>
+      {callout && <Callout>Po dokončení prohlídky z kontraktu Felucia sama založí další podle intervalu. Servisní modul je v plánech Professional a Enterprise.</Callout>}
     </div>
   )
 }

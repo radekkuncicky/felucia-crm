@@ -46,7 +46,7 @@ export function StateTrack({ steps, current, compact = 'mobile', className }: {
 }) {
   return (
     <div className={className}>
-      <ol className={cn('items-center gap-1', compact === 'mobile' ? 'hidden sm:flex' : 'flex flex-wrap')}>
+      <ol className={cn('flex-wrap items-center gap-1 gap-y-1.5', compact === 'mobile' ? 'hidden sm:flex' : 'flex')}>
         {steps.map((s, i) => (
           <li key={s} className="flex items-center gap-1">
             <span

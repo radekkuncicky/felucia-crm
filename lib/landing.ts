@@ -59,13 +59,18 @@ export function formatPrice(price: number): string {
   return new Intl.NumberFormat('cs-CZ').format(price)
 }
 
+// Odpovědi ověřené proti docs/homepage-facts.md (2026-10-01). Zdroj pro viditelné FAQ,
+// JSON-LD FAQPage i llms.txt.
 export const FAQS: { q: string; a: string }[] = [
-  { q: 'Pro jaké firmy je Felucia vhodná?', a: 'Pro menší české montážní a servisní firmy — typicky klimatizace a tepelná čerpadla — kde majitel koordinuje obchod, zakázky a několik techniků v terénu.' },
-  { q: 'Co technik zvládne v telefonu?', a: 'V aplikaci Felucia Tech vidí dnešní a nadcházející zakázky, navigaci a kontakty na stavbě, pokyny a podklady k montáži. Může odškrtávat položky, přidávat fotky a poznámky a na konci vyplnit předávací protokol s podpisem zákazníka. Mobilní funkce jsme ověřili ve zdrojovém kódu, provozní zkušenosti průběžně sbíráme s prvními firmami.' },
-  { q: 'Jak probíhá ukázka?', a: '20 minut online. Ukážeme průchod jednou zakázkou od nabídky po servis a probereme, jestli Felucia sedí vašemu provozu.' },
+  { q: 'Pro jaké firmy je Felucia vhodná?', a: 'Pro menší české montážní a servisní firmy v oboru tepelných čerpadel, klimatizací, rekuperací a vzduchotechniky, kde kancelář řídí obchod, zakázky a několik techniků v terénu.' },
+  { q: 'Co technik zvládne v telefonu?', a: 'V aplikaci Felucia Tech vidí své dnešní a další zakázky, adresu stavby s navigací, kontakt na klienta, pokyny a podklady. Odškrtává položky, píše komentáře, fotí, vyplní předávací protokol se skutečně použitým materiálem a podpisem klienta. Se servisním modulem zapíše i servisní zásah. Aplikace je pro iOS, verzi pro Android připravujeme.' },
+  { q: 'Vidí technik ceny?', a: 'Při montáži ne. V aplikaci Felucia Tech vidí technik u zakázky jen položky a množství. Prodejní ceny vidí Správce, Manažer zakázek a Obchodník, nákupní ceny a marže jen Správce a Manažer zakázek.' },
+  { q: 'Funguje aplikace bez signálu?', a: 'Bez signálu se uloží odškrtnuté položky, komentáře, fotky i servisní protokol. Podpis a změnu stavu technik dokončí, až bude online.' },
+  { q: 'Kdo vidí naše data?', a: 'Každá firma má oddělený prostor na vlastní subdoméně firma.felucia.io a její data jsou od ostatních firem oddělená v aplikaci i přímo v databázi. Uvnitř firmy rozhodují role Správce, Manažer zakázek, Obchodník, Hlavní technik a Technik: každý vidí jen to, co mu role dovolí, technik jen přiřazené zakázky.' },
+  { q: 'Jak probíhá ukázka?', a: '20 minut online. Ukážeme průchod jednou zakázkou od poptávky po servis a probereme, jestli Felucia sedí vašemu provozu.' },
   { q: 'Jak se domlouvá zavedení?', a: 'Po ukázce se domluvíme na rozsahu a podmínkách a začínáme na konkrétní zakázce s vaším týmem. První firmy zavádíme osobně a postupně.' },
-  { q: 'Jaká data lze importovat?', a: 'Podporujeme import produktů z Excel souboru (XLSX) přes průvodce v nastavení. Kompletní migraci klientů, zakázek a historie z předchozího systému aktuálně neděláme — probereme na ukázce, co je u vás potřeba.' },
-  { q: 'Je nutné připojení k internetu?', a: 'Felucia běží jako webová a mobilní aplikace, takže část funkcí vyžaduje internetové připojení. Plně offline provoz negarantujeme.' },
+  { q: 'Jaká data lze importovat?', a: 'Produkty importujete z Excelu (XLSX) přes průvodce v nastavení. Kompletní migraci klientů, zakázek a historie z předchozího systému zatím neděláme. Na ukázce probereme, co je u vás potřeba.' },
+  { q: 'Je nutné připojení k internetu?', a: 'Kancelářská část běží v prohlížeči a připojení potřebuje. Aplikace Felucia Tech zvládne část práce i bez signálu, viz otázka výše.' },
 ]
 
 export interface WorkflowStep {

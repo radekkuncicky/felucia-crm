@@ -4,7 +4,7 @@ import { DocChip, MockFigure, StatusPill, UiFrame } from '../primitives'
 import { Callout, StateTrack } from './parts'
 
 /** Vyúčtování vzniklé z protokolu: množství Použito, schváleno Manažerem zakázek. */
-export function VyuctovaniMock({ className }: { className?: string }) {
+export function VyuctovaniMock({ className, callout = true }: { className?: string; callout?: boolean }) {
   return (
     <div className={className}>
       <MockFigure label={`Ukázka vyúčtování ${DEMO_DOKLADY.vyuctovani} vzniklého z protokolu ${DEMO_DOKLADY.protokol}: potrubí vyúčtováno 12 m, celkem ${kc(soucetVyuctovani())} bez DPH, stav Schváleno.`}>
@@ -42,7 +42,7 @@ export function VyuctovaniMock({ className }: { className?: string }) {
           </div>
         </UiFrame>
       </MockFigure>
-      <Callout>Vyúčtování nikdo nepřepisuje: převezme skutečné množství z protokolu a ceny ze zakázky. Kancelář ho jen zkontroluje a schválí.</Callout>
+      {callout && <Callout>Vyúčtování nikdo nepřepisuje: převezme skutečné množství z protokolu a ceny ze zakázky. Kancelář ho jen zkontroluje a schválí.</Callout>}
     </div>
   )
 }

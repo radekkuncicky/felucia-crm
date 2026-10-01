@@ -10,7 +10,7 @@ const RADKY = DEMO_POLOZKY.filter(p => ['tc', 'zas', 'pot', 'kon', 'mon'].includ
  * Předávací protokol: Plánováno (z nabídky) vs. Použito. Sloupec Rozdíl je
  * zvýraznění ukázky - aplikace ho jako sloupec nemá (facts bod 8).
  */
-export function ProtokolDiffMock({ className }: { className?: string }) {
+export function ProtokolDiffMock({ className, callout = true }: { className?: string; callout?: boolean }) {
   const potrubi = RADKY.find(p => p.id === 'pot')!
   return (
     <div className={className}>
@@ -64,7 +64,7 @@ export function ProtokolDiffMock({ className }: { className?: string }) {
           </div>
         </UiFrame>
       </MockFigure>
-      <Callout>Technik zapíše skutečně použité množství na místě. Manažer zakázek protokol schválí a vyúčtování vznikne s množstvím Použito.</Callout>
+      {callout && <Callout>Technik zapíše skutečně použité množství na místě. Manažer zakázek protokol schválí a vyúčtování vznikne s množstvím Použito.</Callout>}
     </div>
   )
 }
