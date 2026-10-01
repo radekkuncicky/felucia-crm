@@ -451,3 +451,11 @@ test('nástěnka: KPI a pipeline vedou do filtrovaných seznamů', async ({ page
   await expect(page.getByRole('button', { name: /^V realizaci/ })).toBeVisible() // FilterDropdown ukazuje vybraný stav
   expect(errors).toEqual([])
 })
+
+test.describe('nepřihlášený: starý vstup', () => {
+  test.use({ storageState: { cookies: [], origins: [] } })
+  test('/login přesměruje na přihlášení Felucie (bez žlutého NANTO)', async ({ page }) => {
+    await page.goto('/login?callbackUrl=%2Fdeals')
+    await expect(page).toHaveURL(/\/auth\/signin\?callbackUrl=%2Fdeals/)
+  })
+})

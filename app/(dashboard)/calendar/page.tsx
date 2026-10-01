@@ -11,7 +11,7 @@ import { leadJmeno } from '@/lib/activities'
 
 export default async function CalendarPage() {
   const session = await getServerSession(authOptions)
-  if (!session) redirect('/login')
+  if (!session) redirect('/auth/signin')
 
   const orgId = session.user.orgId
   const userId = session.user.id

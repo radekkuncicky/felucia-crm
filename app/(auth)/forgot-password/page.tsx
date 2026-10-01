@@ -47,7 +47,7 @@ export default function ForgotPasswordPage() {
               <p className="text-sm text-gray-600">
                 Pokud zadaný email existuje v systému, obdržíte odkaz pro obnovu hesla. Odkaz je platný 1 hodinu.
               </p>
-              <Link href="/login" className="block w-full text-center bg-primary hover:bg-primary-hover text-white font-semibold py-2.5 px-4 rounded-lg transition-colors mt-4">
+              <Link href="/auth/signin" className="block w-full text-center bg-primary hover:bg-primary-hover text-white font-semibold py-2.5 px-4 rounded-lg transition-colors mt-4">
                 Zpět na přihlášení
               </Link>
             </div>
@@ -72,7 +72,7 @@ export default function ForgotPasswordPage() {
               >
                 {loading ? 'Odesílám...' : 'Odeslat odkaz'}
               </button>
-              <Link href="/login" className="block text-center text-sm text-gray-500 hover:text-gray-700">
+              <Link href="/auth/signin" className="block text-center text-sm text-gray-500 hover:text-gray-700">
                 Zpět na přihlášení
               </Link>
             </form>

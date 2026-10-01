@@ -81,7 +81,7 @@ export default function ProfileClient({ user: init }: { user: UserData }) {
       if (!res.ok) { showToast(data.error || 'Chyba', 'err'); return }
       showToast('Heslo změněno – budete odhlášeni', 'ok')
       setCurrent(''); setNewPwd(''); setConfirmPwd('')
-      setTimeout(() => signOut({ callbackUrl: '/login' }), 2000)
+      setTimeout(() => signOut({ callbackUrl: '/auth/signin' }), 2000)
     } finally { setSavingPwd(false) }
   }
 

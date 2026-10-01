@@ -7,7 +7,7 @@ import { getPerms } from '@/lib/permissions'
 
 export default async function FeaturesPage() {
   const session = await getServerSession(authOptions)
-  if (!session) redirect('/login')
+  if (!session) redirect('/auth/signin')
   if (!getPerms(session.user).nastaveniOrg) redirect('/dashboard')
 
   const settings = await getOrgSettings(session.user.orgId)

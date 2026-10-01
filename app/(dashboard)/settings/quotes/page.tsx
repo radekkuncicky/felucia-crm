@@ -8,7 +8,7 @@ import { getPerms } from '@/lib/permissions'
 
 export default async function QuoteTemplatesPage() {
   const session = await getServerSession(authOptions)
-  if (!session) redirect('/login')
+  if (!session) redirect('/auth/signin')
   const orgId = session.user.orgId
   const isAdmin = getPerms(session.user).nastaveniOrg
 

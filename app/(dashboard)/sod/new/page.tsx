@@ -1,19 +1,6 @@
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
-import { getPerms } from '@/lib/permissions'
-import { notFound } from 'next/navigation'
-import SodNewClient from './SodNewClient'
+import { redirect } from 'next/navigation'
 
-export default async function SodNewPage({
-  searchParams,
-}: {
-  searchParams: { dealId?: string }
-}) {
-  const session = await getServerSession(authOptions)
-  if (!session) notFound()
-  if (!getPerms(session.user).obchod) notFound()
-
-  const dealId = searchParams.dealId ?? null
-
-  return <SodNewClient dealId={dealId} />
+/** Samostatná stránka nové SOD zrušena — smlouva vzniká v detailu OP (GenerateSodModal). */
+export default function SodNewRedirect({ searchParams }: { searchParams: { dealId?: string } }) {
+  redirect(searchParams.dealId ? `/deals/${encodeURIComponent(searchParams.dealId)}` : '/deals')
 }

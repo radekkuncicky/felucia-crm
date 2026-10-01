@@ -8,7 +8,7 @@ import { getPerms } from '@/lib/permissions'
 
 export default async function UsersPage() {
   const session = await getServerSession(authOptions)
-  if (!session) redirect('/login')
+  if (!session) redirect('/auth/signin')
   if (!getPerms(session.user).spravaUzivatelu) redirect('/dashboard')
 
   const orgId = session.user.orgId

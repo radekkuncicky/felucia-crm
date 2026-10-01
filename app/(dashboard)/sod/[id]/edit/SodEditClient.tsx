@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { Field, Input } from '@/components/ui/Field'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import SodTemplateEditor from '@/components/SodTemplateEditor'
@@ -48,7 +49,8 @@ interface Props {
   initialAttach: AttachState
 }
 
-function Field({
+/** Pole formuláře SOD — tenká vrstva nad ui/Field (popisek propojený s polem). */
+function SodField({
   label, name, value, onChange, type = 'text', placeholder, hint, span2,
 }: {
   label: string
@@ -61,17 +63,9 @@ function Field({
   span2?: boolean
 }) {
   return (
-    <div className={span2 ? 'sm:col-span-2' : ''}>
-      <label className="block text-xs font-medium text-gray-600 dark:text-slate-400 mb-1">{label}</label>
-      <input
-        type={type}
-        value={value}
-        onChange={e => onChange(name, e.target.value)}
-        placeholder={placeholder}
-        className="w-full text-sm border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-2 bg-white dark:bg-slate-800 text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400"
-      />
-      {hint && <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">{hint}</p>}
-    </div>
+    <Field label={label} hint={hint} className={span2 ? 'sm:col-span-2' : undefined}>
+      <Input type={type} value={value} onChange={e => onChange(name, e.target.value)} placeholder={placeholder} />
+    </Field>
   )
 }
 
@@ -219,28 +213,28 @@ export default function SodEditClient({ sodId, cislo, hasTemplate, initialText, 
           )}
 
           <Section title="Objednatel">
-            <Field label="Jméno / název firmy" name="klientJmeno" value={form.klientJmeno} onChange={setField} placeholder="Jan Novák" />
-            <Field label="Sídlo / adresa trvalého pobytu" name="klientAdresa" value={form.klientAdresa} onChange={setField} placeholder="Ulice 1, 700 00 Ostrava" />
-            <Field label="E-mail" name="klientEmail" value={form.klientEmail} onChange={setField} type="email" placeholder="jan@firma.cz" />
-            <Field label="Telefon" name="klientTelefon" value={form.klientTelefon} onChange={setField} placeholder="+420 123 456 789" />
-            <Field label="IČO" name="klientIco" value={form.klientIco} onChange={setField} placeholder="12345678" />
-            <Field label="DIČ" name="klientDic" value={form.klientDic} onChange={setField} placeholder="CZ12345678" />
+            <SodField label="Jméno / název firmy" name="klientJmeno" value={form.klientJmeno} onChange={setField} placeholder="Jan Novák" />
+            <SodField label="Sídlo / adresa trvalého pobytu" name="klientAdresa" value={form.klientAdresa} onChange={setField} placeholder="Ulice 1, 700 00 Ostrava" />
+            <SodField label="E-mail" name="klientEmail" value={form.klientEmail} onChange={setField} type="email" placeholder="jan@firma.cz" />
+            <SodField label="Telefon" name="klientTelefon" value={form.klientTelefon} onChange={setField} placeholder="+420 123 456 789" />
+            <SodField label="IČO" name="klientIco" value={form.klientIco} onChange={setField} placeholder="12345678" />
+            <SodField label="DIČ" name="klientDic" value={form.klientDic} onChange={setField} placeholder="CZ12345678" />
           </Section>
 
           <Section title="Kontaktní osoba na stavbě">
-            <Field label="Jméno" name="kontaktniOsoba" value={form.kontaktniOsoba} onChange={setField} placeholder="Petr Novák" />
-            <Field label="Telefon" name="kontaktniTelefon" value={form.kontaktniTelefon} onChange={setField} placeholder="+420 123 456 789" />
+            <SodField label="Jméno" name="kontaktniOsoba" value={form.kontaktniOsoba} onChange={setField} placeholder="Petr Novák" />
+            <SodField label="Telefon" name="kontaktniTelefon" value={form.kontaktniTelefon} onChange={setField} placeholder="+420 123 456 789" />
           </Section>
 
           <Section title="Předmět díla">
-            <Field label="Předmět díla" name="predmetDila" value={form.predmetDila} onChange={setField} placeholder="Dodávka a montáž tepelného čerpadla…" span2 />
-            <Field label="Adresa místa instalace" name="adresaDila" value={form.adresaDila} onChange={setField} placeholder="Ulice 1, 700 00 Ostrava" span2 />
+            <SodField label="Předmět díla" name="predmetDila" value={form.predmetDila} onChange={setField} placeholder="Dodávka a montáž tepelného čerpadla…" span2 />
+            <SodField label="Adresa místa instalace" name="adresaDila" value={form.adresaDila} onChange={setField} placeholder="Ulice 1, 700 00 Ostrava" span2 />
           </Section>
 
           <Section title="Termíny">
-            <Field label="Předpokládaný termín předání" name="terminPrevzeti" value={form.terminPrevzeti} onChange={setField} type="date" />
-            <Field label="Počet dní realizace" name="pocetDniRealizace" value={form.pocetDniRealizace} onChange={setField} type="number" placeholder="14" />
-            <Field label="Klient může změnit termín do" name="zmenaTerm" value={form.zmenaTerm} onChange={setField} type="date" hint="Volitelné — nejzazší datum, do kdy lze posunout termín" span2 />
+            <SodField label="Předpokládaný termín předání" name="terminPrevzeti" value={form.terminPrevzeti} onChange={setField} type="date" />
+            <SodField label="Počet dní realizace" name="pocetDniRealizace" value={form.pocetDniRealizace} onChange={setField} type="number" placeholder="14" />
+            <SodField label="Klient může změnit termín do" name="zmenaTerm" value={form.zmenaTerm} onChange={setField} type="date" hint="Volitelné — nejzazší datum, do kdy lze posunout termín" span2 />
           </Section>
 
           <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-5">
@@ -269,8 +263,8 @@ export default function SodEditClient({ sodId, cislo, hasTemplate, initialText, 
           </div>
 
           <Section title="Záloha">
-            <Field label="Výše zálohy (Kč)" name="zalohaKc" value={form.zalohaKc} onChange={setField} type="number" placeholder="50000" />
-            <Field label="Splatnost zálohy (dní)" name="zalohaSplatnost" value={form.zalohaSplatnost} onChange={setField} type="number" placeholder="14" />
+            <SodField label="Výše zálohy (Kč)" name="zalohaKc" value={form.zalohaKc} onChange={setField} type="number" placeholder="50000" />
+            <SodField label="Splatnost zálohy (dní)" name="zalohaSplatnost" value={form.zalohaSplatnost} onChange={setField} type="number" placeholder="14" />
           </Section>
 
           <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-5">

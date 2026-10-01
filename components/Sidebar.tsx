@@ -135,7 +135,7 @@ export default function Sidebar({ user, orgNazev }: Props) {
           )}
         </Link>
         <button
-          onClick={() => signOut({ callbackUrl: '/login' })}
+          onClick={() => signOut({ callbackUrl: '/auth/signin' })}
           title="Odhlásit"
           className={`w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-green-200/50 hover:text-green-100 hover:bg-green-900/30 transition-colors text-xs ${collapsed ? 'justify-center' : ''}`}
         >

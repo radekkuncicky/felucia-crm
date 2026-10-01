@@ -8,14 +8,14 @@ import { getCalendarToken } from '@/lib/calendarToken'
 
 export default async function ProfilePage() {
   const session = await getServerSession(authOptions)
-  if (!session) redirect('/login')
+  if (!session) redirect('/auth/signin')
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
     select: { id: true, jmeno: true, email: true, telefon: true, role: true, avatar: true, vytvoreno: true, calendarTokenVersion: true,
       organization: { select: { nazev: true } } },
   })
-  if (!user) redirect('/login')
+  if (!user) redirect('/auth/signin')
 
   const userId = session.user.id
   const sig = getCalendarToken(userId, user.calendarTokenVersion)

@@ -35,7 +35,7 @@ function ResetPasswordForm() {
       const data = await res.json()
       if (!res.ok) { setError(data.error || 'Chyba'); return }
       setDone(true)
-      setTimeout(() => router.push('/login'), 3000)
+      setTimeout(() => router.push('/auth/signin'), 3000)
     } finally {
       setLoading(false)
     }
@@ -87,7 +87,7 @@ function ResetPasswordForm() {
           >
             {loading ? 'Ukládám...' : 'Nastavit nové heslo'}
           </button>
-          <Link href="/login" className="block text-center text-sm text-gray-500 hover:text-gray-700">
+          <Link href="/auth/signin" className="block text-center text-sm text-gray-500 hover:text-gray-700">
             Zpět na přihlášení
           </Link>
         </form>

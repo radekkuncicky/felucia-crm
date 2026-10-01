@@ -174,7 +174,7 @@ const SECTIONS: { label: string; cards: CardDef[] }[] = [
 
 export default async function SettingsPage() {
   const session = await getServerSession(authOptions)
-  if (!session) redirect('/login')
+  if (!session) redirect('/auth/signin')
   const perms = getPerms(session.user)
   const sections = SECTIONS
     .map(sec => ({ ...sec, cards: sec.cards.filter(c => !c.perm || perms[c.perm]) }))

@@ -52,7 +52,7 @@ function MagicLinkVerify() {
                 </svg>
               </div>
               <p className="text-gray-700 font-medium">{message}</p>
-              <a href="/login" className="inline-block bg-primary hover:bg-primary-hover text-white font-semibold py-2.5 px-6 rounded-lg transition-colors">
+              <a href="/auth/signin" className="inline-block bg-primary hover:bg-primary-hover text-white font-semibold py-2.5 px-6 rounded-lg transition-colors">
                 Zpět na přihlášení
               </a>
             </>

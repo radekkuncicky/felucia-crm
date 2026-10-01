@@ -292,7 +292,7 @@ export default function LandingPage() {
 
           {/* CTA */}
           <div className="hidden md:flex items-center gap-3">
-            <Link href="/login" className="text-sm font-medium text-gray-700 border border-gray-300 rounded-lg px-4 py-2 hover:bg-gray-50 transition-colors">
+            <Link href="/auth/signin" className="text-sm font-medium text-gray-700 border border-gray-300 rounded-lg px-4 py-2 hover:bg-gray-50 transition-colors">
               Přihlásit se
             </Link>
             <Link href="/auth/register" className="text-sm font-bold bg-[#FFC93C] text-[#111] rounded-lg px-4 py-2 hover:bg-[#ffb800] transition-colors">
@@ -317,7 +317,7 @@ export default function LandingPage() {
               <a key={href} href={href} onClick={() => setMenuOpen(false)} className="text-gray-700 py-2.5 font-medium border-b border-gray-50 last:border-0">{label}</a>
             ))}
             <div className="flex gap-3 pt-4">
-              <Link href="/login" className="flex-1 text-center border border-gray-300 rounded-xl py-3 font-medium text-sm">Přihlásit se</Link>
+              <Link href="/auth/signin" className="flex-1 text-center border border-gray-300 rounded-xl py-3 font-medium text-sm">Přihlásit se</Link>
               <Link href="/auth/register" className="flex-1 text-center bg-[#FFC93C] text-[#111] rounded-xl py-3 font-bold text-sm">Začít zdarma</Link>
             </div>
           </div>
@@ -658,7 +658,7 @@ export default function LandingPage() {
             <div>
               <p style={mont} className="font-semibold text-sm mb-4 text-gray-300">Navigace</p>
               <ul className="space-y-2.5">
-                {[['#features', 'Funkce'], ['#ai', 'AI Dáša'], ['#faq', 'FAQ'], ['#contact', 'Kontakt'], ['/login', 'Přihlásit se']].map(([href, label]) => (
+                {[['#features', 'Funkce'], ['#ai', 'AI Dáša'], ['#faq', 'FAQ'], ['#contact', 'Kontakt'], ['/auth/signin', 'Přihlásit se']].map(([href, label]) => (
                   <li key={href}>
                     <a href={href} className="text-sm text-gray-400 hover:text-white transition-colors">{label}</a>
                   </li>
