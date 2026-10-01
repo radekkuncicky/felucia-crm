@@ -109,7 +109,7 @@ export default function KlientServisPrehled({ klientId, zarizeni, zakazky, canCr
                     <div className="flex items-center gap-2">
                       {z.cislo && <span className="text-xs font-mono text-gray-400 dark:text-slate-500">{z.cislo}</span>}
                       <span className="text-sm text-gray-900 dark:text-white truncate">{z.popis ?? typLabel(z.typ)}</span>
-                      {jeUrgentni(z.priorita) && <span className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">Urgentní</span>}
+                      {jeUrgentni(z.priorita) && <span className="text-xs font-bold uppercase px-1.5 py-0.5 rounded bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">Urgentní</span>}
                     </div>
                     <p className="text-xs text-gray-500 dark:text-slate-400 truncate">
                       {[z.popis ? typLabel(z.typ) : null, z.zarizeniNazev, z.technikJmeno].filter(Boolean).join(' · ')}

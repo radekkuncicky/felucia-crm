@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ZakazkaStav } from '@prisma/client'
 import { api } from '@/lib/api'
+import { InfoTip } from '@/components/ui/InfoTip'
 import { etapaProgressFromRaw, etapaKompletni, KROK_LABEL, KROK_LABEL_HOTOVO, type EtapaKrok, type EtapaProgressInput } from '@/lib/zakazkaEtapy'
 
 const STEPS: { stav: ZakazkaStav; label: string }[] = [
@@ -112,14 +113,7 @@ export default function PipelineBar({ zakazkaId, currentStav, canChange, etapy =
           <>
             {/* Desktop: prodlužující se lišta etap */}
             <div className="hidden sm:flex items-center flex-wrap gap-y-2">
-              <span
-                className="mr-2 flex-shrink-0 text-gray-300 dark:text-slate-600 hover:text-gray-500 dark:hover:text-slate-400 cursor-help transition-colors"
-                title="Etapy jdou striktně za sebou — další etapu lze přidat, až je ta předchozí kompletně vyúčtovaná."
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </span>
+              <InfoTip className="mr-2" label="Jak fungují etapy" text="Etapy jdou striktně za sebou — další etapu lze přidat, až je ta předchozí kompletně vyúčtovaná." />
               {etapyNodes.map((n, i) => (
                 <div key={n.key} className="flex items-center">
                   <span className={`flex items-center gap-1.5 text-xs font-medium whitespace-nowrap ${
@@ -180,14 +174,7 @@ export default function PipelineBar({ zakazkaId, currentStav, canChange, etapy =
           <>
             {/* Desktop steps */}
             <div className="hidden sm:flex items-center">
-              <span
-                className="mr-2 flex-shrink-0 text-gray-300 dark:text-slate-600 hover:text-gray-500 dark:hover:text-slate-400 cursor-help transition-colors"
-                title="Stavy se posouvají automaticky: přiřazení technika → Přiřazena, naskladnění → V realizaci, podpis protokolu → Předána, schválení vyúčtování → Vyúčtována. Ručně lze stav posunout kliknutím."
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </span>
+              <InfoTip className="mr-2" label="Jak se posouvají stavy" text="Stavy se posouvají automaticky: přiřazení technika → Přiřazena, naskladnění → V realizaci, podpis protokolu → Předána, schválení vyúčtování → Vyúčtována. Ručně lze stav posunout kliknutím." />
               {STEPS.map((step, i) => {
                 const isDone = i < currentIndex
                 const isCurrent = i === currentIndex

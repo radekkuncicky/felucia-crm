@@ -315,7 +315,7 @@ export default function DodavateleTab({ canEdit, showNakupky, search, initialId 
                         <Link href={`/products/${p.product.id}`} className="font-medium text-gray-900 dark:text-white hover:underline truncate block">{p.product.nazev}</Link>
                         <p className="text-xs text-gray-400 dark:text-slate-500 font-mono">{p.product.kod ?? ''}{p.objednaciKod ? ` → obj. ${p.objednaciKod}` : ''}</p>
                       </div>
-                      {p.hlavni && <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">Hlavní</span>}
+                      {p.hlavni && <span className="text-xs font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">Hlavní</span>}
                       {showNakupky && <span className="text-gray-600 dark:text-slate-400 whitespace-nowrap">{p.nakupniCena !== null ? formatKcPresne(p.nakupniCena) : '—'}</span>}
                     </li>
                   ))}

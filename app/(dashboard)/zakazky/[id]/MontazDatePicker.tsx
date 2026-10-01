@@ -82,12 +82,12 @@ function TerminEditor({
       {label && <span className="text-xs text-gray-500 dark:text-slate-400 font-medium self-center">{label}:</span>}
       <div className="flex items-end gap-1.5">
         <div>
-          <label htmlFor={odId} className="block text-[11px] text-gray-500 dark:text-slate-400 mb-0.5">Od</label>
+          <label htmlFor={odId} className="block text-xs text-gray-500 dark:text-slate-400 mb-0.5">Od</label>
           <input id={odId} type="date" value={od} onChange={e => setOd(e.target.value)} required autoFocus className={dateCls} />
         </div>
         <span className="text-xs text-gray-400 pb-2" aria-hidden>–</span>
         <div>
-          <label htmlFor={doId} className="block text-[11px] text-gray-500 dark:text-slate-400 mb-0.5">Do</label>
+          <label htmlFor={doId} className="block text-xs text-gray-500 dark:text-slate-400 mb-0.5">Do</label>
           <input id={doId} type="date" value={doo} onChange={e => setDoo(e.target.value)} min={od} className={dateCls} />
         </div>
       </div>

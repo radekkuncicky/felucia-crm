@@ -24,7 +24,7 @@ export default async function QuoteTemplatesPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Vzorové nabídky</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Vzorové nabídky</h1>
         <Link
           href="/quote-templates/new"
           className="bg-primary hover:bg-primary-hover text-white font-medium px-4 py-2 rounded-lg text-sm transition-colors"

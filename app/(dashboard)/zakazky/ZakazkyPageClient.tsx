@@ -136,7 +136,7 @@ function StavBadge({ stav }: { stav: ZakazkaStav }) {
 function KdykolivBadge() {
   return (
     <span title="Lze udělat kdykoliv — výplň volného místa ve výjezdu"
-      className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 flex-shrink-0">
+      className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 flex-shrink-0">
       Kdykoliv
     </span>
   )
@@ -220,7 +220,7 @@ function KanbanCard({ z, canCreate, inlineLoadingId, onStavChange }: {
         <UrgencyDot urgency={urgency} />
         <span className="font-mono text-xs font-bold text-green-600 dark:text-green-400 truncate">{z.cislo}</span>
         {z.technologie && (
-          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 ${techColors[z.technologie as keyof typeof techColors] ?? 'bg-gray-100 text-gray-600'}`}>
+          <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 ${techColors[z.technologie as keyof typeof techColors] ?? 'bg-gray-100 text-gray-600'}`}>
             {techLabels[z.technologie as keyof typeof techLabels] ?? z.technologie}
           </span>
         )}
@@ -242,7 +242,7 @@ function KanbanCard({ z, canCreate, inlineLoadingId, onStavChange }: {
           <button
             onClick={e => { e.preventDefault(); onStavChange(z.id, nextStav) }}
             disabled={loading}
-            className="text-[10px] px-1.5 py-0.5 bg-gray-50 dark:bg-slate-700 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-gray-500 dark:text-slate-400 hover:text-primary dark:hover:text-primary-light border border-gray-200 dark:border-slate-600 rounded transition-colors whitespace-nowrap flex-shrink-0"
+            className="text-xs px-1.5 py-0.5 bg-gray-50 dark:bg-slate-700 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-gray-500 dark:text-slate-400 hover:text-primary dark:hover:text-primary-light border border-gray-200 dark:border-slate-600 rounded transition-colors whitespace-nowrap flex-shrink-0"
           >
             {loading ? '…' : `→ ${STAV_LABELS[nextStav]}`}
           </button>

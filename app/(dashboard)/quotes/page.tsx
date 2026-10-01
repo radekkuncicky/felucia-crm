@@ -40,7 +40,38 @@ export default async function QuotesPage() {
       </div>
 
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">
-        <table className="w-full">
+        {quotes.length === 0 ? (
+          <EmptyState
+            title="Zatím žádné cenové nabídky"
+            description="Nabídka se vytváří v detailu obchodního případu na záložce Nabídky — ručně, z produktů, nebo jedním klikem ze vzorové nabídky."
+            actionLabel="Přejít na obchodní případy"
+            actionHref="/deals"
+          />
+        ) : (<>
+        {/* Mobil: karty */}
+        <ul className="md:hidden divide-y divide-gray-100 dark:divide-slate-700">
+          {quotes.map(q => {
+            const celkem = q.items.reduce((s, i) => s + Number(i.mnozstvi) * Number(i.cenaZaKus), 0)
+            return (
+              <li key={q.id}>
+                <Link href={`/deals/${q.dealId}?tab=nabidky`} className="block px-4 py-3 hover:bg-gray-50 dark:hover:bg-slate-700">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="font-medium text-gray-900 dark:text-white min-w-0 truncate">{q.nazev}</p>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white whitespace-nowrap">{celkem > 0 ? formatCislo(celkem) + ' Kč' : '—'}</p>
+                  </div>
+                  <p className="text-sm text-gray-600 dark:text-slate-300 truncate">
+                    {q.deal.kod && <span className="font-mono text-xs mr-1.5">{q.deal.kod}</span>}
+                    {q.deal.client.jmeno} {q.deal.client.prijmeni}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+                    {formatDate(q.vytvoreno)} · {q.items.length} položek{q.aktivni && <span className="ml-1.5 text-green-700 dark:text-green-400 font-medium">· Aktivní</span>}
+                  </p>
+                </Link>
+              </li>
+            )
+          })}
+        </ul>
+        <table className="w-full hidden md:table">
           <thead className="bg-gray-50 dark:bg-slate-900 border-b border-gray-200 dark:border-slate-700">
             <tr>
               <th className="text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase px-6 py-3">Název nabídky</th>
@@ -53,18 +84,6 @@ export default async function QuotesPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
-            {quotes.length === 0 && (
-              <tr>
-                <td colSpan={7}>
-                  <EmptyState
-                    title="Zatím žádné cenové nabídky"
-                    description="Nabídka se vytváří v detailu obchodního případu na záložce Nabídky — ručně, z produktů, nebo jedním klikem ze vzorové nabídky."
-                    actionLabel="Přejít na obchodní případy"
-                    actionHref="/deals"
-                  />
-                </td>
-              </tr>
-            )}
             {quotes.map((q) => {
               const celkem = q.items.reduce((s, i) => s + Number(i.mnozstvi) * Number(i.cenaZaKus), 0)
               return (
@@ -110,6 +129,7 @@ export default async function QuotesPage() {
             })}
           </tbody>
         </table>
+        </>)}
       </div>
     </div>
   )

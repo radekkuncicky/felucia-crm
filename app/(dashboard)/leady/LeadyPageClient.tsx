@@ -4,6 +4,7 @@ import { useState, useMemo, useId } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import EmptyState from '@/components/ui/EmptyState'
+import { PageHeader } from '@/components/ui/PageHeader'
 import { Dialog } from '@/components/ui/Dialog'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Select, Textarea } from '@/components/ui/Field'
@@ -52,11 +53,11 @@ const STATUS_LABELS: Record<LeadStatus, string> = {
 }
 
 const STATUS_COLORS: Record<LeadStatus, string> = {
-  NOVY: 'bg-blue-500/20 text-blue-300 border border-blue-500/30',
-  KONTAKTOVAN: 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30',
-  KVALIFIKOVAN: 'bg-purple-500/20 text-purple-300 border border-purple-500/30',
-  PREVEDEN: 'bg-green-500/20 text-green-300 border border-green-500/30',
-  ZRUSEN: 'bg-red-500/20 text-red-400 border border-red-500/30',
+  NOVY: 'bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-500/20 dark:text-blue-300 dark:border-blue-500/30',
+  KONTAKTOVAN: 'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-yellow-500/20 dark:text-yellow-300 dark:border-yellow-500/30',
+  KVALIFIKOVAN: 'bg-purple-50 text-purple-700 border border-purple-200 dark:bg-purple-500/20 dark:text-purple-300 dark:border-purple-500/30',
+  PREVEDEN: 'bg-green-50 text-green-700 border border-green-200 dark:bg-green-500/20 dark:text-green-300 dark:border-green-500/30',
+  ZRUSEN: 'bg-red-50 text-red-700 border border-red-200 dark:bg-red-500/20 dark:text-red-400 dark:border-red-500/30',
 }
 
 const ZDROJ_LABELS: Record<LeadZdroj, string> = {
@@ -66,9 +67,9 @@ const ZDROJ_LABELS: Record<LeadZdroj, string> = {
 }
 
 const ZDROJ_COLORS: Record<LeadZdroj, string> = {
-  WEB_FORMULAR: 'bg-cyan-500/20 text-cyan-300',
-  RUCNE: 'bg-gray-500/20 text-gray-300',
-  IMPORT: 'bg-orange-500/20 text-orange-300',
+  WEB_FORMULAR: 'bg-cyan-50 text-cyan-700 dark:bg-cyan-500/20 dark:text-cyan-300',
+  RUCNE: 'bg-gray-100 text-gray-600 dark:bg-gray-500/20 dark:text-gray-300',
+  IMPORT: 'bg-orange-50 text-orange-700 dark:bg-orange-500/20 dark:text-orange-300',
 }
 
 export default function LeadyPageClient({ leady, users, novychCount, currentUserId, canEdit, canDelete }: Props) {
@@ -148,26 +149,11 @@ export default function LeadyPageClient({ leady, users, novychCount, currentUser
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Leady</h1>
-          {novychCount > 0 && (
-            <p className="text-sm text-amber-600 dark:text-yellow-400 mt-0.5">{novychCount} nových leadů čeká na zpracování</p>
-          )}
-        </div>
-        {canEdit && (
-          <button
-            onClick={() => setShowModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-[#4CAF50] hover:bg-[#43A047] text-white rounded-lg text-sm font-medium transition-colors"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Přidat lead
-          </button>
-        )}
-      </div>
+      <PageHeader
+        title="Leady"
+        description={novychCount > 0 ? <span className="text-amber-700 dark:text-yellow-400">{novychCount} nových leadů čeká na zpracování</span> : undefined}
+        actions={canEdit && <Button onClick={() => setShowModal(true)}>+ Přidat lead</Button>}
+      />
 
       {/* Filters */}
       <div className="flex flex-wrap gap-2">
@@ -274,6 +260,11 @@ export default function LeadyPageClient({ leady, users, novychCount, currentUser
                   <td className="px-4 py-3">
                     <div className="font-medium text-gray-900 dark:text-slate-100">{lead.jmeno}</div>
                     {lead.firma && <div className="text-gray-500 dark:text-slate-400 text-xs mt-0.5">{lead.firma}</div>}
+                    {/* Mobil: řádek jako karta — poptávka, telefon, datum */}
+                    <div className="md:hidden text-xs text-gray-500 dark:text-slate-400 mt-1 space-y-0.5">
+                      {sluzbaLabel(lead.sluzba) && <div>{sluzbaLabel(lead.sluzba)}</div>}
+                      <div>{[lead.telefon || lead.email, formatDate(lead.vytvoreno)].filter(Boolean).join(' · ')}</div>
+                    </div>
                   </td>
                   <td className="px-4 py-3 hidden md:table-cell">
                     {sluzbaLabel(lead.sluzba)

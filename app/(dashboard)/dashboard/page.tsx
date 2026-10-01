@@ -250,7 +250,7 @@ export default async function DashboardPage() {
             <p className={`font-bold ${stat.color} ${stat.small ? 'text-xl' : 'text-3xl'} leading-tight`}>{stat.value}</p>
             <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">{stat.label}</p>
             {'delta' in stat && stat.delta && (
-              <p className="text-[11px] font-medium text-primary dark:text-primary-light mt-1 flex items-center gap-0.5">
+              <p className="text-xs font-medium text-primary dark:text-primary-light mt-1 flex items-center gap-0.5">
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 17l9-9m0 0v8m0-8H8" />
                 </svg>

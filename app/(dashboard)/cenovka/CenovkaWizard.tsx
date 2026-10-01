@@ -243,7 +243,7 @@ export default function CenovkaWizard({ templates, defaultDph }: { templates: Wi
     <div className="max-w-lg mx-auto space-y-4 pb-28">
       {/* Hlavička + kroky */}
       <div>
-        <h1 className="text-xl font-bold text-gray-900 dark:text-white">⚡ Rychlá cenovka</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white leading-tight">⚡ Rychlá cenovka</h1>
         <div className="flex items-center gap-1.5 mt-3">
           {KROKY.map((k, i) => (
             <button
@@ -375,7 +375,7 @@ export default function CenovkaWizard({ templates, defaultDph }: { templates: Wi
                     <div className="flex items-center justify-between gap-2">
                       <p className="text-sm font-semibold text-gray-900 dark:text-white">{t.nazev}</p>
                       {t.technologie && (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400 flex-shrink-0">
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400 flex-shrink-0">
                           {techLabels[t.technologie as keyof typeof techLabels]}
                         </span>
                       )}

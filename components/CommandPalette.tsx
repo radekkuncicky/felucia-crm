@@ -288,7 +288,7 @@ export default function CommandPalette({ navigace, akce, canNewDeal }: Props) {
               <div>
                 {results.length > 0 && (
                   <div>
-                    <p className="text-[10px] uppercase tracking-widest text-gray-400 dark:text-slate-500 px-4 py-1.5 font-semibold">Výsledky hledání</p>
+                    <p className="text-xs uppercase tracking-widest text-gray-400 dark:text-slate-500 px-4 py-1.5 font-semibold">Výsledky hledání</p>
                     {searchItems.map((item, i) => (
                       <ResultRow key={item.id} item={item} active={i === activeIdx} onHover={() => setActiveIdx(i)} onClick={() => open_(item)} />
                     ))}
@@ -301,7 +301,7 @@ export default function CommandPalette({ navigace, akce, canNewDeal }: Props) {
               const offset = staticGroups.slice(0, gi).reduce((s, g) => s + g.items.length, 0)
               return (
                 <div key={group.label}>
-                  <p className="text-[10px] uppercase tracking-widest text-gray-400 dark:text-slate-500 px-4 py-1.5 font-semibold">{group.label}</p>
+                  <p className="text-xs uppercase tracking-widest text-gray-400 dark:text-slate-500 px-4 py-1.5 font-semibold">{group.label}</p>
                   {group.items.map((item, i) => (
                     <ResultRow
                       key={item.id}
@@ -318,7 +318,7 @@ export default function CommandPalette({ navigace, akce, canNewDeal }: Props) {
         </div>
 
         {/* Footer hint */}
-        <div className="border-t border-gray-100 dark:border-slate-800 px-4 py-2 flex items-center gap-4 text-[11px] text-gray-400 dark:text-slate-500">
+        <div className="border-t border-gray-100 dark:border-slate-800 px-4 py-2 flex items-center gap-4 text-xs text-gray-400 dark:text-slate-500">
           <span className="flex items-center gap-1"><kbd className="border border-gray-200 dark:border-slate-600 rounded px-1 font-mono">↑↓</kbd> navigace</span>
           <span className="flex items-center gap-1"><kbd className="border border-gray-200 dark:border-slate-600 rounded px-1 font-mono">↵</kbd> otevřít</span>
           <span className="flex items-center gap-1"><kbd className="border border-gray-200 dark:border-slate-600 rounded px-1 font-mono">Esc</kbd> zavřít</span>
@@ -358,7 +358,7 @@ function ResultRow({ item, active, onHover, onClick }: {
         {item.sub && <span className="text-xs text-gray-400 dark:text-slate-500 truncate block">{item.sub}</span>}
       </div>
       {item.badge && (
-        <span className="text-[11px] text-gray-500 dark:text-slate-400 bg-gray-100 dark:bg-slate-800 rounded px-1.5 py-0.5 flex-shrink-0">{item.badge}</span>
+        <span className="text-xs text-gray-500 dark:text-slate-400 bg-gray-100 dark:bg-slate-800 rounded px-1.5 py-0.5 flex-shrink-0">{item.badge}</span>
       )}
     </button>
   )

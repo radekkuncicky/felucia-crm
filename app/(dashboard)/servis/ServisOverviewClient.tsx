@@ -67,7 +67,7 @@ function ItemRow({ item, showDate, showCas }: { item: Item; showDate?: boolean; 
           {item.cislo && <span className="text-xs font-mono text-gray-400 dark:text-slate-500">{item.cislo}</span>}
           <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{item.klientNazev ?? '—'}</p>
           {jeUrgentni(item.priorita) && (
-            <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">Urgentní</span>
+            <span className="text-xs font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">Urgentní</span>
           )}
         </div>
         <p className="text-xs text-gray-500 dark:text-slate-400 truncate">

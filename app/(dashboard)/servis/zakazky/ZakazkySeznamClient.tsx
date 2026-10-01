@@ -254,7 +254,7 @@ export default function ZakazkySeznamClient({ zakazky, orgUsers, canCreate }: Pr
                       {z.cislo && <span className="text-xs font-mono text-gray-400 dark:text-slate-500">{z.cislo}</span>}
                       <p className="font-medium text-gray-900 dark:text-white truncate">{z.klientNazev ?? '—'}</p>
                       {jeUrgentni(z.priorita) && (
-                        <span className="text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">Urgentní</span>
+                        <span className="text-xs font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">Urgentní</span>
                       )}
                     </div>
                     {z.popis && <p className="text-sm text-gray-700 dark:text-slate-300 truncate mt-0.5">{z.popis}</p>}

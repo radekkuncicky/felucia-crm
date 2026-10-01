@@ -66,7 +66,7 @@ export default function PermissionsPanel({ userJmeno, role, overrides: initOverr
                   <div className="min-w-0">
                     <p className="text-sm text-gray-900 dark:text-white flex items-center gap-2 flex-wrap">
                       {item.label}
-                      {changed && <span className="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-800/40 text-blue-700 dark:text-blue-300">upraveno</span>}
+                      {changed && <span className="text-xs font-semibold uppercase px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-800/40 text-blue-700 dark:text-blue-300">upraveno</span>}
                     </p>
                     {item.hint && <p className="text-xs text-gray-500 dark:text-slate-400">{item.hint}</p>}
                   </div>

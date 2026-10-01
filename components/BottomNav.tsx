@@ -64,7 +64,7 @@ export default function BottomNav({ perms, plan }: { perms: Permissions; plan?: 
             </div>
             <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-green-400 rounded-full border border-white dark:border-slate-800" />
           </div>
-          <span className={`text-[10px] font-medium ${dasaOpen ? 'text-green-400' : ''}`}>Dáša</span>
+          <span className={`text-xs font-medium ${dasaOpen ? 'text-green-400' : ''}`}>Dáša</span>
         </button>
         )}
       </div>

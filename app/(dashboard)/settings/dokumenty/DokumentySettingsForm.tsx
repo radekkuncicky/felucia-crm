@@ -114,7 +114,7 @@ export default function DokumentySettingsForm({ initial, hasWhiteLabel }: { init
                 <span className="font-medium text-gray-900 dark:text-white">
                   {s.label}
                   {s.premium && (
-                    <span className="ml-2 text-[10px] font-semibold uppercase tracking-wide bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300 px-1.5 py-0.5 rounded">
+                    <span className="ml-2 text-xs font-semibold uppercase tracking-wide bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300 px-1.5 py-0.5 rounded">
                       Professional
                     </span>
                   )}

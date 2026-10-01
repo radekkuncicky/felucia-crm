@@ -342,12 +342,12 @@ test('lead: nový lead v dialogu (Esc zavře), po uložení detail + toast', asy
   const errors = trackErrors(page)
   const jmeno = `Lead E2E ${Date.now()}`
   await page.goto('/leady')
-  await page.getByRole('button', { name: 'Přidat lead', exact: true }).click()
+  await page.getByRole('button', { name: '+ Přidat lead', exact: true }).first().click()
   await expect(page.getByRole('dialog', { name: 'Nový lead' })).toBeVisible()
   await page.keyboard.press('Escape')
   await expect(page.getByRole('dialog')).toBeHidden()
 
-  await page.getByRole('button', { name: 'Přidat lead', exact: true }).click()
+  await page.getByRole('button', { name: '+ Přidat lead', exact: true }).first().click()
   await page.getByLabel('Jméno').fill(jmeno)
   await page.getByLabel('Odh. hodnota (Kč)').fill('150 000')
   await page.getByRole('button', { name: 'Vytvořit lead' }).click()
@@ -369,4 +369,29 @@ test('zakázky: prázdný výsledek filtru nabídne cestu zpět', async ({ page 
   await expect(page.getByPlaceholder('Hledat zakázku…')).toHaveValue('')
   await expect(page.getByRole('row', { name: /E2E Zakázka/ })).toBeVisible()
   expect(errors).toEqual([])
+})
+
+test('nabídky a leady na mobilu: karty místo oříznuté tabulky, bez vodorovného posunu', async ({ page }) => {
+  const errors = trackErrors(page)
+  await page.setViewportSize({ width: 390, height: 844 })
+  for (const url of ['/quotes', '/leady']) {
+    await page.goto(url)
+    await expect(page.locator('h1')).toBeVisible()
+    const preteka = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)
+    expect(preteka, url).toBe(false)
+  }
+  await expect(page.locator('table')).toBeVisible() // leady: tabulka s kartovou buňkou
+  await page.screenshot({ path: 'e2e/.results/leady-390.png', fullPage: true })
+  expect(errors).toEqual([])
+})
+
+test('detail zakázky: vysvětlivka stavů se otevře klepnutím (ne jen title)', async ({ page }) => {
+  await page.goto('/zakazky')
+  const detail = page.getByRole('row', { name: /E2E Zakázka/ }).getByRole('link', { name: /Detail/ })
+  await page.goto((await detail.getAttribute('href'))!)
+  const tip = page.getByRole('button', { name: /Jak se posouvají stavy|Jak fungují etapy/ })
+  await tip.click()
+  await expect(page.getByRole('tooltip')).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('tooltip')).toBeHidden()
 })

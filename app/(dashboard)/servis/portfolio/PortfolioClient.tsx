@@ -82,7 +82,7 @@ function ZarukaBadge({ zarukaDo }: { zarukaDo: string | null }) {
     : st === 'konci' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300'
     : 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
   return (
-    <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${cls}`}>
+    <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${cls}`}>
       {st === 'vyprsela' ? 'záruka vypršela' : st === 'konci' ? `záruka do ${formatDate(zarukaDo!)}` : `záruka do ${formatDate(zarukaDo!)}`}
     </span>
   )
@@ -266,7 +266,7 @@ export default function PortfolioClient({ klienti, clients, orgUsers, canManage,
                                 <span className="text-xs text-gray-500 dark:text-slate-400">{ZARIZENI_TYP_LABEL[z.typ] ?? z.typ}</span>
                                 {z.vyrobniCislo && <span className="text-xs font-mono text-gray-400 dark:text-slate-500">SN {z.vyrobniCislo}</span>}
                                 <ZarukaBadge zarukaDo={z.zarukaDo} />
-                                {!z.aktivni && <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-slate-300">neaktivní</span>}
+                                {!z.aktivni && <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-slate-300">neaktivní</span>}
                               </div>
                               <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
                                 {z.datumInstalace && `instalace ${formatDate(z.datumInstalace)}`}
@@ -300,7 +300,7 @@ export default function PortfolioClient({ klienti, clients, orgUsers, canManage,
                               {pristiZ && <NavstevaRadek n={pristiZ} prefix="příští" />}
                               {!posledniZ && !pristiZ && <p className="text-xs text-gray-400 dark:text-slate-500 italic">Zatím žádná servisní návštěva</p>}
                               {z.zakazky.length > 2 && (
-                                <p className="text-[11px] text-gray-400 dark:text-slate-500">celkem {z.zakazky.length} zakázek</p>
+                                <p className="text-xs text-gray-400 dark:text-slate-500">celkem {z.zakazky.length} zakázek</p>
                               )}
                             </div>
 
@@ -334,7 +334,7 @@ export default function PortfolioClient({ klienti, clients, orgUsers, canManage,
                         <p className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">Servisní akce bez zařízení</p>
                         <div className="space-y-1">
                           {s.zakazkyBezZarizeni.slice(0, 5).map(n => <NavstevaRadek key={n.id} n={n} />)}
-                          {s.zakazkyBezZarizeni.length > 5 && <p className="text-[11px] text-gray-400 dark:text-slate-500">a dalších {s.zakazkyBezZarizeni.length - 5}</p>}
+                          {s.zakazkyBezZarizeni.length > 5 && <p className="text-xs text-gray-400 dark:text-slate-500">a dalších {s.zakazkyBezZarizeni.length - 5}</p>}
                         </div>
                       </div>
                     )}

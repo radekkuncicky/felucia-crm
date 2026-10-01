@@ -85,7 +85,7 @@ export function PaywallModal() {
               <div className="text-lg font-bold text-[#4CAF50] mb-1">
                 {loading === plan ? 'Načítám…' : price}
               </div>
-              <div className="text-[11px] text-[#6B8C6B] dark:text-[#7aaa7a]">{desc}</div>
+              <div className="text-xs text-[#6B8C6B] dark:text-[#7aaa7a]">{desc}</div>
             </button>
           ))}
         </div>
@@ -97,7 +97,7 @@ export function PaywallModal() {
           Odhlásit se
         </button>
 
-        <p className="text-[11px] text-gray-400 dark:text-gray-600 mt-4">
+        <p className="text-xs text-gray-400 dark:text-gray-600 mt-4">
           Potřebujete pomoc? Napište nám na{' '}
           <a href="mailto:info@felucia.io" className="underline">
             info@felucia.io

@@ -4,7 +4,7 @@ import { Button, ButtonLink } from '@/components/ui/Button'
 import { toast } from 'sonner'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
+import { PageHeader } from '@/components/ui/PageHeader'
 import ClientFormFields, { PRAZDNY_KLIENT, clientPayload, najdiDuplicitu, validateClient, type ClientFormData } from '@/components/ClientForm'
 
 export default function NewClientPage() {
@@ -49,10 +49,7 @@ export default function NewClientPage() {
 
   return (
     <div className="max-w-2xl space-y-6">
-      <div className="space-y-1">
-        <Link href="/clients" className="text-sm text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-slate-200">← Klienti</Link>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Nový klient</h1>
-      </div>
+      <PageHeader title="Nový klient" back={{ href: '/clients', label: 'Klienti' }} />
 
       <form onSubmit={handleSubmit} className="space-y-6" noValidate>
         {error && <div role="alert" className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-sm px-4 py-3 rounded-lg">{error}</div>}

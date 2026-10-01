@@ -149,7 +149,7 @@ export default function DealSlideOver({ dealId, onClose, onStavChange }: Props) 
             <>
               {/* Basic info */}
               <section>
-                <h3 className="text-[10px] uppercase tracking-widest text-gray-400 dark:text-slate-500 font-semibold mb-3">Základní informace</h3>
+                <h3 className="text-xs uppercase tracking-widest text-gray-400 dark:text-slate-500 font-semibold mb-3">Základní informace</h3>
                 <div className="space-y-2.5">
                   <InfoRow icon={<IconUser className="w-4 h-4" />} label="Klient">
                     <Link href={`/clients/${data.client.id}`} className="text-sm font-medium text-primary dark:text-primary-light hover:underline">
@@ -202,7 +202,7 @@ export default function DealSlideOver({ dealId, onClose, onStavChange }: Props) 
               {data.activities.length > 0 && (
                 <section>
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-[10px] uppercase tracking-widest text-gray-400 dark:text-slate-500 font-semibold">Poslední aktivity</h3>
+                    <h3 className="text-xs uppercase tracking-widest text-gray-400 dark:text-slate-500 font-semibold">Poslední aktivity</h3>
                     <Link href={`/deals/${data.id}?tab=aktivity`} className="text-xs text-[#4CAF50] hover:underline">
                       Zobrazit všechny →
                     </Link>
@@ -227,7 +227,7 @@ export default function DealSlideOver({ dealId, onClose, onStavChange }: Props) 
               {data.quotes.length > 0 && (
                 <section>
                   <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-[10px] uppercase tracking-widest text-gray-400 dark:text-slate-500 font-semibold">Nabídky</h3>
+                    <h3 className="text-xs uppercase tracking-widest text-gray-400 dark:text-slate-500 font-semibold">Nabídky</h3>
                     <Link href={`/deals/${data.id}?tab=nabidky`} className="text-xs text-[#4CAF50] hover:underline">
                       Otevřít nabídky →
                     </Link>
@@ -251,7 +251,7 @@ export default function DealSlideOver({ dealId, onClose, onStavChange }: Props) 
               {/* Notes */}
               {data.poznamky && (
                 <section>
-                  <h3 className="text-[10px] uppercase tracking-widest text-gray-400 dark:text-slate-500 font-semibold mb-2">Poznámka</h3>
+                  <h3 className="text-xs uppercase tracking-widest text-gray-400 dark:text-slate-500 font-semibold mb-2">Poznámka</h3>
                   <p className="text-sm text-gray-700 dark:text-slate-300 bg-gray-50 dark:bg-slate-800/60 rounded-xl p-3 whitespace-pre-wrap">{data.poznamky}</p>
                 </section>
               )}
@@ -292,7 +292,7 @@ function InfoRow({ icon, label, children }: { icon: React.ReactNode; label: stri
     <div className="flex items-start gap-3">
       <span className="w-5 flex justify-center flex-shrink-0 mt-0.5 text-gray-400 dark:text-slate-500">{icon}</span>
       <div className="flex-1 min-w-0">
-        <p className="text-[10px] uppercase tracking-wider text-gray-400 dark:text-slate-500 font-semibold mb-0.5">{label}</p>
+        <p className="text-xs uppercase tracking-wider text-gray-400 dark:text-slate-500 font-semibold mb-0.5">{label}</p>
         <div>{children}</div>
       </div>
     </div>

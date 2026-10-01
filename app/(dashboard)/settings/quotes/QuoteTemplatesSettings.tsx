@@ -184,7 +184,7 @@ function PlaceholderPanel({ onInsert }: { onInsert: (text: string) => void }) {
       key={text}
       type="button"
       onClick={() => onInsert(`{{${text}}}`)}
-      className="inline-block font-mono text-[11px] px-1.5 py-0.5 rounded border cursor-pointer transition-colors"
+      className="inline-block font-mono text-xs px-1.5 py-0.5 rounded border cursor-pointer transition-colors"
       style={{
         background: 'rgba(76,175,80,0.08)',
         borderColor: 'rgba(76,175,80,0.3)',
@@ -213,19 +213,19 @@ function PlaceholderPanel({ onInsert }: { onInsert: (text: string) => void }) {
         <div className="px-4 py-3 space-y-3 bg-[#0D1A0E] dark:bg-[#0D1A0E] bg-white">
           {PLACEHOLDER_GROUPS.map(g => (
             <div key={g.label}>
-              <div className="text-[9px] uppercase tracking-widest text-green-600 dark:text-green-500 mb-1.5">{g.label}</div>
+              <div className="text-xs uppercase tracking-widest text-green-600 dark:text-green-500 mb-1.5">{g.label}</div>
               <div className="flex flex-wrap gap-1.5">
                 {g.items.map(p => chip(p))}
               </div>
             </div>
           ))}
           <div>
-            <div className="text-[9px] uppercase tracking-widest text-green-600 dark:text-green-500 mb-1.5">POLOŽKY (smyčka)</div>
+            <div className="text-xs uppercase tracking-widest text-green-600 dark:text-green-500 mb-1.5">POLOŽKY (smyčka)</div>
             <div className="flex flex-wrap gap-1.5 mb-1.5">
               <button
                 type="button"
                 onClick={() => onInsert('{{#polozky}}')}
-                className="inline-block font-mono text-[11px] px-1.5 py-0.5 rounded border cursor-pointer"
+                className="inline-block font-mono text-xs px-1.5 py-0.5 rounded border cursor-pointer"
                 style={{ background: 'rgba(251,191,36,0.1)', borderColor: 'rgba(251,191,36,0.3)', color: '#FBBF24' }}
               >
                 {`{{#polozky}}`}
@@ -234,7 +234,7 @@ function PlaceholderPanel({ onInsert }: { onInsert: (text: string) => void }) {
               <button
                 type="button"
                 onClick={() => onInsert('{{/polozky}}')}
-                className="inline-block font-mono text-[11px] px-1.5 py-0.5 rounded border cursor-pointer"
+                className="inline-block font-mono text-xs px-1.5 py-0.5 rounded border cursor-pointer"
                 style={{ background: 'rgba(251,191,36,0.1)', borderColor: 'rgba(251,191,36,0.3)', color: '#FBBF24' }}
               >
                 {`{{/polozky}}`}
@@ -1529,12 +1529,12 @@ function TemplateCard({
         <div className="flex-1 min-w-0">
           <div className="font-medium text-gray-900 dark:text-white text-sm truncate">{template.nazev}</div>
           <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-            <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${TYP_COLORS[template.typ]}`}>{TYP_LABELS[template.typ]}</span>
-            {template.isSystem && <span className="text-[10px] text-gray-400 dark:text-slate-500">interní</span>}
+            <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${TYP_COLORS[template.typ]}`}>{TYP_LABELS[template.typ]}</span>
+            {template.isSystem && <span className="text-xs text-gray-400 dark:text-slate-500">interní</span>}
           </div>
         </div>
         {isAssigned && (
-          <span className="flex-shrink-0 flex items-center gap-1 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
+          <span className="flex-shrink-0 flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
             Přiřazena
           </span>

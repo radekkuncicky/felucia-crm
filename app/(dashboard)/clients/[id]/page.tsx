@@ -173,7 +173,7 @@ export default async function ClientDetailPage({
       <TabActivator id={client.id} nazev={`${client.jmeno} ${client.prijmeni}`.trim()} />
       <div className="flex items-center gap-3">
         <Link href="/clients" className="text-gray-400 hover:text-gray-600 text-sm">← Klienti</Link>
-        <h1 className="text-2xl font-bold text-gray-900">{client.jmeno} {client.prijmeni}</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{client.jmeno} {client.prijmeni}</h1>
         {client.typKlienta === 'FIRMA' && (
           <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">Firma</span>
         )}

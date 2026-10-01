@@ -69,13 +69,13 @@ function KanbanCard({ deal, overlay = false }: { deal: KanbanDeal; overlay?: boo
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           {deal.kod && (
-            <span className="text-[10px] font-mono text-gray-400 dark:text-slate-500">{deal.kod}</span>
+            <span className="text-xs font-mono text-gray-400 dark:text-slate-500">{deal.kod}</span>
           )}
           <p className="text-sm font-semibold text-gray-900 dark:text-white leading-tight truncate">
             {deal.predmet ?? 'Bez předmětu'}
           </p>
         </div>
-        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 ${techColors[deal.technologie]}`}>
+        <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 ${techColors[deal.technologie]}`}>
           {techLabels[deal.technologie]}
         </span>
       </div>
@@ -90,18 +90,18 @@ function KanbanCard({ deal, overlay = false }: { deal: KanbanDeal; overlay?: boo
         <span className="text-xs font-semibold text-gray-700 dark:text-slate-300">
           {fmtKc(deal.konecnaCena)}
           {deal.konecnaCena > 0 && (
-            <span className="text-[10px] text-gray-400 dark:text-slate-500 font-normal ml-1">
+            <span className="text-xs text-gray-400 dark:text-slate-500 font-normal ml-1">
               ({fmtKc(cenaSDph)} s DPH)
             </span>
           )}
         </span>
         {deal.userJmeno && (
-          <span className="text-[10px] text-gray-400 dark:text-slate-500 truncate max-w-[70px]">{deal.userJmeno}</span>
+          <span className="text-xs text-gray-400 dark:text-slate-500 truncate max-w-[70px]">{deal.userJmeno}</span>
         )}
       </div>
 
       {deal.terminRealizace && (
-        <p className="text-[10px] text-orange-600 dark:text-orange-400">
+        <p className="text-xs text-orange-600 dark:text-orange-400">
           Realizace: {formatDate(deal.terminRealizace)}
         </p>
       )}
@@ -142,7 +142,7 @@ function KanbanColumn({
           </span>
         </div>
         {totalValue > 0 && (
-          <p className="text-[11px] text-gray-500 dark:text-slate-400 mt-0.5 pl-4">{fmtKc(totalValue)}</p>
+          <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5 pl-4">{fmtKc(totalValue)}</p>
         )}
       </div>
 

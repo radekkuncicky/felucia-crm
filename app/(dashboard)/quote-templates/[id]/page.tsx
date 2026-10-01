@@ -19,7 +19,7 @@ export default async function EditTemplatePage({ params }: { params: { id: strin
     <div className="max-w-3xl space-y-6">
       <div className="flex items-center gap-3">
         <Link href="/quote-templates" className="text-gray-400 hover:text-gray-600 text-sm">← Vzorové nabídky</Link>
-        <h1 className="text-2xl font-bold text-gray-900">Upravit šablonu</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Upravit šablonu</h1>
       </div>
       <TemplateForm
         template={{ id: template.id, nazev: template.nazev, popis: template.popis ?? '', technologie: template.technologie ?? '', polozky: Array.isArray(template.polozky) ? (template.polozky as TemplateItem[]) : [] }}

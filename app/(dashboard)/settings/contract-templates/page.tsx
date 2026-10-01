@@ -21,7 +21,7 @@ export default async function ContractTemplatesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Nastavení</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Nastavení</h1>
       </div>
       <ContractTemplatesManager
         templates={templates.map(t => ({ id: t.id, nazev: t.nazev, popis: t.popis, obsah: t.obsah }))}

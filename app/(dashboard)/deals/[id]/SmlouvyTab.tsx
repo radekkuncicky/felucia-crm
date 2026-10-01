@@ -138,9 +138,9 @@ export default function SmlouvyTab({ dealId, canDelete }: Props) {
             {sods.map(sod => (
               <div
                 key={sod.id}
-                className="px-5 py-3.5 flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-slate-700/30"
+                className="px-4 sm:px-5 py-3.5 flex flex-wrap items-center gap-x-4 gap-y-2 hover:bg-gray-50 dark:hover:bg-slate-700/30"
               >
-                <span className="font-mono text-sm font-semibold text-gray-900 dark:text-white w-32 shrink-0">
+                <span className="font-mono text-sm font-semibold text-gray-900 dark:text-white sm:w-32 shrink-0">
                   {sod.cislo}
                 </span>
                 <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${TYP_COLORS[sod.typ]}`}>
@@ -154,7 +154,7 @@ export default function SmlouvyTab({ dealId, canDelete }: Props) {
                 <span className="text-xs text-gray-400 dark:text-slate-500 ml-1">
                   {formatDate(sod.vytvoreno)}
                 </span>
-                <div className="ml-auto flex items-center gap-1.5">
+                <div className="w-full sm:w-auto sm:ml-auto flex flex-wrap items-center gap-1.5">
                   <Link
                     href={`/sod/${sod.id}`}
                     className="text-xs font-medium text-primary dark:text-primary-light hover:underline px-2 py-1 rounded"

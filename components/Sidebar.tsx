@@ -98,7 +98,7 @@ export default function Sidebar({ user, orgNazev }: Props) {
         {sections.map((sec, i) => (
           <div key={sec.id} className={i > 0 ? (collapsed || !sec.title ? 'mt-2 pt-2 border-t border-green-900/40' : 'mt-3') : ''}>
             {sec.title && !collapsed && (
-              <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-green-400/45">{sec.title}</p>
+              <p className="px-3 pb-1 text-xs font-semibold uppercase tracking-wider text-green-400/45">{sec.title}</p>
             )}
             <div className="space-y-0.5">
               {sec.items.map(item => <NavLink key={item.id} item={item} collapsed={collapsed} pathname={pathname} />)}

@@ -425,7 +425,7 @@ function DuplicateToModal({
           <div className="flex items-center gap-2 text-sm">
             {/* Source */}
             <div className="flex-1 min-w-0 bg-gray-50 dark:bg-slate-700/60 border border-gray-200 dark:border-slate-600 rounded-xl px-3 py-2.5">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 dark:text-slate-500 mb-0.5">Nabídka</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-slate-500 mb-0.5">Nabídka</p>
               <p className="text-sm font-medium text-gray-800 dark:text-slate-200 truncate">{quoteName}</p>
             </div>
             {/* Arrow */}
@@ -436,7 +436,7 @@ function DuplicateToModal({
             </div>
             {/* Destination */}
             <div className={`flex-1 min-w-0 border rounded-xl px-3 py-2.5 transition-colors ${selectedDeal ? 'bg-blue-50 dark:bg-blue-950/30 border-blue-300 dark:border-blue-700' : 'bg-gray-50 dark:bg-slate-700/60 border-dashed border-gray-300 dark:border-slate-600'}`}>
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 dark:text-slate-500 mb-0.5">Cíl</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-slate-500 mb-0.5">Cíl</p>
               {selectedDeal ? (
                 <>
                   <p className="text-sm font-medium text-blue-700 dark:text-blue-300 truncate">{selectedDeal.predmet ?? 'Bez předmětu'}</p>
@@ -1671,54 +1671,54 @@ export default function NabidkyTab({
                   <tr>
                     <th className="w-6" />
                     <th
-                      className="text-left text-[11px] font-semibold text-gray-400 dark:text-slate-500 uppercase px-2 py-1.5 tracking-wide"
+                      className="text-left text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase px-2 py-1.5 tracking-wide"
                       style={{ width: 84 }}
                     >
                       Kód
                     </th>
-                    <th className="text-left text-[11px] font-semibold text-gray-400 dark:text-slate-500 uppercase px-2 py-1.5 tracking-wide">
+                    <th className="text-left text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase px-2 py-1.5 tracking-wide">
                       Název
                     </th>
                     <th
-                      className="text-right text-[11px] font-semibold text-gray-400 dark:text-slate-500 uppercase px-2 py-1.5 tracking-wide"
+                      className="text-right text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase px-2 py-1.5 tracking-wide"
                       style={{ width: 68 }}
                     >
                       Mn.
                     </th>
                     <th
-                      className="text-left text-[11px] font-semibold text-gray-400 dark:text-slate-500 uppercase px-2 py-1.5 tracking-wide"
+                      className="text-left text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase px-2 py-1.5 tracking-wide"
                       style={{ width: 64 }}
                     >
                       Jed.
                     </th>
                     <th
-                      className="text-right text-[11px] font-semibold text-gray-400 dark:text-slate-500 uppercase px-2 py-1.5 tracking-wide"
+                      className="text-right text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase px-2 py-1.5 tracking-wide"
                       style={{ width: 96 }}
                     >
                       Cena/ks
                     </th>
                     {isManazer && (
                       <th
-                        className="text-right text-[11px] font-semibold text-gray-400 dark:text-slate-500 uppercase px-2 py-1.5 tracking-wide"
+                        className="text-right text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase px-2 py-1.5 tracking-wide"
                         style={{ width: 88 }}
                       >
                         NK. cena
                       </th>
                     )}
                     <th
-                      className="text-right text-[11px] font-semibold text-gray-400 dark:text-slate-500 uppercase px-2 py-1.5 tracking-wide"
+                      className="text-right text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase px-2 py-1.5 tracking-wide"
                       style={{ width: 64 }}
                     >
                       Sleva%
                     </th>
                     <th
-                      className="text-right text-[11px] font-semibold text-gray-400 dark:text-slate-500 uppercase px-2 py-1.5 tracking-wide"
+                      className="text-right text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase px-2 py-1.5 tracking-wide"
                       style={{ width: 60 }}
                     >
                       DPH%
                     </th>
                     <th
-                      className="text-right text-[11px] font-semibold text-gray-400 dark:text-slate-500 uppercase pr-2 py-1.5 tracking-wide"
+                      className="text-right text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase pr-2 py-1.5 tracking-wide"
                       style={{ width: 96 }}
                     >
                       Celkem

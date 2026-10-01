@@ -155,8 +155,8 @@ export default function ProductDodavateleSection({ productId, showNakupky, canEd
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
                   <div className="min-w-[160px] flex-1">
                     <Link href={`/sklad?tab=dodavatele&id=${v.dodavatel.id}`} className="font-medium text-gray-900 dark:text-white hover:underline">{v.dodavatel.nazev}</Link>
-                    {v.hlavni && <span className="ml-2 text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">Hlavní</span>}
-                    {!v.dodavatel.aktivni && <span className="ml-2 text-[10px] uppercase text-gray-400">neaktivní</span>}
+                    {v.hlavni && <span className="ml-2 text-xs font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">Hlavní</span>}
+                    {!v.dodavatel.aktivni && <span className="ml-2 text-xs uppercase text-gray-400">neaktivní</span>}
                   </div>
                   <div className="text-gray-600 dark:text-slate-400">
                     <span className="text-xs text-gray-400 dark:text-slate-500">Obj. kód </span>
