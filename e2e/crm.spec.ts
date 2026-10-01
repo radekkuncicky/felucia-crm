@@ -275,3 +275,40 @@ test('kalendář na mobilu: výchozí Agenda po dnech, bez vodorovného posunu s
   await page.screenshot({ path: 'e2e/.results/kalendar-agenda-390.png', fullPage: true })
   expect(errors).toEqual([])
 })
+
+test('detail zakázky na mobilu: sbalená hlavička s rychlými akcemi, taby hned na první obrazovce', async ({ page }) => {
+  const errors = trackErrors(page)
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/zakazky')
+  const detail = page.getByRole('row', { name: /E2E Zakázka/ }).getByRole('link', { name: /Detail/ })
+    .or(page.getByRole('link', { name: /E2E Zakázka/ })).first()
+  const zakazkaId = (await detail.getAttribute('href'))!.split('/').filter(Boolean)[1]
+
+  await page.goto(`/zakazky/${zakazkaId}`)
+  await expect(page.getByRole('heading', { name: 'E2E Zakázka' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Volat', exact: true })).toHaveAttribute('href', /^tel:/)
+  await expect(page.getByRole('link', { name: 'Protokol', exact: true })).toBeVisible()
+  // Detailní pole jsou sbalená, taby jsou vidět bez scrollu
+  await expect(page.getByText('Termín montáže', { exact: true })).toBeHidden()
+  const taby = await page.getByRole('link', { name: 'Položky', exact: true }).boundingBox()
+  expect(taby!.y + taby!.height).toBeLessThan(844)
+  await page.screenshot({ path: 'e2e/.results/zakazka-sbalena-390.png', fullPage: true })
+
+  await page.getByRole('button', { name: 'Detail zakázky' }).click()
+  await expect(page.getByText('Termín montáže', { exact: true })).toBeVisible()
+  await page.getByRole('link', { name: 'Foto', exact: true }).click()
+  await page.waitForURL(/tab=podklady/)
+  await expect(page.locator('#foto')).toBeVisible()
+  const preteka = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)
+  expect(preteka).toBe(false)
+  expect(errors).toEqual([])
+})
+
+test('detail zakázky na desktopu: hlavička celá, bez mobilního přepínače', async ({ page }) => {
+  await page.goto('/zakazky')
+  const detail = page.getByRole('row', { name: /E2E Zakázka/ }).getByRole('link', { name: /Detail/ })
+  await page.goto((await detail.getAttribute('href'))!)
+  await expect(page.getByText('Termín montáže', { exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Detail zakázky' })).toBeHidden()
+  await expect(page.getByRole('link', { name: 'Volat', exact: true })).toBeHidden()
+})

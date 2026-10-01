@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { Suspense } from 'react'
-import { techLabels } from '@/lib/constants'
+import { techLabels, zakazkaStavLabels } from '@/lib/constants'
 import { formatKc } from '@/lib/format'
 import { canAccessZakazka } from '@/lib/zakazkyHelpers'
 import { getPerms, isTechnikView } from '@/lib/permissions'
@@ -22,6 +22,7 @@ import EtapySection from './EtapySection'
 import ZakazkaTechnici from './ZakazkaTechnici'
 import CopyLinkButton from './CopyLinkButton'
 import TitulniFotoUpload from './TitulniFotoUpload'
+import { SbalitelnyDetail, SbalitelnaCast, SbalitPrepinac, RychleAkce } from './MobilniHlavicka'
 
 export async function generateMetadata({ params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
@@ -140,10 +141,19 @@ export default async function ZakazkaDetailLayout({
 
   const adresa = [zakazka.klient.ulice, [zakazka.klient.mesto, zakazka.klient.psc].filter(Boolean).join(' ')].filter(Boolean).join(', ')
 
+  // Souhrn termínu pro sbalenou mobilní hlavičku
+  const dm = (d: Date) => `${d.getUTCDate()}. ${d.getUTCMonth() + 1}.`
+  const terminText = zakazka.montazOd
+    ? (zakazka.montazDo && zakazka.montazDo.getTime() !== zakazka.montazOd.getTime()
+        ? `${dm(zakazka.montazOd)} – ${dm(zakazka.montazDo)}`
+        : dm(zakazka.montazOd))
+    : zakazka.kdykoliv ? 'Kdykoliv' : 'Bez termínu'
+
   return (
+    <SbalitelnyDetail>
     <div className="space-y-4">
-      {/* Header */}
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 px-5 py-5">
+      {/* Header — na mobilu sbalený (MobilniHlavicka), na desktopu celý */}
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 px-4 pt-4 sm:px-5 sm:py-5">
         <div className="flex flex-col gap-4">
           {/* Breadcrumb */}
           <div className="flex items-center gap-1.5 text-sm text-gray-400 dark:text-slate-500 flex-wrap">
@@ -189,8 +199,15 @@ export default async function ZakazkaDetailLayout({
                       {zakazka.klient.jmeno} {zakazka.klient.prijmeni}
                     </Link>
                   </p>
+                  <p className="sm:hidden text-sm text-gray-600 dark:text-slate-300">
+                    {terminText} · {zakazkaStavLabels[zakazka.stav]}
+                  </p>
                 </div>
               </div>
+
+              <RychleAkce zakazkaId={zakazka.id} adresa={zakazka.mistoStavby || adresa} telefon={zakazka.klient.telefon ?? null} />
+
+              <SbalitelnaCast desktop="contents" openClassName="grid grid-cols-1 gap-4">
 
               {/* Sloupec 2: termín + místo instalace */}
               <div className="min-w-0 space-y-3 sm:border-l sm:border-r border-gray-100 dark:border-slate-700 sm:px-4">
@@ -259,23 +276,27 @@ export default async function ZakazkaDetailLayout({
                   )}
                 </div>
               </div>
+              </SbalitelnaCast>
             </div>
 
             {/* Right actions */}
             {(perms.zakazkyMazani || perms.servisDispecink) && (
-              <ZakazkaDetailHeader
-                zakazkaId={zakazka.id}
-                stav={zakazka.stav}
-                opId={zakazka.opId ?? null}
-                canDelete={perms.zakazkyMazani}
-                canServis={perms.servisDispecink}
-                hasServiceModule={getPlanLimits(session!.user.plan as string).hasServiceModule}
-              />
+              <SbalitelnaCast>
+                <ZakazkaDetailHeader
+                  zakazkaId={zakazka.id}
+                  stav={zakazka.stav}
+                  opId={zakazka.opId ?? null}
+                  canDelete={perms.zakazkyMazani}
+                  canServis={perms.servisDispecink}
+                  hasServiceModule={getPlanLimits(session!.user.plan as string).hasServiceModule}
+                />
+              </SbalitelnaCast>
             )}
           </div>
 
           {/* Položky progress */}
           {polozkyTotal > 0 && (
+            <SbalitelnaCast>
             <div className="flex items-center gap-2">
               <span className="text-xs text-gray-500 dark:text-slate-400 font-medium shrink-0">Položky</span>
               <div className="flex rounded-full overflow-hidden h-1.5 w-24 bg-gray-100 dark:bg-slate-700 shrink-0">
@@ -294,10 +315,14 @@ export default async function ZakazkaDetailLayout({
                 </Link>
               )}
             </div>
+            </SbalitelnaCast>
           )}
         </div>
+        <div className="-mx-4 mt-3 sm:hidden"><SbalitPrepinac /></div>
       </div>
 
+      {/* Pipeline, etapy a finance — na mobilu pod „Detail zakázky" */}
+      <SbalitelnaCast className="space-y-4">
       {/* Pipeline bar */}
       <PipelineBar
         zakazkaId={zakazka.id}
@@ -385,6 +410,7 @@ export default async function ZakazkaDetailLayout({
           )}
         </div>
       )}
+      </SbalitelnaCast>
 
       {/* Tab bar — always visible, active tab determined from URL */}
       <Suspense fallback={<div className="border-b border-gray-200 dark:border-slate-700 h-10" />}>
@@ -397,5 +423,6 @@ export default async function ZakazkaDetailLayout({
       {/* Floating quick-note button (mobile) */}
       <RychlaPoznamka zakazkaId={zakazka.id} />
     </div>
+    </SbalitelnyDetail>
   )
 }
