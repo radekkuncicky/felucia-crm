@@ -1473,15 +1473,24 @@ export default function NabidkyTab({
               >
                 Náhled
               </a>
+              {/* Denně používané akce přímo v liště (Radek 2026-10-01) — v menu „⋯“ jen zbytek */}
+              <Button size="sm" variant="secondary" onClick={() => handleExportPdf(selectedQuote.id)} disabled={pdfLoading}>
+                {pdfLoading ? 'Generuji…' : '⬇ PDF'}
+              </Button>
+              <Button size="sm" variant="secondary" onClick={() => duplicateQuote(selectedQuote.id)} disabled={saving} title="Nová verze nabídky v tomto OP">
+                Duplikovat
+              </Button>
+              <Button size="sm" variant="secondary" onClick={() => setShowDuplicateToModal(true)} title="Zkopírovat nabídku do OP jiného klienta">
+                Duplikovat →
+              </Button>
+              <Button size="sm" variant="secondary" onClick={() => setShowKontrolaModal(true)} title="Naplánovat hovor / e-mail klientovi k této nabídce">
+                Kontrolní kontakt
+              </Button>
               <Button size="sm" onClick={() => setShowShareModal(true)}>Poslat klientovi</Button>
               <Menu
                 label="Další akce s nabídkou"
                 items={[
                   ...(isDirty ? [{ label: 'Uložit hned', onSelect: () => doSave() }] : []),
-                  { label: pdfLoading ? 'Generuji PDF…' : 'Stáhnout PDF', onSelect: () => handleExportPdf(selectedQuote.id), disabled: pdfLoading },
-                  { label: 'Kontrolní kontakt…', onSelect: () => setShowKontrolaModal(true) },
-                  { label: 'Duplikovat jako novou verzi', onSelect: () => duplicateQuote(selectedQuote.id), disabled: saving, separator: true },
-                  { label: 'Kopírovat do jiného OP…', onSelect: () => setShowDuplicateToModal(true) },
                   { label: 'Přejmenovat', onSelect: () => { setEditingNameId(selectedQuote.id); setEditingNameValue(selectedQuote.nazev) } },
                   ...(quotes.length > 1 ? [{ label: 'Smazat nabídku', onSelect: () => setDeleteQuoteId(selectedQuote.id), danger: true, separator: true }] : []),
                 ]}
