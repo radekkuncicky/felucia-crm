@@ -440,11 +440,16 @@ function UpcomingActivitiesGroups({
   const todayStr  = datePart(today)
   const tomStr    = datePart(tomorrow)
   const afterStr  = datePart(dayAfterTomorrow)
+  // dotaz bere klouzavých 7 dní → rozdělit na kalendářní týden (do neděle) a příští týden
+  const pristiPondeli = new Date(today)
+  pristiPondeli.setUTCDate(today.getUTCDate() + 7 - ((today.getUTCDay() + 6) % 7))
+  const pristiStr = datePart(pristiPondeli)
 
   const groups = [
     { label: 'Dnes',       dot: 'bg-red-500', color: 'text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/30', items: activities.filter(a => datePart(a.datum) === todayStr) },
     { label: 'Zítra',      dot: 'bg-amber-500', color: 'text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/30', items: activities.filter(a => datePart(a.datum) === tomStr) },
-    { label: 'Tento týden', dot: 'bg-gray-400', color: 'text-gray-600 dark:text-slate-400 bg-gray-50 dark:bg-slate-700/40', items: activities.filter(a => datePart(a.datum) >= afterStr) },
+    { label: 'Tento týden', dot: 'bg-gray-400', color: 'text-gray-600 dark:text-slate-400 bg-gray-50 dark:bg-slate-700/40', items: activities.filter(a => datePart(a.datum) >= afterStr && datePart(a.datum) < pristiStr) },
+    { label: 'Příští týden', dot: 'bg-gray-300', color: 'text-gray-500 dark:text-slate-400 bg-gray-50 dark:bg-slate-700/40', items: activities.filter(a => datePart(a.datum) >= afterStr && datePart(a.datum) >= pristiStr) },
   ].filter(g => g.items.length > 0)
 
   return (

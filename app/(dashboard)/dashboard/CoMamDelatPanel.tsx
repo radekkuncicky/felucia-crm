@@ -26,11 +26,19 @@ interface NotifData {
   servisyPoTerminu?: { id: string; planovanyTermin: string; zarizeniNazev: string | null; kontrakt: { nazev: string; klient: { jmeno: string; prijmeni: string } } | null }[]
 }
 
-const SKUPINY: { key: CoMamDelatSkupina; label: string; cls: string }[] = [
-  { key: 'PO_TERMINU',  label: 'Po termínu',   cls: 'text-red-600 dark:text-red-400' },
-  { key: 'DNES',        label: 'Dnes',         cls: 'text-amber-600 dark:text-amber-400' },
-  { key: 'TYDEN',       label: 'Tento týden',  cls: 'text-gray-700 dark:text-slate-300' },
-  { key: 'BEZ_TERMINU', label: 'Bez termínu',  cls: 'text-gray-500 dark:text-slate-400' },
+/** Pondělí příštího týdne (lokální půlnoc) — API vrací ve skupině TYDEN klouzavých 7 dní, tady je dělíme na kalendářní týdny. */
+function zacatekPristihoTydne() {
+  const d = new Date(); d.setHours(0, 0, 0, 0)
+  d.setDate(d.getDate() + 7 - ((d.getDay() + 6) % 7))
+  return d
+}
+
+const SKUPINY: { key: string; skupina: CoMamDelatSkupina; label: string; cls: string; pristiTyden?: boolean }[] = [
+  { key: 'PO_TERMINU',   skupina: 'PO_TERMINU',  label: 'Po termínu',   cls: 'text-red-600 dark:text-red-400' },
+  { key: 'DNES',         skupina: 'DNES',        label: 'Dnes',         cls: 'text-amber-600 dark:text-amber-400' },
+  { key: 'TYDEN',        skupina: 'TYDEN',       label: 'Tento týden',  cls: 'text-gray-700 dark:text-slate-300', pristiTyden: false },
+  { key: 'PRISTI_TYDEN', skupina: 'TYDEN',       label: 'Příští týden', cls: 'text-gray-500 dark:text-slate-400', pristiTyden: true },
+  { key: 'BEZ_TERMINU',  skupina: 'BEZ_TERMINU', label: 'Bez termínu',  cls: 'text-gray-500 dark:text-slate-400' },
 ]
 
 function TypIcon({ p }: { p: CoMamDelatPolozka }) {
@@ -154,7 +162,10 @@ export default function CoMamDelatPanel() {
       {polozky && polozky.length > 0 && (
         <div className="px-5 pb-3 space-y-3">
           {SKUPINY.map(sk => {
-            const items = polozky.filter(p => p.skupina === sk.key)
+            const pristiPondeli = zacatekPristihoTydne()
+            const items = polozky.filter(p =>
+              p.skupina === sk.skupina
+              && (sk.pristiTyden === undefined || (!!p.datum && new Date(p.datum) >= pristiPondeli) === sk.pristiTyden))
             if (items.length === 0) return null
             return (
               <div key={sk.key}>
