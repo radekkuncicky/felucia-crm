@@ -68,9 +68,6 @@ body {
   .safe-area-inset-bottom {
     padding-bottom: env(safe-area-inset-bottom);
   }
-  .font-montserrat {
-    font-family: var(--font-montserrat, Montserrat, sans-serif);
-  }
 }
 
 html {

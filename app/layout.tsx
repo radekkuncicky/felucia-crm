@@ -1,14 +1,14 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter, Montserrat, Space_Grotesk } from 'next/font/google'
+import { Inter, Space_Grotesk } from 'next/font/google'
 import { headers } from 'next/headers'
 import './globals.css'
 import { Providers } from './providers'
 import CookieConsent from './components/CookieConsent'
 import { CONTACT, OPERATOR, SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from '@/lib/landing'
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
-const montserrat = Montserrat({ subsets: ['latin'], variable: '--font-montserrat' })
-const spaceGrotesk = Space_Grotesk({ subsets: ['latin'], variable: '--font-space-grotesk' })
+// latin-ext kvůli češtině (ě, š, č, ř, ž, ů…) - jinak se dotahuje další soubor až po vykreslení
+const inter = Inter({ subsets: ['latin', 'latin-ext'], variable: '--font-inter' })
+const spaceGrotesk = Space_Grotesk({ subsets: ['latin', 'latin-ext'], variable: '--font-space-grotesk' })
 
 const googleVerification = process.env.GOOGLE_SITE_VERIFICATION
 const bingVerification = process.env.BING_SITE_VERIFICATION
@@ -50,7 +50,6 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
 }
 
 // Site-wide entity graph (Organization + WebSite). Produkt/FAQ schema je na homepage (app/page.tsx).
@@ -115,8 +114,8 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(siteJsonLd()).replace(/</g, '\\u003c') }}
         />
       </head>
-      <body className={`${inter.variable} ${montserrat.variable} ${spaceGrotesk.variable} ${inter.className}`}>
-        <Providers>{children}</Providers>
+      <body className={`${inter.variable} ${spaceGrotesk.variable} ${inter.className}`}>
+        <Providers nonce={nonce}>{children}</Providers>
         <CookieConsent />
       </body>
     </html>

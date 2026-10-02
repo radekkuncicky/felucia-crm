@@ -51,7 +51,7 @@ export default function OnboardingModal() {
         {/* Header */}
         <div className="text-center mb-6">
           <div className="flex justify-center mb-3"><IconSparkles className="w-10 h-10 text-primary" /></div>
-          <h2 className="text-2xl font-bold text-[#111] dark:text-white" style={{ fontFamily: 'var(--font-montserrat, sans-serif)' }}>
+          <h2 className="text-2xl font-bold text-[#111] dark:text-white">
             Vítejte v FELUCIA CRM!
           </h2>
           <p className="mt-2 text-sm text-gray-500 dark:text-slate-400">

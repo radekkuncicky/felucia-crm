@@ -18,9 +18,10 @@ function ThemedToaster() {
   )
 }
 
-export function Providers({ children }: { children: React.ReactNode }) {
+export function Providers({ children, nonce }: { children: React.ReactNode; nonce?: string }) {
+  // nonce: inline skript next-themes (proti probliknutí tématu) by jinak zablokovala CSP
   return (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem nonce={nonce}>
       <SessionProvider>
         {children}
         <ThemedToaster />
