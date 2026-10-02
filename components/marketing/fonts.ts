@@ -1,11 +1,20 @@
-import localFont from 'next/font/local'
+import { Literata, Sometype_Mono } from 'next/font/google'
 
-// Geist Mono pro štítky dokladů - lokálně z app/fonts (bez dotazu na Google).
-// Inter a Space Grotesk načítá root layout (proměnné --font-inter, --font-space-grotesk).
-export const geistMono = localFont({
-  src: '../../app/fonts/GeistMonoVF.woff',
+// Písmo webu (jen homepage, CRM má dál Inter/Space Grotesk z root layoutu):
+// - nadpisy Literata (TypeTogether, Veronika Burian) - variabilní vč. optické velikosti,
+// - text Atkinson Hyperlegible Next - Next 14 ho v next/font/google nemá, hostujeme ho
+//   v public/marketing/fonts/atkinson (mimo middleware) (@font-face v marketing.css),
+// - štítky dokladů Sometype Mono.
+export const literata = Literata({
+  subsets: ['latin', 'latin-ext'],
+  axes: ['opsz'],
+  variable: '--mk-font-serif',
+  display: 'swap',
+})
+
+export const sometypeMono = Sometype_Mono({
+  subsets: ['latin', 'latin-ext'],
   variable: '--mk-font-mono',
-  weight: '100 900',
   display: 'swap',
   // Jen štítky dokladů - nepřednačítat, ať nekonkuruje písmům nad ohybem (LCP).
   preload: false,

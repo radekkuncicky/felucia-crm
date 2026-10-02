@@ -5,6 +5,24 @@
  * Všechny třídy mají prefix mk-, ať se nepotkají s aplikací.
  */
 
+/* Text webu: Atkinson Hyperlegible Next (variabilní 200–800), hostováno u nás - viz fonts.ts */
+@font-face {
+  font-family: 'Atkinson Hyperlegible Next';
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url('/marketing/fonts/atkinson/latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Atkinson Hyperlegible Next';
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url('/marketing/fonts/atkinson/latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
 .mk {
   color-scheme: light;
 
@@ -53,9 +71,9 @@
   --mk-container: 1160px;
   --mk-shadow: 0 1px 2px rgba(21, 24, 26, 0.05), 0 8px 24px -12px rgba(21, 24, 26, 0.12);
 
-  /* Písmo: Inter (text) a Space Grotesk (nadpisy) z root layoutu, Geist Mono lokálně */
-  --mk-font-text: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --mk-font-display: var(--font-space-grotesk), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  /* Písmo „Česká kniha“: Literata (nadpisy), Atkinson Hyperlegible Next (text), Sometype Mono (doklady) */
+  --mk-font-text: 'Atkinson Hyperlegible Next', ui-sans-serif, system-ui, sans-serif;
+  --mk-font-display: var(--mk-font-serif), Georgia, 'Times New Roman', serif;
   --mk-font-doc: var(--mk-font-mono), ui-monospace, 'SFMono-Regular', Menlo, monospace;
 
   background: var(--mk-bg);
@@ -88,7 +106,7 @@
 
 .mk-display {
   font-family: var(--mk-font-display);
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
 }
 
 .mk-doc {
