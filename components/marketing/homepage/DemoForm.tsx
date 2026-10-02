@@ -1,7 +1,7 @@
 'use client'
 
 // Formulář "Domluvit ukázku". Logika odeslání je 1:1 převzatá ze staré homepage
-// (app/FeluciaLanding.tsx, CtaSection) - stejný endpoint /api/contact, pole,
+// (dřívější app/FeluciaLanding.tsx, CtaSection; viz git 64e3b9f) - stejný endpoint /api/contact, pole,
 // validace (required, type=email), texty stavů. Mění se jen vzhled.
 
 import { useState } from 'react'

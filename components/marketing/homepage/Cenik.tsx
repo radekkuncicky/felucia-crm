@@ -1,74 +1,11 @@
-// Ceník #ceny. Žádné číslo tu není natvrdo: ceny z lib/landing.ts (PLANS),
-// limity z lib/planLimits.ts, Dáša z lib/dasaLimits.ts, příplatek za online
-// podpis z lib/modulPodpisy.ts. Serverová komponenta (srovnání přes details).
+// Ceník #ceny. Řádky a hodnoty z ./planSouhrn.ts (vše z konfigurace).
+// Serverová komponenta (srovnání přes details).
 
 import { cn } from '@/lib/cn'
-import { CONTACT, PLANS, formatPrice, type PlanId } from '@/lib/landing'
-import { getPlanLimits } from '@/lib/planLimits'
-import { formatDasaLimit } from '@/lib/dasaLimits'
-import { PODPISY_CENA_LICENCE, PODPISY_MESICNI_LIMIT } from '@/lib/modulPodpisy'
+import { CONTACT, PLANS, formatPrice } from '@/lib/landing'
 import { IconCheck } from '../icons'
 import { CENY } from './content'
-
-const BEZ_LIMITU = 'bez limitu'
-
-function pocet(n: number, jednotka?: string): string {
-  if (n === Infinity) return BEZ_LIMITU
-  return jednotka ? `${new Intl.NumberFormat('cs-CZ').format(n)} ${jednotka}` : new Intl.NumberFormat('cs-CZ').format(n)
-}
-
-function uzivatele(n: number): string {
-  if (n === Infinity) return BEZ_LIMITU
-  return n === 1 ? '1 uživatel' : `do ${n} uživatelů`
-}
-
-function sablony(nabidky: number, smlouvy: number): string {
-  if (nabidky === Infinity && smlouvy === Infinity) return BEZ_LIMITU
-  const n = nabidky === 1 ? '1 nabídka' : `${pocet(nabidky)} nabídek`
-  const s = smlouvy === 1 ? '1 smlouva' : `${pocet(smlouvy)} smluv`
-  return `${n}, ${s}`
-}
-
-export function podpisDostupnost(plan: PlanId): string {
-  const l = getPlanLimits(plan)
-  if (l.hasOnlinePodpis) return 'v ceně'
-  if (plan === 'STANDARD') return `příplatek ${formatPrice(PODPISY_CENA_LICENCE)} Kč za licenci měsíčně, do ${PODPISY_MESICNI_LIMIT} smluv`
-  return 'ne'
-}
-
-/** Věta pro krok Smlouva a mřížku detailů. */
-export function podpisDostupnostVeta(): string {
-  const vCene = PLANS.filter(p => getPlanLimits(p.id).hasOnlinePodpis).map(p => p.name)
-  return `V ceně plánů ${vCene.join(' a ')}, ve Standard za příplatek ${formatPrice(PODPISY_CENA_LICENCE)} Kč za licenci měsíčně (do ${PODPISY_MESICNI_LIMIT} smluv), ve Starter není.`
-}
-
-export function servisPlany(): string {
-  return PLANS.filter(p => getPlanLimits(p.id).hasServiceModule).map(p => p.name).join(' a ')
-}
-
-type Hodnota = string | boolean
-
-interface Radek {
-  label: string
-  hodnota: (plan: PlanId) => Hodnota
-  /** zobrazit i v kartě plánu */
-  karta?: boolean
-}
-
-const RADKY: Radek[] = [
-  { label: 'Uživatelé', hodnota: p => uzivatele(getPlanLimits(p).maxUsers), karta: true },
-  { label: 'Servisní modul', hodnota: p => getPlanLimits(p).hasServiceModule, karta: true },
-  { label: 'Elektronický podpis ověřený SMS kódem', hodnota: p => podpisDostupnost(p), karta: true },
-  { label: 'AI asistentka Dáša', hodnota: p => formatDasaLimit(p), karta: true },
-  { label: 'Šablony nabídek a smluv', hodnota: p => sablony(getPlanLimits(p).maxQuoteTemplates, getPlanLimits(p).maxContractTemplates), karta: true },
-  { label: 'API klíče a webhooky', hodnota: () => true, karta: true },
-  { label: 'Obchodní případy', hodnota: p => pocet(getPlanLimits(p).maxDeals) },
-  { label: 'Produkty v katalogu', hodnota: p => pocet(getPlanLimits(p).maxProducts) },
-  { label: 'Vlastní vzhled záhlaví a patičky dokumentů', hodnota: p => getPlanLimits(p).hasWhiteLabel },
-  { label: 'Oprávnění upravená pro jednotlivé uživatele', hodnota: p => getPlanLimits(p).hasCustomPermissions },
-  { label: 'Vlastní subdoména firma.felucia.io', hodnota: p => getPlanLimits(p).hasSubdomain },
-  { label: 'Odezva podpory', hodnota: p => `do ${getPlanLimits(p).supportResponseHours} h` },
-]
+import { RADKY, type Hodnota } from './planSouhrn'
 
 function Bunka({ v }: { v: Hodnota }) {
   if (v === true) return <span className="inline-flex items-center gap-1 font-semibold text-[var(--mk-green-ink)]"><IconCheck className="h-4 w-4" />ano</span>

@@ -155,6 +155,28 @@ export const SERVIS = {
 
 export const DETAILY_H2 = 'Detaily, na kterých to v praxi stojí'
 
+export type FunkceIkona = 'box' | 'calendar' | 'chat' | 'check' | 'doc' | 'home' | 'list' | 'pen' | 'shield' | 'user' | 'wrench'
+
+/** Mřížka #funkce - jen funkce se stavem ANO v docs/homepage-facts.md. Zdroj i pro JSON-LD a llms.txt. */
+export const FUNKCE: { ikona: FunkceIkona; titulek: string; text: string }[] = [
+  { ikona: 'shield', titulek: 'Elektronický podpis ověřený SMS kódem', text: 'Ke každému podpisu klienta se uloží čas, ověřené telefonní číslo, IP adresa a otisk dokumentu. Průběh je v historii smlouvy.' },
+  { ikona: 'doc', titulek: 'Šablony smluv s proměnnými', text: 'Jméno klienta, adresa díla, cena a termín se do SOD doplní samy. Před odesláním náhled.' },
+  { ikona: 'doc', titulek: 'PDF nabídky ve vašem designu', text: 'Vlastní šablona nabídky, PDF odejde klientovi s vaším vzhledem.' },
+  { ikona: 'list', titulek: 'Kopírování nabídek', text: 'Hotovou nabídku zduplikujete nebo zkopírujete do jiného obchodního případu.' },
+  { ikona: 'user', titulek: 'Hlídání duplicitních klientů', text: 'Při zakládání klienta Felucia porovná telefon, e-mail a jméno s evidencí.' },
+  { ikona: 'box', titulek: 'Stav materiálu u zakázky', text: 'U každé položky je vidět Čeká, Objednáno, Rezervováno nebo Vydáno.' },
+  { ikona: 'check', titulek: 'Plán vs skutečnost v protokolu', text: 'Technik zapíše skutečně použité množství, protokol ho ukáže vedle plánovaného.' },
+  { ikona: 'check', titulek: 'Schvalování protokolů a vyúčtování', text: 'Protokol i vyúčtování schvaluje Manažer zakázek nebo Správce.' },
+  { ikona: 'home', titulek: 'Stavový pruh zakázky', text: 'Nová, Přiřazena, V realizaci, Předána, Vyúčtována, Hotovo. U etap se pruh prodlužuje.' },
+  { ikona: 'chat', titulek: 'Historie zakázky', text: 'Komentáře a aktivita zakázky na jednom místě.' },
+  { ikona: 'wrench', titulek: 'Zařízení, záruky a kontrakty', text: 'Výrobní číslo, záruka do, servisní kontrakt a další prohlídka u každého zařízení.' },
+  { ikona: 'calendar', titulek: 'Další prohlídka sama', text: 'Po dokončení prohlídky z kontraktu se založí další podle intervalu.' },
+  { ikona: 'user', titulek: 'Role a oprávnění', text: 'Správce, Manažer zakázek, Obchodník, Hlavní technik a Technik. Každý vidí jen to, co potřebuje.' },
+  { ikona: 'home', titulek: 'Vlastní subdoména', text: 'Každá firma pracuje na své adrese firma.felucia.io.' },
+  { ikona: 'shield', titulek: 'Anonymizace klienta podle GDPR', text: 'Osobní údaje klienta nevratně anonymizujete, obchodní historie zůstane.' },
+  { ikona: 'pen', titulek: 'Podpis klienta na displeji', text: 'Předávací protokol podepíše klient přímo v telefonu technika.' },
+]
+
 export const DASA = {
   h2: 'Dáša. AI asistentka, která pracuje s vašimi obchodními případy.',
   text: 'Zeptáte se nebo zadáte úkol, Dáša ho provede a potvrdí, co udělala. Nenahrazuje postup zakázky, šetří kliky.',

@@ -4,11 +4,13 @@ import { authOptions } from '@/lib/auth'
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { HomePage } from '@/components/marketing/homepage/HomePage'
-import { CONTACT, FAQS, FEATURE_LIST, PLANS, SITE_NAME, SITE_TITLE, SITE_URL, WORKFLOW_HEADING, WORKFLOW_PEREX, WORKFLOW_PHASES } from '@/lib/landing'
+import { FUNKCE, HERO } from '@/components/marketing/homepage/content'
+import { planSouhrn } from '@/components/marketing/homepage/planSouhrn'
+import { CONTACT, FAQS, PLANS, SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from '@/lib/landing'
 
 const TITLE = SITE_TITLE
-const DESCRIPTION =
-  'Od nabídky přes montáž až po pravidelný servis. Felucia propojí kancelář a techniky v jednom CRM — pro montážní a servisní firmy v oboru klimatizací a tepelných čerpadel.'
+const DESCRIPTION = SITE_DESCRIPTION
+const OG_ALT = `Felucia: ${HERO.h1}`
 
 export const metadata: Metadata = {
   title: { absolute: TITLE },
@@ -16,14 +18,20 @@ export const metadata: Metadata = {
   alternates: { canonical: '/' },
   openGraph: {
     title: TITLE,
-    description: 'Nabídky, podklady k montáži, skutečně použitý materiál i předávací protokoly u jedné zakázky. Domluvte si 20minutovou ukázku.',
+    description: DESCRIPTION,
     url: '/',
     siteName: SITE_NAME,
     locale: 'cs_CZ',
     type: 'website',
   },
+  twitter: {
+    card: 'summary_large_image',
+    title: TITLE,
+    description: DESCRIPTION,
+  },
 }
 
+// Organization a WebSite jsou site-wide v app/layout.tsx; tady produkt, ceník a FAQ.
 function homeJsonLd() {
   return {
     '@context': 'https://schema.org',
@@ -38,22 +46,22 @@ function homeJsonLd() {
         isPartOf: { '@id': `${SITE_URL}/#website` },
         about: { '@id': `${SITE_URL}/#software` },
         publisher: { '@id': `${SITE_URL}/#organization` },
+        primaryImageOfPage: { '@type': 'ImageObject', url: `${SITE_URL}/opengraph-image`, caption: OG_ALT },
       },
       {
         '@type': 'SoftwareApplication',
         '@id': `${SITE_URL}/#software`,
         name: SITE_NAME,
-        alternateName: 'Felucia CRM',
         url: `${SITE_URL}/`,
         applicationCategory: 'BusinessApplication',
-        applicationSubCategory: 'CRM / řízení montáží a servisu',
-        operatingSystem: 'Web',
+        applicationSubCategory: 'Řízení zakázek, montáží a servisu',
+        operatingSystem: 'Web, iOS',
         inLanguage: 'cs',
         description: DESCRIPTION,
-        featureList: FEATURE_LIST,
+        featureList: FUNKCE.map(f => f.titulek),
         audience: {
           '@type': 'BusinessAudience',
-          audienceType: 'Montážní a servisní firmy — klimatizace, tepelná čerpadla, rekuperace, vzduchotechnika',
+          audienceType: 'Montážní a servisní firmy: tepelná čerpadla, klimatizace, rekuperace, podlahové vytápění, vzduchotechnika',
           geographicArea: { '@type': 'Country', name: 'Česká republika' },
         },
         publisher: { '@id': `${SITE_URL}/#organization` },
@@ -66,11 +74,14 @@ function homeJsonLd() {
             '@type': 'UnitPriceSpecification',
             price: String(p.price),
             priceCurrency: 'CZK',
-            unitText: 'měsíc',
+            valueAddedTaxIncluded: false,
+            unitText: 'firma a měsíc',
+            referenceQuantity: { '@type': 'QuantitativeValue', value: 1, unitCode: 'MON' },
           },
-          description: p.features.join(', '),
+          description: planSouhrn(p.id),
           url: `${SITE_URL}/#ceny`,
           availability: 'https://schema.org/InStock',
+          seller: { '@id': `${SITE_URL}/#organization` },
         })),
       },
       {
@@ -81,29 +92,6 @@ function homeJsonLd() {
           '@type': 'Question',
           name: f.q,
           acceptedAnswer: { '@type': 'Answer', text: f.a },
-        })),
-      },
-      {
-        // Průchod zakázkou ze sekce #jak-to-funguje - 9 kroků ve 4 fázích.
-        // Zdroj textů: WORKFLOW_PHASES v lib/landing.ts.
-        '@type': 'HowTo',
-        '@id': `${SITE_URL}/#jak-to-funguje`,
-        name: WORKFLOW_HEADING,
-        description: WORKFLOW_PEREX,
-        inLanguage: 'cs',
-        totalTime: 'P1D',
-        step: WORKFLOW_PHASES.map((phase, i) => ({
-          '@type': 'HowToSection',
-          position: i + 1,
-          name: phase.name,
-          itemListElement: phase.steps.map(st => ({
-            '@type': 'HowToStep',
-            position: st.n,
-            name: st.title,
-            text: st.desc,
-            url: `${SITE_URL}/#jak-to-funguje`,
-            itemListElement: st.bullets.map(b => ({ '@type': 'HowToDirection', text: b })),
-          })),
         })),
       },
       {

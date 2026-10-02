@@ -1,12 +1,13 @@
 'use client'
 
-// Přepínač obrazovek Felucia Tech v sekci #technici. Obrazovky se renderují
-// na serveru a sem přicházejí jako hotové uzly; tady se jen přepíná viditelnost.
+// Přepínač obrazovek Felucia Tech v sekci #technici. Renderuje se jen aktivní
+// obrazovka (TechObrazovka), ostatní se dotáhnou po přepnutí.
 
 import { useRef, useState } from 'react'
 import { cn } from '@/lib/cn'
+import { TechObrazovka, type TechObrazovkaId } from './TechObrazovka'
 
-export function TechPhoneSwitcher({ obrazovky }: { obrazovky: { id: string; nazev: string; node: React.ReactNode }[] }) {
+export function TechPhoneSwitcher({ obrazovky }: { obrazovky: { id: TechObrazovkaId; nazev: string }[] }) {
   const [aktivni, setAktivni] = useState(0)
   const tabs = useRef<(HTMLButtonElement | null)[]>([])
 
@@ -50,7 +51,7 @@ export function TechPhoneSwitcher({ obrazovky }: { obrazovky: { id: string; naze
       </div>
       {obrazovky.map((o, i) => (
         <div key={o.id} id={`tech-panel-${o.id}`} role="tabpanel" aria-labelledby={`tech-tab-${o.id}`} hidden={i !== aktivni}>
-          {o.node}
+          {i === aktivni && <TechObrazovka id={o.id} />}
         </div>
       ))}
     </div>

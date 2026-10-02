@@ -3,11 +3,13 @@
 // Průvodce #jak-to-funguje: šest záložek (role="tablist", šipky, Home, End).
 // Desktop záložky vlevo, ukázka vpravo; mobil pilulky s vodorovným posunem
 // ve vlastním kontejneru. Odkazy #krok-<id> (sekce "Kde utíkají peníze")
-// záložku rovnou vyberou. Všechny panely jsou v HTML (skryté), kvůli SEO.
+// záložku rovnou vyberou. Texty všech panelů jsou v HTML (skryté, kvůli SEO);
+// ukázka se renderuje jen u aktivní záložky (KrokUkazka).
 
 import { useEffect, useRef, useState } from 'react'
 import { cn } from '@/lib/cn'
 import type { KrokId } from './content'
+import { KrokUkazka } from './KrokUkazka'
 
 export interface PruvodceKrok {
   id: KrokId
@@ -17,7 +19,6 @@ export interface PruvodceKrok {
   body: string[]
   pozn?: string
   dal: string
-  ukazka: React.ReactNode
 }
 
 export function Pruvodce({ kroky }: { kroky: PruvodceKrok[] }) {
@@ -129,7 +130,7 @@ export function Pruvodce({ kroky }: { kroky: PruvodceKrok[] }) {
                 {k.dal}
               </p>
             </div>
-            <div className="min-w-0">{k.ukazka}</div>
+            <div className="min-w-0">{i === aktivni && <KrokUkazka id={k.id} />}</div>
           </div>
         </div>
       ))}

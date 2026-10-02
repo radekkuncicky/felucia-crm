@@ -3,6 +3,7 @@
 // Texty: ./content.ts, ceny a limity: ./Cenik.tsx, FAQ: lib/landing.ts (FAQS).
 
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
 import { CONTACT, FAQS, OPERATOR } from '@/lib/landing'
 import { MarketingRoot } from '../MarketingRoot'
 import { LiveZakazkaHero } from '../LiveZakazkaHero'
@@ -12,24 +13,22 @@ import {
   IconArrowRight, IconBox, IconCalendar, IconChat, IconCheck, IconDoc, IconHome, IconList,
   IconPen, IconShield, IconUser, IconWrench,
 } from '../icons'
-import { ObchodniPripadMock } from '../mocks/ObchodniPripadMock'
-import { SodMock } from '../mocks/SodMock'
-import { MaterialMock } from '../mocks/MaterialMock'
-import { VyuctovaniMock } from '../mocks/VyuctovaniMock'
-import { ServisPlanMock } from '../mocks/ServisPlanMock'
 import { ProtokolDiffMock } from '../mocks/ProtokolDiffMock'
 import { ZakazkaMock } from '../mocks/ZakazkaMock'
 import { ServisZarizeniMock } from '../mocks/ServisZarizeniMock'
 import { DasaChatMock } from '../mocks/DasaChatMock'
-import { TechFotky, TechMaterial, TechMujDen, TechPodpis, TechZakazka } from '../tech/TechScreens'
 import { SiteHeader } from './SiteHeader'
-import { Pruvodce, type PruvodceKrok } from './Pruvodce'
-import { TechPhoneSwitcher } from './TechPhoneSwitcher'
-import { DemoForm } from './DemoForm'
+import type { PruvodceKrok } from './Pruvodce'
 import { RevealObserver } from './RevealObserver'
-import { Cenik, podpisDostupnostVeta, servisPlany } from './Cenik'
+
+// Klientské komponenty pod ohybem: vlastní JS chunky (HTML se dál renderuje na serveru).
+const Pruvodce = dynamic(() => import('./Pruvodce').then(m => m.Pruvodce))
+const TechPhoneSwitcher = dynamic(() => import('./TechPhoneSwitcher').then(m => m.TechPhoneSwitcher))
+const DemoForm = dynamic(() => import('./DemoForm').then(m => m.DemoForm))
+import { Cenik } from './Cenik'
+import { podpisDostupnostVeta, servisPlany } from './planSouhrn'
 import {
-  CENY, DASA, DATA, DETAILY_H2, HERO, JAK, KROKY, NAV, OBORY, PATICKA, PENIZE, PLAN_VS, SERVIS, TECHNICI, UKAZKA, type KrokId,
+  CENY, DASA, DATA, DETAILY_H2, FUNKCE, HERO, JAK, KROKY, NAV, OBORY, PATICKA, PENIZE, PLAN_VS, SERVIS, TECHNICI, UKAZKA, type FunkceIkona,
 } from './content'
 
 /**
@@ -39,14 +38,6 @@ import {
 const APP_STORE_URL = 'https://apps.apple.com/cz/app/id6779400065'
 const APP_STORE_ZVEREJNENO = false
 
-const UKAZKY_KROKU: Record<KrokId, React.ReactNode> = {
-  obchod: <ObchodniPripadMock callout={false} />,
-  smlouva: <SodMock callout={false} />,
-  priprava: <MaterialMock callout={false} />,
-  montaz: <TechZakazka />,
-  predani: <VyuctovaniMock callout={false} />,
-  servis: <ServisPlanMock />,
-}
 
 function pruvodceKroky(): PruvodceKrok[] {
   return KROKY.map(k => ({
@@ -54,29 +45,22 @@ function pruvodceKroky(): PruvodceKrok[] {
     pozn: k.id === 'smlouva'
       ? `Elektronický podpis: ${podpisDostupnostVeta()}`
       : k.id === 'servis' ? `Servisní modul je v plánech ${servisPlany()}.` : undefined,
-    ukazka: UKAZKY_KROKU[k.id],
   }))
 }
 
-// Mřížka detailů - jen funkce se stavem ANO v docs/homepage-facts.md.
-const DETAILY: { icon: (p: { className?: string }) => React.ReactElement; titulek: string; text: string }[] = [
-  { icon: IconShield, titulek: 'Elektronický podpis ověřený SMS kódem', text: 'Ke každému podpisu klienta se uloží čas, ověřené telefonní číslo, IP adresa a otisk dokumentu. Průběh je v historii smlouvy.' },
-  { icon: IconDoc, titulek: 'Šablony smluv s proměnnými', text: 'Jméno klienta, adresa díla, cena a termín se do SOD doplní samy. Před odesláním náhled.' },
-  { icon: IconDoc, titulek: 'PDF nabídky ve vašem designu', text: 'Vlastní šablona nabídky, PDF odejde klientovi s vaším vzhledem.' },
-  { icon: IconList, titulek: 'Kopírování nabídek', text: 'Hotovou nabídku zduplikujete nebo zkopírujete do jiného obchodního případu.' },
-  { icon: IconUser, titulek: 'Hlídání duplicitních klientů', text: 'Při zakládání klienta Felucia porovná telefon, e-mail a jméno s evidencí.' },
-  { icon: IconBox, titulek: 'Stav materiálu u zakázky', text: 'U každé položky je vidět Čeká, Objednáno, Rezervováno nebo Vydáno.' },
-  { icon: IconCheck, titulek: 'Plán vs skutečnost v protokolu', text: 'Technik zapíše skutečně použité množství, protokol ho ukáže vedle plánovaného.' },
-  { icon: IconCheck, titulek: 'Schvalování protokolů a vyúčtování', text: 'Protokol i vyúčtování schvaluje Manažer zakázek nebo Správce.' },
-  { icon: IconHome, titulek: 'Stavový pruh zakázky', text: 'Nová, Přiřazena, V realizaci, Předána, Vyúčtována, Hotovo. U etap se pruh prodlužuje.' },
-  { icon: IconChat, titulek: 'Historie zakázky', text: 'Komentáře a aktivita zakázky na jednom místě.' },
-  { icon: IconWrench, titulek: 'Zařízení, záruky a kontrakty', text: 'Výrobní číslo, záruka do, servisní kontrakt a další prohlídka u každého zařízení.' },
-  { icon: IconCalendar, titulek: 'Další prohlídka sama', text: 'Po dokončení prohlídky z kontraktu se založí další podle intervalu.' },
-  { icon: IconUser, titulek: 'Role a oprávnění', text: 'Správce, Manažer zakázek, Obchodník, Hlavní technik a Technik. Každý vidí jen to, co potřebuje.' },
-  { icon: IconHome, titulek: 'Vlastní subdoména', text: 'Každá firma pracuje na své adrese firma.felucia.io.' },
-  { icon: IconShield, titulek: 'Anonymizace klienta podle GDPR', text: 'Osobní údaje klienta nevratně anonymizujete, obchodní historie zůstane.' },
-  { icon: IconPen, titulek: 'Podpis klienta na displeji', text: 'Předávací protokol podepíše klient přímo v telefonu technika.' },
-]
+const IKONY: Record<FunkceIkona, (p: { className?: string }) => React.ReactElement> = {
+  box: IconBox,
+  calendar: IconCalendar,
+  chat: IconChat,
+  check: IconCheck,
+  doc: IconDoc,
+  home: IconHome,
+  list: IconList,
+  pen: IconPen,
+  shield: IconShield,
+  user: IconUser,
+  wrench: IconWrench,
+}
 
 const DATA_BODY: { titulek: string; text: React.ReactNode }[] = [
   { titulek: 'Oddělený prostor firmy', text: 'Každá firma má vlastní subdoménu a její data jsou od ostatních oddělená v aplikaci i přímo v databázi.' },
@@ -212,11 +196,11 @@ export function HomePage() {
             <div data-reveal>
               <TechPhoneSwitcher
                 obrazovky={[
-                  { id: 'muj-den', nazev: 'Můj den', node: <TechMujDen /> },
-                  { id: 'zakazka', nazev: 'Detail zakázky', node: <TechZakazka /> },
-                  { id: 'material', nazev: 'Materiál', node: <TechMaterial /> },
-                  { id: 'fotky', nazev: 'Fotky', node: <TechFotky /> },
-                  { id: 'podpis', nazev: 'Podpis zákazníka', node: <TechPodpis /> },
+                  { id: 'muj-den', nazev: 'Můj den' },
+                  { id: 'zakazka', nazev: 'Detail zakázky' },
+                  { id: 'material', nazev: 'Materiál' },
+                  { id: 'fotky', nazev: 'Fotky' },
+                  { id: 'podpis', nazev: 'Podpis zákazníka' },
                 ]}
               />
             </div>
@@ -241,13 +225,16 @@ export function HomePage() {
         <Section id="funkce" tone="muted" labelledBy="funkce-h2">
           <SectionHeading id="funkce-h2" eyebrow="Funkce" title={DETAILY_H2} />
           <ul className="mt-10 grid grid-cols-1 gap-px overflow-hidden rounded-[var(--mk-radius)] border border-[var(--mk-line)] bg-[var(--mk-line)] sm:grid-cols-2 lg:grid-cols-4" data-reveal>
-            {DETAILY.map(d => (
+            {FUNKCE.map(d => {
+              const Ikona = IKONY[d.ikona]
+              return (
               <li key={d.titulek} className="bg-[var(--mk-surface)] p-5">
-                <d.icon className="h-5 w-5 text-[var(--mk-green-ink)]" />
+                <Ikona className="h-5 w-5 text-[var(--mk-green-ink)]" />
                 <h3 className="mt-3 text-[15.5px] font-semibold leading-snug">{d.titulek}</h3>
                 <p className="mt-1.5 text-[14px] leading-relaxed text-[var(--mk-muted)]">{d.text}</p>
               </li>
-            ))}
+              )
+            })}
           </ul>
           <p className="mt-4 text-[13px] text-[var(--mk-muted)]">Elektronický podpis: {podpisDostupnostVeta()} Zařízení a kontrakty: servisní modul v plánech {servisPlany()}.</p>
         </Section>

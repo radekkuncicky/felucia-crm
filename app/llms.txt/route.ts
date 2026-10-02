@@ -1,48 +1,47 @@
-import { CONTACT, FAQS, FEATURE_LIST, OPERATOR, PLANS, SITE_DESCRIPTION, SITE_URL, WORKFLOW_PEREX, WORKFLOW_PHASES, formatPrice } from '@/lib/landing'
+import { CONTACT, FAQS, OPERATOR, PLANS, SITE_DESCRIPTION, SITE_URL, formatPrice } from '@/lib/landing'
+import { FUNKCE, JAK, KROKY, PATICKA, TECHNICI } from '@/components/marketing/homepage/content'
+import { planSouhrn, podpisDostupnostVeta, servisPlany } from '@/components/marketing/homepage/planSouhrn'
+import { formatDasaDostupnost } from '@/lib/dasaLimits'
 
-// llms.txt (https://llmstxt.org) — stručný, věcný přehled webu pro jazykové
-// modely a AI vyhledávače. Generuje se ze stejných dat jako landing a JSON-LD.
+// llms.txt (https://llmstxt.org) - stručný, věcný přehled webu pro jazykové
+// modely a AI vyhledávače. Generuje se ze stejných dat jako homepage a JSON-LD.
 function build(): string {
   const plans = PLANS.map(p =>
     p.price === null
-      ? `- **${p.name}**: individuální nabídka — ${p.features.join(', ')}`
-      : `- **${p.name}**: ${formatPrice(p.price)} Kč/měsíc — ${p.features.join(', ')}`
+      ? `- **${p.name}**: individuální nabídka. ${planSouhrn(p.id)}`
+      : `- **${p.name}**: ${formatPrice(p.price)} Kč bez DPH za firmu a měsíc. ${planSouhrn(p.id)}`
   ).join('\n')
 
-  const steps = WORKFLOW_PHASES.map(phase => {
-    const list = phase.steps
-      .map(st => {
-        const badge = st.badge ? ` (${st.badge})` : ''
-        const bullets = st.bullets.map(b => `   - ${b}`).join('\n')
-        return `${st.n}. **${st.title}**${badge} - ${st.desc}\n${bullets}`
-      })
-      .join('\n')
-    return `### Fáze: ${phase.name}\n\n${list}`
-  }).join('\n\n')
-  const features = FEATURE_LIST.map(f => `- ${f}`).join('\n')
+  const steps = KROKY.map(k =>
+    `${k.cislo}. **${k.nazev}** (${k.kdo})\n${k.body.map(b => `   - ${b}`).join('\n')}\n   - Přechází dál: ${k.dal}`
+  ).join('\n')
+  const features = FUNKCE.map(f => `- **${f.titulek}**: ${f.text}`).join('\n')
   const faq = FAQS.map(f => `### ${f.q}\n${f.a}`).join('\n\n')
 
   return `# Felucia
 
 > ${SITE_DESCRIPTION}
 
-Felucia (${SITE_URL}) je český software pro montážní a servisní firmy — typicky menší firmy instalující klimatizace a tepelná čerpadla, kde majitel koordinuje obchod, zakázky a několik techniků v terénu. Propojuje kancelář a techniky: nabídky, podklady k montáži, skutečně použitý materiál i předávací protokoly jsou u konkrétní zakázky. Vyvinuto z každodenní praxe montáží a servisu. Provozuje ${OPERATOR.name} (IČO ${OPERATOR.ico}, ${OPERATOR.city}, Česká republika). Jazyk produktu i webu: čeština.
+Felucia (${SITE_URL}) je český systém pro montážní a servisní firmy (tepelná čerpadla, klimatizace, rekuperace, podlahové vytápění, vzduchotechnika). Drží jednu zakázku v jednom záznamu od poptávky přes smlouvu, sklad a práci technika až po vyúčtování a servis: co obchodník prodal, to technik namontuje; co technik skutečně použil, to se vyúčtuje; co se namontovalo, to se servisuje. ${PATICKA.puvod} Provozuje ${OPERATOR.name} (IČO ${OPERATOR.ico}, ${OPERATOR.city}, Česká republika). Jazyk produktu i webu: čeština.
 
-(English: Felucia is a Czech CRM / job-management system for HVAC installation and service companies — air conditioning and heat pumps — connecting the office with field technicians: quotes, work orders, mobile app for technicians, handover protocols, and follow-up service.)
+(English: Felucia is a Czech job-management system for HVAC installation and service companies: one job record from inquiry through contract, stock and technician work to billing and recurring service.)
 
 ## Pro koho
 
-- Menší české montážní a servisní firmy (klimatizace, tepelná čerpadla, rekuperace, vzduchotechnika)
-- Majitel/vedoucí koordinuje obchod, zakázky a několik techniků
+- Montážní a servisní firmy o 3 až 30 lidech, kancelář plus technici v terénu
 - Primární cesta k produktu: 20minutová osobní ukázka, první firmy se zavádějí osobně a postupně
 
-## Jak Felucia funguje (jedna zakázka od poptávky po servis)
+## Jak Felucia funguje (${JAK.h2.toLowerCase()})
 
-${WORKFLOW_PEREX}
+${JAK.podtitulek}
 
 ${steps}
 
-Ilustrační příklad: v nabídce je 10 metrů potrubí, při montáži se použije 12. Technik skutečné množství zaznamená do protokolu a kancelář má podklad ke kontrole vyúčtování.
+Příklad: v nabídce je 10 m potrubí, při montáži se použije 12 m. Technik skutečné množství zapíše do předávacího protokolu, Manažer zakázek ho schválí a vyúčtování vznikne z protokolu s 12 m.
+
+Elektronický podpis ověřený SMS kódem: ${podpisDostupnostVeta()}
+Servisní modul: plány ${servisPlany()}.
+AI asistentka Dáša: ${formatDasaDostupnost()}.
 
 ## Funkce
 
@@ -50,9 +49,11 @@ ${features}
 
 ## Aplikace pro techniky (Felucia Tech)
 
-Technik v telefonu vidí dnešní a nadcházející zakázky, navigaci a kontakty na stavbě, pokyny a dokumenty, odškrtává položky, přidává fotografie a komentáře, vyplní předávací protokol s plánovaným i skutečně použitým množstvím a podpisem zákazníka a odešle ho vedoucímu ke schválení. Servisní zásah: zpráva, závady, doporučení, čas a náklady. Část funkcí vyžaduje připojení k internetu; plně offline provoz není garantován.
+${TECHNICI.body.map(b => `- ${b}`).join('\n')}
+- Bez signálu: ${TECHNICI.offline}
+- Aplikace je pro iOS. ${TECHNICI.android}
 
-## Ceník (Kč/měsíc)
+## Ceník
 
 ${plans}
 

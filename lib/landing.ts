@@ -1,14 +1,12 @@
-// Sdílená data veřejného webu — čte je landing (UI), JSON-LD a llms.txt,
+// Sdílená data veřejného webu - čte je homepage (UI), JSON-LD a llms.txt,
 // aby se viditelný obsah, strukturovaná data a text pro LLM nerozešly.
-
-import { formatDasaLimit, formatDasaPlany } from './dasaLimits'
 
 export const SITE_URL = 'https://felucia.io'
 export const SITE_NAME = 'Felucia'
-export const SITE_TAGLINE = 'Software pro montážní a servisní firmy'
-export const SITE_TITLE = 'Felucia — software pro montážní a servisní firmy'
+export const SITE_TAGLINE = 'Systém pro montážní a servisní firmy'
+export const SITE_TITLE = 'Felucia - systém pro montážní a servisní firmy'
 export const SITE_DESCRIPTION =
-  'Felucia je CRM pro řízení montážních a servisních firem — klimatizace, tepelná čerpadla, rekuperace a vzduchotechnika. Nabídky, zakázky, technici v terénu i následný servis na jednom místě.'
+  'Od poptávky přes smlouvu, sklad a práci technika po vyúčtování a servis. Jedna zakázka, jeden záznam. Pro firmy v oboru TČ, klimatizací a rekuperací.'
 
 export const CONTACT = {
   email: 'info@felucia.io',
@@ -31,28 +29,16 @@ export type PlanId = 'STARTER' | 'STANDARD' | 'PROFESSIONAL' | 'ENTERPRISE'
 export interface Plan {
   id: PlanId
   name: string
-  /** Kč za měsíc; null = individuální nabídka */
+  /** Kč za firmu a měsíc bez DPH; null = individuální nabídka. Limity a funkce plánů
+   *  jsou v lib/planLimits.ts (texty skládá components/marketing/homepage/planSouhrn.ts). */
   price: number | null
-  features: string[]
 }
 
 export const PLANS: Plan[] = [
-  {
-    id: 'STARTER', name: 'Starter', price: 490,
-    features: ['1 uživatel', '20 obchodních případů', '100 produktů', '1 šablona nabídky', 'Subdoména firma.felucia.io', 'Email podpora 48 h'],
-  },
-  {
-    id: 'STANDARD', name: 'Standard', price: 1490,
-    features: ['2–5 uživatelů', 'Neomezené zakázky', 'Všechny šablony + editace', `AI Dáša (${formatDasaLimit('STANDARD')})`, 'Ceníky a analytiky'],
-  },
-  {
-    id: 'PROFESSIONAL', name: 'Professional', price: 2490,
-    features: ['5–20 uživatelů', 'Vše ze Standard', 'Servisní modul', `AI Dáša (${formatDasaLimit('PROFESSIONAL')})`, 'White-label + API'],
-  },
-  {
-    id: 'ENTERPRISE', name: 'Enterprise', price: null,
-    features: ['20+ uživatelů', 'Vše z Professional', 'Dedikovaný onboarding', 'SLA garance', 'Vlastní integrace + školení'],
-  },
+  { id: 'STARTER', name: 'Starter', price: 490 },
+  { id: 'STANDARD', name: 'Standard', price: 1490 },
+  { id: 'PROFESSIONAL', name: 'Professional', price: 2490 },
+  { id: 'ENTERPRISE', name: 'Enterprise', price: null },
 ]
 
 export function formatPrice(price: number): string {
@@ -73,161 +59,7 @@ export const FAQS: { q: string; a: string }[] = [
   { q: 'Je nutné připojení k internetu?', a: 'Kancelářská část běží v prohlížeči a připojení potřebuje. Aplikace Felucia Tech zvládne část práce i bez signálu, viz otázka výše.' },
 ]
 
-export interface WorkflowStep {
-  /** Pořadí v celém procesu (1-9), ne v rámci fáze. */
-  n: number
-  title: string
-  desc: string
-  bullets: string[]
-  /** Štítek nad nadpisem kroku - zvýrazňuje samostatný produkt. */
-  badge?: string
-}
-
-export interface WorkflowPhase {
-  id: string
-  name: string
-  steps: WorkflowStep[]
-}
-
-export const WORKFLOW_PHASES: WorkflowPhase[] = [
-  {
-    id: 'obchod',
-    name: 'Obchod',
-    steps: [
-      {
-        n: 1,
-        title: 'Převedete poptávku na obchodní případ',
-        desc: 'Z leadu jedním kliknutím vytvoříte obchodní případ se všemi údaji o klientovi.',
-        bullets: [
-          'Kontakt, adresa a historie komunikace se převezmou automaticky',
-          'Jasný stav případu a přehled, kdo na něm pracuje',
-          'Žádné ruční přepisování údajů',
-        ],
-      },
-      {
-        n: 2,
-        title: 'Připravíte nabídku',
-        desc: 'Nabídku sestavíte z materiálu a práce, nebo ji převezmete z již hotové.',
-        bullets: [
-          'Kopírování a duplikace nabídek z jiných obchodních případů',
-          'Převzetí nabídky od jiného klienta jako šablony',
-          'Přehledné položky materiálu a práce s cenami',
-        ],
-      },
-      {
-        n: 3,
-        title: 'Klient podepíše smlouvu o dílo online',
-        desc: 'Smlouvu podepíše klient z počítače nebo mobilu, bez tisku a skenování.',
-        bullets: [
-          'Elektronický podpis ověřený SMS kódem',
-          'Podepsaný dokument uložený přímo u obchodního případu',
-          'Okamžitý přehled, které smlouvy jsou podepsané',
-        ],
-      },
-    ],
-  },
-  {
-    id: 'realizace',
-    name: 'Realizace',
-    steps: [
-      {
-        n: 4,
-        title: 'Předáte obchodní případ na realizaci',
-        desc: 'Z podepsaného obchodního případu vznikne zakázka se všemi podklady.',
-        bullets: [
-          'Nabídka, smlouva a dokumenty se přenesou do zakázky',
-          'Termín, místo montáže a kontakty na jednom místě',
-          'Realizační tým vidí přesně to, co bylo klientovi prodáno',
-        ],
-      },
-      {
-        n: 5,
-        title: 'Evidujete materiál',
-        desc: 'U každé zakázky víte, v jakém stavu je potřebný materiál.',
-        bullets: [
-          'Stavy: objednáno, naskladněno, vydáno',
-          'Kontrola, zda je vše připraveno před montáží',
-          'Přehled skutečně spotřebovaného materiálu',
-        ],
-      },
-      {
-        n: 6,
-        badge: 'Mobilní aplikace',
-        title: 'Přiřadíte technika a evidujete montáž',
-        desc: 'Technici pracují v samostatné aplikaci pro techniky přímo na místě.',
-        bullets: [
-          'Přiřazení technika k zakázce a termínu',
-          'Technik vidí adresu, kontakty a podklady k práci',
-          'Záznam provedené práce, fotografií a použitého materiálu',
-        ],
-      },
-    ],
-  },
-  {
-    id: 'predani',
-    name: 'Předání a vyúčtování',
-    steps: [
-      {
-        n: 7,
-        title: 'Vytvoříte předávací protokol',
-        desc: 'Protokol z montáže slouží jako podklad pro vyúčtování.',
-        bullets: [
-          'Vzniká ze skutečně provedené práce a použitého materiálu',
-          'Fotografie a podpis klienta při předání',
-          'Žádné dohledávání, co se na zakázce reálně dělalo',
-        ],
-      },
-      {
-        n: 8,
-        title: 'Schválíte vyúčtování',
-        desc: 'Po kontrole protokolu schválíte vyúčtování, které z protokolu vzniklo.',
-        bullets: [
-          'Schválení vyúčtování odpovědnou osobou',
-          'Zakázka připravená pro navazující servisní návštěvy',
-        ],
-      },
-    ],
-  },
-  {
-    id: 'servis',
-    name: 'Servis',
-    steps: [
-      {
-        n: 9,
-        title: 'Namontovaná zařízení přejdou do servisu',
-        desc: 'Zařízení, záruky a servisní kontrakty zůstávají navázané na zákazníka i původní zakázku.',
-        bullets: [
-          'Evidence zařízení se záruční lhůtou a historií zásahů',
-          'Servisní kontrakty a plánované návštěvy v kalendáři',
-          'Servisní zásah technik zapíše v telefonu: závady, práce, podpis',
-        ],
-      },
-    ],
-  },
-]
-
-/** Plochý seznam všech kroků - pro llms.txt a strukturovaná data. */
-export const WORKFLOW_STEPS: WorkflowStep[] = WORKFLOW_PHASES.flatMap(p => p.steps)
-
-export const WORKFLOW_HEADING = 'Jedna zakázka od poptávky po servis'
-export const WORKFLOW_PEREX =
-  'Celý proces na jednom místě. Obchod, sklad, technici i účetní pracují se stejnými daty, nic se nepřepisuje a nic se neztratí mezi e-mailem, Excelem a papírem.'
-
-export const FEATURE_LIST = [
-  'Obchodní případy a nabídky s materiálem a prací',
-  'Smlouva o dílo s elektronickým podpisem online',
-  'Propojení nabídky s montážní zakázkou',
-  'Stav materiálu u zakázky (objednáno, naskladněno, vydáno)',
-  'Položky zakázky, jejich stav a přiřazení techniků',
-  'Etapy montáže, pokyny, dokumenty a fotografie',
-  'Předávací protokoly a vyúčtování',
-  'Evidence zařízení, servisní kontrakty a plánované návštěvy',
-  'Servisní zásah se zprávou, závadami, doporučením, podpisem a podklady k vyúčtování',
-  'Mobilní aplikace Felucia Tech pro techniky v terénu',
-  `AI asistentka Dáša (plány ${formatDasaPlany()})`,
-]
-
-/** Poslední věcná změna obsahu veřejných stránek — pro sitemap <lastmod>. */
+/** Poslední věcná změna obsahu veřejných stránek - pro sitemap <lastmod>. */
 export const CONTENT_UPDATED = {
   home: '2026-10-01',
   terms: '2026-07-15',

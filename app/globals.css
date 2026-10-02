@@ -222,28 +222,6 @@ body .border-blue-600 { border-color: #4CAF50; }
 body .focus\:border-blue-500:focus { border-color: #4CAF50; }
 body .text-blue-500 { color: #4CAF50; }
 
-/* ===================== FELUCIA LANDING MARQUEE ===================== */
-@keyframes fl-marquee {
-  0%   { transform: translateX(0); }
-  100% { transform: translateX(-50%); }
-}
-.fl-marquee-track {
-  display: flex;
-  width: max-content;
-  animation: fl-marquee 18s linear infinite;
-}
-.fl-marquee-track:hover {
-  animation-play-state: paused;
-}
-
-/* FAQ accordion arrow */
-.fl-faq-arrow {
-  transition: transform 0.2s ease;
-}
-.fl-faq-open .fl-faq-arrow {
-  transform: rotate(45deg);
-}
-
 /* ===================== FOCUS (klávesnice) ===================== */
 /* Viditelný focus jen při ovládání klávesnicí; inputy mají vlastní focus:ring */
 :where(button, a, [role="button"], [role="switch"], [tabindex], summary, input[type="checkbox"], input[type="radio"]):focus-visible {
@@ -311,12 +289,4 @@ body {
 }
 .scrollbar-none::-webkit-scrollbar {
   display: none;
-}
-
-/* Landing (#jak-to-funguje): krok = text + snímek, na desktopu vedle sebe se střídáním stran */
-.fl-step { display: grid; grid-template-columns: 1fr; gap: 24px; align-items: center; }
-@media (min-width: 900px) {
-  .fl-step { grid-template-columns: 4fr 8fr; gap: 48px; }
-  .fl-step-flip .fl-step-text { order: 2; }
-  .fl-step-flip .fl-step-shot { order: 1; }
 }

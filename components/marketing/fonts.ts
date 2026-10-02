@@ -7,4 +7,6 @@ export const geistMono = localFont({
   variable: '--mk-font-mono',
   weight: '100 900',
   display: 'swap',
+  // Jen štítky dokladů - nepřednačítat, ať nekonkuruje písmům nad ohybem (LCP).
+  preload: false,
 })
