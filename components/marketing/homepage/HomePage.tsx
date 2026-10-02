@@ -2,6 +2,7 @@
 // hlavička, hero smyčka, průvodce, přepínač telefonu, formulář a náběh sekcí.
 // Texty: ./content.ts, ceny a limity: ./Cenik.tsx, FAQ: lib/landing.ts (FAQS).
 
+import { Fragment } from 'react'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { CONTACT, FAQS, OPERATOR } from '@/lib/landing'
@@ -100,7 +101,15 @@ export function HomePage() {
           <div className="mk-container grid grid-cols-1 items-center gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,520px)] lg:gap-14">
             <div>
               <p className="mk-doc text-[12.5px] font-medium uppercase tracking-[0.08em] text-[var(--mk-green-ink)]">{HERO.nadtitulek}</p>
-              <h1 id="hero-h1" className="mk-display mt-4 text-[clamp(34px,5.4vw,58px)] font-semibold leading-[1.05]">{HERO.h1}</h1>
+              <h1 id="hero-h1" className="mk-display mt-4 text-[clamp(34px,5.4vw,58px)] font-semibold leading-[1.05]">
+                {/* Každá věta na vlastním řádku; HERO.h1 zůstává celý kvůli metadatům */}
+                {HERO.h1.split(/(?<=\.) /).map((veta, i) => (
+                  <Fragment key={veta}>
+                    {i > 0 && ' '}
+                    <span className="block">{veta}</span>
+                  </Fragment>
+                ))}
+              </h1>
               <p className="mt-5 max-w-[620px] text-[17.5px] leading-relaxed text-[var(--mk-muted)]">{HERO.podtitulek}</p>
               <div className="mt-7 flex flex-col gap-3 sm:flex-row">
                 <Tlacitko href="#ukazka">{HERO.primarni}</Tlacitko>
