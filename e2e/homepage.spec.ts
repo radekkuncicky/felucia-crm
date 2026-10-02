@@ -91,3 +91,31 @@ test('formulář posílá stejná data na /api/contact (bez skutečného odeslá
     zprava: 'ŽÁDOST O UKÁZKU FELUCIA\n\nFirma: Test s.r.o.\nTelefon: 123\n\nMá zájem o 20minutovou ukázku Felucia a probrat zavedení pro svou firmu.',
   })
 })
+
+test('neexistující adresa vrací 404 (ne přihlášení), CRM adresa dál vede na přihlášení', async ({ page, request }) => {
+  const res = await page.goto('/neexistujici-stranka')
+  expect(res?.status()).toBe(404)
+  await expect(page).toHaveURL(/\/neexistujici-stranka$/)
+  await page.goto('/zakazky')
+  await expect(page).toHaveURL(/\/auth\/signin/)
+  const llmsFull = await request.get('/llms-full.txt', { maxRedirects: 0 })
+  expect(llmsFull.status()).toBe(404)
+})
+
+test('katalog pro AI agenty (ARD) je platný JSON', async ({ request }) => {
+  for (const p of ['/.well-known/ai-catalog.json', '/.well-known/ard.json']) {
+    const res = await request.get(p, { maxRedirects: 0 })
+    expect(res.status(), p).toBe(200)
+    expect(res.headers()['content-type']).toContain('application/json')
+    const json = await res.json()
+    expect(json.specVersion).toBe('1.0')
+    expect(json.entries[0].url).toMatch(/\/llms\.txt$/)
+  }
+})
+
+test('text webu přednačítá písmo a má metricky sladěný fallback (CLS)', async ({ page }) => {
+  await page.goto('/')
+  await expect(page.locator('link[rel="preload"][href="/marketing/fonts/atkinson/latin-ext.woff2"]')).toHaveCount(1)
+  const font = await page.evaluate(() => getComputedStyle(document.querySelector('.mk')!).fontFamily)
+  expect(font).toContain('Atkinson Fallback')
+})

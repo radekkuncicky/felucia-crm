@@ -22,6 +22,17 @@
   src: url('/marketing/fonts/atkinson/latin.woff2') format('woff2');
   unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
+/* Náhradní písmo se stejnými metrikami jako Atkinson (hodnoty spočítané stejně jako next/font:
+   getFallbackMetricsFromFontFile nad latin.woff2) - text se při výměně písma nepřeskládá (CLS).
+   Liberation Sans je metricky shodný s Arialem (Linux, Lighthouse). */
+@font-face {
+  font-family: 'Atkinson Fallback';
+  src: local('Arial'), local('ArialMT'), local('Liberation Sans'), local('Helvetica');
+  size-adjust: 99.36%;
+  ascent-override: 99.04%;
+  descent-override: 31.80%;
+  line-gap-override: 0%;
+}
 
 .mk {
   color-scheme: light;
@@ -72,7 +83,7 @@
   --mk-shadow: 0 1px 2px rgba(21, 24, 26, 0.05), 0 8px 24px -12px rgba(21, 24, 26, 0.12);
 
   /* Písmo „Česká kniha“: Literata (nadpisy), Atkinson Hyperlegible Next (text), Sometype Mono (doklady) */
-  --mk-font-text: 'Atkinson Hyperlegible Next', ui-sans-serif, system-ui, sans-serif;
+  --mk-font-text: 'Atkinson Hyperlegible Next', 'Atkinson Fallback', ui-sans-serif, system-ui, sans-serif;
   --mk-font-display: var(--mk-font-serif), Georgia, 'Times New Roman', serif;
   --mk-font-doc: var(--mk-font-mono), ui-monospace, 'SFMono-Regular', Menlo, monospace;
 

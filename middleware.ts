@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { getToken } from 'next-auth/jwt'
 import { isRoleName, isTechnikView, ROLE_PRESETS } from '@/lib/permissions'
+import { isKnownRoute } from '@/lib/knownRoutes'
 
 // Stránky obchodní části — technický pohled je nevidí (menu je nenabízí, tohle chytá přímé URL)
 const OBCHOD_PREFIXES = ['/deals', '/clients', '/leady', '/products', '/quote-templates', '/quotes', '/activities', '/sod', '/cenovka', '/analytics', '/documents']
@@ -168,11 +169,14 @@ export async function middleware(req: NextRequest) {
     url.pathname.startsWith('/demo') ||
     url.pathname.startsWith('/terms') ||
     url.pathname.startsWith('/privacy') ||
-    url.pathname.startsWith('/support')
+    url.pathname.startsWith('/support') ||
+    url.pathname.startsWith('/.well-known')
 
   const isOnboardingPage = url.pathname.startsWith('/onboarding')
 
   if (!token && !isAuthPage && !isPublicPage && !isApiRoute && !isOnboardingPage) {
+    // Neexistující adresa → Next vyrenderuje 404 (ne přesměrování na login, viz lib/knownRoutes.ts)
+    if (!isKnownRoute(url.pathname)) return nextWithCsp(req)
     url.pathname = '/auth/signin'
     return NextResponse.redirect(url)
   }

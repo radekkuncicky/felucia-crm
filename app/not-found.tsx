@@ -9,10 +9,10 @@ export default function NotFound() {
         Stránka, kterou hledáte, neexistuje nebo byla přesunuta.
       </p>
       <Link
-        href="/dashboard"
+        href="/"
         className="bg-fel-green hover:bg-fel-green-dark text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
       >
-        Zpět na nástěnku
+        Zpět na úvod
       </Link>
     </div>
   )

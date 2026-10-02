@@ -6,7 +6,7 @@ import { redirect } from 'next/navigation'
 import { HomePage } from '@/components/marketing/homepage/HomePage'
 import { FUNKCE, HERO } from '@/components/marketing/homepage/content'
 import { planSouhrn } from '@/components/marketing/homepage/planSouhrn'
-import { CONTACT, FAQS, PLANS, SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from '@/lib/landing'
+import { FAQS, PLANS, SITE_ALT_NAME, SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from '@/lib/landing'
 
 const TITLE = SITE_TITLE
 const DESCRIPTION = SITE_DESCRIPTION
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
   },
 }
 
-// Organization a WebSite jsou site-wide v app/layout.tsx; tady produkt, ceník a FAQ.
+// Organization (vč. kontaktu) a WebSite jsou site-wide v app/layout.tsx; tady produkt, ceník a FAQ.
 function homeJsonLd() {
   return {
     '@context': 'https://schema.org',
@@ -52,6 +52,7 @@ function homeJsonLd() {
         '@type': 'SoftwareApplication',
         '@id': `${SITE_URL}/#software`,
         name: SITE_NAME,
+        alternateName: SITE_ALT_NAME,
         url: `${SITE_URL}/`,
         applicationCategory: 'BusinessApplication',
         applicationSubCategory: 'Řízení zakázek, montáží a servisu',
@@ -93,15 +94,6 @@ function homeJsonLd() {
           name: f.q,
           acceptedAnswer: { '@type': 'Answer', text: f.a },
         })),
-      },
-      {
-        '@type': 'ContactPoint',
-        '@id': `${SITE_URL}/#contact`,
-        contactType: 'sales',
-        email: CONTACT.email,
-        telephone: CONTACT.phone,
-        availableLanguage: ['cs'],
-        areaServed: 'CZ',
       },
     ],
   }

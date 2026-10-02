@@ -3,8 +3,10 @@
 
 export const SITE_URL = 'https://felucia.io'
 export const SITE_NAME = 'Felucia'
+export const SITE_ALT_NAME = 'Felucia CRM'
 export const SITE_TAGLINE = 'Systém pro montážní a servisní firmy'
-export const SITE_TITLE = 'Felucia - systém pro montážní a servisní firmy'
+// „software“ místo „systém“ - tak lidé hledají (software/program pro montážní firmu)
+export const SITE_TITLE = 'Felucia - software pro montážní a servisní firmy'
 export const SITE_DESCRIPTION =
   'Od poptávky přes smlouvu, sklad a práci technika po vyúčtování a servis. Jedna zakázka, jeden záznam. Pro firmy v oboru TČ, klimatizací a rekuperací.'
 

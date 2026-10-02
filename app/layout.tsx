@@ -4,7 +4,7 @@ import { headers } from 'next/headers'
 import './globals.css'
 import { Providers } from './providers'
 import CookieConsent from './components/CookieConsent'
-import { CONTACT, OPERATOR, SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from '@/lib/landing'
+import { CONTACT, OPERATOR, SITE_ALT_NAME, SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from '@/lib/landing'
 
 // latin-ext kvůli češtině (ě, š, č, ř, ž, ů…) - jinak se dotahuje další soubor až po vykreslení
 const inter = Inter({ subsets: ['latin', 'latin-ext'], variable: '--font-inter' })
@@ -64,7 +64,13 @@ function siteJsonLd() {
         legalName: OPERATOR.name,
         url: SITE_URL,
         logo: { '@type': 'ImageObject', url: `${SITE_URL}/icon-512.png`, width: 512, height: 512 },
-        brand: { '@type': 'Brand', name: SITE_NAME },
+        // „Felucia“ je i planeta ze Star Wars - alternateName a rejstříky pomáhají vyhledávačům a LLM
+        // spojit značku s firmou a produktem.
+        brand: { '@type': 'Brand', name: SITE_NAME, alternateName: SITE_ALT_NAME, url: SITE_URL, logo: `${SITE_URL}/icon-512.png` },
+        sameAs: [
+          `https://or.justice.cz/ias/ui/rejstrik-$firma?ico=${OPERATOR.ico}`,
+          `https://ares.gov.cz/ekonomicke-subjekty?ico=${OPERATOR.ico}`,
+        ],
         email: CONTACT.email,
         telephone: CONTACT.phone,
         identifier: { '@type': 'PropertyValue', propertyID: 'IČO', value: OPERATOR.ico },
@@ -75,13 +81,14 @@ function siteJsonLd() {
           postalCode: OPERATOR.zip,
           addressCountry: OPERATOR.country,
         },
-        contactPoint: [{ '@type': 'ContactPoint', contactType: 'sales', email: CONTACT.email, telephone: CONTACT.phone, availableLanguage: ['cs'] }],
+        contactPoint: [{ '@type': 'ContactPoint', contactType: 'sales', email: CONTACT.email, telephone: CONTACT.phone, availableLanguage: ['cs'], areaServed: 'CZ' }],
       },
       {
         '@type': 'WebSite',
         '@id': `${SITE_URL}/#website`,
         url: SITE_URL,
         name: SITE_NAME,
+        alternateName: SITE_ALT_NAME,
         description: SITE_DESCRIPTION,
         inLanguage: 'cs',
         publisher: { '@id': `${SITE_URL}/#organization` },
@@ -107,7 +114,6 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="Felucia" />
         <link rel="apple-touch-icon" href="/icon-192.png" />
-        <meta name="grovetech-vibe-verify" content="gtai-verify-orhdm2d0morjzphe" />
         <script
           type="application/ld+json"
           nonce={nonce}
