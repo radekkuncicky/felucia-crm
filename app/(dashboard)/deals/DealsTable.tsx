@@ -67,7 +67,7 @@ function thisMonth(dateStr: string) {
 type QuickFilter = '' | 'vyhraMesic' | 'vyhraLetos' | 'uzavreniLetos' | 'aktivni' | 'vyrizene' | 'zneplatnene'
 
 const DEFS: ColumnDef[] = [
-  { id: 'kod', label: 'Kód', defaultVisible: true, defaultWidth: 96 },
+  { id: 'kod', label: 'Kód', defaultVisible: true, defaultWidth: 120, minWidth: 116 },
   { id: 'predmet', label: 'Předmět', defaultVisible: true, defaultWidth: 190 },
   { id: 'klient', label: 'Klient', defaultVisible: true, defaultWidth: 150 },
   { id: 'stav', label: 'Stav', defaultVisible: true, defaultWidth: 130 },
@@ -383,7 +383,7 @@ export default function DealsTable({ deals, showZneplatnene = false, showMarze =
                         case 'kod':
                           return (
                             <td key={col.id} className="px-4 py-3 overflow-hidden">
-                              <span className="font-mono text-xs font-semibold text-gray-600 dark:text-slate-300 bg-gray-100 dark:bg-slate-700 px-2 py-0.5 rounded">
+                              <span className="whitespace-nowrap font-mono text-xs font-semibold text-gray-600 dark:text-slate-300 bg-gray-100 dark:bg-slate-700 px-2 py-0.5 rounded">
                                 {deal.kod ?? '—'}
                               </span>
                             </td>

@@ -7,6 +7,8 @@ export interface ColumnDef {
   label: string
   defaultVisible?: boolean
   defaultWidth?: number
+  /** Nejmenší šířka (px) — platí i pro šířky uložené dřív v localStorage */
+  minWidth?: number
 }
 
 export interface ColumnState {
@@ -40,7 +42,8 @@ export function useTableColumns(tableId: string, userId: string, defs: ColumnDef
         // Merge saved state with defs (new columns added since save get defaults)
         const merged = defs.map(d => {
           const s = saved.find(c => c.id === d.id)
-          return s ?? { id: d.id, visible: d.defaultVisible !== false, width: d.defaultWidth }
+          if (!s) return { id: d.id, visible: d.defaultVisible !== false, width: d.defaultWidth }
+          return d.minWidth && s.width != null && s.width < d.minWidth ? { ...s, width: d.minWidth } : s
         })
         // Preserve ordering from saved (for columns that exist in both)
         const savedOrder = saved.map(s => s.id).filter(id => defs.some(d => d.id === id))
@@ -71,9 +74,10 @@ export function useTableColumns(tableId: string, userId: string, defs: ColumnDef
   const resizeColumn = useCallback((id: string, dx: number) => {
     setColumns(prev => prev.map(c => {
       if (c.id !== id) return c
-      return { ...c, width: Math.max(60, (c.width ?? 120) + dx) }
+      const min = defs.find(d => d.id === id)?.minWidth ?? 60
+      return { ...c, width: Math.max(min, (c.width ?? 120) + dx) }
     }))
-  }, [])
+  }, [defs])
 
   const resetColumns = useCallback(() => {
     setColumns(makeDefault(defs))

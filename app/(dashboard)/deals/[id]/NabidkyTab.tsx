@@ -305,8 +305,8 @@ function SortableRow({
           step: '1',
         })}
       </td>
-      {/* DPH % */}
-      <td className="px-0.5" style={{ width: 60 }}>
+      {/* DPH % — 72 px: globals.css vynucuje u selectu 16 px (iOS zoom), v 60 px šipka přetékala přes „12 %“ */}
+      <td className="px-0.5" style={{ width: 72 }}>
         <select
           value={item.dphSazba}
           onChange={e => onUpdate(item.id, { dphSazba: Number(e.target.value) })}
@@ -1723,7 +1723,7 @@ export default function NabidkyTab({
                     </th>
                     <th
                       className="text-right text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase px-2 py-1.5 tracking-wide"
-                      style={{ width: 60 }}
+                      style={{ width: 72 }}
                     >
                       DPH%
                     </th>
@@ -1784,7 +1784,7 @@ export default function NabidkyTab({
                     >
                       Celkem bez DPH:
                     </td>
-                    <td className="pr-2 py-2 text-right text-base font-bold text-gray-900 dark:text-white tabular-nums">
+                    <td className="pr-2 py-2 text-right text-base font-bold text-gray-900 dark:text-white tabular-nums whitespace-nowrap">
                       {total.toLocaleString('cs-CZ', {
                         maximumFractionDigits: 2,
                       })}{' '}
@@ -1799,7 +1799,7 @@ export default function NabidkyTab({
                     >
                       DPH {dphRate}%:
                     </td>
-                    <td className="pr-2 py-1 text-right text-sm text-gray-600 dark:text-slate-300 tabular-nums">
+                    <td className="pr-2 py-1 text-right text-sm text-gray-600 dark:text-slate-300 tabular-nums whitespace-nowrap">
                       {(totalDph - total).toLocaleString('cs-CZ', {
                         maximumFractionDigits: 2,
                       })}{' '}
@@ -1814,7 +1814,7 @@ export default function NabidkyTab({
                     >
                       Celkem s DPH:
                     </td>
-                    <td className="pr-2 py-2 text-right text-xl font-bold text-blue-700 dark:text-blue-400 tabular-nums">
+                    <td className="pr-2 py-2 text-right text-xl font-bold text-blue-700 dark:text-blue-400 tabular-nums whitespace-nowrap">
                       {totalDph.toLocaleString('cs-CZ', {
                         maximumFractionDigits: 2,
                       })}{' '}
@@ -1830,7 +1830,7 @@ export default function NabidkyTab({
                       >
                         Marže:
                       </td>
-                      <td className={`pr-2 py-1.5 text-right text-xs font-semibold tabular-nums ${
+                      <td className={`pr-2 py-1.5 text-right text-xs font-semibold tabular-nums whitespace-nowrap ${
                         marzeQuote.proc >= 20 ? 'text-green-600 dark:text-green-400' :
                         'text-red-600 dark:text-red-400'
                       }`}>
