@@ -10,6 +10,9 @@ import { formatDateTime, formatKcPresne, formatCislo } from '@/lib/format'
 import FilterDropdown from '@/components/ui/FilterDropdown'
 import ProductCatalogModal from '@/components/ProductCatalogModal'
 import { toast } from 'sonner'
+import { Dialog } from '@/components/ui/Dialog'
+import { Button } from '@/components/ui/Button'
+import { Field, Input, Select } from '@/components/ui/Field'
 
 const TYP_LABELS: Record<SkladPohybTyp, string> = {
   PRIJEM_SKLAD: 'Příjem na sklad',
@@ -255,6 +258,65 @@ function KorekceModal({ zasoba, onClose, onDone }: { zasoba: Zasoba; onClose: ()
   )
 }
 
+/** Výdej ze skladu bez zakázky (provozní spotřeba / jiné) — mimo provozní spotřebu jde do KPI „Materiál bez zakázky“. */
+function VydejBezZakazkyModal({ zasoba, onClose, onDone }: { zasoba: Zasoba; onClose: () => void; onDone: (p: Pohyb, stav: { naSklade: number; rezervovano: number; dostupne: number }) => void }) {
+  const [mnozstvi, setMnozstvi] = useState('')
+  const [kategorie, setKategorie] = useState('')
+  const [duvod, setDuvod] = useState('')
+  const [loading, setLoading] = useState(false)
+  const qty = Number(mnozstvi.replace(',', '.') || 0)
+  const platne = qty > 0 && !!kategorie && !!duvod.trim()
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!platne) return
+    setLoading(true)
+    try {
+      const res = await fetch('/api/sklad/vydej', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productId: zasoba.id, mnozstvi: qty, kategorie, duvod }),
+      })
+      const p = await res.json().catch(() => ({}))
+      if (!res.ok) { toast.error(p.error ?? 'Výdej selhal'); return }
+      onDone({ ...p, mnozstvi: Number(p.mnozstvi), nakupniCena: p.nakupniCena !== null ? Number(p.nakupniCena) : null, zakazka: null }, p.stav)
+      toast.success('Vydáno ze skladu')
+      onClose()
+    } finally { setLoading(false) }
+  }
+
+  return (
+    <Dialog
+      open
+      onClose={onClose}
+      title="Výdej bez zakázky"
+      footer={<>
+        <Button variant="secondary" onClick={onClose}>Zrušit</Button>
+        <Button type="submit" form="vydej-bez-zakazky" loading={loading} disabled={!platne}>Vydat</Button>
+      </>}
+    >
+      <form id="vydej-bez-zakazky" onSubmit={handleSubmit} className="space-y-3">
+        <p className="text-sm text-gray-600 dark:text-slate-400">
+          {zasoba.kod ? `${zasoba.kod} · ` : ''}{zasoba.nazev} — dostupné <strong>{fmtQty(zasoba.dostupne)} {zasoba.jednotka}</strong>
+        </p>
+        <Field label="Množství" required>
+          <Input kind="castka" value={mnozstvi} onChange={e => setMnozstvi(e.target.value)} placeholder="např. 2" />
+        </Field>
+        <Field label="Kategorie" required hint="Materiál na konkrétní zakázku vydávejte přes zakázku. Výdej „Jiné“ se počítá do KPI Materiál bez zakázky.">
+          <Select value={kategorie} onChange={e => setKategorie(e.target.value)}>
+            <option value="">Vyberte…</option>
+            <option value="PROVOZNI_SPOTREBA">Provozní spotřeba</option>
+            <option value="JINE">Jiné (bez zakázky)</option>
+          </Select>
+        </Field>
+        <Field label="Důvod" required>
+          <Input value={duvod} onChange={e => setDuvod(e.target.value)} placeholder="spotřeba dílny, vzorek, reklamace…" />
+        </Field>
+      </form>
+    </Dialog>
+  )
+}
+
 const thCls = 'px-4 py-3 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide'
 
 type Tab = 'zasoby' | 'pohyby' | 'dodavatele' | 'objednavky'
@@ -281,6 +343,7 @@ export default function SkladPageClient({ pohyby: initialPohyby, zasoby: initial
   const [jenPodMinimem, setJenPodMinimem] = useState(false)
   const [showPrijem, setShowPrijem] = useState(false)
   const [korekce, setKorekce] = useState<Zasoba | null>(null)
+  const [vydej, setVydej] = useState<Zasoba | null>(null)
 
   const typFilterOptions = [
     { value: '', label: 'Všechny typy' },
@@ -366,6 +429,7 @@ export default function SkladPageClient({ pohyby: initialPohyby, zasoby: initial
     <>
       {showPrijem && <PrijemModal showNakupky={showNakupky} onClose={() => setShowPrijem(false)} onDone={ps => ps.forEach(p => applyPohyb(p))} />}
       {korekce && <KorekceModal zasoba={korekce} onClose={() => setKorekce(null)} onDone={applyPohyb} />}
+      {vydej && <VydejBezZakazkyModal zasoba={vydej} onClose={() => setVydej(null)} onDone={applyPohyb} />}
 
       <div className="space-y-6">
         {/* Header */}
@@ -486,7 +550,8 @@ export default function SkladPageClient({ pohyby: initialPohyby, zasoby: initial
                             <td className="px-4 py-3 text-right text-gray-900 dark:text-white whitespace-nowrap">{z.hodnota !== null ? fmtKc(z.hodnota) : '—'}</td>
                           )}
                           {canPrijem && (
-                            <td className="px-4 py-3 text-right">
+                            <td className="px-4 py-3 text-right whitespace-nowrap">
+                              <button type="button" onClick={() => setVydej(z)} className="text-xs text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white mr-3">Výdej</button>
                               <button type="button" onClick={() => setKorekce(z)} className="text-xs text-gray-500 dark:text-slate-400 hover:text-gray-900 dark:hover:text-white">Korekce</button>
                             </td>
                           )}

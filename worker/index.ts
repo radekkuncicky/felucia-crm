@@ -5,6 +5,7 @@ import { findDueReminders, processReminder } from './reminders'
 import { sweepWebhookOutbox, deliverWebhook } from './webhooks'
 import { sweepExpirovanePodpisy, sweepPripominkyPodpisu } from './podpisy'
 import { sweepNabidkyFollowUp } from './followupy'
+import { sweepKpiTydenniSouhrn } from './kpiSouhrn'
 import { QUEUE_WEBHOOK_SWEEP, QUEUE_WEBHOOK_DELIVER, type WebhookJob } from '../lib/webhooks'
 
 /**
@@ -16,6 +17,7 @@ import { QUEUE_WEBHOOK_SWEEP, QUEUE_WEBHOOK_DELIVER, type WebhookJob } from '../
  *  - activity-reminder zpracování jedné připomínky (bell + email)
  *  - webhooks-sweep    cron každou minutu, vymete webhook_outbox
  *  - webhook-deliver   doručení jedné události na jeden endpoint
+ *  - kpi-tydenni-souhrn  pondělí 7:00 Europe/Prague, souhrn KPI vedení jednatelům
  */
 
 const QUEUE_SWEEP = 'reminders-sweep'
@@ -90,7 +92,17 @@ async function main() {
     if (n > 0) console.log(`[followupy] odesláno ${n} follow-up připomínek k nabídkám`)
   })
 
-  console.log('[worker] běží — fronty:', QUEUE_SWEEP, QUEUE_REMINDER, QUEUE_WEBHOOK_SWEEP, QUEUE_WEBHOOK_DELIVER, QUEUE_PODPISY_SWEEP, QUEUE_FOLLOWUP_SWEEP)
+  const QUEUE_KPI_SOUHRN = 'kpi-tydenni-souhrn'
+  await boss.createQueue(QUEUE_KPI_SOUHRN)
+  // Ostatní crony jedou v UTC; tady záleží na „pondělí 7:00“ místního času (R18)
+  await boss.schedule(QUEUE_KPI_SOUHRN, '0 7 * * 1', {}, { tz: 'Europe/Prague' })
+
+  await boss.work(QUEUE_KPI_SOUHRN, async () => {
+    const n = await sweepKpiTydenniSouhrn(prisma)
+    if (n > 0) console.log(`[kpi-souhrn] odesláno ${n} týdenních souhrnů KPI`)
+  })
+
+  console.log('[worker] běží — fronty:', QUEUE_SWEEP, QUEUE_REMINDER, QUEUE_WEBHOOK_SWEEP, QUEUE_WEBHOOK_DELIVER, QUEUE_PODPISY_SWEEP, QUEUE_FOLLOWUP_SWEEP, QUEUE_KPI_SOUHRN)
 
   const shutdown = async (signal: string) => {
     console.log(`[worker] ${signal}, ukončuji…`)

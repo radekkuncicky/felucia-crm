@@ -7,7 +7,7 @@
 export const KNOWN_TOP_SEGMENTS = new Set([
   // app/(dashboard)
   'activities', 'analytics', 'calendar', 'cenovka', 'clients', 'dashboard', 'deals', 'documents',
-  'leady', 'predavaky', 'products', 'quote-templates', 'quotes', 'servis', 'settings', 'sklad', 'sod', 'zakazky',
+  'kpi', 'leady', 'predavaky', 'products', 'quote-templates', 'quotes', 'servis', 'settings', 'sklad', 'sod', 'zakazky',
   // app/(auth) a ostatní
   'api', 'auth', 'demo', 'forgot-password', 'login', 'magic-link', 'maintenance', 'nabidka', 'onboarding',
   'podpis', 'privacy', 'reset-password', 'superadmin', 'support', 'terms', 'zarizeni',

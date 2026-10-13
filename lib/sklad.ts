@@ -10,6 +10,9 @@ import { listUsersWithPermValue } from './zakazkyHelpers'
  *   rezervovano = REZERVACE − STORNO_REZERVACE − VYDEJ + VRATKA_VYDEJE
  *   dostupne    = naSklade − rezervovano
  *
+ * Výdej bez zakázky (zakazkaId = null, s kategorií — KPI 5) nečerpá rezervaci,
+ * jde rovnou z dostupného množství, do `rezervovano` se proto nepočítá.
+ *
  * Historický STORNO byl migrací rozdělen na STORNO_REZERVACE / VRATKA_VYDEJE;
  * kdyby nějaký zůstal, počítá se jako storno rezervace.
  */
@@ -27,6 +30,12 @@ const VLIV: Record<SkladPohybTyp, { naSklade: number; rezervovano: number }> = {
   STORNO:           { naSklade: 0,  rezervovano: -1 },
 }
 
+/** Výdej bez zakázky nečerpá rezervaci (viz hlavička souboru). */
+function vlivRezervace(r: { typ: SkladPohybTyp; zakazkaId: string | null }) {
+  if (r.typ === 'VYDEJ' && !r.zakazkaId) return 0
+  return VLIV[r.typ].rezervovano
+}
+
 /**
  * orgPrisma klient nebo transakce z něj — strukturální typ, aby šly použít oba
  * (generické delegáty se přes union nedají volat).
@@ -35,8 +44,8 @@ type Db = {
   skladPohyb: {
     findMany(args: {
       where: Prisma.SkladPohybWhereInput
-      select: { productId: true; typ: true; mnozstvi: true }
-    }): Promise<{ productId: string | null; typ: SkladPohybTyp; mnozstvi: Prisma.Decimal }[]>
+      select: { productId: true; zakazkaId: true; typ: true; mnozstvi: true }
+    }): Promise<{ productId: string | null; zakazkaId: string | null; typ: SkladPohybTyp; mnozstvi: Prisma.Decimal }[]>
   }
 }
 
@@ -47,9 +56,9 @@ type Db = {
 export async function rezervovanoPolozky(db: Db, orgId: string, polozkaId: string) {
   const rows = await db.skladPohyb.findMany({
     where: { orgId, polozkaId },
-    select: { productId: true, typ: true, mnozstvi: true },
+    select: { productId: true, zakazkaId: true, typ: true, mnozstvi: true },
   })
-  return round3(rows.reduce((sum, r) => sum + VLIV[r.typ].rezervovano * Number(r.mnozstvi), 0))
+  return round3(rows.reduce((sum, r) => sum + vlivRezervace(r) * Number(r.mnozstvi), 0))
 }
 
 /**
@@ -60,7 +69,7 @@ export async function rezervovanoPolozky(db: Db, orgId: string, polozkaId: strin
 export async function stavSkladu(db: Db, orgId: string, productIds?: string[]) {
   const rows = await db.skladPohyb.findMany({
     where: { orgId, productId: productIds ? { in: productIds } : { not: null } },
-    select: { productId: true, typ: true, mnozstvi: true },
+    select: { productId: true, zakazkaId: true, typ: true, mnozstvi: true },
   })
   const map = new Map<string, StavProduktu>()
   for (const r of rows) {
@@ -68,7 +77,7 @@ export async function stavSkladu(db: Db, orgId: string, productIds?: string[]) {
     const s = map.get(r.productId) ?? { naSklade: 0, rezervovano: 0, dostupne: 0 }
     const q = Number(r.mnozstvi)
     s.naSklade += VLIV[r.typ].naSklade * q
-    s.rezervovano += VLIV[r.typ].rezervovano * q
+    s.rezervovano += vlivRezervace(r) * q
     map.set(r.productId, s)
   }
   map.forEach(s => {

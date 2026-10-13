@@ -4,7 +4,10 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { StavDealu } from '@prisma/client'
 import Link from 'next/link'
+import { Suspense } from 'react'
 import CoMamDelatPanel from './CoMamDelatPanel'
+import KpiRada, { KpiRadaSkeleton } from './KpiRada'
+import { kpiPristup } from '@/lib/kpi'
 import ZakazkyDashboardSection from './ZakazkyDashboardSection'
 import {
   IconClipboard, IconUsers, IconCoins, IconTrophy, IconTarget,
@@ -80,6 +83,7 @@ export default async function DashboardPage() {
   const showObchod = dealScope !== null
   const ds = dealScope ?? {}
   const activityScope = perms.obchodCiziOP ? {} : { userId: session!.user.id }
+  const showKpi = await kpiPristup(orgId, perms)
 
   const [
     clientCount,
@@ -171,6 +175,11 @@ export default async function DashboardPage() {
   return (
     <div className="max-w-6xl mx-auto w-full">
     <div className="space-y-6">
+      {showKpi && (
+        <Suspense fallback={<KpiRadaSkeleton />}>
+          <KpiRada orgId={orgId} />
+        </Suspense>
+      )}
       <CoMamDelatPanel />
 
       {/* Header */}

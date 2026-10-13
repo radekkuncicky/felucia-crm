@@ -112,6 +112,18 @@ Radkovo rozhodnutí.
   12 měsíců. Historie od 1. 1. 2026.
 - **R18:** týdenní souhrn v pondělí v 7:00 e-mailem a notifikací jednatelům.
 
+### Doplňující rozhodnutí (Radek, 2026-10-11, třetí kolo)
+- **R19 (Q24):** jednatel je **nová role `JEDNATEL`**, ne příznak. Preset = vše jako Správce + `kpi`.
+  Ostatní role `kpi` nemají, vedení ho jde přidělit per-user přepisem.
+- **R20 (Q28, část):** oranžová **relativně k cíli** (cíl 35 % → oranžová 31,5–35 %). U cíle 0 jen
+  zelená / červená. KPI bez cíle bez semaforu.
+- **R21 (Q17):** výdej bez zakázky a mimo provozní spotřebu se **povolí** a jen započítá do KPI 5.
+- **R22 (Q30):** modul se pro NANTO zapne **jednorázově v DB**. Žádný přepínač ve `/settings/features`
+  ani v superadminu.
+- **R23 (nový nález):** CRM neumělo vydat materiál ze skladu bez zakázky. Do skladu přibyla akce
+  **„Výdej bez zakázky“** s kategorií (Provozní spotřeba / Jiné) a povinným důvodem. KPI 5 počítá
+  výdeje mimo provozní spotřebu. Korekce zůstávají inventurou a do KPI nevstupují.
+
 ## 1. Co průzkum datového modelu ukázal a co z rozhodnutí plyne
 
 | Potřeba podle pravidel | Realita v `prisma/schema.prisma` |
@@ -466,7 +478,20 @@ Odhady jsou v pracovních dnech implementace včetně testů a nasazení, bez č
 přístupy. Proti prvnímu návrhu jsou vyšší, protože pravidla vyžadují faktury, úhrady a náklady,
 které CRM nemá.
 
-### Fáze 1 - z dat, která už máme (~4-5 dní)
+### Fáze 1 - z dat, která už máme (~4-5 dní) — **IMPLEMENTOVÁNO 2026-10-11**
+Stav implementace:
+- Schéma: role `JEDNATEL`, `OrgSettings.modulKpi`, `KpiNastaveni`, `SkladPohyb.kategorie`
+  (migrace `20261011220000_kpi_faze1`)
+- `lib/kpi/` (registr, období v pražském čase, semafor, výpočty KPI 5, 6, 8)
+- Nástěnka: horní řada `KpiRada`
+- stránky `/kpi`, `/kpi/[kod]` a `/kpi/nastaveni`. Nastavení je pod modulem KPI, ne pod
+  `/settings`, aby ho šlo hlídat stejnou podmínkou (modul + oprávnění).
+- `/api/sklad/vydej` + dialog ve skladu
+- worker `kpi-tydenni-souhrn` (po 7:00 Europe/Prague)
+- testy `tests/kpi.test.ts`
+- Dlaždice ukazuje poslední uzavřený měsíc, detail i průběžný aktuální měsíc (Q27 zatím
+  nerozhodnuto).
+
 - **Infrastruktura:**
   - `modulKpi`, `User.jednatel` + oprávnění `kpi`, `KpiNastaveni`
   - `lib/kpi/` (období týden / 30 dní / měsíc, semafor)

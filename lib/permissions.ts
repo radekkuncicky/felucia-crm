@@ -53,15 +53,18 @@ export interface Permissions {
   fakturace: boolean
   /** Analýzy a audit log */
   analytiky: boolean
+  /** KPI vedení: řada na Nástěnce, detail /kpi, nastavení cílů (jen se zapnutým modulKpi) */
+  kpi: boolean
 }
 
 export type PermissionKey = keyof Permissions
 export type PermissionOverrides = Partial<Permissions>
 
-export const ROLES = ['ADMIN', 'MANAZER', 'OBCHODNIK', 'HLAVNI_TECHNIK', 'TECHNIK'] as const
+export const ROLES = ['JEDNATEL', 'ADMIN', 'MANAZER', 'OBCHODNIK', 'HLAVNI_TECHNIK', 'TECHNIK'] as const
 export type RoleName = (typeof ROLES)[number]
 
 export const ROLE_LABELS: Record<RoleName, string> = {
+  JEDNATEL: 'Jednatel',
   ADMIN: 'Správce',
   MANAZER: 'Manažer zakázek',
   OBCHODNIK: 'Obchodník',
@@ -70,6 +73,7 @@ export const ROLE_LABELS: Record<RoleName, string> = {
 }
 
 export const ROLE_DESCRIPTIONS: Record<RoleName, string> = {
+  JEDNATEL: 'Vše jako Správce a navíc KPI vedení a pondělní souhrn.',
   ADMIN: 'Vše včetně nastavení organizace, uživatelů a fakturace.',
   MANAZER: 'Obchod, zakázky, sklad, servis a schvalování. Bez nastavení organizace, uživatelů a fakturace.',
   OBCHODNIK: 'Klienti, leady, obchodní případy a nabídky. Zakázky ze svých OP jen ke čtení, bez nákupních cen.',
@@ -95,12 +99,16 @@ const ALL: Permissions = {
   nastaveniOrg: true,
   fakturace: true,
   analytiky: true,
+  kpi: true,
 }
 
 export const ROLE_PRESETS: Record<RoleName, Permissions> = {
-  ADMIN: ALL,
+  // KPI vidí jen vedení (docs/kpi-vedeni, R16) — ostatním jde přidělit přepisem
+  JEDNATEL: ALL,
+  ADMIN: { ...ALL, kpi: false },
   MANAZER: {
     ...ALL,
+    kpi: false,
     spravaUzivatelu: false,
     nastaveniOrg: false,
     fakturace: false,
@@ -123,6 +131,7 @@ export const ROLE_PRESETS: Record<RoleName, Permissions> = {
     nastaveniOrg: false,
     fakturace: false,
     analytiky: false,
+    kpi: false,
   },
   HLAVNI_TECHNIK: {
     financeNakupky: false,
@@ -142,6 +151,7 @@ export const ROLE_PRESETS: Record<RoleName, Permissions> = {
     nastaveniOrg: false,
     fakturace: false,
     analytiky: false,
+    kpi: false,
   },
   TECHNIK: {
     financeNakupky: false,
@@ -161,6 +171,7 @@ export const ROLE_PRESETS: Record<RoleName, Permissions> = {
     nastaveniOrg: false,
     fakturace: false,
     analytiky: false,
+    kpi: false,
   },
 }
 
@@ -250,6 +261,7 @@ export const PERMISSION_GROUPS: PermissionGroup[] = [
       { key: 'nastaveniOrg', label: 'Nastavení organizace', hint: 'Firma, dokumenty, šablony, ceníky, e-mail, import, funkce, API' },
       { key: 'fakturace', label: 'Fakturace a plán' },
       { key: 'analytiky', label: 'Analýzy a audit log' },
+      { key: 'kpi', label: 'KPI vedení', hint: 'Ukazatele na Nástěnce a jejich detail; jen se zapnutým modulem KPI' },
     ],
   },
 ]

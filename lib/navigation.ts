@@ -36,6 +36,7 @@ export interface NavCtx {
     modulLeady: boolean
     modulDokumenty: boolean
     modulAnalytiky: boolean
+    modulKpi: boolean
   }> | null
   isSuperAdmin?: boolean
 }
@@ -51,6 +52,7 @@ export interface NavFlags {
   sklad: boolean
   dokumenty: boolean
   analytiky: boolean
+  kpi: boolean
   nastaveni: boolean
   superadmin: boolean
 }
@@ -71,6 +73,7 @@ export function navFlags({ perms, plan, orgSettings, isSuperAdmin }: NavCtx): Na
     // Dokumenty a analýzy jsou v middleware obchodní prefixy — technik je nevidí
     dokumenty: !technik && !!org.modulDokumenty,
     analytiky: !technik && !!org.modulAnalytiky && perms.analytiky,
+    kpi: !!org.modulKpi && perms.kpi,
     nastaveni: perms.spravaUzivatelu || perms.nastaveniOrg || perms.fakturace || perms.analytiky,
     superadmin: !!isSuperAdmin,
   }
@@ -95,6 +98,7 @@ const I = {
   quoteTemplates: { id: 'quote-templates', href: '/quote-templates', label: 'Vzorové nabídky', icon: 'document' },
   documents: { id: 'documents', href: '/documents', label: 'Dokumenty', icon: 'folder' },
   analytics: { id: 'analytics', href: '/analytics', label: 'Analýzy', icon: 'chart' },
+  kpi: { id: 'kpi', href: '/kpi', label: 'KPI vedení', icon: 'chart' },
   settings: { id: 'settings', href: '/settings', label: 'Nastavení', icon: 'cog' },
   superadmin: { id: 'superadmin', href: '/superadmin', label: 'Superadmin', icon: 'key' },
 } satisfies Record<string, NavItem>
@@ -132,7 +136,7 @@ export function sidebarSections(ctx: NavCtx): NavSection[] {
     ])),
     ...section('aktivity', undefined, pick([[f.obchod, I.activities]])),
     ...section('katalog', 'Katalog', pick([[f.obchod, I.products], [f.obchod, I.quoteTemplates]])),
-    ...section('vice', undefined, pick([[f.dokumenty, I.documents], [f.analytiky, I.analytics]])),
+    ...section('vice', undefined, pick([[f.kpi, I.kpi], [f.dokumenty, I.documents], [f.analytiky, I.analytics]])),
   ]
 }
 

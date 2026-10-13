@@ -22,7 +22,7 @@ export async function POST(req: Request) {
 
   const org = await prisma.organization.findUnique({
     where: { id: orgId },
-    include: { users: { where: { role: 'ADMIN', aktivni: true }, take: 1 } },
+    include: { users: { where: { role: { in: ['ADMIN', 'JEDNATEL'] }, aktivni: true }, orderBy: { role: 'desc' }, take: 1 } },
   })
 
   if (!org) {

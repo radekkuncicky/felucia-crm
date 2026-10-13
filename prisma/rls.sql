@@ -103,6 +103,12 @@ DROP POLICY IF EXISTS org_rls ON "extensions";
 CREATE POLICY org_rls ON "extensions" FOR ALL TO nanto_app
   USING ("orgId" = current_setting('app.org_id', true)) WITH CHECK ("orgId" = current_setting('app.org_id', true));
 
+-- KpiNastaveni
+ALTER TABLE "kpi_nastaveni" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_rls ON "kpi_nastaveni";
+CREATE POLICY org_rls ON "kpi_nastaveni" FOR ALL TO nanto_app
+  USING ("orgId" = current_setting('app.org_id', true)) WITH CHECK ("orgId" = current_setting('app.org_id', true));
+
 -- Lead
 ALTER TABLE "leady" ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS org_rls ON "leady";

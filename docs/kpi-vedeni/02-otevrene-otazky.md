@@ -83,7 +83,7 @@ Fakturované tržby bez DPH za měsíc (stejně jako výnos u KPI 4)?
 Výdeje bez zakázky od 1. 1. 2026 nemají kategorii. Projít je ručně a provozní spotřebu označit,
 nebo historii brát tak, jak je?
 
-### Q17. Výdej bez zakázky a bez kategorie
+### Q17. ~~Výdej bez zakázky a bez kategorie~~ — ROZHODNUTO (R21: povolit, jen započítat)
 Má systém takový výdej zakázat, nebo ho povolit a jen započítat do KPI?
 
 ## Zdroje a Ads (KPI 6, 7)
@@ -112,7 +112,7 @@ Přiřadit partu zpětně zakázkám od 1. 1. 2026?
 
 ## Jednatelé (KPI 9)
 
-### Q24. Příznak, nebo role
+### Q24. ~~Příznak, nebo role~~ — ROZHODNUTO (R19: nová role JEDNATEL)
 Navrhuji příznak „jednatel“ u uživatele (role zůstane ADMIN) místo nové role, protože nová role
 by zasáhla oprávnění a aplikace felucia-tech / felucia-sales. Souhlas? Kdo jsou jednatelé NANTO?
 
@@ -130,7 +130,7 @@ mají dostávat i pondělní souhrn?
 ### Q27. Průběžný měsíc
 Měsíční KPI ukazovat za poslední uzavřený měsíc, nebo i průběžně za aktuální měsíc?
 
-### Q28. Oranžová „do 10 % od cíle“
+### Q28. Oranžová „do 10 % od cíle“ — ČÁSTEČNĚ (R20: relativně; cíl 0 jen zelená/červená). Zbývá: pásma pro KPI 3 a 9
 - Relativně (marže: 35 % × 0,9 = 31,5 %), nebo v procentních bodech (25-35 %)?
 - U cílů s nulou (KPI 3 kladná hotovost, KPI 9 nula hodin) 10 % nedává smysl. Jaké pásmo tam?
   Např. KPI 9: oranžová do X hodin měsíčně, KPI 3: oranžová při kladné hotovosti, ale čerpání
@@ -140,7 +140,7 @@ Měsíční KPI ukazovat za poslední uzavřený měsíc, nebo i průběžně za
 ### Q29. Seznam „K vyfakturování“
 Kdo ho vidí: jen vedení, nebo i manažeři zakázek (svoje zakázky)?
 
-### Q30. Zapnutí modulu pro NANTO
+### Q30. ~~Zapnutí modulu pro NANTO~~ — ROZHODNUTO (R22: jednorázově v DB)
 - a) jednorázově v DB
 - b) přepínač modulů v superadmin panelu (užitečné pro další firmy)
 

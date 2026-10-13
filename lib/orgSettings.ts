@@ -30,6 +30,7 @@ export type OrgSettingsData = {
   zakazkyDefaultDph: number
   storageLimit: bigint
   modulLeady: boolean
+  modulKpi: boolean
   notifNovyLead: boolean
   dokumentyStyl: string
   dokumentyPaticka: string | null

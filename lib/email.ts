@@ -311,6 +311,36 @@ export function emailActivityReminder(p: {
   `)
 }
 
+/** Pondělní souhrn KPI vedení (docs/kpi-vedeni, R18) */
+export function emailKpiTydenniSouhrn(p: {
+  jmeno: string
+  orgNazev: string
+  radky: { nazev: string; hodnota: string; cil: string; stav: string; barva: string; url: string }[]
+  url: string
+}) {
+  const radky = p.radky.map(r => `
+      <tr>
+        <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;">
+          <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${safeColor(r.barva)};margin-right:8px;"></span>
+          <a href="${escHtml(r.url)}" style="color:#1A2744;font-weight:600;text-decoration:none;">${escHtml(r.nazev)}</a>
+        </td>
+        <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;color:#1A2744;font-weight:700;white-space:nowrap;">${escHtml(r.hodnota)}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;color:#6b7280;font-size:13px;">${escHtml(r.cil)}<br/>${escHtml(r.stav)}</td>
+      </tr>`).join('')
+  return emailLayout(`
+    <h2 style="margin:0 0 8px;color:#1A2744;font-size:22px;">KPI vedení — týdenní souhrn</h2>
+    <p style="color:#6b7280;margin:0 0 24px;">Dobrý den, <strong>${escHtml(p.jmeno)}</strong>, přehled za ${escHtml(p.orgNazev)}.</p>
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#f8f9fc;border-radius:10px;margin:0 0 24px;font-size:14px;">
+      ${radky}
+    </table>
+    <div style="text-align:center;margin:32px 0;">
+      <a href="${escHtml(p.url)}" style="display:inline-block;background:#FFC93C;color:#1A2744;font-weight:700;font-size:15px;padding:14px 32px;border-radius:10px;text-decoration:none;">
+        Otevřít KPI v CRM
+      </a>
+    </div>
+  `)
+}
+
 // ─── E-maily klientům (branding organizace, ne Felucia) ─────────────────────
 
 function orgEmailLayout(orgNazevRaw: string, primaryColorRaw: string, content: string) {

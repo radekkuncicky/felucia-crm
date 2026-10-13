@@ -155,7 +155,7 @@ export default function ProfileClient({ user: init }: { user: UserData }) {
             <p className="text-sm text-gray-500 dark:text-slate-400">{user.email}</p>
             <div className="flex items-center gap-2 mt-1.5">
               <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                user.role === 'ADMIN' ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400' :
+                user.role === 'ADMIN' || user.role === 'JEDNATEL' ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400' :
                 user.role === 'OBCHODNIK' ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400' :
                 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-300'
               }`}>{roleLabels[user.role]}</span>

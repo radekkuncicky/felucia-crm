@@ -33,6 +33,7 @@ const defaultSettings: OrgSettingsData = {
   zakazkyDefaultDph: 12,
   storageLimit: BigInt(3 * 1024 * 1024 * 1024),
   modulLeady: true,
+  modulKpi: false,
   notifNovyLead: true,
   dokumentyStyl: 'LINKA',
   dokumentyPaticka: null,

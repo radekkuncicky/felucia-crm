@@ -7,6 +7,7 @@ datasource db {
 }
 
 enum Role {
+  JEDNATEL          // vedení firmy: vše jako ADMIN + KPI vedení a pondělní souhrn
   ADMIN
   MANAZER
   OBCHODNIK
@@ -172,6 +173,12 @@ enum SkladPohybTyp {
   KOREKCE           // inventura / ruční oprava zůstatku
 }
 
+/// Kategorie výdeje ze skladu bez zakázky (KPI 5: provozní spotřeba se do „materiálu bez zakázky“ nepočítá)
+enum SkladKategorie {
+  PROVOZNI_SPOTREBA
+  JINE
+}
+
 enum PredavakStav {
   ROZPRACOVAN
   PODPISAN
@@ -321,6 +328,7 @@ model Organization {
   leady                Lead[]
   aiUsageLogs          AiUsageLog[]
   zamereniDefinice     ZamereniDefinice[]
+  kpiNastaveni         KpiNastaveni[]
 
   @@map("organizations")
 }
@@ -893,6 +901,9 @@ model OrgSettings {
   modulLeady                Boolean @default(true)
   notifNovyLead             Boolean @default(true)
 
+  // KPI vedení (docs/kpi-vedeni) — zapíná se ručně v DB, ne v /settings/features
+  modulKpi                  Boolean @default(false)
+
   // Vzhled
   primaryColor          String  @default("#FFC93C")
 
@@ -1311,6 +1322,8 @@ model SkladPohyb {
   mnozstvi      Decimal
   nakupniCena   Decimal?
   duvod         String?
+  /// Jen u výdeje bez zakázky (VYDEJ, zakazkaId = null)
+  kategorie     SkladKategorie?
   schvalenoId   String?
   vytvorilId    String
   vytvoreno     DateTime        @default(now())
@@ -1906,4 +1919,20 @@ model ZamereniDefinice {
   @@unique([orgId, typ, verze])
   @@index([orgId, typ, aktivni])
   @@map("zamereni_definice")
+}
+
+/// Nastavení KPI vedení per org (docs/kpi-vedeni). Řádek chybí = výchozí hodnoty z lib/kpi/registry.ts.
+model KpiNastaveni {
+  id        String   @id @default(cuid())
+  orgId     String
+  kod       String
+  aktivni   Boolean  @default(true)
+  cil       Decimal? @db.Decimal(14, 2)
+  poradi    Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@unique([orgId, kod])
+  @@map("kpi_nastaveni")
 }
