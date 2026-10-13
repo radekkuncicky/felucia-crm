@@ -385,12 +385,9 @@ export default function VyuctovaniDetailClient({ vyuctovani: initial, canApprove
               {stav === 'SCHVALENO' && (
                 <>
                   {isAdmin && (
-                    <>
-                      <button onClick={() => setConfirmDelete(true)} disabled={loading} className="text-sm font-medium text-red-600 dark:text-red-400 border border-red-300 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20 px-3 py-2 rounded-lg disabled:opacity-50">Smazat</button>
-                      <button onClick={handleReopenSchvaleno} disabled={loading} className="text-sm font-medium text-orange-700 dark:text-orange-400 border border-orange-300 dark:border-orange-800 hover:bg-orange-50 dark:hover:bg-orange-900/20 px-3 py-2 rounded-lg disabled:opacity-50">
-                        {loading ? '…' : 'Vrátit k úpravám'}
-                      </button>
-                    </>
+                    <button onClick={handleReopenSchvaleno} disabled={loading} className="text-sm font-medium text-orange-700 dark:text-orange-400 border border-orange-300 dark:border-orange-800 hover:bg-orange-50 dark:hover:bg-orange-900/20 px-3 py-2 rounded-lg disabled:opacity-50">
+                      {loading ? '…' : 'Vrátit k úpravám'}
+                    </button>
                   )}
                   <a href={`/api/vyuctovani/${initial.id}/pdf`} target="_blank" rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-700 dark:text-slate-300 border border-gray-300 dark:border-slate-600 px-3 py-2 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">

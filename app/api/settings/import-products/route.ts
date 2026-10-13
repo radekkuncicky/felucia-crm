@@ -25,7 +25,8 @@ interface ProductImport {
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
-  if (!session || !getPerms(session.user).nastaveniOrg) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const perms = session ? getPerms(session.user) : null
+  if (!session || !perms?.nastaveniOrg) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)
 
@@ -78,13 +79,16 @@ export async function POST(req: Request) {
       // For Raynet imports: kod is empty, use objednaciKod as key; fallback to name
       const effectiveKod = p.kod || p.objednaciKod || `_${p.nazev.slice(0, 40)}`
 
+      // Nákupní cenu zapisuje jen financeNakupkyEdit; prázdný sloupec existující cenu nemaže
+      const nakupka = perms.financeNakupkyEdit && p.nakladovaCena != null ? p.nakladovaCena : undefined
+
       const baseData = {
         nazev: p.nazev,
         produktovaRada: p.produktovaRada || null,
         jednotka: p.jednotka || 'ks',
         popis: p.popis || null,
         dphSazba: p.dphSazba || 12,
-        nakladovaCena: p.nakladovaCena ?? null,
+        nakladovaCena: nakupka,
         standardniCena: p.standardniCena || 0,
         objednaciKod: p.objednaciKod || null,
         dodaciLhuta: p.dodaciLhuta || null,
@@ -117,8 +121,8 @@ export async function POST(req: Request) {
         const maHlavniho = await db.productDodavatel.findFirst({ where: { orgId, productId: product.id, hlavni: true, NOT: { dodavatelId } } })
         await db.productDodavatel.upsert({
           where: { productId_dodavatelId: { productId: product.id, dodavatelId } },
-          create: { orgId, productId: product.id, dodavatelId, objednaciKod: p.objednaciKod || null, nakupniCena: p.nakladovaCena ?? null, dodaciLhuta: p.dodaciLhuta || null, hlavni: !maHlavniho },
-          update: { objednaciKod: p.objednaciKod || null, nakupniCena: p.nakladovaCena ?? null, dodaciLhuta: p.dodaciLhuta || null },
+          create: { orgId, productId: product.id, dodavatelId, objednaciKod: p.objednaciKod || null, nakupniCena: nakupka ?? null, dodaciLhuta: p.dodaciLhuta || null, hlavni: !maHlavniho },
+          update: { objednaciKod: p.objednaciKod || null, nakupniCena: nakupka, dodaciLhuta: p.dodaciLhuta || null },
         })
       }
     } catch (e) {

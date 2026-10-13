@@ -3,6 +3,7 @@ import { canAccessDeal } from '@/lib/zakazkyHelpers'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
+import { maskNakupky } from '@/lib/maskNakupky'
 import { forbidden, getPerms } from '@/lib/permissions'
 import { loadProductSnapshots, resolveNakupniCena } from '@/lib/quoteItems'
 
@@ -54,7 +55,7 @@ export async function POST(req: Request, { params }: { params: { id: string; quo
         })
       })
     )
-    return NextResponse.json(created, { status: 201 })
+    return NextResponse.json(maskNakupky(created, perms), { status: 201 })
   }
 
   // Single item
@@ -88,5 +89,5 @@ export async function POST(req: Request, { params }: { params: { id: string; quo
     include: { product: true },
   })
 
-  return NextResponse.json(item, { status: 201 })
+  return NextResponse.json(maskNakupky(item, perms), { status: 201 })
 }

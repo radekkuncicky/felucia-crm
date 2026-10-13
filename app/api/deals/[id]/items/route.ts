@@ -5,6 +5,7 @@ import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { forbidden, getPerms } from '@/lib/permissions'
 import { loadProductSnapshots, resolveNakupniCena } from '@/lib/quoteItems'
+import { maskNakupky } from '@/lib/maskNakupky'
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
@@ -41,5 +42,5 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     include: { product: true },
   })
 
-  return NextResponse.json(item, { status: 201 })
+  return NextResponse.json(maskNakupky(item, getPerms(session.user)), { status: 201 })
 }

@@ -5,6 +5,7 @@ import { isOwned } from '@/lib/ownership'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
+import { maskNakupky } from '@/lib/maskNakupky'
 
 export async function PATCH(req: Request, { params }: { params: { id: string; quoteId: string } }) {
   const session = await getServerSession(authOptions)
@@ -40,7 +41,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string; qu
     include: { items: { include: { product: true } } },
   })
 
-  return NextResponse.json(updated)
+  return NextResponse.json(maskNakupky(updated, getPerms(session.user)))
 }
 
 export async function DELETE(req: Request, { params }: { params: { id: string; quoteId: string } }) {

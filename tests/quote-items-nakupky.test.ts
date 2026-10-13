@@ -110,8 +110,12 @@ describe('snapshot nákupní ceny z knihovny při vzniku položky nabídky', () 
       req(`/api/deals/${dealId}/quotes/${quoteId}/items`, { productId: prodSNakupkou, nazev: 'Jednotka', mnozstvi: 1, cenaZaKus: 25000, nakupniCena: 1 }),
       { params: { id: dealId, quoteId } },
     )
-    expect(Number((await res.json()).nakupniCena)).toBe(18000)
     asRole('ADMIN')
+    const item = await res.json()
+    // odpověď obchodníkovi nákupku neukáže, v DB je snapshot z produktu
+    expect(item.nakupniCena).toBeNull()
+    const ulozena = await prisma.quoteItem.findUniqueOrThrow({ where: { id: item.id } })
+    expect(Number(ulozena.nakupniCena)).toBe(18000)
   })
 
   it('POST /quotes s položkami (šablona) doplní nákupní cenu i jednotku z produktu', async () => {

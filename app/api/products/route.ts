@@ -3,7 +3,8 @@ import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { getPlanLimits } from '@/lib/planLimits'
 import { NextResponse } from 'next/server'
-import { getPerms } from '@/lib/permissions'
+import { getPerms, forbidden, canEditKatalog } from '@/lib/permissions'
+import { maskNakupky } from '@/lib/maskNakupky'
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
@@ -62,6 +63,8 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const perms = getPerms(session.user)
+  if (!canEditKatalog(perms)) return forbidden()
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)
 
@@ -97,6 +100,11 @@ export async function POST(req: Request) {
     if (exists) return NextResponse.json({ error: 'Produkt s tímto kódem již existuje' }, { status: 400 })
   }
 
+  // categoryIds jen z vlastní org (RLS cizí FK nehlídá)
+  const kategorie = Array.isArray(categoryIds) && categoryIds.length > 0
+    ? await db.category.findMany({ where: { id: { in: categoryIds.map(String) } }, select: { id: true } })
+    : []
+
   const product = await db.product.create({
     data: {
       orgId,
@@ -105,17 +113,15 @@ export async function POST(req: Request) {
       produktovaRada: produktovaRada || null,
       popis: popis || null,
       dphSazba: dphSazba ? Number(dphSazba) : 12,
-      nakladovaCena: nakladovaCena !== undefined && nakladovaCena !== '' && getPerms(session.user).financeNakupkyEdit ? Number(nakladovaCena) : null,
+      nakladovaCena: nakladovaCena !== undefined && nakladovaCena !== '' && perms.financeNakupkyEdit ? Number(nakladovaCena) : null,
       standardniCena: parsedCena,
       jednotka: jednotka || 'ks',
       minMnozstvi: minMnozstvi !== undefined && minMnozstvi !== null && minMnozstvi !== '' ? Number(minMnozstvi) : null,
       aktivni: true,
-      ...(Array.isArray(categoryIds) && categoryIds.length > 0
-        ? { categories: { connect: categoryIds.map((id: string) => ({ id })) } }
-        : {}),
+      ...(kategorie.length > 0 ? { categories: { connect: kategorie } } : {}),
     },
     include: { categories: { orderBy: { nazev: 'asc' } } },
   })
 
-  return NextResponse.json(product, { status: 201 })
+  return NextResponse.json(maskNakupky(product, perms), { status: 201 })
 }

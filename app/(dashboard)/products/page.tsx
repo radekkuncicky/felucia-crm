@@ -1,7 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
-import { getPerms } from '@/lib/permissions'
+import { getPerms, canEditKatalog } from '@/lib/permissions'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { stavSkladu } from '@/lib/sklad'
 import ProductsClient from './ProductsClient'
@@ -15,8 +14,9 @@ export default async function ProductsPage() {
   const showNakladoveCeny = perms.financeNakupky
   const showSklad = perms.sklad !== 'ZADNY'
 
+  const db = orgPrisma(orgId)
   const [products, categories, ceniky, stav] = await Promise.all([
-    prisma.product.findMany({
+    db.product.findMany({
       where: { orgId },
       include: {
         categories: { orderBy: { nazev: 'asc' } },
@@ -24,18 +24,19 @@ export default async function ProductsPage() {
       },
       orderBy: { nazev: 'asc' },
     }),
-    prisma.category.findMany({ where: { orgId }, orderBy: { poradi: 'asc' } }),
-    prisma.cenik.findMany({
+    db.category.findMany({ where: { orgId }, orderBy: { poradi: 'asc' } }),
+    db.cenik.findMany({
       where: { orgId },
       include: { _count: { select: { polozky: true } }, polozky: { select: { id: true } } },
       orderBy: { nazev: 'asc' },
     }),
-    showSklad ? stavSkladu(orgPrisma(orgId), orgId) : Promise.resolve(new Map()),
+    showSklad ? stavSkladu(db, orgId) : Promise.resolve(new Map()),
   ])
 
   return (
     <ProductsClient
       isAdmin={isAdmin}
+      canEditKatalog={canEditKatalog(perms)}
       showNakladoveCeny={showNakladoveCeny}
       showSklad={showSklad}
       products={products.map(p => ({

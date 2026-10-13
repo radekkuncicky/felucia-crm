@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
+import { maskNakupky } from '@/lib/maskNakupky'
 import { ZakazkaStav } from '@prisma/client'
 import { vratZakazkuZVyuctovane } from '@/lib/zakazkaStavFlow'
 import { getPerms, forbidden } from '@/lib/permissions'
@@ -28,10 +29,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     },
   })
   if (!v) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-  if (!perms.financeNakupky) {
-    return NextResponse.json({ ...v, polozky: v.polozky.map(p => ({ ...p, nakupniCena: null })) })
-  }
-  return NextResponse.json(v)
+  return NextResponse.json(maskNakupky(v, perms))
 }
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
@@ -80,7 +78,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       return u
     })
 
-    return NextResponse.json({ ...updated, zakazkaNovyStav })
+    return NextResponse.json(maskNakupky({ ...updated, zakazkaNovyStav }, perms))
   }
 
   if (v.stav === 'SCHVALENO') return NextResponse.json({ error: 'Schválené vyúčtování nelze měnit' }, { status: 422 })
@@ -92,7 +90,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     data: { poznamka: poznamka ?? undefined },
     include: { polozky: { orderBy: { poradi: 'asc' } } },
   })
-  return NextResponse.json(updated)
+  return NextResponse.json(maskNakupky(updated, perms))
 }
 
 export async function DELETE(req: Request, { params }: { params: { id: string } }) {
@@ -104,13 +102,13 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
   const db = orgPrisma(orgId)
   const v = await db.vyuctovani.findFirst({ where: { id: params.id, orgId } })
   if (!v) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  // Schválené vyúčtování je podklad k fakturaci — smazat jde až po vrácení do návrhu (auditováno)
+  if (v.stav === 'SCHVALENO') {
+    return NextResponse.json({ error: 'Schválené vyúčtování nejdřív vraťte k úpravám' }, { status: 422 })
+  }
 
   await db.$transaction(async tx => {
     await tx.vyuctovani.delete({ where: { id: params.id } })
-
-    const zakazkaNovyStav = v.stav === 'SCHVALENO'
-      ? await vratZakazkuZVyuctovane(tx, v.zakazkaId, v.id)
-      : null
 
     await tx.auditLog.create({
       data: {
@@ -120,7 +118,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
         typZaznamu: 'Vyuctovani',
         zaznamId: params.id,
         zaznamNazev: v.cislo,
-        zmeny: { stavPred: v.stav, zakazkaNovyStav },
+        zmeny: { stavPred: v.stav },
       },
     })
   })

@@ -42,6 +42,8 @@ interface ProductDetailProps {
   showNakupky: boolean
   /** sklad PLNY — správa dodavatelů produktu */
   canEditDodavatele: boolean
+  /** Zakládá a upravuje katalog (canEditKatalog) */
+  canEdit: boolean
 }
 
 function fmt(n: number) {
@@ -65,7 +67,7 @@ function MarzeChip({ nakladova, standardni }: { nakladova: number | null; standa
 const inp = 'w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary bg-white dark:bg-slate-900 text-gray-900 dark:text-white'
 const label = 'block text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-1.5'
 
-export default function ProductDetail({ product, allCategories, usage, sklad, showNakupky, canEditDodavatele }: ProductDetailProps) {
+export default function ProductDetail({ product, allCategories, usage, sklad, showNakupky, canEditDodavatele, canEdit }: ProductDetailProps) {
   const router = useRouter()
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -213,7 +215,7 @@ export default function ProductDetail({ product, allCategories, usage, sklad, sh
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
+        {canEdit && <div className="flex items-center gap-2 flex-shrink-0">
           <button
             type="button"
             onClick={toggleAktivni}
@@ -232,7 +234,7 @@ export default function ProductDetail({ product, allCategories, usage, sklad, sh
           >
             {saving ? 'Ukládám…' : 'Uložit změny'}
           </button>
-        </div>
+        </div>}
       </div>
 
       {error && <div className="bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 text-sm px-4 py-3 rounded-lg border border-red-200 dark:border-red-800">{error}</div>}

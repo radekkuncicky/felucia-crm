@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { getMobileOrWebSession, requireObchodnikOrAdmin } from '@/lib/mobile-helpers'
+import { getPerms } from '@/lib/permissions'
+import { maskNakupky } from '@/lib/maskNakupky'
 
 type VzorPolozka = {
   product_id?: string | null
@@ -49,7 +51,7 @@ export async function GET(req: Request) {
     : []
   const produktMapa = new Map(produkty.map(p => [p.id, p]))
 
-  return NextResponse.json(vzory.map(v => ({
+  return NextResponse.json(maskNakupky(vzory.map(v => ({
     id: v.id,
     nazev: v.nazev,
     popis: v.popis,
@@ -68,7 +70,7 @@ export async function GET(req: Request) {
         nakupniCena: produkt?.nakladovaCena != null ? Number(produkt.nakladovaCena) : null,
       }
     }),
-  })))
+  })), getPerms(session!.user)))
 }
 
 export async function OPTIONS() {

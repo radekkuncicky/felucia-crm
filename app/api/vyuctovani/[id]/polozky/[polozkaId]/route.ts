@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
+import { maskNakupky } from '@/lib/maskNakupky'
 import { getPerms, forbidden } from '@/lib/permissions'
 
 async function getVyuctovani(id: string, orgId: string) {
@@ -31,7 +32,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string; po
       poradi: body.poradi != null ? Number(body.poradi) : undefined,
     },
   })
-  return NextResponse.json(updated)
+  return NextResponse.json(maskNakupky(updated, perms))
 }
 
 export async function DELETE(req: Request, { params }: { params: { id: string; polozkaId: string } }) {

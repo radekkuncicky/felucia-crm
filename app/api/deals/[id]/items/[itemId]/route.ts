@@ -4,6 +4,7 @@ import { forbidden, getPerms } from '@/lib/permissions'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
+import { maskNakupky } from '@/lib/maskNakupky'
 
 export async function PATCH(req: Request, { params }: { params: { id: string; itemId: string } }) {
   const session = await getServerSession(authOptions)
@@ -28,7 +29,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string; it
     },
   })
 
-  return NextResponse.json(updated)
+  return NextResponse.json(maskNakupky(updated, getPerms(session.user)))
 }
 
 export async function DELETE(req: Request, { params }: { params: { id: string; itemId: string } }) {

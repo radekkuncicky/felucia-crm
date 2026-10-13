@@ -3,6 +3,7 @@ import { canAccessDeal } from '@/lib/zakazkyHelpers'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
+import { maskNakupky } from '@/lib/maskNakupky'
 import { generateQuoteKod } from '@/lib/quoteKod'
 import { createWithUniqueKod } from '@/lib/uniqueKod'
 import { logAction } from '@/lib/auditLog'
@@ -90,7 +91,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
             const product = item.productId ? productMap.get(item.productId) : undefined
             return {
               dealId: params.id,
-              productId: item.productId || null,
+              productId: product ? item.productId : null,
               kod: item.kod || null,
               nazev: item.nazev,
               mnozstvi: Number(item.mnozstvi),
@@ -128,5 +129,5 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     zmeny: { dealId: params.id, nazev: quote.nazev, kod: quote.kod },
   })
 
-  return NextResponse.json(quote, { status: 201 })
+  return NextResponse.json(maskNakupky(quote, perms), { status: 201 })
 }

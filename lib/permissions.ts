@@ -326,6 +326,11 @@ export function getPerms(user: PermUser): Permissions {
   return user.perms ?? ROLE_PRESETS[isRoleName(user.role) ? user.role : 'TECHNIK']
 }
 
+/** Zakládá a upravuje produkty v katalogu (ceny, DPH, kategorie) — vedení / správa nákupek */
+export function canEditKatalog(perms: Permissions): boolean {
+  return perms.nastaveniOrg || perms.financeNakupkyEdit
+}
+
 /** 403 pro API routy (plain Response, aby šel modul importovat i z klientských komponent) */
 export function forbidden(message = 'Forbidden') {
   return Response.json({ error: message }, { status: 403 })

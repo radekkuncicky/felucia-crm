@@ -4,6 +4,7 @@ import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { getPerms, forbidden } from '@/lib/permissions'
 import { stavProduktu } from '@/lib/sklad'
+import { maskNakupky } from '@/lib/maskNakupky'
 
 /** Příjem na sklad — jen katalogový produkt (sklad v2 vede zásobu na products.id). */
 export async function POST(req: Request) {
@@ -27,7 +28,8 @@ export async function POST(req: Request) {
   })
   if (!product) return NextResponse.json({ error: 'Produkt nenalezen' }, { status: 404 })
 
-  const cena = nakupniCena !== undefined && nakupniCena !== null && nakupniCena !== ''
+  // Vlastní nákupní cenu příjmu jen s financeNakupkyEdit, jinak cena z katalogu
+  const cena = perms.financeNakupkyEdit && nakupniCena !== undefined && nakupniCena !== null && nakupniCena !== ''
     ? Number(nakupniCena)
     : product.nakladovaCena !== null ? Number(product.nakladovaCena) : null
 
@@ -48,5 +50,5 @@ export async function POST(req: Request) {
   })
 
   const stav = await stavProduktu(db, orgId, product.id)
-  return NextResponse.json({ ...pohyb, stav }, { status: 201 })
+  return NextResponse.json(maskNakupky({ ...pohyb, stav }, perms), { status: 201 })
 }

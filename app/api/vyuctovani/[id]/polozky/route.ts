@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
+import { maskNakupky } from '@/lib/maskNakupky'
 import { getPerms, forbidden } from '@/lib/permissions'
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
@@ -32,5 +33,5 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       poradi: count,
     },
   })
-  return NextResponse.json(polozka, { status: 201 })
+  return NextResponse.json(maskNakupky(polozka, perms), { status: 201 })
 }

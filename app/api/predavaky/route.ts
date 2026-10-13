@@ -24,6 +24,10 @@ export async function POST(req: Request) {
     include: { polozky: { orderBy: { poradi: 'asc' } } },
   })
   if (!zakazka) return NextResponse.json({ error: 'Zakázka nenalezena' }, { status: 404 })
+  // etapaId jen z této zakázky (RLS cizí FK nehlídá)
+  if (etapaId && !(await db.zakazkaEtapa.findFirst({ where: { id: etapaId, zakazkaId }, select: { id: true } }))) {
+    return NextResponse.json({ error: 'Etapa nenalezena' }, { status: 404 })
+  }
 
   const cislo = await generatePredavakCislo(orgId)
 

@@ -1,9 +1,8 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
 import ProductDetail from './ProductDetail'
-import { getPerms } from '@/lib/permissions'
+import { getPerms, canEditKatalog } from '@/lib/permissions'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { stavProduktu } from '@/lib/sklad'
 
@@ -13,23 +12,24 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
   const perms = getPerms(session!.user)
   const showSklad = perms.sklad !== 'ZADNY'
 
+  const db = orgPrisma(orgId)
   const [product, allCategories, usageItems, usageCount, sklad] = await Promise.all([
-    prisma.product.findFirst({
+    db.product.findFirst({
       where: { id: params.id, orgId },
       include: {
         categories: { orderBy: { nazev: 'asc' } },
         cenikPolozky: { include: { cenik: { select: { id: true, kod: true, nazev: true } } }, orderBy: { cenik: { nazev: 'asc' } } },
       },
     }),
-    prisma.category.findMany({ where: { orgId }, orderBy: { poradi: 'asc' } }),
-    prisma.quoteItem.findMany({
+    db.category.findMany({ where: { orgId }, orderBy: { poradi: 'asc' } }),
+    db.quoteItem.findMany({
       where: { productId: params.id, deal: { orgId } },
       include: { deal: { select: { vytvoreno: true } } },
       orderBy: { deal: { vytvoreno: 'desc' } },
       take: 1,
     }),
-    prisma.quoteItem.count({ where: { productId: params.id, deal: { orgId } } }),
-    showSklad ? stavProduktu(orgPrisma(orgId), orgId, params.id) : Promise.resolve(null),
+    db.quoteItem.count({ where: { productId: params.id, deal: { orgId } } }),
+    showSklad ? stavProduktu(db, orgId, params.id) : Promise.resolve(null),
   ])
   if (!product) notFound()
 
@@ -39,6 +39,7 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
         sklad={sklad}
         showNakupky={perms.financeNakupky}
         canEditDodavatele={perms.sklad === 'PLNY'}
+        canEdit={canEditKatalog(perms)}
         product={{
           id: product.id,
           kod: product.kod,
@@ -47,7 +48,7 @@ export default async function ProductDetailPage({ params }: { params: { id: stri
           jednotka: product.jednotka,
           popis: product.popis,
           dphSazba: product.dphSazba,
-          nakladovaCena: product.nakladovaCena !== null ? Number(product.nakladovaCena) : null,
+          nakladovaCena: perms.financeNakupky && product.nakladovaCena !== null ? Number(product.nakladovaCena) : null,
           standardniCena: Number(product.standardniCena),
           objednaciKod: product.objednaciKod,
           dodaciLhuta: product.dodaciLhuta,

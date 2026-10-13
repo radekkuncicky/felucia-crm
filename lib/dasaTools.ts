@@ -199,8 +199,9 @@ export async function executeDasaTool(
           where: {
             orgId,
             stav: { not: 'ZNEPLATNENO' },
+            // rozsah obchodníka platí i pro hledání podle ID / kódu OP
+            ...(isObchodnik ? { userId } : {}),
             ...(isUuid ? { id: q } : isOpKod ? { kod: q } : {
-              ...(isObchodnik ? { userId } : {}),
               OR: [
                 { kod: { contains: q, mode: 'insensitive' } },
                 { predmet: { contains: q, mode: 'insensitive' } },
@@ -428,16 +429,22 @@ export async function executeDasaTool(
 
         if (!isUuid) {
           const normalized = dealId.toUpperCase().startsWith('OP-') ? dealId.toUpperCase() : `OP-${dealId}`
-          const found = await db.deal.findFirst({ where: { kod: normalized, orgId } })
+          const found = await db.deal.findFirst({ where: { kod: normalized, orgId, ...(isObchodnik ? { userId } : {}) } })
           if (!found) return { result: JSON.stringify({ chyba: `OP ${normalized} nenalezen` }) }
           dealId = found.id
         } else {
-          const found = await db.deal.findFirst({ where: { id: dealId, orgId } })
+          const found = await db.deal.findFirst({ where: { id: dealId, orgId, ...(isObchodnik ? { userId } : {}) } })
           if (!found) return { result: JSON.stringify({ chyba: 'OP nenalezen' }) }
         }
 
         const items = Array.isArray(input.items) ? input.items as Record<string, unknown>[] : []
         if (items.length === 0) return { result: JSON.stringify({ chyba: 'Nabídka musí mít alespoň jednu položku' }) }
+
+        // productId jen z vlastního katalogu (RLS cizí FK nehlídá)
+        const chteneProdukty = Array.from(new Set(items.map(i => i.productId).filter(Boolean).map(String)))
+        const vlastniProdukty = new Set(chteneProdukty.length
+          ? (await db.product.findMany({ where: { id: { in: chteneProdukty } }, select: { id: true } })).map(p => p.id)
+          : [])
 
         const quote = await createWithUniqueKod(
           () => generateQuoteKod(orgId),
@@ -454,7 +461,7 @@ export async function executeDasaTool(
                   cenaZaKus: Number(item.cenaZaKus ?? 0),
                   jednotka: String(item.jednotka ?? 'ks'),
                   sleva: 0,
-                  productId: item.productId ? String(item.productId) : null,
+                  productId: item.productId && vlastniProdukty.has(String(item.productId)) ? String(item.productId) : null,
                   poradi: idx,
                 })),
               },

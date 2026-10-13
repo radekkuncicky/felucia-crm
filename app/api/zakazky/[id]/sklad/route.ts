@@ -8,13 +8,15 @@ import { stavProduktu, zkontrolujMinimum } from '@/lib/sklad'
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (getPerms(session.user).sklad !== 'PLNY') return forbidden()
+  const perms = getPerms(session.user)
+  if (perms.sklad !== 'PLNY') return forbidden()
 
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)
-  const { polozkaId, mnozstvi, nakupniCena, poznamka } = await req.json()
+  const body = await req.json()
+  const { polozkaId, mnozstvi, poznamka } = body
 
-  if (!polozkaId || !mnozstvi || nakupniCena === undefined) {
+  if (!polozkaId || !mnozstvi || (perms.financeNakupkyEdit && body.nakupniCena === undefined)) {
     return NextResponse.json({ error: 'Chybí povinná pole' }, { status: 400 })
   }
 
@@ -23,6 +25,8 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     where: { id: polozkaId, zakazkaId: params.id, zakazka: { orgId } },
   })
   if (!polozka) return NextResponse.json({ error: 'Položka nenalezena' }, { status: 404 })
+  // Nákupní cenu smí měnit jen financeNakupkyEdit — jinak zůstává ta z položky
+  const nakupniCena = perms.financeNakupkyEdit ? body.nakupniCena : polozka.nakupniCena
 
   const zakazka = await db.zakazka.findFirst({ where: { id: params.id, orgId } })
   if (!zakazka) return NextResponse.json({ error: 'Zakázka nenalezena' }, { status: 404 })

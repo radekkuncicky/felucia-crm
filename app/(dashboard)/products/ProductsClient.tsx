@@ -43,7 +43,7 @@ interface Product {
 interface Category { id: string; nazev: string; barva: string }
 interface Cenik { id: string; kod: string; nazev: string; popis: string | null; aktivni: boolean; _count: { polozky: number }; vytvoreno: string }
 
-interface Props { products: Product[]; categories: Category[]; ceniky: Cenik[]; isAdmin: boolean; showNakladoveCeny?: boolean; showSklad?: boolean }
+interface Props { products: Product[]; categories: Category[]; ceniky: Cenik[]; isAdmin: boolean; canEditKatalog: boolean; showNakladoveCeny?: boolean; showSklad?: boolean }
 
 function fmt(n: number) { return formatCislo(n) }
 
@@ -66,7 +66,7 @@ function MarzeChip({ value }: { value: number | null }) {
 }
 
 // ─── PRODUCTS TAB ─────────────────────────────────────────────────────────────
-function ProductsTab({ products, categories, showNakladoveCeny = true, showSklad = false, userId }: { products: Product[]; categories: Category[]; showNakladoveCeny?: boolean; showSklad?: boolean; userId: string }) {
+function ProductsTab({ products, categories, canEdit, showNakladoveCeny = true, showSklad = false, userId }: { products: Product[]; categories: Category[]; canEdit: boolean; showNakladoveCeny?: boolean; showSklad?: boolean; userId: string }) {
   const router = useRouter()
 
   // Filter defs based on showNakladoveCeny
@@ -130,6 +130,7 @@ function ProductsTab({ products, categories, showNakladoveCeny = true, showSklad
 
   function startEdit(p: Product, field: 'standardniCena' | 'nakladovaCena', e: React.MouseEvent) {
     e.stopPropagation()
+    if (!canEdit) return
     const prices = getPrice(p)
     const current = field === 'standardniCena' ? prices.std : prices.nak
     setEditingCell({ id: p.id, field })
@@ -186,14 +187,14 @@ function ProductsTab({ products, categories, showNakladoveCeny = true, showSklad
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-2 sm:hidden">
+      {canEdit && <div className="flex gap-2 sm:hidden">
         <Link href="/settings/import-products" className="flex-1 text-center px-3 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-lg text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700">
           Import z XLSX
         </Link>
         <Link href="/products/new" className="flex-1 text-center bg-primary hover:bg-primary-hover text-white font-medium px-4 py-2 rounded-lg text-sm">
           + Nový produkt
         </Link>
-      </div>
+      </div>}
       <ListToolbar
         search={search}
         onSearch={v => set('q', v)}
@@ -209,12 +210,14 @@ function ProductsTab({ products, categories, showNakladoveCeny = true, showSklad
               onReorder={reorderColumns}
               onReset={resetColumns}
             />
+            {canEdit && <>
             <Link href="/settings/import-products" className="text-center px-3 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-lg text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-700">
               Import z XLSX
             </Link>
             <Link href="/products/new" className="text-center bg-primary hover:bg-primary-hover text-white font-medium px-4 py-2 rounded-lg text-sm">
               + Nový produkt
             </Link>
+            </>}
           </div>
         }
       >
@@ -402,7 +405,7 @@ function ProductsTab({ products, categories, showNakladoveCeny = true, showSklad
       <div className="flex items-center justify-between flex-wrap gap-3">
         <p className="text-xs text-gray-400 dark:text-slate-500">{filtered.length} produktů · dvojklik na cenu pro rychlou editaci</p>
 
-        {selected.size > 0 && (
+        {canEdit && selected.size > 0 && (
           <div className="flex items-center gap-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-2.5 shadow-sm">
             <span className="text-sm text-gray-600 dark:text-slate-400 font-medium">{selected.size} vybraných</span>
             <span className="text-gray-300 dark:text-slate-600">|</span>
@@ -559,7 +562,7 @@ function CenikyTab({ ceniky, products, categories, isAdmin }: { ceniky: Cenik[];
 }
 
 // ─── MAIN ──────────────────────────────────────────────────────────────────────
-export default function ProductsClient({ products, categories, ceniky, isAdmin, showNakladoveCeny = true, showSklad = false }: Props) {
+export default function ProductsClient({ products, categories, ceniky, isAdmin, canEditKatalog, showNakladoveCeny = true, showSklad = false }: Props) {
   const { data: session } = useSession()
   const userId = session?.user?.id ?? 'anon'
   const [tab, setTab] = useState<'produkty' | 'ceniky'>('produkty')
@@ -580,7 +583,7 @@ export default function ProductsClient({ products, categories, ceniky, isAdmin, 
         ))}
       </div>
 
-      {tab === 'produkty' && <ProductsTab products={products} categories={categories} showNakladoveCeny={showNakladoveCeny} showSklad={showSklad} userId={userId} />}
+      {tab === 'produkty' && <ProductsTab products={products} categories={categories} canEdit={canEditKatalog} showNakladoveCeny={showNakladoveCeny} showSklad={showSklad} userId={userId} />}
       {tab === 'ceniky' && <CenikyTab ceniky={ceniky} products={products} categories={categories} isAdmin={isAdmin} />}
     </div>
   )

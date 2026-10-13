@@ -5,6 +5,7 @@ import { orgPrisma } from '@/lib/orgPrisma'
 import { generateQuoteKod } from '@/lib/quoteKod'
 import { createWithUniqueKod } from '@/lib/uniqueKod'
 import { NextResponse } from 'next/server'
+import { canAccessDeal } from '@/lib/zakazkyHelpers'
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
@@ -50,6 +51,15 @@ export async function POST(req: Request) {
   // Ověř že deal patří do org
   const deal = await db.deal.findFirst({ where: { id: dealId, orgId } })
   if (!deal) return NextResponse.json({ error: 'Deal not found' }, { status: 404 })
+  if (!(await canAccessDeal(session.user, getPerms(session.user), deal.id))) return forbidden()
+
+  // productId jen z vlastního katalogu (RLS cizí FK nehlídá)
+  const requestedProductIds = Array.from(new Set<string>(
+    items.map((i: { productId?: string | null }) => i.productId).filter((x: unknown): x is string => typeof x === 'string' && !!x)
+  ))
+  const ownProductIds = new Set(requestedProductIds.length
+    ? (await db.product.findMany({ where: { id: { in: requestedProductIds } }, select: { id: true } })).map(p => p.id)
+    : [])
 
   // Fetch products for items missing jednotka — use product's jednotka as fallback
   const missingUnitProductIds = Array.from(new Set<string>(
@@ -92,7 +102,7 @@ export async function POST(req: Request) {
           cenaZaKus: Number(item.cenaZaKus ?? 0),
           jednotka: item.jednotka || (item.productId ? productJednotkaMapa[item.productId] : undefined) || 'ks',
           sleva: Number(item.sleva ?? 0),
-          productId: item.productId ?? null,
+          productId: item.productId && ownProductIds.has(item.productId) ? item.productId : null,
           poznamky: item.poznamky ?? null,
           poradi: item.poradi ?? idx,
         }))

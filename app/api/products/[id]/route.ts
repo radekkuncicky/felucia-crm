@@ -2,7 +2,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
-import { getPerms } from '@/lib/permissions'
+import { getPerms, forbidden, canEditKatalog } from '@/lib/permissions'
+import { maskNakupky } from '@/lib/maskNakupky'
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
@@ -25,6 +26,8 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const perms = getPerms(session.user)
+  if (!canEditKatalog(perms)) return forbidden()
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)
 
@@ -45,7 +48,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     produktovaRada: body.produktovaRada !== undefined ? (body.produktovaRada || null) : product.produktovaRada,
     popis: body.popis !== undefined ? (body.popis || null) : product.popis,
     dphSazba: body.dphSazba !== undefined ? Number(body.dphSazba) : product.dphSazba,
-    nakladovaCena: body.nakladovaCena !== undefined && getPerms(session.user).financeNakupkyEdit ? (body.nakladovaCena !== null && body.nakladovaCena !== '' ? Number(body.nakladovaCena) : null) : product.nakladovaCena,
+    nakladovaCena: body.nakladovaCena !== undefined && perms.financeNakupkyEdit ? (body.nakladovaCena !== null && body.nakladovaCena !== '' ? Number(body.nakladovaCena) : null) : product.nakladovaCena,
     standardniCena: body.standardniCena !== undefined ? Number(body.standardniCena) : product.standardniCena,
     jednotka: body.jednotka ?? product.jednotka,
     aktivni: body.aktivni !== undefined ? body.aktivni : product.aktivni,
@@ -56,7 +59,12 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
   // Handle M2M category assignment
   if (Array.isArray(body.categoryIds)) {
-    data.categories = { set: body.categoryIds.map((id: string) => ({ id })) }
+    // jen kategorie vlastní org (RLS cizí FK nehlídá)
+    const kategorie = await db.category.findMany({
+      where: { id: { in: body.categoryIds.map(String) } },
+      select: { id: true },
+    })
+    data.categories = { set: kategorie }
   }
 
   const updated = await db.product.update({
@@ -64,7 +72,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     data,
     include: { categories: { orderBy: { nazev: 'asc' } } },
   })
-  return NextResponse.json(updated)
+  return NextResponse.json(maskNakupky(updated, perms))
 }
 
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {

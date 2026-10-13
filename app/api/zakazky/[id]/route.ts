@@ -5,6 +5,8 @@ import { NextResponse } from 'next/server'
 import { canAccessZakazka, userHasPerm } from '@/lib/zakazkyHelpers'
 import { sendPushToUsers } from '@/lib/push'
 import { getPerms, forbidden } from '@/lib/permissions'
+import { maskNakupky } from '@/lib/maskNakupky'
+import { logAction } from '@/lib/auditLog'
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
@@ -34,13 +36,13 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 
   // Bez oprávnění na prodejní ceny je z položek vystřihneme
   if (!perms.financeProdejni) {
-    return NextResponse.json({
+    return NextResponse.json(maskNakupky({
       ...zakazka,
       polozky: zakazka.polozky.map(p => ({ ...p, prodejniCena: null })),
-    })
+    }, perms))
   }
 
-  return NextResponse.json(zakazka)
+  return NextResponse.json(maskNakupky(zakazka, perms))
 }
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
@@ -121,6 +123,24 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
   const zakazka = await db.zakazka.findFirst({ where: { id: params.id, orgId } })
   if (!zakazka) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
+  // Skutečné skladové pohyby a schválené doklady se mazáním zakázky ztratit nesmí
+  // (stav skladu, podklady k fakturaci) — rezervace a koncepty jdou pryč se zakázkou
+  const [pohyby, schvalenaVyuctovani, schvalenePredavaky] = await Promise.all([
+    db.skladPohyb.count({ where: { zakazkaId: params.id, typ: { notIn: ['REZERVACE', 'STORNO_REZERVACE'] } } }),
+    db.vyuctovani.count({ where: { zakazkaId: params.id, stav: 'SCHVALENO' } }),
+    db.predavak.count({ where: { zakazkaId: params.id, stav: { in: ['PODPISAN', 'SCHVALEN'] } } }),
+  ])
+  const blokuje = [
+    pohyby && 'výdeje nebo příjmy materiálu',
+    schvalenaVyuctovani && 'schválené vyúčtování',
+    schvalenePredavaky && 'podepsaný nebo schválený předávací protokol',
+  ].filter(Boolean)
+  if (blokuje.length) {
+    return NextResponse.json({
+      error: `Zakázku nelze smazat — má ${blokuje.join(', ')}. Nejdřív je vraťte nebo stornujte.`,
+    }, { status: 422 })
+  }
+
   await db.$transaction([
     // No FK cascade — delete manually
     db.skladPohyb.deleteMany({ where: { zakazkaId: params.id } }),
@@ -129,6 +149,15 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
     // FK cascade covers: ZakazkaPolozka, TechnikZakazka, ZakazkaKomentar, ZakazkaFoto
     db.zakazka.delete({ where: { id: params.id } }),
   ])
+
+  await logAction({
+    orgId,
+    userId: session.user.id,
+    typAkce: 'DELETE',
+    typZaznamu: 'Zakazka',
+    zaznamId: params.id,
+    zaznamNazev: `${zakazka.cislo} — ${zakazka.nazev}`,
+  })
 
   return NextResponse.json({ ok: true })
 }

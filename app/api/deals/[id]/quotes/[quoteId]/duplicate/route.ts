@@ -4,6 +4,7 @@ import { forbidden, getPerms } from '@/lib/permissions'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
+import { maskNakupky } from '@/lib/maskNakupky'
 import { generateQuoteKod } from '@/lib/quoteKod'
 import { createWithUniqueKod } from '@/lib/uniqueKod'
 
@@ -49,5 +50,5 @@ export async function POST(req: Request, { params }: { params: { id: string; quo
     include: { items: { include: { product: true }, orderBy: { poradi: 'asc' } } },
   }))
 
-  return NextResponse.json(newQuote, { status: 201 })
+  return NextResponse.json(maskNakupky(newQuote, getPerms(session.user)), { status: 201 })
 }

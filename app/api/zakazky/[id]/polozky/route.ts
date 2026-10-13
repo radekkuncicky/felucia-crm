@@ -4,6 +4,7 @@ import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { canAccessZakazka } from '@/lib/zakazkyHelpers'
 import { getPerms, forbidden } from '@/lib/permissions'
+import { maskNakupky } from '@/lib/maskNakupky'
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
@@ -43,13 +44,17 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   const orgSettings = await db.orgSettings.findUnique({ where: { orgId }, select: { zakazkyDefaultDph: true } })
   const count = await db.zakazkaPolozka.count({ where: { zakazkaId: params.id } })
+  // productId jen z vlastního katalogu (RLS cizí FK nehlídá)
+  const product = body.productId
+    ? await db.product.findFirst({ where: { id: body.productId }, select: { id: true } })
+    : null
 
   const polozka = await db.zakazkaPolozka.create({
     data: {
       zakazkaId: params.id,
       nazev: body.nazev,
       kod: body.kod ?? null,
-      productId: body.productId ?? null,
+      productId: product?.id ?? null,
       mnozstvi: body.mnozstvi ?? 1,
       jednotka: body.jednotka ?? 'ks',
       prodejniCena: body.prodejniCena ?? null,
@@ -60,7 +65,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     },
   })
 
-  return NextResponse.json(polozka, { status: 201 })
+  return NextResponse.json(maskNakupky(polozka, getPerms(session.user)), { status: 201 })
 }
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
@@ -89,7 +94,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     },
   })
 
-  return NextResponse.json(updated)
+  return NextResponse.json(maskNakupky(updated, getPerms(session.user)))
 }
 
 export async function DELETE(req: Request, { params }: { params: { id: string } }) {

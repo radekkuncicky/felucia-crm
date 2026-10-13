@@ -3,6 +3,7 @@ import { canAccessDeal } from '@/lib/zakazkyHelpers'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
+import { maskNakupky } from '@/lib/maskNakupky'
 import { forbidden, getPerms } from '@/lib/permissions'
 
 export async function PATCH(req: Request, { params }: { params: { id: string; quoteId: string; itemId: string } }) {
@@ -36,7 +37,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string; qu
     },
   })
 
-  return NextResponse.json(updated)
+  return NextResponse.json(maskNakupky(updated, getPerms(session.user)))
 }
 
 export async function DELETE(req: Request, { params }: { params: { id: string; quoteId: string; itemId: string } }) {
