@@ -13,6 +13,7 @@ import { Field, Input, Select } from '@/components/ui/Field'
 import { api } from '@/lib/api'
 import { leadPredmet, sluzbaLabel, sluzbaToTechnologie } from '@/lib/leadService'
 import LeadAktivity, { type LeadActivity } from './LeadAktivity'
+import ZapsatHovorDialog from '@/components/ZapsatHovorDialog'
 
 interface LeadNote {
   id: string
@@ -99,6 +100,7 @@ export default function LeadDetailClient({ lead: initialLead, users, currentUser
   const [newTag, setNewTag] = useState('')
   const [showConvertModal, setShowConvertModal] = useState(false)
   const [showCancelModal, setShowCancelModal] = useState(false)
+  const [showHovor, setShowHovor] = useState(false)
   const [savingStatus, setSavingStatus] = useState(false)
 
   const isClosed = lead.status === 'PREVEDEN' || lead.status === 'ZRUSEN'
@@ -537,6 +539,12 @@ export default function LeadDetailClient({ lead: initialLead, users, currentUser
 
           {/* 9 + 10. Akce */}
           <div className="space-y-2">
+            {canEdit && !isClosed && lead.telefon && (
+              <>
+                <Button variant="secondary" className="w-full" onClick={() => setShowHovor(true)}>Zapsat hovor</Button>
+                <ZapsatHovorDialog open={showHovor} onClose={() => setShowHovor(false)} predvyplneni={{ telefon: lead.telefon }} />
+              </>
+            )}
             {canEdit && !isClosed && (
               <button
                 onClick={() => setShowConvertModal(true)}

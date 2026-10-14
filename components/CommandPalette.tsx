@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import type { NavItem, NavIconKey } from '@/lib/navigation'
 import { NavIcon } from '@/components/NavIcon'
+import ZapsatHovorDialog from '@/components/ZapsatHovorDialog'
 
 type ResultType = 'deal' | 'client' | 'servis' | 'zakazka' | 'lead' | 'product'
 
@@ -76,6 +77,8 @@ export default function CommandPalette({ navigace, akce, canNewDeal }: Props) {
   const [loading, setLoading] = useState(false)
   const [activeIdx, setActiveIdx] = useState(0)
   const [recent, setRecent] = useState<SearchResult[]>([])
+  /** telefon pro dialog Zapsat hovor (null = zavřený) */
+  const [hovorTel, setHovorTel] = useState<string | null>(null)
   const router = useRouter()
   const inputRef = useRef<HTMLInputElement>(null)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -187,14 +190,23 @@ export default function CommandPalette({ navigace, akce, canNewDeal }: Props) {
       label: 'Přejít na',
       items: navigace.map(n => ({ id: `nav-${n.id}`, icon: icon(n.icon), label: n.label, href: n.href })),
     },
-    ...(akce.length ? [{
+    ...(akce.length || canNewDeal ? [{
       label: 'Rychlé akce',
-      items: akce.map(a => ({ id: `act-${a.id}`, icon: icon(a.icon), label: a.label, href: a.href })),
+      items: [
+        ...akce.map(a => ({ id: `act-${a.id}`, icon: icon(a.icon), label: a.label, href: a.href })),
+        ...(canNewDeal ? [{ id: 'act-hovor', icon: icon('activity'), label: 'Zapsat hovor', action: () => setHovorTel('') }] : []),
+      ],
     }] : []),
   ]
 
+  // Hledané vypadá jako telefon → nabídnout zápis hovoru s tím číslem
+  const jeTelefon = canNewDeal && /^[+\d\s()-]+$/.test(query.trim()) && query.replace(/\D/g, '').length >= 6
+  const hovorItem: Item | null = jeTelefon
+    ? { id: 'hovor', icon: icon('activity'), label: `Zapsat hovor s číslem ${query.trim()}`, badge: 'Hovor', action: () => setHovorTel(query.trim()) }
+    : null
+
   // Build flat list for keyboard nav
-  const searchItems: Item[] = results.map(toItem)
+  const searchItems: Item[] = [...(hovorItem ? [hovorItem] : []), ...results.map(toItem)]
 
   const hasSearch = query.length >= 2
   const allItems: Item[] = hasSearch
@@ -282,11 +294,11 @@ export default function CommandPalette({ navigace, akce, canNewDeal }: Props) {
         {/* Results */}
         <div className="max-h-[400px] overflow-y-auto py-2">
           {hasSearch ? (
-            results.length === 0 && !loading ? (
+            searchItems.length === 0 && !loading ? (
               <p className="text-sm text-center text-gray-400 dark:text-slate-500 py-8">Žádné výsledky pro &ldquo;{query}&rdquo;</p>
             ) : (
               <div>
-                {results.length > 0 && (
+                {searchItems.length > 0 && (
                   <div>
                     <p className="text-xs uppercase tracking-widest text-gray-400 dark:text-slate-500 px-4 py-1.5 font-semibold">Výsledky hledání</p>
                     {searchItems.map((item, i) => (
@@ -326,6 +338,7 @@ export default function CommandPalette({ navigace, akce, canNewDeal }: Props) {
       </div>
     </div>
     )}
+    <ZapsatHovorDialog open={hovorTel !== null} onClose={() => setHovorTel(null)} predvyplneni={{ telefon: hovorTel ?? '' }} />
     </>
   )
 }

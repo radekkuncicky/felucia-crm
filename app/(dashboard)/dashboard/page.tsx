@@ -21,6 +21,7 @@ import { orgPrisma } from '@/lib/orgPrisma'
 import { getOrgSettings } from '@/lib/orgSettings'
 import { dnesniVyjezdy } from '@/lib/dnesniVyjezdy'
 import { NavigateButton } from '@/components/NavigateButton'
+import { ZapsatHovorButton } from '@/components/ZapsatHovorDialog'
 
 const stavLabels: Record<StavDealu, string> = {
   NOVY: 'Nový', JEDNANI: 'Jednání', NABIDKA: 'Nabídka',
@@ -190,12 +191,15 @@ export default async function DashboardPage() {
             {new Date().toLocaleDateString('cs-CZ', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
           </p>
         </div>
-        {showObchod && <Link href="/deals/new" className="hidden sm:flex items-center gap-2 bg-primary hover:bg-primary-hover text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Nový případ
-        </Link>}
+        {showObchod && <div className="flex items-center gap-2">
+          <ZapsatHovorButton />
+          <Link href="/deals/new" className="hidden sm:flex items-center gap-2 bg-primary hover:bg-primary-hover text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Nový případ
+          </Link>
+        </div>}
       </div>
 
       {showObchod && (<>
