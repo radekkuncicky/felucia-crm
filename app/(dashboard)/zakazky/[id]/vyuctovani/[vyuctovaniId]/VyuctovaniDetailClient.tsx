@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { VyuctovaniStav, ZakazkaStav } from '@prisma/client'
 import { confirmDialog } from '@/components/ui/confirm'
 import { Button } from '@/components/ui/Button'
+import { Dialog } from '@/components/ui/Dialog'
 import { api } from '@/lib/api'
 import { formatCislo, formatKc, formatDate } from '@/lib/format'
 import { radekBezDph } from '@/lib/quoteMath'
@@ -341,47 +342,45 @@ export default function VyuctovaniDetailClient({ vyuctovani: initial, canApprove
       {toast && (
         <div className="fixed bottom-6 right-4 z-50 px-4 py-3 rounded-xl shadow-xl bg-green-600 text-white text-sm font-medium">{toast}</div>
       )}
-      {confirmSchvalit && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-xl max-w-sm w-full">
-            <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Schválit vyúčtování?</h3>
-            <p className="text-sm text-gray-600 dark:text-slate-400 mb-5">
-              Vyúčtování <strong>{initial.cislo}</strong> na <strong>{fmtKc(celkemSDph)}</strong> s DPH bude uzamčeno proti úpravám a stav zakázky se změní na <strong>Vyúčtována</strong>.
-              {dalsiEtapaCislo != null && (
-                <> Pokud zakázka pokračuje, můžete rovnou zahájit etapu {dalsiEtapaCislo} — zakázka se vrátí do realizace.</>
-              )}
-            </p>
-            {dalsiEtapaCislo != null ? (
-              <div className="flex flex-col gap-2">
-                <button onClick={() => handleSchvalit(true)} disabled={loading} className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg disabled:opacity-50">Schválit a zahájit etapu {dalsiEtapaCislo}</button>
-                <button onClick={() => handleSchvalit(false)} disabled={loading} className="px-4 py-2 text-sm font-medium text-green-700 dark:text-green-300 border border-green-600 dark:border-green-500 rounded-lg disabled:opacity-50">Jen schválit — zakázka končí</button>
-                <button onClick={() => setConfirmSchvalit(false)} className="px-4 py-2 text-sm text-gray-600 dark:text-slate-400 border border-gray-300 dark:border-slate-600 rounded-lg">Zrušit</button>
-              </div>
-            ) : (
-              <div className="flex gap-3 justify-end">
-                <button onClick={() => setConfirmSchvalit(false)} className="px-4 py-2 text-sm text-gray-600 dark:text-slate-400 border border-gray-300 dark:border-slate-600 rounded-lg">Zrušit</button>
-                <button onClick={() => handleSchvalit(false)} disabled={loading} className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg disabled:opacity-50">Schválit</button>
-              </div>
-            )}
+      <Dialog
+        open={confirmSchvalit}
+        onClose={() => setConfirmSchvalit(false)}
+        title="Schválit vyúčtování?"
+        size="sm"
+        footer={dalsiEtapaCislo != null ? (
+          <div className="flex flex-col gap-2 w-full">
+            <Button onClick={() => handleSchvalit(true)} disabled={loading}>Schválit a zahájit etapu {dalsiEtapaCislo}</Button>
+            <Button variant="secondary" onClick={() => handleSchvalit(false)} disabled={loading}>Jen schválit</Button>
+            <Button variant="ghost" onClick={() => setConfirmSchvalit(false)}>Zpět</Button>
           </div>
-        </div>
-      )}
-      {confirmDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-xl max-w-sm w-full">
-            <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Smazat vyúčtování?</h3>
-            <p className="text-sm text-gray-600 dark:text-slate-400 mb-5">
-              Vyúčtování <strong>{initial.cislo}</strong> včetně všech položek bude <strong>trvale smazáno</strong>. Tuto akci nelze vzít zpět.
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button onClick={() => setConfirmDelete(false)} className="px-4 py-2 text-sm text-gray-600 dark:text-slate-400 border border-gray-300 dark:border-slate-600 rounded-lg">Zrušit</button>
-              <button onClick={handleDelete} disabled={loading} className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg disabled:opacity-50">
-                {loading ? 'Mažu…' : 'Smazat'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+        ) : (
+          <>
+            <Button variant="secondary" onClick={() => setConfirmSchvalit(false)}>Zpět</Button>
+            <Button onClick={() => handleSchvalit(false)} disabled={loading}>Schválit</Button>
+          </>
+        )}
+      >
+        <p className="text-sm text-muted">
+          Vyúčtování <strong>{initial.cislo}</strong> na <strong>{fmtKc(celkemSDph)}</strong> s DPH bude uzamčeno proti úpravám a stav zakázky se změní na <strong>Vyúčtována</strong>.
+          {dalsiEtapaCislo != null
+            ? <> Pokud zakázka pokračuje, můžete rovnou zahájit etapu {dalsiEtapaCislo} — zakázka se vrátí do realizace. Rozhodnout se jde i později na tomto vyúčtování.</>
+            : <> Zakázku pak uzavřete tlačítkem <strong>Ukončit zakázku</strong>.</>}
+        </p>
+      </Dialog>
+      <Dialog
+        open={confirmDelete}
+        onClose={() => setConfirmDelete(false)}
+        title="Smazat vyúčtování?"
+        size="sm"
+        footer={<>
+          <Button variant="secondary" onClick={() => setConfirmDelete(false)}>Zpět</Button>
+          <Button variant="danger" onClick={handleDelete} loading={loading}>Smazat</Button>
+        </>}
+      >
+        <p className="text-sm text-muted">
+          Vyúčtování <strong>{initial.cislo}</strong> včetně všech položek bude <strong>trvale smazáno</strong>. Tuto akci nelze vzít zpět.
+        </p>
+      </Dialog>
 
       <div className="space-y-5 pb-32 md:pb-6">
         {/* Header */}
