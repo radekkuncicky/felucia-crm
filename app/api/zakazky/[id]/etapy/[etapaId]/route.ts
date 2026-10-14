@@ -26,9 +26,13 @@ export async function PATCH(req: Request, { params }: { params: { id: string; et
   if (!body || typeof body !== 'object') {
     return NextResponse.json({ error: 'Neplatná data požadavku.' }, { status: 400 })
   }
-  const { nazev, montazOd, montazDo, stav, poznamka } = body as Record<string, unknown>
+  const { nazev, montazOd, montazDo, stav, poznamka, hlavniTechnikId } = body as Record<string, unknown>
   if (stav !== undefined && !ETAPA_STAV_VALUES.has(stav as string)) {
     return NextResponse.json({ error: `Neplatný stav etapy: ${stav}` }, { status: 400 })
+  }
+  // Hlavní technik musí být mezi techniky etapy
+  if (hlavniTechnikId != null && !(await db.etapaTechnik.findFirst({ where: { etapaId: etapa.id, technikId: String(hlavniTechnikId) } }))) {
+    return NextResponse.json({ error: 'Hlavní technik musí být přiřazený k etapě' }, { status: 400 })
   }
 
   try {
@@ -40,6 +44,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string; et
         montazDo: montazDo !== undefined ? (montazDo ? new Date(montazDo as string) : null) : undefined,
         stav: (stav as EtapaStav) ?? undefined,
         poznamka: poznamka !== undefined ? ((poznamka as string)?.trim() || null) : undefined,
+        hlavniTechnikId: hlavniTechnikId !== undefined ? ((hlavniTechnikId as string) || null) : undefined,
       },
       include: {
         predavaky: { select: { id: true, cislo: true, stav: true } },
@@ -89,6 +94,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string; e
     montazDo: etapa.montazDo,
     poznamka: etapa.poznamka,
     stav: etapa.stav,
+    hlavniTechnikId: etapa.hlavniTechnikId,
     technikIds: etapa.technici.map(t => t.technikId),
   }
   await logAction({

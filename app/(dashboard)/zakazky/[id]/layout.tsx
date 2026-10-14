@@ -219,12 +219,14 @@ export default async function ZakazkaDetailLayout({
                     montazOd={zakazka.montazOd?.toISOString() ?? null}
                     montazDo={zakazka.montazDo?.toISOString() ?? null}
                     canEdit={canEdit}
+                    technikIds={techniciZakazky.map(t => t.id)}
                     etapy={zakazka.etapy.map(e => ({
                       id: e.id,
                       cislo: e.cislo,
                       nazev: e.nazev ?? null,
                       montazOd: e.montazOd?.toISOString() ?? null,
                       montazDo: e.montazDo?.toISOString() ?? null,
+                      technikIds: e.technici.map(t => t.technik.id),
                     }))}
                   />
                   <div className="mt-1.5">
@@ -239,6 +241,7 @@ export default async function ZakazkaDetailLayout({
                     key={techniciZakazky.map(t => t.id).join(',')}
                     zakazkaId={zakazka.id}
                     technici={techniciZakazky}
+                    hlavniId={zakazka.hlavniTechnikId}
                     vsichni={vsichniTechnici}
                     canEdit={canEdit}
                     maEtapy={zakazka.etapy.length > 0}
@@ -350,6 +353,7 @@ export default async function ZakazkaDetailLayout({
           montazDo: e.montazDo?.toISOString() ?? null,
           stav: e.stav,
           poznamka: e.poznamka,
+          hlavniTechnikId: e.hlavniTechnikId,
           predavaky: e.predavaky,
           vyuctovani: e.vyuctovani,
           technici: e.technici.map(t => t.technik),

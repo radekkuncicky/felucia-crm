@@ -85,7 +85,9 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       id: t.technik.id,
       jmeno: t.technik.jmeno,
       telefon: t.technik.telefon ?? null,
+      hlavni: t.technik.id === zakazka.hlavniTechnikId,
     })),
+    hlavniTechnikId: zakazka.hlavniTechnikId ?? null,
     polozky: zakazka.polozky.map(p => ({
       id: p.id,
       nazev: p.nazev,

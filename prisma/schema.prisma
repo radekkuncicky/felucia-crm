@@ -367,6 +367,8 @@ model User {
   servisniZakazky     ServisniZakazka[]
   notifications       Notification[]
   zakazkyVedouci      Zakazka[]            @relation("ZakazkaVedouci")
+  zakazkyHlavniTechnik Zakazka[]           @relation("ZakazkaHlavniTechnik")
+  etapyHlavniTechnik  ZakazkaEtapa[]       @relation("EtapaHlavniTechnik")
   technikZakazky      TechnikZakazka[]
   technikEtapy        EtapaTechnik[]
   zakazkaFotky        ZakazkaFoto[]
@@ -1131,6 +1133,8 @@ model Zakazka {
   nazev         String
   technologie   String?
   vedouciId     String?
+  /// Hlavní technik (vedoucí party na montáži) — jeden z přiřazených techniků
+  hlavniTechnikId String?
   stav          ZakazkaStav   @default(NOVA)
   typ           ZakazkaTyp    @default(OBCHODNI)
   poznamka      String?
@@ -1148,6 +1152,7 @@ model Zakazka {
   op            Deal?         @relation(fields: [opId], references: [id])
   klient        Client        @relation(fields: [klientId], references: [id])
   vedouci       User?         @relation("ZakazkaVedouci", fields: [vedouciId], references: [id])
+  hlavniTechnik User?         @relation("ZakazkaHlavniTechnik", fields: [hlavniTechnikId], references: [id], onDelete: SetNull)
   techniciRel   TechnikZakazka[]
   polozky       ZakazkaPolozka[]
   predavaky     Predavak[]
@@ -1176,11 +1181,14 @@ model ZakazkaEtapa {
   montazDo    DateTime?
   stav        EtapaStav      @default(PLANOVANA)
   poznamka    String?
+  /// Hlavní technik etapy — jeden z technici etapy
+  hlavniTechnikId String?
   vytvoreno   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 
   organization Organization  @relation(fields: [orgId], references: [id])
   zakazka     Zakazka        @relation(fields: [zakazkaId], references: [id], onDelete: Cascade)
+  hlavniTechnik User?        @relation("EtapaHlavniTechnik", fields: [hlavniTechnikId], references: [id], onDelete: SetNull)
   predavaky   Predavak[]
   vyuctovani  Vyuctovani[]
   technici    EtapaTechnik[]

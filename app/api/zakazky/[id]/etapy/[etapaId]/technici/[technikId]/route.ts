@@ -3,6 +3,7 @@ import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { getPerms, forbidden } from '@/lib/permissions'
+import { prevzitHlavnihoTechnikaEtapy } from '@/lib/techniciZakazky'
 
 // DELETE — odebere technika z etapy; na zakázce zůstává (přístup k předávákům, fotkám)
 export async function DELETE(
@@ -19,6 +20,7 @@ export async function DELETE(
   if (!etapa) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   await db.etapaTechnik.deleteMany({ where: { etapaId: etapa.id, technikId: params.technikId } })
+  await prevzitHlavnihoTechnikaEtapy(db, etapa.id, params.technikId)
 
   return new NextResponse(null, { status: 204 })
 }

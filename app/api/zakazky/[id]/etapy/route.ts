@@ -38,7 +38,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   if (!body || typeof body !== 'object') {
     return NextResponse.json({ error: 'Neplatná data požadavku.' }, { status: 400 })
   }
-  const { nazev, montazOd, montazDo, poznamka, technikIds, stav } = body as Record<string, unknown>
+  const { nazev, montazOd, montazDo, poznamka, technikIds, stav, hlavniTechnikId } = body as Record<string, unknown>
 
   const result = await zalozDalsiEtapu(db, orgId, params.id, {
     nazev: typeof nazev === 'string' ? nazev.trim() || null : null,
@@ -46,6 +46,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     montazDo: montazDo ? new Date(montazDo as string) : null,
     poznamka: typeof poznamka === 'string' ? poznamka.trim() || null : null,
     stav: stav === 'PROBIHAJICI' ? 'PROBIHAJICI' : undefined,
+    hlavniTechnikId: typeof hlavniTechnikId === 'string' ? hlavniTechnikId : null,
     technikIds: Array.isArray(technikIds) ? technikIds.filter((t): t is string => typeof t === 'string') : undefined,
   })
   if (!result.ok) {

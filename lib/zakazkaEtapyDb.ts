@@ -23,6 +23,7 @@ export interface ZalozEtapuData {
   poznamka?: string | null
   /** technici etapy (obnova omylem smazané etapy) — jen uživatelé org */
   technikIds?: string[]
+  hlavniTechnikId?: string | null
   /** stav při obnově smazané etapy (výchozí PLANOVANA) */
   stav?: 'PLANOVANA' | 'PROBIHAJICI'
 }
@@ -144,6 +145,8 @@ export async function zalozDalsiEtapu(
             data: platni.map(u => ({ orgId, etapaId: e.id, technikId: u.id })),
             skipDuplicates: true,
           })
+          const hlavni = platni.find(u => u.id === data.hlavniTechnikId) ?? platni[0]
+          if (hlavni) await tx.zakazkaEtapa.update({ where: { id: e.id }, data: { hlavniTechnikId: hlavni.id } })
         }
 
         // Zakázka „hotová" po předchozí etapě se novou etapou vrací do realizace

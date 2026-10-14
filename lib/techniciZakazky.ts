@@ -21,6 +21,8 @@ export async function priraditTechnikaKZakazce(
   if (existuje) return { novy: false, zakazkaNovyStav: null }
 
   await db.technikZakazka.create({ data: { zakazkaId: zakazka.id, technikId } })
+  // První přiřazený technik se stane hlavním, dokud hlavního nikdo neurčí
+  await db.zakazka.updateMany({ where: { id: zakazka.id, hlavniTechnikId: null }, data: { hlavniTechnikId: technikId } })
 
   let zakazkaNovyStav: 'PRIRAZENA' | null = null
   if (zakazka.stav === 'NOVA') {
@@ -52,8 +54,29 @@ export async function priraditTechnikaKZakazce(
 
 /** Odebere technika ze zakázky i ze všech jejích etap (bez zakázky by na etapu neviděl). */
 export async function odebratTechnikaZeZakazky(db: Db, zakazkaId: string, technikId: string) {
+  const etapy = await db.zakazkaEtapa.findMany({ where: { zakazkaId, hlavniTechnikId: technikId }, select: { id: true } })
   await db.$transaction([
     db.etapaTechnik.deleteMany({ where: { technikId, etapa: { zakazkaId } } }),
     db.technikZakazka.deleteMany({ where: { zakazkaId, technikId } }),
   ])
+  await prevzitHlavnihoTechnikaZakazky(db, zakazkaId, technikId)
+  for (const e of etapy) await prevzitHlavnihoTechnikaEtapy(db, e.id, technikId)
+}
+
+/** Odebraný hlavní technik zakázky → hlavním se stane nejdřív přiřazený ze zbylých (nebo nikdo). */
+export async function prevzitHlavnihoTechnikaZakazky(db: Db, zakazkaId: string, odebranyId: string) {
+  const dalsi = await db.technikZakazka.findFirst({ where: { zakazkaId }, orderBy: { prirazeno: 'asc' }, select: { technikId: true } })
+  await db.zakazka.updateMany({
+    where: { id: zakazkaId, hlavniTechnikId: odebranyId },
+    data: { hlavniTechnikId: dalsi?.technikId ?? null },
+  })
+}
+
+/** Totéž pro etapu (technici etapy). */
+export async function prevzitHlavnihoTechnikaEtapy(db: Db, etapaId: string, odebranyId: string) {
+  const dalsi = await db.etapaTechnik.findFirst({ where: { etapaId }, orderBy: { prirazeno: 'asc' }, select: { technikId: true } })
+  await db.zakazkaEtapa.updateMany({
+    where: { id: etapaId, hlavniTechnikId: odebranyId },
+    data: { hlavniTechnikId: dalsi?.technikId ?? null },
+  })
 }

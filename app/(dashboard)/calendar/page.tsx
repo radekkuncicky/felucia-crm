@@ -69,7 +69,7 @@ export default async function CalendarPage() {
       },
       include: {
         klient: { select: { jmeno: true, prijmeni: true, typKlienta: true } },
-        techniciRel: { include: { technik: { select: { jmeno: true } } } },
+        techniciRel: { orderBy: { prirazeno: 'asc' }, include: { technik: { select: { id: true, jmeno: true } } } },
         etapy: {
           where: { montazOd: { not: null } },
           orderBy: { cislo: 'asc' },
@@ -210,8 +210,11 @@ export default async function CalendarPage() {
   for (const z of montazZakazky) {
     const klient = klientJmeno(z.klient)
     const tech = technologieLabel(z.technologie) || z.nazev
-    const techniciNames = z.techniciRel.map(t => t.technik.jmeno)
-    const subtitle = techniciNames.length > 0 ? `${z.cislo} · ${techniciNames.join(', ')}` : z.cislo
+    // Hlavní technik první a s hvězdičkou (jen v popisku — Kapacita řadí podle jmen)
+    const techniciRazeni = [...z.techniciRel].sort((a, b) => Number(b.technikId === z.hlavniTechnikId) - Number(a.technikId === z.hlavniTechnikId))
+    const techniciNames = techniciRazeni.map(t => t.technik.jmeno)
+    const techniciPopis = techniciRazeni.map(t => (t.technikId === z.hlavniTechnikId ? `★ ${t.technik.jmeno}` : t.technik.jmeno))
+    const subtitle = techniciNames.length > 0 ? `${z.cislo} · ${techniciPopis.join(', ')}` : z.cislo
 
     // Zakázka s více etapami → každá etapa má vlastní termín; jinak hlavní termín zakázky
     const etapy = z.etapy.filter(e => e.montazOd)
@@ -220,6 +223,9 @@ export default async function CalendarPage() {
         // Etapa s vlastními techniky ukazuje jen je; technik vidí jen etapy, na kterých je
         if (isTechnik && e.technici.length > 0 && !e.technici.some(t => t.technikId === userId)) continue
         const etapaTechnici = e.technici.length > 0 ? e.technici.map(t => t.technik.jmeno) : techniciNames
+        const etapaPopis = e.technici.length > 0
+          ? e.technici.map(t => (t.technikId === e.hlavniTechnikId ? `★ ${t.technik.jmeno}` : t.technik.jmeno))
+          : techniciPopis
         const etapaLabel = e.nazev ? `${e.cislo}. etapa – ${e.nazev}` : `${e.cislo}. etapa`
         events.push({
           id: `montaz-${z.id}-etapa-${e.id}`,
@@ -230,7 +236,7 @@ export default async function CalendarPage() {
           klient: `${klient} (${e.cislo}. et.)`,
           tech: z.technologie ?? undefined,
           move: { zakazkaId: z.id, etapaId: e.id },
-          subtitle: etapaTechnici.length > 0 ? `${z.cislo} · ${etapaTechnici.join(', ')}` : z.cislo,
+          subtitle: etapaTechnici.length > 0 ? `${z.cislo} · ${etapaPopis.join(', ')}` : z.cislo,
           href: `/zakazky/${z.id}`,
           technici: etapaTechnici,
           kdykoliv: z.kdykoliv,

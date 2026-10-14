@@ -21,6 +21,7 @@ interface Etapa {
   montazDo: string | null
   stav: EtapaStav
   poznamka: string | null
+  hlavniTechnikId?: string | null
   predavaky: EtapaPredavak[]
   vyuctovani: EtapaVyuctovani[]
   technici: TechnikRef[]
@@ -302,6 +303,8 @@ function EtapaRow({
                   vsichni={vsichniTechnici}
                   canEdit={canEdit}
                   addUrl={`/api/zakazky/${zakazkaId}/etapy/${etapa.id}/technici`}
+                  hlavniId={etapa.hlavniTechnikId}
+                  hlavniUrl={`/api/zakazky/${zakazkaId}/etapy/${etapa.id}`}
                   onChange={technici => onUpdate({ ...etapa, technici })}
                   emptyText="Zatím nikdo — přiřaďte, kdo etapu montuje"
                 />

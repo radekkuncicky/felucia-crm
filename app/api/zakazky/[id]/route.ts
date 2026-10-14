@@ -72,6 +72,10 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   })
   if (!puvodni) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
+  if (body.hlavniTechnikId && !(await db.technikZakazka.findFirst({ where: { zakazkaId: params.id, technikId: String(body.hlavniTechnikId) } }))) {
+    return NextResponse.json({ error: 'Hlavní technik musí být přiřazený k zakázce' }, { status: 400 })
+  }
+
   if (body.vedouciId && !(await userHasPerm(orgId, body.vedouciId, 'zakazkySchvalovani'))) {
     return NextResponse.json({ error: 'Vedoucí nemá oprávnění schvalovat' }, { status: 400 })
   }
@@ -88,6 +92,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       montazOd: body.montazOd !== undefined ? (body.montazOd ? new Date(body.montazOd) : null) : undefined,
       montazDo: body.montazDo !== undefined ? (body.montazDo ? new Date(body.montazDo) : null) : undefined,
       kdykoliv: typeof body.kdykoliv === 'boolean' ? body.kdykoliv : undefined,
+      hlavniTechnikId: body.hlavniTechnikId !== undefined ? (body.hlavniTechnikId || null) : undefined,
     },
   })
 

@@ -1,9 +1,11 @@
 'use client'
 
-import { useId, useState } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { api } from '@/lib/api'
 import { Button } from '@/components/ui/Button'
+import DateRangePickerInput from '@/components/DateRangePickerInput'
+import { ObsazenostSouhrn } from './ObsazenostMontazi'
 
 interface EtapaTermin {
   id: string
@@ -11,6 +13,8 @@ interface EtapaTermin {
   nazev: string | null
   montazOd: string | null
   montazDo: string | null
+  /** technici etapy (prázdné = technici zakázky) */
+  technikIds?: string[]
 }
 
 interface Props {
@@ -19,6 +23,8 @@ interface Props {
   montazDo: string | null
   canEdit: boolean
   etapy?: EtapaTermin[]
+  /** technici zakázky — kolize v přehledu obsazenosti */
+  technikIds?: string[]
 }
 
 function toLocalInput(iso: string | null): string {
@@ -43,6 +49,8 @@ function fmtMontaz(od: string | null, doo: string | null): string {
 
 // Single-row inline editor for zakazka or etapa termín
 function TerminEditor({
+  zakazkaId,
+  technikIds,
   label,
   initialOd,
   initialDo,
@@ -51,6 +59,8 @@ function TerminEditor({
   onCancel,
   canClear,
 }: {
+  zakazkaId: string
+  technikIds: string[]
   label?: string
   initialOd: string
   initialDo: string
@@ -62,9 +72,6 @@ function TerminEditor({
   const [od, setOd] = useState(initialOd)
   const [doo, setDoo] = useState(initialDo)
   const [saving, setSaving] = useState(false)
-  const odId = useId()
-  const doId = useId()
-  const dateCls = 'border border-gray-300 dark:border-slate-600 rounded-lg px-2 py-1 text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary'
 
   async function ulozit(e: React.FormEvent) {
     e.preventDefault()
@@ -76,20 +83,20 @@ function TerminEditor({
   return (
     <form
       onSubmit={ulozit}
-      onKeyDown={e => { if (e.key === 'Escape') { e.stopPropagation(); onCancel() } }}
+      // Esc z dialogu Obsazenost (portál) editor nezavírá
+      onKeyDown={e => { if (e.key === 'Escape' && e.currentTarget.contains(e.target as Node)) { e.stopPropagation(); onCancel() } }}
       className="flex flex-wrap items-end gap-2"
     >
       {label && <span className="text-xs text-gray-500 dark:text-slate-400 font-medium self-center">{label}:</span>}
-      <div className="flex items-end gap-1.5">
-        <div>
-          <label htmlFor={odId} className="block text-xs text-gray-500 dark:text-slate-400 mb-0.5">Od</label>
-          <input id={odId} type="date" value={od} onChange={e => setOd(e.target.value)} required autoFocus className={dateCls} />
-        </div>
-        <span className="text-xs text-gray-400 pb-2" aria-hidden>–</span>
-        <div>
-          <label htmlFor={doId} className="block text-xs text-gray-500 dark:text-slate-400 mb-0.5">Do</label>
-          <input id={doId} type="date" value={doo} onChange={e => setDoo(e.target.value)} min={od} className={dateCls} />
-        </div>
+      <div className="min-w-[13rem]">
+        <span className="block text-xs text-gray-500 dark:text-slate-400 mb-0.5">Dny montáže</span>
+        <DateRangePickerInput
+          from={od}
+          to={doo}
+          onChange={r => { setOd(r.from); setDoo(r.to) }}
+          placeholder="Vyberte dny v kalendáři"
+          className="border border-gray-300 dark:border-slate-600 rounded-lg px-2 py-1 text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
+        />
       </div>
       <div className="flex items-center gap-1">
         <Button type="submit" size="sm" loading={saving} disabled={!od}>Uložit</Button>
@@ -105,6 +112,7 @@ function TerminEditor({
         )}
         <Button size="sm" variant="ghost" onClick={onCancel}>Zpět</Button>
       </div>
+      <ObsazenostSouhrn zakazkaId={zakazkaId} od={od} doo={doo} technikIds={technikIds} />
     </form>
   )
 }
@@ -128,7 +136,7 @@ function TerminChip({ label, termin, canEdit, onEdit }: { label?: string; termin
   )
 }
 
-export default function MontazDatePicker({ zakazkaId, montazOd, montazDo, canEdit, etapy = [] }: Props) {
+export default function MontazDatePicker({ zakazkaId, montazOd, montazDo, canEdit, etapy = [], technikIds = [] }: Props) {
   const router = useRouter()
   const [editingMain, setEditingMain] = useState(false)
   const [editingEtapaId, setEditingEtapaId] = useState<string | null>(null)
@@ -178,6 +186,8 @@ export default function MontazDatePicker({ zakazkaId, montazOd, montazDo, canEdi
     if (editingMain) {
       return (
         <TerminEditor
+          zakazkaId={zakazkaId}
+          technikIds={technikIds}
           initialOd={toLocalInput(montazOd)}
           initialDo={toLocalInput(montazDo)}
           onSave={saveMain}
@@ -218,6 +228,8 @@ export default function MontazDatePicker({ zakazkaId, montazOd, montazDo, canEdi
           return (
             <TerminEditor
               key={e.id}
+              zakazkaId={zakazkaId}
+              technikIds={e.technikIds?.length ? e.technikIds : technikIds}
               label={etapaLabel}
               initialOd={toLocalInput(e.montazOd)}
               initialDo={toLocalInput(e.montazDo)}

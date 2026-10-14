@@ -30,6 +30,7 @@ export async function POST(req: Request, { params }: { params: { id: string; eta
   if (!existuje) {
     await db.etapaTechnik.create({ data: { orgId, etapaId: etapa.id, technikId } })
   }
+  await db.zakazkaEtapa.updateMany({ where: { id: etapa.id, hlavniTechnikId: null }, data: { hlavniTechnikId: technikId } })
   const { novy: novyNaZakazce, zakazkaNovyStav } = await priraditTechnikaKZakazce(db, {
     orgId, userId: session.user.id, zakazka: etapa.zakazka, technikId,
   })

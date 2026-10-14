@@ -23,6 +23,10 @@ interface Props {
   /** Potvrzení odebrání (např. zakázka: odebere i z etap) */
   confirmRemove?: (technik: TechnikRef) => Promise<boolean>
   onChange?: (technici: TechnikRef[]) => void
+  /** Hlavní technik (hvězdička); bez `hlavniUrl` se hvězdička nezobrazí */
+  hlavniId?: string | null
+  /** PATCH { hlavniTechnikId } — zakázka nebo etapa */
+  hlavniUrl?: string
   emptyText?: string
   className?: string
 }
@@ -33,6 +37,7 @@ interface Props {
  */
 export default function TechniciPicker({
   technici: initial, vsichni, canEdit, addUrl, removeUrl, confirmRemove, onChange,
+  hlavniId: initialHlavni = null, hlavniUrl,
   emptyText = 'Nikdo nepřiřazen', className,
 }: Props) {
   const router = useRouter()
@@ -40,6 +45,23 @@ export default function TechniciPicker({
   const [technici, setTechnici] = useState(initial)
   const [adding, setAdding] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
+  const [hlavni, setHlavni] = useState<string | null>(initialHlavni)
+  // Server přiřadí hlavního automaticky prvnímu technikovi — UI to jen zrcadlí
+  const hlavniPlatny = hlavni && technici.some(t => t.id === hlavni) ? hlavni : (technici[0]?.id ?? null)
+  const serazeni = hlavniUrl && hlavniPlatny
+    ? [...technici].sort((a, b) => (a.id === hlavniPlatny ? -1 : b.id === hlavniPlatny ? 1 : 0))
+    : technici
+
+  async function nastavitHlavniho(technik: TechnikRef) {
+    if (!hlavniUrl || technik.id === hlavniPlatny) return
+    setBusy(`hlavni-${technik.id}`)
+    const res = await api.patch(hlavniUrl, { hlavniTechnikId: technik.id })
+    setBusy(null)
+    if (!res.ok) return
+    setHlavni(technik.id)
+    toast.success(`Hlavní technik: ${technik.jmeno}`)
+    router.refresh()
+  }
 
   const assigned = new Set(technici.map(t => t.id))
   const available = vsichni.filter(t => !assigned.has(t.id))
@@ -79,11 +101,34 @@ export default function TechniciPicker({
       {technici.length === 0 && !adding && (
         <span className="text-sm text-gray-400 dark:text-slate-500 italic">{emptyText}</span>
       )}
-      {technici.map(t => (
+      {serazeni.map(t => (
         <span
           key={t.id}
-          className="inline-flex items-center gap-1 pl-2.5 pr-1 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+          className={cn(
+            'inline-flex items-center gap-1 pr-1 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+            hlavniUrl ? 'pl-1' : 'pl-2.5',
+          )}
         >
+          {hlavniUrl && (
+            <button
+              type="button"
+              data-compact
+              onClick={() => nastavitHlavniho(t)}
+              disabled={!canEdit || busy === `hlavni-${t.id}`}
+              aria-label={t.id === hlavniPlatny ? `${t.jmeno} je hlavní technik` : `Nastavit ${t.jmeno} jako hlavního technika`}
+              aria-pressed={t.id === hlavniPlatny}
+              title={t.id === hlavniPlatny ? 'Hlavní technik' : canEdit ? 'Nastavit jako hlavního' : undefined}
+              className={cn(
+                'hit-area w-4 h-4 inline-flex items-center justify-center rounded-full disabled:cursor-default',
+                t.id === hlavniPlatny ? 'text-amber-500' : 'text-blue-300 dark:text-blue-700 hover:text-amber-400',
+                !canEdit && t.id !== hlavniPlatny && 'invisible',
+              )}
+            >
+              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill={t.id === hlavniPlatny ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={2} aria-hidden>
+                <path strokeLinejoin="round" d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z" />
+              </svg>
+            </button>
+          )}
           {t.jmeno}
           {canEdit && (
             <button
