@@ -15,12 +15,13 @@ export default async function ProductsPage() {
   const showSklad = perms.sklad !== 'ZADNY'
 
   const db = orgPrisma(orgId)
-  const [products, categories, ceniky, stav] = await Promise.all([
+  const [products, categories, ceniky, stav, dodavatele] = await Promise.all([
     db.product.findMany({
       where: { orgId },
       include: {
         categories: { orderBy: { nazev: 'asc' } },
         dodavatele: { where: { hlavni: true }, select: { dodavatel: { select: { nazev: true } } }, take: 1 },
+        _count: { select: { dodavatele: true } },
       },
       orderBy: { nazev: 'asc' },
     }),
@@ -31,6 +32,7 @@ export default async function ProductsPage() {
       orderBy: { nazev: 'asc' },
     }),
     showSklad ? stavSkladu(db, orgId) : Promise.resolve(new Map()),
+    db.dodavatel.findMany({ where: { orgId, aktivni: true }, select: { id: true, nazev: true }, orderBy: { nazev: 'asc' } }),
   ])
 
   return (
@@ -39,6 +41,7 @@ export default async function ProductsPage() {
       canEditKatalog={canEditKatalog(perms)}
       showNakladoveCeny={showNakladoveCeny}
       showSklad={showSklad}
+      dodavatele={dodavatele}
       products={products.map(p => ({
         id: p.id,
         kod: p.kod,
@@ -52,6 +55,7 @@ export default async function ProductsPage() {
         standardniCena: Number(p.standardniCena),
         aktivni: p.aktivni,
         dodavatel: p.dodavatele[0]?.dodavatel.nazev ?? null,
+        maDodavatele: p._count.dodavatele > 0,
         naSklade: stav.get(p.id)?.naSklade ?? 0,
         dostupne: stav.get(p.id)?.dostupne ?? 0,
         minMnozstvi: p.minMnozstvi !== null ? Number(p.minMnozstvi) : null,

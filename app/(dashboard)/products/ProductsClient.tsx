@@ -16,6 +16,7 @@ import ListToolbar from '@/components/ui/ListToolbar'
 import ShowMore from '@/components/ui/ShowMore'
 import { useUrlFilters } from '@/hooks/useUrlFilters'
 import { useShowMore } from '@/hooks/useShowMore'
+import { api } from '@/lib/api'
 
 const PROD_DEFS: ColumnDef[] = [
   { id: 'kod', label: 'Kód', defaultVisible: true, defaultWidth: 100 },
@@ -39,11 +40,14 @@ interface Product {
   standardniCena: number; aktivni: boolean
   naSklade: number; dostupne: number; minMnozstvi: number | null
   dodavatel: string | null
+  /** má aspoň jednu vazbu na dodavatele (i bez hlavního) */
+  maDodavatele: boolean
 }
 interface Category { id: string; nazev: string; barva: string }
 interface Cenik { id: string; kod: string; nazev: string; popis: string | null; aktivni: boolean; _count: { polozky: number }; vytvoreno: string }
 
-interface Props { products: Product[]; categories: Category[]; ceniky: Cenik[]; isAdmin: boolean; canEditKatalog: boolean; showNakladoveCeny?: boolean; showSklad?: boolean }
+interface Dodavatel { id: string; nazev: string }
+interface Props { products: Product[]; categories: Category[]; ceniky: Cenik[]; isAdmin: boolean; canEditKatalog: boolean; showNakladoveCeny?: boolean; showSklad?: boolean; dodavatele?: Dodavatel[] }
 
 function fmt(n: number) { return formatCislo(n) }
 
@@ -66,14 +70,17 @@ function MarzeChip({ value }: { value: number | null }) {
 }
 
 // ─── PRODUCTS TAB ─────────────────────────────────────────────────────────────
-function ProductsTab({ products, categories, canEdit, showNakladoveCeny = true, showSklad = false, userId }: { products: Product[]; categories: Category[]; canEdit: boolean; showNakladoveCeny?: boolean; showSklad?: boolean; userId: string }) {
+function ProductsTab({ products, categories, canEdit, showNakladoveCeny = true, showSklad = false, userId, dodavatele = [] }: { products: Product[]; categories: Category[]; canEdit: boolean; showNakladoveCeny?: boolean; showSklad?: boolean; userId: string; dodavatele?: Dodavatel[] }) {
   const router = useRouter()
 
   // Filter defs based on showNakladoveCeny
   const defs = PROD_DEFS.filter(d => (showNakladoveCeny || (d.id !== 'nakCena' && d.id !== 'marze')) && (showSklad || d.id !== 'sklad'))
   const { columns, visibleColumns, updateColumn, resizeColumn, resetColumns, reorderColumns } = useTableColumns('products', userId, defs)
 
-  const { values: f, set, reset, activeCount } = useUrlFilters({ q: '', kategorie: '', neaktivni: '' })
+  const { values: f, set, reset, activeCount } = useUrlFilters({ q: '', kategorie: '', neaktivni: '', bezDodavatele: '' })
+  const jenBezDodavatele = f.bezDodavatele === '1'
+  const [bulkDodavatel, setBulkDodavatel] = useState('')
+  const [bulkHlavni, setBulkHlavni] = useState(false)
   const search = f.q
   const catFilter = f.kategorie
   const showInactive = f.neaktivni === '1'
@@ -92,6 +99,7 @@ function ProductsTab({ products, categories, canEdit, showNakladoveCeny = true, 
       (p.kod ?? '').toLowerCase().includes(q) ||
       (p.produktovaRada ?? '').toLowerCase().includes(q)
     const matchCat = !catFilter || p.categories.some(c => c.id === catFilter)
+    if (jenBezDodavatele && p.maDodavatele) return false
     return matchSearch && matchCat
   })
   const more = useShowMore(filtered, f)
@@ -157,6 +165,25 @@ function ProductsTab({ products, categories, canEdit, showNakladoveCeny = true, 
       body: JSON.stringify({ [field]: val }),
     })
     router.refresh()
+  }
+
+  async function applyBulkDodavatel() {
+    if (!bulkDodavatel) return
+    setBulkSaving(true)
+    try {
+      const res = await api.post<{ pridano: number; hlavnich: number }>('/api/products/dodavatele/bulk', {
+        productIds: Array.from(selected), dodavatelId: bulkDodavatel, hlavni: bulkHlavni,
+      })
+      if (res.ok && res.data) {
+        const nazev = dodavatele.find(d => d.id === bulkDodavatel)?.nazev
+        toast.success(`${nazev}: přiřazeno k ${res.data.pridano} produktům${res.data.hlavnich ? `, hlavním u ${res.data.hlavnich}` : ''}`)
+        setSelected(new Set())
+        setBulkDodavatel('')
+        router.refresh()
+      }
+    } finally {
+      setBulkSaving(false)
+    }
   }
 
   async function applyBulkPriceChange() {
@@ -225,6 +252,10 @@ function ProductsTab({ products, categories, canEdit, showNakladoveCeny = true, 
         <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-400 cursor-pointer whitespace-nowrap">
           <input type="checkbox" checked={showInactive} onChange={e => set('neaktivni', e.target.checked ? '1' : '')} className="rounded" />
           Zobrazit neaktivní
+        </label>
+        <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-400 cursor-pointer whitespace-nowrap">
+          <input type="checkbox" checked={jenBezDodavatele} onChange={e => set('bezDodavatele', e.target.checked ? '1' : '')} className="rounded" />
+          Jen bez dodavatele
         </label>
       </ListToolbar>
 
@@ -406,7 +437,7 @@ function ProductsTab({ products, categories, canEdit, showNakladoveCeny = true, 
         <p className="text-xs text-gray-400 dark:text-slate-500">{filtered.length} produktů · dvojklik na cenu pro rychlou editaci</p>
 
         {canEdit && selected.size > 0 && (
-          <div className="flex items-center gap-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-2.5 shadow-sm">
+          <div className="flex flex-wrap items-center gap-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-2.5 shadow-sm">
             <span className="text-sm text-gray-600 dark:text-slate-400 font-medium">{selected.size} vybraných</span>
             <span className="text-gray-300 dark:text-slate-600">|</span>
             <span className="text-sm text-gray-600 dark:text-slate-400">Změnit stand. cenu o</span>
@@ -425,6 +456,32 @@ function ProductsTab({ products, categories, canEdit, showNakladoveCeny = true, 
             >
               {bulkSaving ? 'Ukládám…' : 'Použít'}
             </button>
+            {dodavatele.length > 0 && (
+              <>
+                <span className="text-gray-300 dark:text-slate-600">|</span>
+                <label htmlFor="bulk-dodavatel" className="text-sm text-gray-600 dark:text-slate-400">Dodavatel</label>
+                <select
+                  id="bulk-dodavatel"
+                  value={bulkDodavatel}
+                  onChange={e => setBulkDodavatel(e.target.value)}
+                  className="border border-gray-300 dark:border-slate-600 rounded px-2 py-1 text-sm bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary max-w-[12rem]"
+                >
+                  <option value="">— vyberte —</option>
+                  {dodavatele.map(d => <option key={d.id} value={d.id}>{d.nazev}</option>)}
+                </select>
+                <label className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-slate-400 cursor-pointer whitespace-nowrap">
+                  <input type="checkbox" checked={bulkHlavni} onChange={e => setBulkHlavni(e.target.checked)} className="rounded" />
+                  jako hlavní
+                </label>
+                <button
+                  onClick={applyBulkDodavatel}
+                  disabled={bulkSaving || !bulkDodavatel}
+                  className="bg-primary hover:bg-primary-hover disabled:opacity-50 text-white text-sm font-medium px-3 py-1.5 rounded-lg"
+                >
+                  Přiřadit
+                </button>
+              </>
+            )}
             <button onClick={() => setSelected(new Set())} className="text-sm text-gray-400 hover:text-gray-600 dark:hover:text-slate-300">
               Zrušit výběr
             </button>
@@ -562,7 +619,7 @@ function CenikyTab({ ceniky, products, categories, isAdmin }: { ceniky: Cenik[];
 }
 
 // ─── MAIN ──────────────────────────────────────────────────────────────────────
-export default function ProductsClient({ products, categories, ceniky, isAdmin, canEditKatalog, showNakladoveCeny = true, showSklad = false }: Props) {
+export default function ProductsClient({ products, categories, ceniky, isAdmin, canEditKatalog, showNakladoveCeny = true, showSklad = false, dodavatele = [] }: Props) {
   const { data: session } = useSession()
   const userId = session?.user?.id ?? 'anon'
   const [tab, setTab] = useState<'produkty' | 'ceniky'>('produkty')
@@ -583,7 +640,7 @@ export default function ProductsClient({ products, categories, ceniky, isAdmin, 
         ))}
       </div>
 
-      {tab === 'produkty' && <ProductsTab products={products} categories={categories} canEdit={canEditKatalog} showNakladoveCeny={showNakladoveCeny} showSklad={showSklad} userId={userId} />}
+      {tab === 'produkty' && <ProductsTab products={products} categories={categories} canEdit={canEditKatalog} showNakladoveCeny={showNakladoveCeny} showSklad={showSklad} userId={userId} dodavatele={dodavatele} />}
       {tab === 'ceniky' && <CenikyTab ceniky={ceniky} products={products} categories={categories} isAdmin={isAdmin} />}
     </div>
   )

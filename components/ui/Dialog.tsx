@@ -14,7 +14,7 @@ export interface DialogProps {
   children: React.ReactNode
   /** Tlačítka dole (zarovnaná vpravo) */
   footer?: React.ReactNode
-  size?: 'sm' | 'md' | 'lg' | 'xl'
+  size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl'
   /** Klik na ztmavené pozadí zavře dialog (výchozí ano) */
   closeOnBackdrop?: boolean
   /** Skrýt křížek v hlavičce (např. potvrzovací dialog) */
@@ -25,7 +25,7 @@ export interface DialogProps {
   sheet?: boolean
 }
 
-const SIZE = { sm: 'md:max-w-sm', md: 'md:max-w-md', lg: 'md:max-w-lg', xl: 'md:max-w-2xl' }
+const SIZE = { sm: 'md:max-w-sm', md: 'md:max-w-md', lg: 'md:max-w-lg', xl: 'md:max-w-2xl', '2xl': 'md:max-w-4xl' }
 const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]):not([type=hidden]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])'
 
 // Zásobník otevřených dialogů — Esc/Tab řeší jen ten nejvyšší

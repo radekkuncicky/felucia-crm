@@ -2,7 +2,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
-import { getPerms, forbidden } from '@/lib/permissions'
+import { getPerms, forbidden, canEditKatalog } from '@/lib/permissions'
 import { canAccessZakazka } from '@/lib/zakazkyHelpers'
 
 /**
@@ -38,6 +38,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 
   return NextResponse.json({
     montazOd: zakazka?.montazOd?.toISOString() ?? null,
+    smiZapamatovat: canEditKatalog(perms),
     dodavatele,
     polozky: polozky.map(p => ({
       id: p.id,

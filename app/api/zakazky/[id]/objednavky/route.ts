@@ -2,7 +2,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
-import { getPerms, forbidden } from '@/lib/permissions'
+import { getPerms, forbidden, canEditKatalog } from '@/lib/permissions'
 import { canAccessZakazka } from '@/lib/zakazkyHelpers'
 import { OBJEDNAVKA_INCLUDE, ObjednavkaChyba, serializeObjednavka, vytvorObjednavkyZeZakazky, type NovaObjednavkaVstup } from '@/lib/objednavky'
 
@@ -42,7 +42,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   }
 
   try {
-    const ids = await vytvorObjednavkyZeZakazky(db, orgId, session.user.id, params.id, skupiny)
+    const ids = await vytvorObjednavkyZeZakazky(db, orgId, session.user.id, params.id, skupiny, canEditKatalog(perms))
     const rows = await db.objednavka.findMany({ where: { orgId, id: { in: ids } }, include: OBJEDNAVKA_INCLUDE, orderBy: { cislo: 'asc' } })
     return NextResponse.json(rows.map(o => serializeObjednavka(o, perms.financeNakupky)), { status: 201 })
   } catch (e) {

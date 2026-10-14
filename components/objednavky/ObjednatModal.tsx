@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { formatKcPresne } from '@/lib/format'
+import { Dialog } from '@/components/ui/Dialog'
+import { Button } from '@/components/ui/Button'
 
 /**
  * „Objednat u dodavatele" — z položek zakázky (výchozí výběr = Čeká) vytvoří
@@ -24,6 +26,8 @@ interface PripravaPolozka {
 
 interface Priprava {
   montazOd: string | null
+  /** smí zapsat vybraného dodavatele k produktu (canEditKatalog) */
+  smiZapamatovat: boolean
   dodavatele: { id: string; nazev: string; email: string | null }[]
   polozky: PripravaPolozka[]
 }
@@ -38,7 +42,7 @@ interface Props {
 const inp = 'border border-gray-300 dark:border-slate-600 rounded-lg px-2 py-1.5 text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary'
 const fmtQty = (n: number) => n.toLocaleString('cs-CZ', { maximumFractionDigits: 3 })
 
-type Row = { vybrano: boolean; dodavatelId: string; mnozstvi: string }
+type Row = { vybrano: boolean; dodavatelId: string; mnozstvi: string; zapamatovat: boolean }
 
 export default function ObjednatModal({ zakazkaId, showNakupky, onClose, onCreated }: Props) {
   const [data, setData] = useState<Priprava | null>(null)
@@ -57,6 +61,7 @@ export default function ObjednatModal({ zakazkaId, showNakupky, onClose, onCreat
           vybrano: p.stav === 'CEKA' && p.vOtevreneObjednavce.length === 0,
           dodavatelId: p.dodavatele.find(x => x.hlavni)?.dodavatelId ?? p.dodavatele[0]?.dodavatelId ?? '',
           mnozstvi: String(p.mnozstvi),
+          zapamatovat: true,
         }])))
         // Výchozí termín: 3 dny před montáží
         if (d.montazOd) {
@@ -84,6 +89,10 @@ export default function ObjednatModal({ zakazkaId, showNakupky, onClose, onCreat
       .sort((a, b) => (a.dodavatelId === '' ? 1 : 0) - (b.dodavatelId === '' ? 1 : 0))
   }, [data, rows])
 
+  // Katalogový produkt a ručně vybraný dodavatel, který u produktu ještě není
+  const lzeZapamatovat = (p: PripravaPolozka, r: Row) =>
+    !!data?.smiZapamatovat && !!p.productId && !!r.dodavatelId && !p.dodavatele.some(d => d.dodavatelId === r.dodavatelId)
+
   const bezDodavatele = skupiny.find(s => s.dodavatelId === '')
   const vybranoCelkem = skupiny.reduce((n, s) => n + s.polozky.length, 0)
 
@@ -101,7 +110,11 @@ export default function ObjednatModal({ zakazkaId, showNakupky, onClose, onCreat
             pozadovanyTermin: termin || null,
             poznamka: poznamka || null,
             zobrazitCeny,
-            polozky: s.polozky.map(p => ({ zakazkaPolozkaId: p.id, mnozstvi: Number(rows[p.id].mnozstvi) })),
+            polozky: s.polozky.map(p => ({
+              zakazkaPolozkaId: p.id,
+              mnozstvi: Number(rows[p.id].mnozstvi),
+              zapamatovat: lzeZapamatovat(p, rows[p.id]) && rows[p.id].zapamatovat,
+            })),
           })),
         }),
       })
@@ -113,15 +126,33 @@ export default function ObjednatModal({ zakazkaId, showNakupky, onClose, onCreat
     } finally { setSaving(false) }
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-4xl max-h-[92vh] flex flex-col">
-        <div className="px-5 py-4 border-b border-gray-200 dark:border-slate-700">
-          <h2 className="font-semibold text-gray-900 dark:text-white">Objednat u dodavatele</h2>
-          <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">Vyberte položky a dodavatele — na každého dodavatele vznikne samostatná objednávka. Položky přejdou do stavu Objednáno.</p>
-        </div>
+  const pocetObjednavek = skupiny.filter(s => s.dodavatelId).length
 
-        <div className="px-5 py-4 overflow-y-auto flex-1 space-y-4">
+  return (
+    <Dialog
+      open
+      onClose={onClose}
+      title="Objednat u dodavatele"
+      size="2xl"
+      closeOnBackdrop={false}
+      footer={<>
+        <p className="flex-1 min-w-[12rem] self-center text-sm text-gray-600 dark:text-slate-400">
+          {vybranoCelkem === 0 ? 'Nic nevybráno' : (
+            <>
+              Vznikne <strong>{pocetObjednavek}</strong> {pocetObjednavek === 1 ? 'objednávka' : pocetObjednavek > 1 && pocetObjednavek < 5 ? 'objednávky' : 'objednávek'}
+              {pocetObjednavek > 0 && `: ${skupiny.filter(s => s.dodavatelId).map(s => `${s.nazev} (${s.polozky.length})`).join(', ')}`}
+              {bezDodavatele && <span className="text-amber-600 dark:text-amber-400"> · {bezDodavatele.polozky.length} bez dodavatele</span>}
+            </>
+          )}
+        </p>
+        <Button variant="secondary" onClick={onClose}>Zrušit</Button>
+        <Button onClick={submit} loading={saving} disabled={vybranoCelkem === 0 || !!bezDodavatele}>
+          {`Vytvořit objednávky (${fmtQty(vybranoCelkem)} pol.)`}
+        </Button>
+      </>}
+    >
+      <p className="text-xs text-gray-500 dark:text-slate-400 -mt-1 mb-4">Vyberte položky a dodavatele — na každého dodavatele vznikne samostatná objednávka. Položky přejdou do stavu Objednáno.</p>
+        <div className="space-y-4">
           {!data ? (
             <p className="text-sm text-gray-400">Načítám…</p>
           ) : data.dodavatele.length === 0 ? (
@@ -172,6 +203,12 @@ export default function ObjednatModal({ zakazkaId, showNakupky, onClose, onCreat
                           {p.dodavatele.map(d => <option key={d.dodavatelId} value={d.dodavatelId}>{d.nazev}{d.hlavni ? ' (hlavní)' : ''}</option>)}
                           {data.dodavatele.filter(d => !p.dodavatele.some(x => x.dodavatelId === d.id)).map(d => <option key={d.id} value={d.id}>{d.nazev}</option>)}
                         </select>
+                        {r.vybrano && lzeZapamatovat(p, r) && (
+                          <label className="mt-1 inline-flex items-center gap-1.5 text-xs text-muted cursor-pointer">
+                            <input type="checkbox" checked={r.zapamatovat} onChange={e => setRow(p.id, { zapamatovat: e.target.checked })} className="rounded border-gray-300" />
+                            {p.dodavatele.length === 0 ? 'Zapamatovat jako hlavního u produktu' : 'Přidat k produktu'}
+                          </label>
+                        )}
                       </td>
                       {showNakupky && <td className="py-2 text-right text-gray-600 dark:text-slate-400 whitespace-nowrap">{vazba?.nakupniCena !== null && vazba?.nakupniCena !== undefined ? formatKcPresne(vazba.nakupniCena) : '—'}</td>}
                     </tr>
@@ -200,25 +237,6 @@ export default function ObjednatModal({ zakazkaId, showNakupky, onClose, onCreat
             </div>
           )}
         </div>
-
-        <div className="px-5 py-4 border-t border-gray-200 dark:border-slate-700 flex items-center justify-between gap-3">
-          <p className="text-sm text-gray-600 dark:text-slate-400">
-            {vybranoCelkem === 0 ? 'Nic nevybráno' : (
-              <>
-                Vznikne <strong>{skupiny.filter(s => s.dodavatelId).length}</strong> {skupiny.filter(s => s.dodavatelId).length === 1 ? 'objednávka' : 'objednávek'}
-                {skupiny.filter(s => s.dodavatelId).length > 0 && `: ${skupiny.filter(s => s.dodavatelId).map(s => `${s.nazev} (${s.polozky.length})`).join(', ')}`}
-                {bezDodavatele && <span className="text-amber-600 dark:text-amber-400"> · {bezDodavatele.polozky.length} bez dodavatele</span>}
-              </>
-            )}
-          </p>
-          <div className="flex gap-2">
-            <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-600 dark:text-slate-400 border border-gray-300 dark:border-slate-600 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700">Zrušit</button>
-            <button type="button" onClick={submit} disabled={saving || vybranoCelkem === 0 || !!bezDodavatele} className="px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700 rounded-lg disabled:opacity-50">
-              {saving ? 'Vytvářím…' : `Vytvořit objednávky (${fmtQty(vybranoCelkem)} pol.)`}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    </Dialog>
   )
 }

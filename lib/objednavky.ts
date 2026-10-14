@@ -2,6 +2,7 @@ import type { Prisma, ObjednavkaStav } from '@prisma/client'
 import { prisma } from './prisma'
 import type { OrgPrismaClient } from './orgPrisma'
 import { createWithUniqueKod } from './uniqueKod'
+import { priraditDodavateleProduktum } from './productDodavatele'
 
 /**
  * Objednávky materiálu u dodavatele — číslování, založení ze zakázky (seskupené
@@ -71,7 +72,7 @@ export type NovaObjednavkaVstup = {
   pozadovanyTermin?: string | null
   poznamka?: string | null
   zobrazitCeny?: boolean
-  polozky: { zakazkaPolozkaId: string; mnozstvi: number }[]
+  polozky: { zakazkaPolozkaId: string; mnozstvi: number; zapamatovat?: boolean }[]
 }
 
 /**
@@ -85,6 +86,8 @@ export async function vytvorObjednavkyZeZakazky(
   userId: string,
   zakazkaId: string,
   skupiny: NovaObjednavkaVstup[],
+  /** smí zapisovat dodavatele do katalogu (canEditKatalog) — „zapamatovat u produktu" */
+  smiZapamatovat = false,
 ) {
   const polozkaIds = skupiny.flatMap(s => s.polozky.map(p => p.zakazkaPolozkaId))
   const polozky = await db.zakazkaPolozka.findMany({
@@ -152,6 +155,16 @@ export async function vytvorObjednavkyZeZakazky(
       }),
     )
     vytvorene.push(objednavka.id)
+
+    // Dodavatel vybraný ručně u produktu bez vazby → zapamatovat pro příští objednávku
+    if (smiZapamatovat) {
+      const zapamatovat = skupina.polozky
+        .filter(v => v.zapamatovat)
+        .map(v => byId.get(v.zakazkaPolozkaId)!)
+        .filter(p => p.productId && !p.product?.dodavatele.some(d => d.dodavatelId === skupina.dodavatelId))
+        .map(p => p.productId!)
+      if (zapamatovat.length) await priraditDodavateleProduktum(db, orgId, zapamatovat, skupina.dodavatelId)
+    }
   }
   return vytvorene
 }
