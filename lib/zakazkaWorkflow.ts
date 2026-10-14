@@ -42,6 +42,7 @@ export async function polozkyZAktivniNabidky(dealId: string, orgId: string) {
     mnozstvi: item.mnozstvi,
     jednotka: item.jednotka ?? 'ks',
     prodejniCena: item.cenaZaKus,
+    sleva: item.sleva,
     nakupniCena: item.nakupniCena,
     dphSazba: item.dphSazba ?? activeQuote?.dphSazba ?? 12,
     poradi: idx,

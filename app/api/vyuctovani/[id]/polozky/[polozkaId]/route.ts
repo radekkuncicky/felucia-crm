@@ -4,6 +4,7 @@ import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { maskNakupky } from '@/lib/maskNakupky'
 import { getPerms, forbidden } from '@/lib/permissions'
+import { slevaProcenta } from '@/lib/quoteMath'
 
 async function getVyuctovani(id: string, orgId: string) {
   return orgPrisma(orgId).vyuctovani.findFirst({ where: { id } })
@@ -28,6 +29,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string; po
       jednotka: body.jednotka ?? undefined,
       nakupniCena: perms.financeNakupkyEdit && body.nakupniCena != null ? Number(body.nakupniCena) : undefined,
       prodejniCena: body.prodejniCena != null ? Number(body.prodejniCena) : undefined,
+      sleva: slevaProcenta(body.sleva),
       dphSazba: body.dphSazba != null ? Number(body.dphSazba) : undefined,
       poradi: body.poradi != null ? Number(body.poradi) : undefined,
     },

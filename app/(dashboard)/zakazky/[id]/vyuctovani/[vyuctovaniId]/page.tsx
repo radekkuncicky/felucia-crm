@@ -103,6 +103,7 @@ export default async function VyuctovaniDetailPage({
           jednotka: p.jednotka,
           nakupniCena: perms.financeNakupky && p.nakupniCena !== null ? Number(p.nakupniCena) : null,
           prodejniCena: Number(p.prodejniCena),
+          sleva: Number(p.sleva),
           dphSazba: Number(p.dphSazba),
           poradi: p.poradi,
         })),

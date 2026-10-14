@@ -51,6 +51,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       jednotka: p.jednotka,
       nakupniCena: perms.financeNakupky && p.nakupniCena !== null ? Number(p.nakupniCena) : null,
       prodejniCena: Number(p.prodejniCena),
+      sleva: Number(p.sleva),
       dphSazba: Number(p.dphSazba),
     })),
   })

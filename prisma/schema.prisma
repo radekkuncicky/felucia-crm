@@ -1294,6 +1294,8 @@ model ZakazkaPolozka {
   jednotka        String              @default("ks")
   prodejniCena    Decimal?
   nakupniCena     Decimal?
+  /// Položková sleva v % převzatá z nabídky (QuoteItem.sleva)
+  sleva           Decimal             @default(0) @db.Decimal(5, 2)
   dphSazba        Decimal             @default(12)
   mnozstviPouzito Decimal?
   stav            ZakazkaPolozkaStav  @default(CEKA)
@@ -1550,6 +1552,8 @@ model VyuctovaniPolozka {
   jednotka      String      @default("ks")
   nakupniCena   Decimal?
   prodejniCena  Decimal
+  /// Položková sleva v %
+  sleva         Decimal     @default(0) @db.Decimal(5, 2)
   dphSazba      Decimal     @default(12)
   poradi        Int         @default(0)
 

@@ -1,4 +1,5 @@
 import { formatDate, formatKc } from '@/lib/format'
+import { radekBezDph } from '@/lib/quoteMath'
 function fmt(d: Date | string | null) {
   if (!d) return '—'
   return formatDate(d)
@@ -43,6 +44,8 @@ export type VyuctovaniPdfData = {
     jednotka: string
     nakupniCena: number | null
     prodejniCena: number
+    /** položková sleva v % */
+    sleva?: number
     dphSazba: number
   }[]
 }
@@ -61,7 +64,7 @@ export function generateVyuctovaniHtml(v: VyuctovaniPdfData): string {
   const dphByRate: Record<number, number> = {}
 
   for (const p of v.polozky) {
-    const bezDph = Number(p.mnozstvi) * Number(p.prodejniCena)
+    const bezDph = radekBezDph(p)
     celkemBezDph += bezDph
     const sazba = Number(p.dphSazba)
     dphByRate[sazba] = (dphByRate[sazba] ?? 0) + bezDph * (sazba / 100)
@@ -70,9 +73,12 @@ export function generateVyuctovaniHtml(v: VyuctovaniPdfData): string {
   const celkemDph = Object.values(dphByRate).reduce((a, b) => a + b, 0)
   const celkemSDph = celkemBezDph + celkemDph
 
+  // Sloupec Sleva jen když ji má aspoň jedna položka
+  const maSlevu = v.polozky.some(p => Number(p.sleva ?? 0) > 0)
+
   // Položky rows
   const polozkyRows = v.polozky.map((p, i) => {
-    const bezDph = Number(p.mnozstvi) * Number(p.prodejniCena)
+    const bezDph = radekBezDph(p)
     const sDph = bezDph * (1 + Number(p.dphSazba) / 100)
     return `
       <tr style="border-bottom:1px solid #e5e7eb;">
@@ -81,6 +87,7 @@ export function generateVyuctovaniHtml(v: VyuctovaniPdfData): string {
         <td style="padding:6px 8px;text-align:center;">${Number(p.mnozstvi)}</td>
         <td style="padding:6px 8px;text-align:center;color:#6b7280;">${p.jednotka}</td>
         <td style="padding:6px 8px;text-align:right;">${fmtKc(Number(p.prodejniCena))}</td>
+        ${maSlevu ? `<td style="padding:6px 8px;text-align:center;color:#6b7280;">${Number(p.sleva ?? 0) > 0 ? `${Number(p.sleva)} %` : '—'}</td>` : ''}
         <td style="padding:6px 8px;text-align:center;color:#6b7280;">${Number(p.dphSazba)} %</td>
         <td style="padding:6px 8px;text-align:right;">${fmtKc(bezDph)}</td>
         <td style="padding:6px 8px;text-align:right;font-weight:600;">${fmtKc(sDph)}</td>
@@ -156,6 +163,7 @@ export function generateVyuctovaniHtml(v: VyuctovaniPdfData): string {
           <th style="width:50px;text-align:center;">Mn.</th>
           <th style="width:40px;text-align:center;">Jed.</th>
           <th style="width:80px;text-align:right;">Cena/ks</th>
+          ${maSlevu ? '<th style="width:50px;text-align:center;">Sleva</th>' : ''}
           <th style="width:50px;text-align:center;">DPH%</th>
           <th style="width:90px;text-align:right;">Celkem bez DPH</th>
           <th style="width:90px;text-align:right;">Celkem s DPH</th>

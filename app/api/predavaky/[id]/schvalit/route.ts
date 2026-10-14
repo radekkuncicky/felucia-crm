@@ -112,6 +112,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
             mnozstvi: p.mnozstviPouzito,
             jednotka: p.jednotka,
             prodejniCena: p.zakazkaPolozka?.prodejniCena ?? 0,
+            sleva: p.zakazkaPolozka?.sleva ?? 0,
             nakupniCena: p.zakazkaPolozka?.nakupniCena ?? undefined,
             dphSazba: p.zakazkaPolozka?.dphSazba ?? 21,
             poradi: idx,

@@ -14,6 +14,7 @@ import { formatKc } from '@/lib/format'
 import { getPlanLimits } from '@/lib/planLimits'
 import { getOrgSettings } from '@/lib/orgSettings'
 import KlientServisPrehled from '@/components/servis/KlientServisPrehled'
+import { radekBezDph } from '@/lib/quoteMath'
 
 const ZAKAZKA_STAV_LABELS: Record<string, string> = {
   NOVA: 'Nová',
@@ -65,10 +66,10 @@ export default async function ClientDetailPage({
       zakazky: {
         orderBy: { vytvoreno: 'desc' },
         include: {
-          polozky: { select: { prodejniCena: true, nakupniCena: true, mnozstvi: true } },
+          polozky: { select: { prodejniCena: true, sleva: true, nakupniCena: true, mnozstvi: true } },
           vyuctovani: {
             where: { stav: 'SCHVALENO' },
-            include: { polozky: { select: { prodejniCena: true, mnozstvi: true } } },
+            include: { polozky: { select: { prodejniCena: true, sleva: true, mnozstvi: true } } },
           },
           skladPohyby: {
             where: { typ: 'VYDEJ' },
@@ -90,11 +91,11 @@ export default async function ClientDetailPage({
   for (const z of client.zakazky) {
     stavCounts[z.stav] = (stavCounts[z.stav] ?? 0) + 1
     for (const p of z.polozky) {
-      if (p.prodejniCena != null) celkovaHodnota += Number(p.prodejniCena) * Number(p.mnozstvi)
+      if (p.prodejniCena != null) celkovaHodnota += radekBezDph(p)
     }
     for (const v of z.vyuctovani) {
       for (const p of v.polozky) {
-        fakturovano += Number(p.prodejniCena) * Number(p.mnozstvi)
+        fakturovano += radekBezDph(p)
       }
     }
     for (const s of z.skladPohyby) {
@@ -347,8 +348,8 @@ export default async function ClientDetailPage({
                 <tr><td colSpan={7} className="px-6 py-8 text-center text-sm text-gray-400">Žádné zakázky.</td></tr>
               )}
               {client.zakazky.map(z => {
-                const hodnota = z.polozky.reduce((s, p) => s + (p.prodejniCena ? Number(p.prodejniCena) * Number(p.mnozstvi) : 0), 0)
-                const fakt = z.vyuctovani.reduce((s, v) => s + v.polozky.reduce((ss, p) => ss + Number(p.prodejniCena) * Number(p.mnozstvi), 0), 0)
+                const hodnota = z.polozky.reduce((s, p) => s + (p.prodejniCena ? radekBezDph(p) : 0), 0)
+                const fakt = z.vyuctovani.reduce((s, v) => s + v.polozky.reduce((ss, p) => ss + radekBezDph(p), 0), 0)
                 return (
                   <tr key={z.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4">

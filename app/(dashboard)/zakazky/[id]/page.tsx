@@ -14,6 +14,7 @@ import PodkladyTab from './PodkladyTab'
 import KontaktyTab from './KontaktyTab'
 import UkolyTab from './UkolyTab'
 import { UKOL_ORDER_BY, UKOL_SELECT } from '@/lib/zakazkaUkol'
+import { radekBezDph } from '@/lib/quoteMath'
 
 export default async function ZakazkaDetailPage({
   params,
@@ -52,7 +53,7 @@ export default async function ZakazkaDetailPage({
           orderBy: { vytvoreno: 'desc' },
           include: {
             predavak: { select: { cislo: true } },
-            polozky: { select: { mnozstvi: true, prodejniCena: true, dphSazba: true } },
+            polozky: { select: { mnozstvi: true, prodejniCena: true, sleva: true, dphSazba: true } },
           },
         },
         etapy: { orderBy: { cislo: 'asc' as const }, select: { id: true, cislo: true, nazev: true, stav: true } },
@@ -112,6 +113,7 @@ export default async function ZakazkaDetailPage({
               mnozstvi: Number(p.mnozstvi),
               jednotka: p.jednotka,
               prodejniCena: perms.financeProdejni && p.prodejniCena !== null ? Number(p.prodejniCena) : null,
+              sleva: Number(p.sleva),
               nakupniCena: perms.financeNakupky && p.nakupniCena !== null ? Number(p.nakupniCena) : null,
               dphSazba: Number(p.dphSazba),
               stav: p.stav,
@@ -170,8 +172,8 @@ export default async function ZakazkaDetailPage({
                   vytvoreno: v.vytvoreno.toISOString(),
                   etapaId: v.etapaId ?? null,
                   predavakCislo: v.predavak?.cislo ?? null,
-                  celkemBezDph: v.polozky.reduce((s, p) => s + Number(p.mnozstvi) * Number(p.prodejniCena), 0),
-                  celkemSDph: v.polozky.reduce((s, p) => s + Number(p.mnozstvi) * Number(p.prodejniCena) * (1 + Number(p.dphSazba) / 100), 0),
+                  celkemBezDph: v.polozky.reduce((s, p) => s + radekBezDph(p), 0),
+                  celkemSDph: v.polozky.reduce((s, p) => s + radekBezDph(p) * (1 + Number(p.dphSazba) / 100), 0),
                 }))}
                 canCreate={canEdit}
                 etapy={zakazka.etapy ?? []}

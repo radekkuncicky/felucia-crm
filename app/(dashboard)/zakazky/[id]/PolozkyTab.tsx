@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import { useState, useEffect } from 'react'
 import { ZakazkaPolozkaStav } from '@prisma/client'
 import { formatKcPresne } from '@/lib/format'
+import { radekBezDph } from '@/lib/quoteMath'
 import ProductCatalogModal from '@/components/ProductCatalogModal'
 import { OBJEDNAVKY_ZMENA } from './ObjednavkyTab'
 import ObjednatModal from '@/components/objednavky/ObjednatModal'
@@ -36,6 +37,8 @@ interface Polozka {
   mnozstvi: number
   jednotka: string
   prodejniCena: number | null
+  /** položková sleva v % (z nabídky) */
+  sleva: number
   nakupniCena: number | null
   dphSazba: number
   stav: ZakazkaPolozkaStav
@@ -269,6 +272,7 @@ function UpravitPolozkaModal({ polozka, zakazkaId, onClose, onDone }: {
   const [mnozstvi, setMnozstvi] = useState(String(polozka.mnozstvi))
   const [jednotka, setJednotka] = useState(polozka.jednotka)
   const [prodejniCena, setProdejniCena] = useState(polozka.prodejniCena !== null ? String(polozka.prodejniCena) : '')
+  const [sleva, setSleva] = useState(Number(polozka.sleva) > 0 ? String(Number(polozka.sleva)) : '')
   const [loading, setLoading] = useState(false)
 
   async function handleSubmit(e: React.FormEvent) {
@@ -284,6 +288,7 @@ function UpravitPolozkaModal({ polozka, zakazkaId, onClose, onDone }: {
           mnozstvi: Number(mnozstvi),
           jednotka,
           prodejniCena: prodejniCena !== '' ? Number(prodejniCena) : null,
+          sleva: sleva !== '' ? Number(sleva) : 0,
         }),
       })
       if (res.ok) { onDone(); onClose() }
@@ -316,9 +321,14 @@ function UpravitPolozkaModal({ polozka, zakazkaId, onClose, onDone }: {
             <Input value={jednotka} onChange={e => setJednotka(e.target.value)} />
           </Field>
         </div>
-        <Field label="Prod. cena / ks (Kč)">
-          <Input type="number" kind="castka" value={prodejniCena} onChange={e => setProdejniCena(e.target.value)} min="0" step="0.01" />
-        </Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Prod. cena / ks (Kč)">
+            <Input type="number" kind="castka" value={prodejniCena} onChange={e => setProdejniCena(e.target.value)} min="0" step="0.01" />
+          </Field>
+          <Field label="Sleva %" hint="Přenese se do vyúčtování">
+            <Input type="number" kind="cislo" value={sleva} onChange={e => setSleva(e.target.value)} min="0" max="100" step="0.01" placeholder="0" />
+          </Field>
+        </div>
       </form>
     </Dialog>
   )
@@ -362,7 +372,7 @@ export default function PolozkyTab({ zakazkaId, polozky: initialPolozky, canEdit
     const res = await fetch(`/api/zakazky/${zakazkaId}/polozky`)
     if (res.ok) {
       const data = await res.json()
-      setPolozky(data.map((p: Record<string, unknown>) => ({ ...p, mnozstvi: Number(p.mnozstvi), prodejniCena: p.prodejniCena !== null ? Number(p.prodejniCena) : null, nakupniCena: p.nakupniCena !== null ? Number(p.nakupniCena) : null })))
+      setPolozky(data.map((p: Record<string, unknown>) => ({ ...p, mnozstvi: Number(p.mnozstvi), prodejniCena: p.prodejniCena !== null ? Number(p.prodejniCena) : null, sleva: Number(p.sleva ?? 0), nakupniCena: p.nakupniCena !== null ? Number(p.nakupniCena) : null })))
     }
   }
 
@@ -507,7 +517,8 @@ export default function PolozkyTab({ zakazkaId, polozky: initialPolozky, canEdit
                     <span>{Number(p.mnozstvi)} {p.jednotka}</span>
                     {showCeny && p.prodejniCena !== null && (
                       <span className="font-medium text-gray-900 dark:text-white">
-                        {formatKcPresne(Number(p.mnozstvi) * Number(p.prodejniCena))}
+                        {formatKcPresne(radekBezDph(p))}
+                        {Number(p.sleva) > 0 && <span className="ml-1 text-xs font-normal text-muted">(sleva {Number(p.sleva)} %)</span>}
                       </span>
                     )}
                   </div>
@@ -653,8 +664,9 @@ export default function PolozkyTab({ zakazkaId, polozky: initialPolozky, canEdit
                           </td>
                           <td className="px-4 py-3 text-right font-medium text-gray-900 dark:text-white">
                             {p.prodejniCena !== null
-                              ? `${formatKcPresne((Number(p.mnozstvi) * Number(p.prodejniCena)))}`
+                              ? `${formatKcPresne(radekBezDph(p))}`
                               : '—'}
+                            {Number(p.sleva) > 0 && <span className="block text-xs font-normal text-muted">sleva {Number(p.sleva)} %</span>}
                           </td>
                         </>
                       )}

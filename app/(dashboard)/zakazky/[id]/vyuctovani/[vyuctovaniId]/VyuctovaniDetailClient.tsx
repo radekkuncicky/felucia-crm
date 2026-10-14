@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { VyuctovaniStav } from '@prisma/client'
 import { formatCislo, formatKc, formatDate } from '@/lib/format'
+import { radekBezDph } from '@/lib/quoteMath'
 
 const STAV_LABELS: Record<VyuctovaniStav, string> = {
   NAVRH: 'Návrh',
@@ -23,6 +24,8 @@ interface Polozka {
   jednotka: string
   nakupniCena: number | null
   prodejniCena: number
+  /** položková sleva v % (z nabídky) */
+  sleva: number
   dphSazba: number
   poradi: number
 }
@@ -89,8 +92,10 @@ export default function VyuctovaniDetailClient({ vyuctovani: initial, canApprove
   }, [toast])
 
   // Live calculation
-  const celkemBezDph = polozky.reduce((s, p) => s + p.mnozstvi * p.prodejniCena, 0)
-  const celkemDph = polozky.reduce((s, p) => s + p.mnozstvi * p.prodejniCena * (p.dphSazba / 100), 0)
+  const celkemBezDph = polozky.reduce((s, p) => s + radekBezDph(p), 0)
+  const celkemDph = polozky.reduce((s, p) => s + radekBezDph(p) * (Number(p.dphSazba) / 100), 0)
+  // Sloupec Sleva: když ji nějaká položka má, nebo jde vyúčtování upravovat
+  const showSleva = canEdit || polozky.some(p => Number(p.sleva) > 0)
   const celkemSDph = celkemBezDph + celkemDph
   const nakupniNaklady = polozky.reduce((s, p) => s + p.mnozstvi * (p.nakupniCena ?? 0), 0)
   const hrubaMarze = celkemBezDph - nakupniNaklady
@@ -136,6 +141,7 @@ export default function VyuctovaniDetailClient({ vyuctovani: initial, canApprove
           ...p,
           mnozstvi: Number(p.mnozstvi),
           prodejniCena: Number(p.prodejniCena),
+          sleva: Number(p.sleva ?? 0),
           nakupniCena: p.nakupniCena !== null ? Number(p.nakupniCena) : null,
           dphSazba: Number(p.dphSazba),
         }])
@@ -450,6 +456,7 @@ export default function VyuctovaniDetailClient({ vyuctovani: initial, canApprove
                   <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">Jed.</th>
                   {showNakupky && <th className="text-right px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">NK. cena</th>}
                   <th className="text-right px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">PR. cena</th>
+                  {showSleva && <th className="text-right px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">Sleva %</th>}
                   <th className="text-right px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">DPH%</th>
                   <th className="text-right px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">Bez DPH</th>
                   <th className="text-right px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">S DPH</th>
@@ -458,8 +465,8 @@ export default function VyuctovaniDetailClient({ vyuctovani: initial, canApprove
               </thead>
               <tbody className="divide-y divide-gray-50 dark:divide-slate-700/50">
                 {polozky.map((p, idx) => {
-                  const bezDph = p.mnozstvi * p.prodejniCena
-                  const sDph = bezDph * (1 + p.dphSazba / 100)
+                  const bezDph = radekBezDph(p)
+                  const sDph = bezDph * (1 + Number(p.dphSazba) / 100)
                   return (
                     <tr key={p.id} className="hover:bg-gray-50 dark:hover:bg-slate-700/30">
                       <td className="px-4 py-3 text-gray-400 text-xs">{idx + 1}</td>
@@ -481,6 +488,9 @@ export default function VyuctovaniDetailClient({ vyuctovani: initial, canApprove
                         </td>
                       )}
                       <td className="px-4 py-3 text-right"><EditableCell value={p.prodejniCena} polozkaId={p.id} field="prodejniCena" type="number" /></td>
+                      {showSleva && (
+                        <td className="px-4 py-3 text-right text-gray-500 dark:text-slate-400"><EditableCell value={Number(p.sleva)} polozkaId={p.id} field="sleva" type="number" /></td>
+                      )}
                       <td className="px-4 py-3 text-right text-gray-500 dark:text-slate-400 text-xs">
                         {canEdit ? (
                           <select value={p.dphSazba} onChange={e => handleUpdatePolozka(p.id, 'dphSazba', Number(e.target.value))}
@@ -523,6 +533,7 @@ export default function VyuctovaniDetailClient({ vyuctovani: initial, canApprove
                     <td className="px-4 py-2 text-right">
                       <input type="number" value={newRow.prodejniCena} onChange={e => setNewRow(r => r && { ...r, prodejniCena: e.target.value })} placeholder="0" min="0" step="0.01" className={`${inputCls} text-right`} style={{ minWidth: 70 }} />
                     </td>
+                    {showSleva && <td className="px-4 py-2 text-right text-gray-400 dark:text-slate-600 text-xs">—</td>}
                     <td className="px-4 py-2 text-right">
                       <select value={newRow.dphSazba} onChange={e => setNewRow(r => r && { ...r, dphSazba: Number(e.target.value) })}
                         className="border-0 bg-transparent text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-green-500 rounded px-1 py-0.5">
@@ -589,14 +600,14 @@ export default function VyuctovaniDetailClient({ vyuctovani: initial, canApprove
               </div>
             )}
             {polozky.map((p) => {
-              const bezDph = p.mnozstvi * p.prodejniCena
-              const sDph = bezDph * (1 + p.dphSazba / 100)
+              const bezDph = radekBezDph(p)
+              const sDph = bezDph * (1 + Number(p.dphSazba) / 100)
               return (
                 <div key={p.id} className="px-4 py-4">
                   <div className="flex items-start justify-between gap-2 mb-2">
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-gray-900 dark:text-white text-sm leading-tight">{p.nazev}</p>
-                      <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">{p.mnozstvi} {p.jednotka} · DPH {p.dphSazba} %</p>
+                      <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">{p.mnozstvi} {p.jednotka} · DPH {p.dphSazba} %{Number(p.sleva) > 0 && ` · sleva ${Number(p.sleva)} %`}</p>
                     </div>
                     {canEdit && (
                       <button onClick={() => handleDeletePolozka(p.id)} className="text-red-400 hover:text-red-600 p-1 flex-shrink-0">

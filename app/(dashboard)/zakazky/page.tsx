@@ -7,6 +7,7 @@ import type { KeSchvaleniPolozka } from './KeSchvaleniBar'
 import { aktualniFazeLabel, etapaKompletni, etapaProgressFromRaw } from '@/lib/zakazkaEtapy'
 import { getPerms, zakazkyScopeWhere, isTechnikView } from '@/lib/permissions'
 import { listVedouciKandidati } from '@/lib/zakazkyHelpers'
+import { radekBezDph } from '@/lib/quoteMath'
 
 export default async function ZakazkyPage() {
   const session = await getServerSession(authOptions)
@@ -42,7 +43,7 @@ export default async function ZakazkyPage() {
         },
         vyuctovani: {
           select: {
-            polozky: { select: { mnozstvi: true, prodejniCena: true } },
+            polozky: { select: { mnozstvi: true, prodejniCena: true, sleva: true } },
           },
         },
         etapy: {
@@ -117,7 +118,7 @@ export default async function ZakazkyPage() {
       : null
 
     const cenaVyuctovani = z.vyuctovani.reduce(
-      (sum, v) => sum + v.polozky.reduce((s, p) => s + Number(p.mnozstvi) * Number(p.prodejniCena), 0),
+      (sum, v) => sum + v.polozky.reduce((s, p) => s + radekBezDph(p), 0),
       0
     )
 

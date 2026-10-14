@@ -4,6 +4,7 @@ import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { maskNakupky } from '@/lib/maskNakupky'
 import { getPerms, forbidden } from '@/lib/permissions'
+import { slevaProcenta } from '@/lib/quoteMath'
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
@@ -17,7 +18,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   if (!v) return NextResponse.json({ error: 'Not found' }, { status: 404 })
   if (v.stav === 'SCHVALENO') return NextResponse.json({ error: 'Schválené vyúčtování nelze měnit' }, { status: 422 })
 
-  const { nazev, mnozstvi, jednotka, nakupniCena, prodejniCena, dphSazba } = await req.json()
+  const { nazev, mnozstvi, jednotka, nakupniCena, prodejniCena, sleva, dphSazba } = await req.json()
   if (!nazev?.trim()) return NextResponse.json({ error: 'Chybí název' }, { status: 400 })
 
   const count = await db.vyuctovaniPolozka.count({ where: { vyuctovaniId: params.id } })
@@ -29,6 +30,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       jednotka: jednotka ?? 'ks',
       nakupniCena: perms.financeNakupkyEdit && nakupniCena != null ? Number(nakupniCena) : null,
       prodejniCena: Number(prodejniCena ?? 0),
+      sleva: slevaProcenta(sleva) ?? 0,
       dphSazba: Number(dphSazba ?? 21),
       poradi: count,
     },

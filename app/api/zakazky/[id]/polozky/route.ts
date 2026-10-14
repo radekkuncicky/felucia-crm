@@ -3,6 +3,7 @@ import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { canAccessZakazka } from '@/lib/zakazkyHelpers'
+import { slevaProcenta } from '@/lib/quoteMath'
 import { getPerms, forbidden } from '@/lib/permissions'
 import { maskNakupky } from '@/lib/maskNakupky'
 
@@ -58,6 +59,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       mnozstvi: body.mnozstvi ?? 1,
       jednotka: body.jednotka ?? 'ks',
       prodejniCena: body.prodejniCena ?? null,
+      sleva: slevaProcenta(body.sleva) ?? 0,
       nakupniCena: getPerms(session.user).financeNakupkyEdit ? (body.nakupniCena ?? null) : null,
       dphSazba: body.dphSazba ?? orgSettings?.zakazkyDefaultDph ?? 12,
       poznamka: body.poznamka ?? null,
@@ -76,7 +78,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)
   const body = await req.json()
-  const { polozkaId, stav, nazev, mnozstvi, jednotka, prodejniCena } = body
+  const { polozkaId, stav, nazev, mnozstvi, jednotka, prodejniCena, sleva } = body
 
   const polozka = await db.zakazkaPolozka.findFirst({
     where: { id: polozkaId, zakazkaId: params.id, zakazka: { orgId } },
@@ -91,6 +93,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       mnozstvi: mnozstvi !== undefined ? mnozstvi : undefined,
       jednotka: jednotka ?? undefined,
       prodejniCena: prodejniCena !== undefined ? prodejniCena : undefined,
+      sleva: slevaProcenta(sleva),
     },
   })
 

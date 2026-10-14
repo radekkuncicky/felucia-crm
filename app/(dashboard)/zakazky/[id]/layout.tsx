@@ -23,6 +23,7 @@ import ZakazkaTechnici from './ZakazkaTechnici'
 import CopyLinkButton from './CopyLinkButton'
 import TitulniFotoUpload from './TitulniFotoUpload'
 import { SbalitelnyDetail, SbalitelnaCast, SbalitPrepinac, RychleAkce } from './MobilniHlavicka'
+import { radekBezDph } from '@/lib/quoteMath'
 
 export async function generateMetadata({ params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
@@ -63,7 +64,7 @@ export default async function ZakazkaDetailLayout({
       vedouci: { select: { id: true, jmeno: true, email: true } },
       op: { select: { id: true, kod: true, predmet: true } },
       polozky: { select: { stav: true, nakupniCena: true, mnozstvi: true } },
-      vyuctovani: { select: { stav: true, etapaId: true, polozky: { select: { mnozstvi: true, prodejniCena: true } } } },
+      vyuctovani: { select: { stav: true, etapaId: true, polozky: { select: { mnozstvi: true, prodejniCena: true, sleva: true } } } },
       _count: { select: { predavaky: { where: { etapaId: null } } } },
       objednavky: { where: { stav: { in: ['NAVRH', 'ODESLANA', 'CASTECNE_DORUCENA'] } }, select: { id: true } },
       techniciRel: { orderBy: { prirazeno: 'asc' }, select: { technik: { select: { id: true, jmeno: true } } } },
@@ -128,8 +129,8 @@ export default async function ZakazkaDetailLayout({
   }
 
   // Součty vyúčtování (bez DPH) pro finanční přehled
-  const sumVyuctovani = (list: { polozky: { mnozstvi: unknown; prodejniCena: unknown }[] }[]) =>
-    list.reduce((s, v) => s + v.polozky.reduce((t, p) => t + Number(p.mnozstvi) * Number(p.prodejniCena), 0), 0)
+  const sumVyuctovani = (list: { polozky: { mnozstvi: unknown; prodejniCena: unknown; sleva: unknown }[] }[]) =>
+    list.reduce((s, v) => s + v.polozky.reduce((t, p) => t + radekBezDph(p), 0), 0)
   const vyuctovanoSchvaleno = sumVyuctovani(zakazka.vyuctovani.filter(v => v.stav === 'SCHVALENO'))
   const vyuctovaniCelkem = sumVyuctovani(zakazka.vyuctovani)
   const showFinance = perms.financeProdejni && (cenaOP !== null || zakazka.vyuctovani.length > 0)
