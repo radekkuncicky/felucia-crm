@@ -7,6 +7,7 @@ import { createWithUniqueKod } from '@/lib/uniqueKod'
 import { Technologie, StavDealu, TypAktivity, TypKlienta } from '@prisma/client'
 import { formatDate } from '@/lib/format'
 import { vyhranoPriZmene } from '@/lib/dealUspech'
+import { jeDuvodProhry, type DuvodProhryKod } from '@/lib/duvodProhry'
 
 // ─── Tool definitions ────────────────────────────────────────────────────────
 
@@ -159,6 +160,8 @@ export const DASA_TOOLS = [
       properties: {
         dealId: { type: 'string', description: 'UUID obchodního případu' },
         stav: { type: 'string', description: 'NOVY | JEDNANI | NABIDKA | PRED_UZAVRENIM | USPECH | PAS' },
+        duvodProhryKod: { type: 'string', description: 'Povinné u PAS: CENA | KONKURENCE | ODLOZENO | NEREAGOVAL | JINE — nevíš-li, zeptej se uživatele' },
+        duvodProhry: { type: 'string', description: 'Volitelný popis důvodu prohry' },
       },
       required: ['dealId', 'stav'],
     },
@@ -556,9 +559,20 @@ export async function executeDasaTool(
         })
         if (!deal) return { result: JSON.stringify({ chyba: 'OP nenalezen nebo nemáš přístup' }) }
 
+        // Prohraný OP jen s důvodem (procesní mapa 1.6), stejně jako web a mobil
+        const duvodText = String(input.duvodProhry ?? '').trim() || null
+        if (stav === 'PAS' && deal.stav !== 'PAS' && !jeDuvodProhry(input.duvodProhryKod)) {
+          return { result: JSON.stringify({ chyba: 'U prohry je povinný důvod — zeptej se uživatele (cena, konkurence, odloženo, nereagoval, jiné + popis).' }) }
+        }
+
         await db.deal.update({
           where: { id: dealId },
-          data: { stav: stav as StavDealu, ...vyhranoPriZmene(deal.stav, stav) },
+          data: {
+            stav: stav as StavDealu,
+            ...vyhranoPriZmene(deal.stav, stav),
+            ...(stav === 'PAS' && deal.stav !== 'PAS' ? { duvodProhryKod: input.duvodProhryKod as DuvodProhryKod, duvodProhry: duvodText } : {}),
+            ...(stav !== 'PAS' && deal.stav === 'PAS' ? { duvodProhryKod: null, duvodProhry: null } : {}),
+          },
         })
 
         return { result: JSON.stringify({ ok: true, novyStav: stav }), navigateTo: `/deals/${dealId}` }

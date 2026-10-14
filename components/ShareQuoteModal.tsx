@@ -14,9 +14,11 @@ interface Props {
   quoteNazev: string
   clientEmail: string | null
   onClose: () => void
+  /** po odeslání e-mailem — nabídka je ODESLANA */
+  onSent?: () => void
 }
 
-export default function ShareQuoteModal({ quoteId, quoteKod, quoteNazev, clientEmail, onClose }: Props) {
+export default function ShareQuoteModal({ quoteId, quoteKod, quoteNazev, clientEmail, onClose, onSent }: Props) {
   const [share, setShare] = useState<ShareState | null>(null)
   const [loadingShare, setLoadingShare] = useState(true)
   const [working, setWorking] = useState(false)
@@ -111,6 +113,7 @@ export default function ShareQuoteModal({ quoteId, quoteKod, quoteNazev, clientE
         return
       }
       setSentTo(data.to)
+      onSent?.()
       // e-mail vytváří veřejný odkaz automaticky — obnov stav sekce odkazu
       fetch(`/api/quotes/${quoteId}/share`)
         .then(r => (r.ok ? r.json() : null))

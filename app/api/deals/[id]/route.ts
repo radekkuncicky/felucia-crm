@@ -12,6 +12,7 @@ import { parseZdroj } from '@/lib/zdrojPoptavky'
 import { createNotification } from '@/lib/createNotification'
 import { createZakazkaFromDeal } from '@/lib/zakazkaWorkflow'
 import { dealScopeWhere, forbidden, getPerms } from '@/lib/permissions'
+import { jeDuvodProhry } from '@/lib/duvodProhry'
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions) ?? await getMobileSession(req)
@@ -43,6 +44,14 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const zdroj = await parseZdroj(db, orgId, body)
   if (typeof zdroj === 'string') return NextResponse.json({ error: zdroj }, { status: 400 })
 
+  // Prohraný OP: důvod je povinný (procesní mapa 1.6) — kód z číselníku, text volitelně.
+  // Odmítnutá NABÍDKA důvod nepotřebuje (POST /api/quotes/[id]/stav).
+  const novyPas = body.stav === 'PAS' && deal.stav !== 'PAS'
+  if (novyPas && !jeDuvodProhry(body.duvodProhryKod)) {
+    return NextResponse.json({ error: 'U prohraného obchodního případu vyberte důvod prohry.', code: 'DUVOD_PROHRY' }, { status: 400 })
+  }
+  const opoustiPas = body.stav !== undefined && body.stav !== 'PAS' && deal.stav === 'PAS'
+
   // Check povinnaAktivitaUOP if transitioning to USPECH
   if (body.stav === 'USPECH' && deal.stav !== 'USPECH') {
     const orgSettings = await getOrgSettings(orgId)
@@ -68,7 +77,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       kontaktniOsoba: body.kontaktniOsoba !== undefined ? body.kontaktniOsoba : deal.kontaktniOsoba,
       kontaktniTelefon: body.kontaktniTelefon !== undefined ? body.kontaktniTelefon : deal.kontaktniTelefon,
       poznamky: body.poznamky !== undefined ? body.poznamky : deal.poznamky,
-      duvodProhry: body.duvodProhry !== undefined ? body.duvodProhry : deal.duvodProhry,
+      duvodProhry: opoustiPas ? null : body.duvodProhry !== undefined ? (String(body.duvodProhry ?? '').trim() || null) : deal.duvodProhry,
+      duvodProhryKod: opoustiPas ? null : novyPas ? body.duvodProhryKod : deal.duvodProhryKod,
       userId: body.userId !== undefined ? (body.userId || null) : deal.userId,
       ...vyhranoPriZmene(deal.stav, body.stav),
       ...zdroj,

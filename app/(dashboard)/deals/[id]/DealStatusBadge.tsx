@@ -7,7 +7,8 @@ import { toast } from 'sonner'
 import { getPlanLimits } from '@/lib/planLimits'
 import { Dialog } from '@/components/ui/Dialog'
 import { Button } from '@/components/ui/Button'
-import { Field, Input, Select, Textarea } from '@/components/ui/Field'
+import { Field, Input, Select } from '@/components/ui/Field'
+import { zeptatSeNaDuvodProhry, type DuvodProhry } from '@/components/DuvodProhryDialog'
 
 type StavDealu = 'NOVY' | 'JEDNANI' | 'NABIDKA' | 'PRED_UZAVRENIM' | 'USPECH' | 'PAS' | 'ZNEPLATNENO'
 
@@ -38,9 +39,6 @@ export default function DealStatusBadge({ dealId, currentStav, plan, klientId, k
   const [open, setOpen] = useState(false)
   const [stav, setStav] = useState<StavDealu>(currentStav)
   const [saving, setSaving] = useState(false)
-  const [pasModal, setPasModal] = useState(false)
-  const [duvodProhry, setDuvodProhry] = useState('')
-  const [pendingStav, setPendingStav] = useState<StavDealu | null>(null)
   const [servisModal, setServisModal] = useState(false)
   const [servisForm, setServisForm] = useState({
     nazev: '',
@@ -53,7 +51,6 @@ export default function DealStatusBadge({ dealId, currentStav, plan, klientId, k
   const [servisSaving, setServisSaving] = useState(false)
   const [servisError, setServisError] = useState('')
   const ref = useRef<HTMLDivElement>(null)
-  const pasFormId = useId()
   const servisFormId = useId()
 
   useEffect(() => {
@@ -64,12 +61,11 @@ export default function DealStatusBadge({ dealId, currentStav, plan, klientId, k
     return () => document.removeEventListener('mousedown', handler)
   }, [])
 
-  async function changeStav(newStav: StavDealu, duvod?: string) {
+  async function changeStav(newStav: StavDealu, duvod?: DuvodProhry) {
     setSaving(true)
     setOpen(false)
     try {
-      const body: Record<string, unknown> = { stav: newStav }
-      if (duvod) body.duvodProhry = duvod
+      const body: Record<string, unknown> = { stav: newStav, ...duvod }
       const res = await fetch(`/api/deals/${dealId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -132,60 +128,20 @@ export default function DealStatusBadge({ dealId, currentStav, plan, klientId, k
     }
   }
 
-  function selectStav(newStav: StavDealu) {
+  async function selectStav(newStav: StavDealu) {
     if (newStav === 'PAS') {
-      setPendingStav(newStav)
-      setPasModal(true)
       setOpen(false)
+      const duvod = await zeptatSeNaDuvodProhry()
+      if (duvod) await changeStav(newStav, duvod)
     } else {
       changeStav(newStav)
     }
-  }
-
-  function zrusitPas() {
-    setPasModal(false)
-    setDuvodProhry('')
-    setPendingStav(null)
-  }
-
-  async function confirmPas(e: React.FormEvent) {
-    e.preventDefault()
-    if (!duvodProhry.trim() || !pendingStav) return
-    setPasModal(false)
-    await changeStav(pendingStav, duvodProhry.trim())
-    setDuvodProhry('')
-    setPendingStav(null)
   }
 
   const current = stavOptions.find(s => s.value === stav)!
 
   return (
     <>
-      <Dialog
-        open={pasModal}
-        onClose={zrusitPas}
-        title="Důvod prohry"
-        footer={<>
-          <Button variant="secondary" onClick={zrusitPas}>Zrušit</Button>
-          <Button variant="danger" type="submit" form={pasFormId} disabled={!duvodProhry.trim()} loading={saving}>
-            Uložit a označit jako Prohráno
-          </Button>
-        </>}
-      >
-        <form id={pasFormId} onSubmit={confirmPas}>
-          <Field label="Proč byl obchodní případ prohraný?" required>
-            <Textarea
-              autoFocus
-              rows={4}
-              value={duvodProhry}
-              onChange={e => setDuvodProhry(e.target.value)}
-              placeholder="Např. cena, konkurence, zákazník zrušil záměr…"
-              className="resize-none"
-            />
-          </Field>
-        </form>
-      </Dialog>
-
       {/* Nabídka servisního kontraktu po úspěšném uzavření OP */}
       <Dialog
         open={servisModal}

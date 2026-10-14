@@ -26,6 +26,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     kod: quote.kod,
     nazev: quote.nazev,
     aktivni: quote.aktivni,
+    stav: quote.stav,
     dphSazba: quote.dphSazba,
     platnostDo: quote.platnostDo,
     odeslanoAt: quote.odeslanoAt,

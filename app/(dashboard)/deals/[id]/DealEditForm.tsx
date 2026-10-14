@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { formatCislo } from '@/lib/format'
+import { zeptatSeNaDuvodProhry } from '@/components/DuvodProhryDialog'
 
 function roundToThousand(n: number): number {
   return Math.round(n / 1000) * 1000
@@ -59,6 +60,9 @@ export default function DealEditForm({
   }
 
   async function handleSave() {
+    // Prohráno jen s důvodem (procesní mapa 1.6)
+    const duvod = form.stav === 'PAS' && deal.stav !== 'PAS' ? await zeptatSeNaDuvodProhry() : null
+    if (form.stav === 'PAS' && deal.stav !== 'PAS' && !duvod) return
     setSaving(true)
     setError('')
     setSaved(false)
@@ -66,7 +70,7 @@ export default function DealEditForm({
       const res = await fetch(`/api/deals/${deal.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, ...duvod }),
       })
       if (!res.ok) {
         const data = await res.json()

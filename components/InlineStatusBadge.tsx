@@ -8,6 +8,7 @@ import { StavDealu } from '@prisma/client'
 import { stavLabels } from '@/lib/constants'
 import ConfirmModal from '@/components/ConfirmModal'
 import { api } from '@/lib/api'
+import { zeptatSeNaDuvodProhry } from '@/components/DuvodProhryDialog'
 
 const STAV_STYLE: Record<StavDealu, { bg: string; text: string; dot: string }> = {
   NOVY:           { bg: '#E8F5E9', text: '#2E7D32', dot: '#4CAF50' },
@@ -49,13 +50,16 @@ export default function InlineStatusBadge({ dealId, stav: initialStav, onChange 
 
   async function handleSelect(newStav: StavDealu) {
     if (newStav === stav) { setOpen(false); return }
+    setOpen(false)
+    // Prohráno jen s důvodem (procesní mapa 1.6)
+    const duvod = newStav === 'PAS' ? await zeptatSeNaDuvodProhry() : null
+    if (newStav === 'PAS' && !duvod) return
     const prev = stav
     setStav(newStav)
-    setOpen(false)
     setSaving(true)
     try {
       const res = await api.patch<{ chybaPovinnaAktivita?: boolean }>(`/api/deals/${dealId}`,
-        { stav: newStav },
+        { stav: newStav, ...duvod },
         { errorMessage: 'Změnu stavu se nepodařilo uložit.' })
       if (res.ok) {
         if (res.data?.chybaPovinnaAktivita) {

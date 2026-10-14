@@ -73,6 +73,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       kod: q.kod,
       nazev: q.nazev,
       aktivni: q.aktivni,
+      stav: q.stav,
       dphSazba: q.dphSazba,
       platnostDo: q.platnostDo,
       odeslanoAt: q.odeslanoAt,

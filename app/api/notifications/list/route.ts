@@ -6,6 +6,7 @@ import { orgPrisma } from '@/lib/orgPrisma'
 import { getPlanLimits } from '@/lib/planLimits'
 import { NextResponse } from 'next/server'
 import { getPerms } from '@/lib/permissions'
+import { visiOdeslanaHranice } from '@/lib/quoteStav'
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions) ?? await getMobileSession(req)
@@ -68,6 +69,23 @@ export async function GET(req: Request) {
     ? { orgId, vytvoreno: { gte: oneDayAgo } }
     : { orgId, userId, vytvoreno: { gte: oneDayAgo } }
 
+  // E) Moje nabídky, které visí ve stavu Odeslaná (procesní mapa 4.1 — follow-up)
+  const visiciNabidky = perms.obchod
+    ? await db.quote.findMany({
+        where: {
+          stav: 'ODESLANA',
+          odeslanoAt: { lt: visiOdeslanaHranice() },
+          deal: { orgId, userId, stav: { notIn: ['USPECH', 'PAS', 'ZNEPLATNENO'] } },
+        },
+        select: {
+          id: true, kod: true, nazev: true, odeslanoAt: true,
+          deal: { select: { id: true, client: { select: { jmeno: true, prijmeni: true } } } },
+        },
+        orderBy: { odeslanoAt: 'asc' },
+        take: 20,
+      })
+    : []
+
   const [noveOP, bliziciSeServisy, servisyPoTerminu] = await Promise.all([
     db.deal.findMany({
       where: noveOPWhere,
@@ -99,6 +117,13 @@ export async function GET(req: Request) {
 
   return NextResponse.json({
     opBezAktivity,
+    visiciNabidky: visiciNabidky.map(q => ({
+      id: q.id,
+      kod: q.kod ?? q.nazev,
+      dealId: q.deal.id,
+      klient: `${q.deal.client.jmeno} ${q.deal.client.prijmeni ?? ''}`.trim(),
+      dni: Math.floor((now - q.odeslanoAt!.getTime()) / 86400000),
+    })),
     prosleAktivity: prosleAktivityRaw.filter(hasDeal).map(a => ({
       id: a.id,
       typ: a.typ,

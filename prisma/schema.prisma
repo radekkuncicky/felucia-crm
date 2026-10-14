@@ -576,6 +576,9 @@ model Quote {
   popis       String?
   dphSazba    Int      @default(12)
   aktivni     Boolean  @default(false)
+  /// Stav vůči klientovi (procesní mapa 4.1) — nezávislý na stavu OP; odmítnutí bez důvodu
+  stav        QuoteStav @default(ROZPRACOVANA)
+  stavZmenen  DateTime?
   // Felucia Sales: platnost nabídky + evidence odeslání klientovi
   platnostDo    DateTime?
   odeslanoAt    DateTime?
@@ -594,6 +597,7 @@ model Quote {
   items    QuoteItem[]
 
   @@unique([orgId, kod])
+  @@index([orgId, stav])
   @@map("quotes")
 }
 
@@ -1856,6 +1860,13 @@ enum DuvodProhry {
   ODLOZENO
   NEREAGOVAL
   JINE
+}
+
+enum QuoteStav {
+  ROZPRACOVANA
+  ODESLANA
+  AKCEPTOVANA
+  ODMITNUTA
 }
 
 enum OdeslaniKanal {

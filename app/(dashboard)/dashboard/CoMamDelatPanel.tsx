@@ -21,6 +21,7 @@ const stavLabels: Record<string, string> = {
 
 interface NotifData {
   opBezAktivity: { id: string; kod: string | null; klient: string; dniBezAktivity: number | null }[]
+  visiciNabidky?: { id: string; kod: string; dealId: string; klient: string; dni: number }[]
   noveOP: { id: string; kod: string | null; klient: string; technologie: string; stav: string; vytvoreno: string }[]
   bliziciSeServisy?: { id: string; planovanyTermin: string; kontrakt: { nazev: string; klient: { jmeno: string; prijmeni: string } } | null }[]
   servisyPoTerminu?: { id: string; planovanyTermin: string; zarizeniNazev: string | null; kontrakt: { nazev: string; klient: { jmeno: string; prijmeni: string } } | null }[]
@@ -128,6 +129,7 @@ export default function CoMamDelatPanel() {
   const poTerminu = (polozky ?? []).filter(p => p.skupina === 'PO_TERMINU').length
   const dnes = (polozky ?? []).filter(p => p.skupina === 'DNES').length
   const op = notif?.opBezAktivity ?? []
+  const visici = notif?.visiciNabidky ?? []
   const nove = notif?.noveOP ?? []
   const servisy = notif?.bliziciSeServisy ?? []
   const servisyOpo = notif?.servisyPoTerminu ?? []
@@ -202,8 +204,27 @@ export default function CoMamDelatPanel() {
       )}
 
       {/* Sbalené přehledy z bývalého ReminderPanelu */}
-      {notif && (op.length > 0 || nove.length > 0 || servisy.length > 0 || servisyOpo.length > 0) && (
+      {notif && (visici.length > 0 || op.length > 0 || nove.length > 0 || servisy.length > 0 || servisyOpo.length > 0) && (
         <div>
+          {visici.length > 0 && (
+            <Section title="Visí odeslané nabídky" badge={visici.length} open={openSection === 'visici'} onToggle={() => toggle('visici')}>
+              <div className="space-y-0.5">
+                {visici.map(q => (
+                  <Link key={q.id} href={`/deals/${q.dealId}?tab=nabidky`} className={rowCls}>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="font-mono text-xs text-gray-500 dark:text-slate-400 flex-shrink-0">{q.kod}</span>
+                      <span className="text-gray-800 dark:text-slate-200 truncate">{q.klient}</span>
+                    </div>
+                    <span className="text-xs text-gray-500 dark:text-slate-400 flex-shrink-0">{q.dni} dní</span>
+                  </Link>
+                ))}
+                <Link href="/quotes?filtr=visi" className="block px-2 py-1.5 text-xs font-medium text-primary dark:text-primary-light hover:underline">
+                  Celý přehled →
+                </Link>
+              </div>
+            </Section>
+          )}
+
           {op.length > 0 && (
             <Section title="OP bez aktivity" badge={op.length} open={openSection === 'op'} onToggle={() => toggle('op')}>
               <div className="space-y-0.5">

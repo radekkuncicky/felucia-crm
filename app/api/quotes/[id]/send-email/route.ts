@@ -10,6 +10,7 @@ import { getOrgSettings } from '@/lib/orgSettings'
 import { ensureQuoteShare, quoteShareUrl, QUOTE_SHARE_DNI } from '@/lib/quoteShare'
 import { checkRateLimit } from '@/lib/rateLimit'
 import { getPerms, forbidden } from '@/lib/permissions'
+import { dataOdeslani } from '@/lib/quoteStav'
 
 // Odeslání cenové nabídky klientovi: PDF v příloze + veřejný odkaz.
 export async function POST(req: Request, { params }: { params: { id: string } }) {
@@ -37,6 +38,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       select: {
         id: true,
         kod: true,
+        stav: true,
         deal: {
           select: {
             id: true,
@@ -93,6 +95,9 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       html,
       [{ filename, content: pdf }]
     )
+
+    // Stav ODESLANA + odpočet „visí“ (procesní mapa 4.1)
+    await db.quote.update({ where: { id: quote.id }, data: dataOdeslani(quote.stav, 'EMAIL') })
 
     await db.activity.create({
       data: {

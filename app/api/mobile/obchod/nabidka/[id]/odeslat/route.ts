@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import type { QuoteStav } from '@prisma/client'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { KONTROLNI_KONTAKT_CIL, KONTROLNI_KONTAKT_DNI, zaPracovnichDni, kontrolniKontaktPopis, type KontrolniKontaktTyp } from '@/lib/kontrolniKontakt'
 import { getMobileOrWebSession, requireObchodnikOrAdmin } from '@/lib/mobile-helpers'
@@ -9,6 +10,7 @@ import { isSmsConfigured, normalizeTelefon, sendSms } from '@/lib/sms'
 import { getOrgSettings } from '@/lib/orgSettings'
 import { ensureQuoteShare, quoteShareUrl, QUOTE_SHARE_DNI } from '@/lib/quoteShare'
 import { checkRateLimit } from '@/lib/rateLimit'
+import { dataOdeslani } from '@/lib/quoteStav'
 
 // POST /api/mobile/obchod/nabidka/[id]/odeslat — odeslání nabídky klientovi
 // přímo ze schůzky. { kanal: 'EMAIL' | 'SMS', to?, zprava? }
@@ -30,6 +32,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       select: {
         id: true,
         kod: true,
+        stav: true,
         deal: {
           select: {
             id: true,
@@ -179,15 +182,12 @@ async function naplanujKontrolu(
 
 async function zaznamenejOdeslani(
   db: ReturnType<typeof orgPrisma>,
-  quote: { id: string; kod: string | null; deal: { id: string; kod: string | null; orgId: string } },
+  quote: { id: string; kod: string | null; stav: QuoteStav; deal: { id: string; kod: string | null; orgId: string } },
   userId: string,
   kanal: 'EMAIL' | 'SMS',
   komu: string,
 ) {
-  await db.quote.update({
-    where: { id: quote.id },
-    data: { odeslanoAt: new Date(), odeslanoKanal: kanal },
-  })
+  await db.quote.update({ where: { id: quote.id }, data: dataOdeslani(quote.stav, kanal) })
   await db.activity.create({
     data: {
       orgId: quote.deal.orgId,

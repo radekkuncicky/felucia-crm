@@ -434,23 +434,23 @@ describe('follow-up odeslaných nabídek (worker)', () => {
     })
     const staraOdeslana = new Date(Date.now() - (FOLLOWUP_PO_DNECH + 1) * 24 * 3600_000)
 
-    // OP v NABÍDKA s nabídkou odeslanou před 4 dny → follow-up
+    // OP v NABÍDKA s nabídkou ve stavu Odeslaná déle než FOLLOWUP_PO_DNECH → follow-up
     const deal = await prisma.deal.create({
       data: { orgId, clientId: klient.id, userId, stav: 'NABIDKA', technologie: 'KLIMA', kod: `OP-F-${RUN}` },
     })
     const quote = await prisma.quote.create({
-      data: { orgId, dealId: deal.id, nazev: 'K follow-upu', odeslanoAt: staraOdeslana, odeslanoKanal: 'EMAIL' },
+      data: { orgId, dealId: deal.id, nazev: 'K follow-upu', stav: 'ODESLANA', odeslanoAt: staraOdeslana, odeslanoKanal: 'EMAIL' },
     })
     // OP vyhraný — follow-up nedává smysl
     const dealUspech = await prisma.deal.create({
       data: { orgId, clientId: klient.id, userId, stav: 'USPECH', technologie: 'KLIMA', kod: `OP-FU-${RUN}` },
     })
     await prisma.quote.create({
-      data: { orgId, dealId: dealUspech.id, nazev: 'Vyhraná', odeslanoAt: staraOdeslana, odeslanoKanal: 'EMAIL' },
+      data: { orgId, dealId: dealUspech.id, nazev: 'Vyhraná', stav: 'ODESLANA', odeslanoAt: staraOdeslana, odeslanoKanal: 'EMAIL' },
     })
     // Čerstvě odeslaná — ještě ne
     await prisma.quote.create({
-      data: { orgId, dealId: deal.id, nazev: 'Čerstvá', odeslanoAt: new Date(), odeslanoKanal: 'SMS' },
+      data: { orgId, dealId: deal.id, nazev: 'Čerstvá', stav: 'ODESLANA', odeslanoAt: new Date(), odeslanoKanal: 'SMS' },
     })
 
     expect(await sweepNabidkyFollowUp(prisma)).toBe(1)

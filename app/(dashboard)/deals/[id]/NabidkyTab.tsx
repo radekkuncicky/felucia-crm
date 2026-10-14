@@ -30,6 +30,9 @@ import { Field, Select } from '@/components/ui/Field'
 import MobileSheet from '@/components/MobileSheet'
 import ShareQuoteModal from '@/components/ShareQuoteModal'
 import KontrolniKontaktModal from '@/components/KontrolniKontaktModal'
+import QuoteStavBadge from '@/components/QuoteStavBadge'
+import { confirmDialog } from '@/components/ui/confirm'
+import type { QuoteStav } from '@prisma/client'
 
 const SHEET_ICON_PATHS: Record<string, string> = {
   save: 'M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4',
@@ -74,6 +77,8 @@ interface QuoteData {
   popis: string
   dphSazba: number
   aktivni: boolean
+  stav: QuoteStav
+  odeslanoAt: string | null
   templateId: string | null
   items: QuoteItemData[]
   vytvoreno: string
@@ -116,6 +121,8 @@ interface TemplateData {
 interface Props {
   dealId: string
   dealKod?: string | null
+  /** stav OP — po akceptaci nabídky se nabídne posun do „Před uzavřením“ */
+  dealStav?: string
   quotes: QuoteData[]
   products: ProductData[]
   templates: TemplateData[]
@@ -542,6 +549,7 @@ function DuplicateToModal({
 
 export default function NabidkyTab({
   dealId,
+  dealStav,
   quotes: initQuotes,
   products,
   templates,
@@ -894,6 +902,38 @@ export default function NabidkyTab({
     }
   }
 
+  // Stav nabídky vůči klientovi (procesní mapa 4.1) — odmítnutí bez důvodu
+  async function zmenitStavNabidky(quoteId: string, stav: QuoteStav) {
+    const res = await fetch(`/api/quotes/${quoteId}/stav`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ stav }),
+    })
+    const data = await res.json().catch(() => ({}))
+    if (!res.ok) {
+      showError(data.error || 'Stav nabídky se nepodařilo změnit')
+      return
+    }
+    setQuotes(prev => prev.map(q => q.id === quoteId
+      ? { ...q, stav: data.stav, aktivni: data.aktivni, odeslanoAt: data.odeslanoAt ?? null }
+      : stav === 'AKCEPTOVANA' ? { ...q, aktivni: false } : q))
+    showToast(stav === 'ODESLANA' ? 'Nabídka označena jako odeslaná' : stav === 'AKCEPTOVANA' ? 'Nabídka akceptována' : 'Nabídka odmítnuta')
+    if (stav === 'AKCEPTOVANA' && dealStav && ['NOVY', 'JEDNANI', 'NABIDKA'].includes(dealStav)) {
+      const posunout = await confirmDialog('Klient nabídku přijal. Posunout obchodní případ do stavu „Před uzavřením“?', {
+        title: 'Posunout obchodní případ?', confirmLabel: 'Posunout', cancelLabel: 'Nechat', danger: false,
+      })
+      if (posunout) {
+        const r = await fetch(`/api/deals/${dealId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ stav: 'PRED_UZAVRENIM' }),
+        })
+        if (!r.ok) showError('Stav obchodního případu se nepodařilo změnit')
+      }
+    }
+    router.refresh()
+  }
+
   async function duplicateQuote(quoteId: string) {
     setSaving(true)
     try {
@@ -1219,6 +1259,9 @@ export default function NabidkyTab({
           quoteNazev={selectedQuote.nazev}
           clientEmail={clientEmail ?? null}
           onClose={() => setShowShareModal(false)}
+          onSent={() => setQuotes(prev => prev.map(q => q.id === selectedQuote.id && (q.stav === 'ROZPRACOVANA' || q.stav === 'ODESLANA')
+            ? { ...q, stav: 'ODESLANA', odeslanoAt: new Date().toISOString() }
+            : q))}
         />
       )}
 
@@ -1348,6 +1391,7 @@ export default function NabidkyTab({
               )}
             </div>
             <div className="flex items-center gap-2">
+              <QuoteStavBadge stav={selectedQuote.stav} odeslanoAt={selectedQuote.odeslanoAt} />
               {selectedQuote.aktivni && (
                 <span className="text-xs bg-green-500 text-white px-2 py-0.5 rounded-full">
                   Aktivní
@@ -1407,6 +1451,22 @@ export default function NabidkyTab({
                   Nastavit jako aktivní
                 </button>
               )}
+              <div className="flex items-center gap-1.5">
+                <QuoteStavBadge stav={selectedQuote.stav} odeslanoAt={selectedQuote.odeslanoAt} />
+                {selectedQuote.stav === 'ROZPRACOVANA' && (
+                  <Button size="sm" variant="ghost" onClick={() => zmenitStavNabidky(selectedQuote.id, 'ODESLANA')} title="Poslali jste nabídku mimo Felucii (vlastní e-mail, osobně)">
+                    Označit jako odeslanou
+                  </Button>
+                )}
+                {selectedQuote.stav === 'ODESLANA' && (<>
+                  <Button size="sm" variant="ghost" className="text-green-700 dark:text-green-400" onClick={() => zmenitStavNabidky(selectedQuote.id, 'AKCEPTOVANA')}>
+                    Akceptovaná
+                  </Button>
+                  <Button size="sm" variant="ghost" className="text-red-600 dark:text-red-400" onClick={() => zmenitStavNabidky(selectedQuote.id, 'ODMITNUTA')}>
+                    Odmítnutá
+                  </Button>
+                </>)}
+              </div>
               <div className="flex items-center gap-1.5">
                 <span className="text-xs text-gray-500 dark:text-slate-400">
                   DPH:
@@ -1493,6 +1553,8 @@ export default function NabidkyTab({
                 items={[
                   ...(isDirty ? [{ label: 'Uložit hned', onSelect: () => doSave() }] : []),
                   { label: 'Přejmenovat', onSelect: () => { setEditingNameId(selectedQuote.id); setEditingNameValue(selectedQuote.nazev) } },
+                  ...(selectedQuote.stav === 'AKCEPTOVANA' || selectedQuote.stav === 'ODMITNUTA'
+                    ? [{ label: 'Vrátit stav na Odeslaná', onSelect: () => zmenitStavNabidky(selectedQuote.id, 'ODESLANA') }] : []),
                   ...(quotes.length > 1 ? [{ label: 'Smazat nabídku', onSelect: () => setDeleteQuoteId(selectedQuote.id), danger: true, separator: true }] : []),
                 ]}
               />
@@ -1883,6 +1945,13 @@ export default function NabidkyTab({
             {([
               ...(isDirty ? [{ label: 'Uložit hned', icon: 'save', action: () => doSave() }] : []),
               { label: 'Poslat klientovi', icon: 'share', action: () => setShowShareModal(true) },
+              ...(selectedQuote.stav === 'ROZPRACOVANA' ? [{ label: 'Označit jako odeslanou', icon: 'check', action: () => zmenitStavNabidky(selectedQuote.id, 'ODESLANA') }] : []),
+              ...(selectedQuote.stav === 'ODESLANA' ? [
+                { label: 'Klient akceptoval', icon: 'check', action: () => zmenitStavNabidky(selectedQuote.id, 'AKCEPTOVANA') },
+                { label: 'Klient odmítl', icon: 'check', action: () => zmenitStavNabidky(selectedQuote.id, 'ODMITNUTA') },
+              ] : []),
+              ...(selectedQuote.stav === 'AKCEPTOVANA' || selectedQuote.stav === 'ODMITNUTA'
+                ? [{ label: 'Vrátit stav na Odeslaná', icon: 'check', action: () => zmenitStavNabidky(selectedQuote.id, 'ODESLANA') }] : []),
               { label: 'Náhled PDF', icon: 'eye', action: () => window.open(`/api/quotes/${selectedQuote.id}/preview`, '_blank') },
               { label: 'Stáhnout PDF', icon: 'download', action: () => handleExportPdf(selectedQuote.id) },
               { label: 'Kontrolní kontakt', icon: 'phone', action: () => setShowKontrolaModal(true) },

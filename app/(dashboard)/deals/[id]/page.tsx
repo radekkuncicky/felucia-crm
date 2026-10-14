@@ -1,4 +1,5 @@
 import { getServerSession } from 'next-auth'
+import { DUVOD_PROHRY_LABEL } from '@/lib/duvodProhry'
 import { authOptions } from '@/lib/auth'
 import { getPerms, dealScopeWhere } from '@/lib/permissions'
 import { prisma } from '@/lib/prisma'
@@ -398,10 +399,11 @@ export default async function DealDetailPage({
             )}
 
             {/* Důvod prohry */}
-            {deal.stav === 'PAS' && deal.duvodProhry && (
+            {deal.stav === 'PAS' && (deal.duvodProhry || deal.duvodProhryKod) && (
               <div className="bg-red-50 dark:bg-red-900/20 rounded-xl border border-red-200 dark:border-red-800 p-4">
                 <p className="text-xs font-semibold text-red-600 dark:text-red-400 uppercase mb-1">Důvod prohry</p>
-                <p className="text-sm text-red-800 dark:text-red-300">{deal.duvodProhry}</p>
+                {deal.duvodProhryKod && <p className="text-sm font-medium text-red-800 dark:text-red-300">{DUVOD_PROHRY_LABEL[deal.duvodProhryKod]}</p>}
+                {deal.duvodProhry && <p className="text-sm text-red-800 dark:text-red-300">{deal.duvodProhry}</p>}
               </div>
             )}
 
@@ -414,6 +416,7 @@ export default async function DealDetailPage({
         <NabidkyTab
           dealId={deal.id}
           dealKod={deal.kod}
+          dealStav={deal.stav}
           dphSazba={deal.dphSazba}
           quotes={deal.quotes.map(q => ({
             id: q.id,
@@ -422,6 +425,8 @@ export default async function DealDetailPage({
             popis: q.popis ?? '',
             dphSazba: q.dphSazba,
             aktivni: q.aktivni,
+            stav: q.stav,
+            odeslanoAt: q.odeslanoAt?.toISOString() ?? null,
             templateId: q.templateId ?? null,
             vytvoreno: q.vytvoreno.toISOString(),
             items: q.items.map(i => ({

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { api } from '@/lib/api'
+import { zeptatSeNaDuvodProhry } from '@/components/DuvodProhryDialog'
 import {
   DndContext, DragEndEvent, DragOverlay, DragStartEvent,
   PointerSensor, useSensor, useSensors,
@@ -195,11 +196,15 @@ export default function DealsKanban({ deals: initialDeals }: Props) {
     const deal = deals.find(d => d.id === dealId)
     if (!deal || deal.stav === newStav) return
 
+    // Prohráno jen s důvodem (procesní mapa 1.6)
+    const duvod = newStav === 'PAS' ? await zeptatSeNaDuvodProhry() : null
+    if (newStav === 'PAS' && !duvod) return
+
     const prevDeals = deals
     setDeals(prev => prev.map(d => d.id === dealId ? { ...d, stav: newStav } : d))
 
     const res = await api.patch<{ chybaPovinnaAktivita?: boolean }>(`/api/deals/${dealId}`,
-      { stav: newStav },
+      { stav: newStav, ...duvod },
       { errorMessage: 'Změnu stavu se nepodařilo uložit. Zkuste to prosím znovu.' })
 
     if (!res.ok) {
