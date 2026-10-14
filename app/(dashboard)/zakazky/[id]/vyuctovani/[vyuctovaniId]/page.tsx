@@ -26,7 +26,7 @@ export default async function VyuctovaniDetailPage({
       polozky: { orderBy: { poradi: 'asc' } },
       zakazka: {
         select: {
-          id: true, cislo: true, nazev: true,
+          id: true, cislo: true, nazev: true, stav: true,
           klient: { select: { jmeno: true, prijmeni: true } },
           vedouci: { select: { id: true, jmeno: true } },
           op: { select: { quotes: { where: { aktivni: true }, select: { dphSazba: true }, take: 1 } } },
@@ -113,6 +113,8 @@ export default async function VyuctovaniDetailPage({
       showNakupky={perms.financeNakupky}
       defaultDph={defaultDph}
       dalsiEtapaCislo={dalsiEtapaCislo}
+      zakazkaStav={v.zakazka.stav}
+      canEditZakazka={perms.zakazkyEdit}
     />
   )
 }

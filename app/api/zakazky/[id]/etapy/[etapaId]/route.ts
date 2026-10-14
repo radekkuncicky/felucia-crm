@@ -4,6 +4,8 @@ import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { getPerms, forbidden } from '@/lib/permissions'
+import { logAction } from '@/lib/auditLog'
+import { vratZakazkuPoSmazaniEtapy } from '@/lib/zakazkaStavFlow'
 
 const ETAPA_STAV_VALUES = new Set<string>(Object.values(EtapaStav))
 
@@ -65,6 +67,8 @@ export async function DELETE(req: Request, { params }: { params: { id: string; e
     include: {
       predavaky: { select: { id: true } },
       vyuctovani: { select: { id: true } },
+      technici: { select: { technikId: true } },
+      zakazka: { select: { cislo: true } },
     },
   })
   if (!etapa) return NextResponse.json({ error: 'Not found' }, { status: 404 })
@@ -73,6 +77,28 @@ export async function DELETE(req: Request, { params }: { params: { id: string; e
     return NextResponse.json({ error: 'Etapu nelze smazat, má přiřazené protokoly nebo vyúčtování' }, { status: 422 })
   }
 
-  await db.zakazkaEtapa.delete({ where: { id: params.etapaId } })
-  return NextResponse.json({ ok: true })
+  const zakazkaNovyStav = await db.$transaction(async tx => {
+    await tx.zakazkaEtapa.delete({ where: { id: params.etapaId } })
+    return vratZakazkuPoSmazaniEtapy(tx, params.id)
+  })
+
+  // Snapshot pro „Vrátit" v UI (POST /etapy se stejnými daty)
+  const obnova = {
+    nazev: etapa.nazev,
+    montazOd: etapa.montazOd,
+    montazDo: etapa.montazDo,
+    poznamka: etapa.poznamka,
+    stav: etapa.stav,
+    technikIds: etapa.technici.map(t => t.technikId),
+  }
+  await logAction({
+    orgId,
+    userId: session.user.id,
+    typAkce: 'DELETE',
+    typZaznamu: 'ZakazkaEtapa',
+    zaznamId: etapa.id,
+    zaznamNazev: `${etapa.zakazka.cislo} – etapa ${etapa.cislo}`,
+    zmeny: { ...obnova, zakazkaNovyStav },
+  })
+  return NextResponse.json({ ok: true, obnova, zakazkaNovyStav })
 }

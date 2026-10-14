@@ -21,6 +21,10 @@ export interface ZalozEtapuData {
   montazOd?: Date | null
   montazDo?: Date | null
   poznamka?: string | null
+  /** technici etapy (obnova omylem smazané etapy) — jen uživatelé org */
+  technikIds?: string[]
+  /** stav při obnově smazané etapy (výchozí PLANOVANA) */
+  stav?: 'PLANOVANA' | 'PROBIHAJICI'
 }
 
 export type ZalozEtapuResult =
@@ -127,10 +131,20 @@ export async function zalozDalsiEtapu(
             montazOd: data.montazOd ?? null,
             montazDo: data.montazDo ?? null,
             poznamka: data.poznamka ?? null,
-            stav: 'PLANOVANA',
+            stav: data.stav ?? 'PLANOVANA',
           },
           include: ETAPA_INCLUDE,
         })
+        if (data.technikIds?.length) {
+          const platni = await tx.user.findMany({
+            where: { id: { in: data.technikIds }, orgId },
+            select: { id: true },
+          })
+          await tx.etapaTechnik.createMany({
+            data: platni.map(u => ({ orgId, etapaId: e.id, technikId: u.id })),
+            skipDuplicates: true,
+          })
+        }
 
         // Zakázka „hotová" po předchozí etapě se novou etapou vrací do realizace
         if (zakazka.stav === 'PREDANA' || zakazka.stav === 'VYUCTOVANA') {

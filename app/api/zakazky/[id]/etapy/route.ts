@@ -38,13 +38,15 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   if (!body || typeof body !== 'object') {
     return NextResponse.json({ error: 'Neplatná data požadavku.' }, { status: 400 })
   }
-  const { nazev, montazOd, montazDo, poznamka } = body as Record<string, unknown>
+  const { nazev, montazOd, montazDo, poznamka, technikIds, stav } = body as Record<string, unknown>
 
   const result = await zalozDalsiEtapu(db, orgId, params.id, {
     nazev: typeof nazev === 'string' ? nazev.trim() || null : null,
     montazOd: montazOd ? new Date(montazOd as string) : null,
     montazDo: montazDo ? new Date(montazDo as string) : null,
     poznamka: typeof poznamka === 'string' ? poznamka.trim() || null : null,
+    stav: stav === 'PROBIHAJICI' ? 'PROBIHAJICI' : undefined,
+    technikIds: Array.isArray(technikIds) ? technikIds.filter((t): t is string => typeof t === 'string') : undefined,
   })
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: result.status })

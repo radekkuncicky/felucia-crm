@@ -1,5 +1,6 @@
 import { ZakazkaStav } from '@prisma/client'
 import type { OrgPrismaClient } from './orgPrisma'
+import { etapaKompletni, etapaProgressFromRaw } from './zakazkaEtapy'
 
 /**
  * Automatické posuny stavu zakázky navázané na předávky a vyúčtování.
@@ -70,4 +71,27 @@ export async function vratZakazkuZVyuctovane(
 
   await tx.zakazka.update({ where: { id: zakazkaId }, data: { stav: 'PREDANA' } })
   return 'PREDANA'
+}
+
+/**
+ * Po smazání (prázdné) etapy: založení etapy vrátilo zakázku z PREDANA/VYUCTOVANA
+ * do V_REALIZACI — když je teď poslední zbylá etapa kompletně vyúčtovaná, nic už
+ * realizaci nedrží a zakázka se vrací do VYUCTOVANA.
+ */
+export async function vratZakazkuPoSmazaniEtapy(
+  tx: TxClient,
+  zakazkaId: string,
+): Promise<ZakazkaStav | null> {
+  const zakazka = await tx.zakazka.findUnique({ where: { id: zakazkaId }, select: { stav: true } })
+  if (!zakazka || zakazka.stav !== 'V_REALIZACI') return null
+
+  const posledni = await tx.zakazkaEtapa.findFirst({
+    where: { zakazkaId },
+    orderBy: { cislo: 'desc' },
+    include: { predavaky: { select: { stav: true } }, vyuctovani: { select: { stav: true } } },
+  })
+  if (!posledni || !etapaKompletni(etapaProgressFromRaw(posledni))) return null
+
+  await tx.zakazka.update({ where: { id: zakazkaId }, data: { stav: 'VYUCTOVANA' } })
+  return 'VYUCTOVANA'
 }

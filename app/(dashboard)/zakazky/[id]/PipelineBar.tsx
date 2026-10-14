@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { ZakazkaStav } from '@prisma/client'
 import { api } from '@/lib/api'
 import { InfoTip } from '@/components/ui/InfoTip'
+import { Button } from '@/components/ui/Button'
+import { confirmDialog } from '@/components/ui/confirm'
 import { etapaProgressFromRaw, etapaKompletni, KROK_LABEL, KROK_LABEL_HOTOVO, type EtapaKrok, type EtapaProgressInput } from '@/lib/zakazkaEtapy'
 
 const STEPS: { stav: ZakazkaStav; label: string }[] = [
@@ -70,13 +72,17 @@ function buildEtapyNodes(etapy: EtapaChip[]): EtapaNode[] {
 export default function PipelineBar({ zakazkaId, currentStav, canChange, etapy = [] }: Props) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
-  const [confirm, setConfirm] = useState<ZakazkaStav | null>(null)
   const currentIndex = STEPS.findIndex(s => s.stav === currentStav)
   const hasEtapy = etapy.length > 0
   const etapyNodes = hasEtapy ? buildEtapyNodes(etapy) : []
 
+  async function potvrditZmenu(stav: ZakazkaStav) {
+    const label = STEPS.find(s => s.stav === stav)?.label
+    const ok = await confirmDialog(`Přejít na stav ${label}?`, { title: 'Změnit stav zakázky', confirmLabel: 'Potvrdit' })
+    if (ok) await handleChange(stav)
+  }
+
   async function handleChange(stav: ZakazkaStav) {
-    setConfirm(null)
     setLoading(true)
     try {
       const res = await api.patch(`/api/zakazky/${zakazkaId}/stav`, { stav },
@@ -91,23 +97,6 @@ export default function PipelineBar({ zakazkaId, currentStav, canChange, etapy =
 
   return (
     <>
-      {confirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-xl max-w-sm w-full">
-            <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-2">Změnit stav zakázky</h3>
-            <p className="text-sm text-gray-600 dark:text-slate-400 mb-5">
-              Přejít na stav <strong>{STEPS.find(s => s.stav === confirm)?.label}</strong>?
-            </p>
-            <div className="flex gap-3 justify-end">
-              <button onClick={() => setConfirm(null)} className="px-3 py-2 text-sm text-gray-600 dark:text-slate-400 border border-gray-300 dark:border-slate-600 rounded-lg">Zrušit</button>
-              <button onClick={() => handleChange(confirm)} disabled={loading} className="px-3 py-2 text-sm font-medium text-white bg-primary hover:bg-primary-hover rounded-lg disabled:opacity-50">
-                {loading ? 'Ukládám…' : 'Potvrdit'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 px-4 py-3">
         {hasEtapy ? (
           <>
@@ -169,6 +158,22 @@ export default function PipelineBar({ zakazkaId, currentStav, canChange, etapy =
                 ))}
               </div>
             </div>
+
+            {/* Uzavření zakázky s etapami — lišta etap stavové kroky nemá */}
+            {(currentStav === 'VYUCTOVANA' || currentStav === 'HOTOVO') && (
+              <div className="flex flex-wrap items-center justify-end gap-2 mt-2 pt-2 border-t border-line">
+                {currentStav === 'HOTOVO' ? (
+                  <>
+                    <span className="text-xs font-medium text-green-600 dark:text-green-400">✓ Zakázka hotová</span>
+                    {canChange && (
+                      <Button variant="ghost" size="sm" onClick={() => potvrditZmenu('VYUCTOVANA')} disabled={loading}>Znovu otevřít</Button>
+                    )}
+                  </>
+                ) : canChange && (
+                  <Button size="sm" onClick={() => potvrditZmenu('HOTOVO')} loading={loading}>Ukončit zakázku</Button>
+                )}
+              </div>
+            )}
           </>
         ) : (
           <>
@@ -183,7 +188,7 @@ export default function PipelineBar({ zakazkaId, currentStav, canChange, etapy =
                 return (
                   <div key={step.stav} className="flex items-center flex-1 min-w-0">
                     <button
-                      onClick={() => isClickable && canChange && step.stav !== currentStav ? setConfirm(step.stav) : undefined}
+                      onClick={() => isClickable && canChange && step.stav !== currentStav ? potvrditZmenu(step.stav) : undefined}
                       disabled={!isClickable || step.stav === currentStav}
                       className={`flex items-center gap-1.5 text-xs font-medium transition-colors disabled:cursor-default ${
                         isCurrent
@@ -222,7 +227,7 @@ export default function PipelineBar({ zakazkaId, currentStav, canChange, etapy =
                   return (
                     <div key={step.stav} className="flex items-center">
                       <button
-                        onClick={() => isClickable && step.stav !== currentStav ? setConfirm(step.stav) : undefined}
+                        onClick={() => isClickable && step.stav !== currentStav ? potvrditZmenu(step.stav) : undefined}
                         disabled={!isClickable || step.stav === currentStav}
                         style={{ minWidth: 72, fontSize: 11 }}
                         className={`flex flex-col items-center gap-1 px-2 py-1.5 rounded-lg transition-colors disabled:cursor-default ${

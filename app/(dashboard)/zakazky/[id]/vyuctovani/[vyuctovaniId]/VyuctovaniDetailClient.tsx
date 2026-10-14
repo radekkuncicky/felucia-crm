@@ -2,7 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { VyuctovaniStav } from '@prisma/client'
+import { VyuctovaniStav, ZakazkaStav } from '@prisma/client'
+import { confirmDialog } from '@/components/ui/confirm'
+import { Button } from '@/components/ui/Button'
+import { api } from '@/lib/api'
 import { formatCislo, formatKc, formatDate } from '@/lib/format'
 import { radekBezDph } from '@/lib/quoteMath'
 
@@ -65,13 +68,17 @@ interface Props {
   defaultDph?: number
   /** číslo etapy, kterou lze zahájit hned při schválení (null = nenabízet) */
   dalsiEtapaCislo?: number | null
+  /** stav zakázky — po schválení nabídnout „Co dál?" (další etapa / ukončit) */
+  zakazkaStav?: ZakazkaStav
+  /** zakazkyEdit — zakládat etapy a měnit stav zakázky */
+  canEditZakazka?: boolean
 }
 
 const fmtKc = formatKc
 
 type NewRow = { nazev: string; mnozstvi: string; jednotka: string; prodejniCena: string; nakupniCena: string; dphSazba: number }
 
-export default function VyuctovaniDetailClient({ vyuctovani: initial, canApprove, canDelete, showNakupky, defaultDph, dalsiEtapaCislo }: Props) {
+export default function VyuctovaniDetailClient({ vyuctovani: initial, canApprove, canDelete, showNakupky, defaultDph, dalsiEtapaCislo, zakazkaStav, canEditZakazka = false }: Props) {
   const router = useRouter()
   const isAdmin = canDelete
   const isManager = canApprove
@@ -155,6 +162,35 @@ export default function VyuctovaniDetailClient({ vyuctovani: initial, canApprove
   function startNewRow() {
     const lastDph = polozky.length > 0 ? polozky[polozky.length - 1].dphSazba : (defaultDph ?? 12)
     setNewRow({ nazev: '', mnozstvi: '1', jednotka: 'ks', prodejniCena: '', nakupniCena: '', dphSazba: lastDph })
+  }
+
+  const [coDalLoading, setCoDalLoading] = useState<'etapa' | 'hotovo' | null>(null)
+
+  async function handleZahajitEtapu() {
+    setCoDalLoading('etapa')
+    try {
+      const res = await api.post<{ cislo: number; upozorneni?: string | null }>(`/api/zakazky/${initial.zakazka.id}/etapy`, {})
+      if (res.ok && res.data) {
+        setToast(res.data.upozorneni ?? `Zahájena etapa ${res.data.cislo}, zakázka pokračuje v realizaci`)
+        router.refresh()
+      }
+    } finally { setCoDalLoading(null) }
+  }
+
+  async function handleUkoncitZakazku() {
+    const ok = await confirmDialog(
+      `Zakázka ${initial.zakazka.cislo} se označí jako Hotová a uzavře se. Další etapu pak už nepůjde přidat bez vrácení stavu.`,
+      { title: 'Ukončit zakázku?', confirmLabel: 'Ukončit zakázku', cancelLabel: 'Zpět' },
+    )
+    if (!ok) return
+    setCoDalLoading('hotovo')
+    try {
+      const res = await api.patch(`/api/zakazky/${initial.zakazka.id}/stav`, { stav: 'HOTOVO' })
+      if (res.ok) {
+        setToast('Zakázka ukončena')
+        router.refresh()
+      }
+    } finally { setCoDalLoading(null) }
   }
 
   async function handleKeSchvaleni() {
@@ -409,6 +445,30 @@ export default function VyuctovaniDetailClient({ vyuctovani: initial, canApprove
             </div>
           </div>
         </div>
+
+        {/* Co dál po schválení — další etapa, nebo ukončení zakázky */}
+        {stav === 'SCHVALENO' && canEditZakazka && zakazkaStav === 'VYUCTOVANA' && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-green-50 dark:bg-slate-800 rounded-xl border border-green-200 dark:border-slate-700 px-5 py-4">
+            <div>
+              <p className="font-semibold text-sm text-fg">Vyúčtováno — co dál?</p>
+              <p className="text-xs text-muted mt-0.5">
+                {dalsiEtapaCislo
+                  ? `Pokračujte etapou ${dalsiEtapaCislo}, nebo zakázku uzavřete.`
+                  : 'Zakázku můžete uzavřít jako hotovou.'}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {dalsiEtapaCislo && (
+                <Button variant="secondary" size="sm" onClick={handleZahajitEtapu} loading={coDalLoading === 'etapa'} disabled={coDalLoading !== null}>
+                  Zahájit etapu {dalsiEtapaCislo}
+                </Button>
+              )}
+              <Button size="sm" onClick={handleUkoncitZakazku} loading={coDalLoading === 'hotovo'} disabled={coDalLoading !== null}>
+                Ukončit zakázku
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* Zdrojový protokol — kontext pro kontrolu cen */}
         {initial.predavak && (

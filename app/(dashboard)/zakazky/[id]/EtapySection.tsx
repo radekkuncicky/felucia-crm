@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { EtapaStav } from '@prisma/client'
 import { toast } from 'sonner'
 import { api } from '@/lib/api'
+import { confirmDialog } from '@/components/ui/confirm'
 import { etapaProgressFromRaw, etapaKompletni, lzePridatDalsiEtapu } from '@/lib/zakazkaEtapy'
 import TechniciPicker, { type TechnikRef } from '@/components/TechniciPicker'
 
@@ -31,6 +32,8 @@ interface Props {
   /** Technici organizace pro výběr (prázdné bez práva editace) */
   vsichniTechnici: TechnikRef[]
   canEdit: boolean
+  /** zakazkyMazani — smazání prázdné etapy */
+  canDelete?: boolean
   /** Zakázka bez etap už má předávák/vyúčtování — při rozdělení se z nich stane Etapa 1 */
   maPraciBezEtapy?: boolean
 }
@@ -62,7 +65,10 @@ function formatDate(iso: string | null) {
   return new Date(iso).toLocaleDateString('cs-CZ', { day: 'numeric', month: 'short' })
 }
 
-export default function EtapySection({ zakazkaId, etapy: initialEtapy, vsichniTechnici, canEdit, maPraciBezEtapy = false }: Props) {
+/** Data smazané etapy, která vrací DELETE — pro „Vrátit" */
+type EtapaObnova = Record<string, unknown>
+
+export default function EtapySection({ zakazkaId, etapy: initialEtapy, vsichniTechnici, canEdit, canDelete = false, maPraciBezEtapy = false }: Props) {
   const router = useRouter()
   const [etapy, setEtapy] = useState<Etapa[]>(initialEtapy)
   // router.refresh() (přeřazení protokolu, schválení…) posílá nová data ze serveru
@@ -139,6 +145,7 @@ export default function EtapySection({ zakazkaId, etapy: initialEtapy, vsichniTe
             zakazkaId={zakazkaId}
             vsichniTechnici={vsichniTechnici}
             canEdit={canEdit}
+            canDelete={canDelete}
             isExpanded={expandedId === e.id}
             isEditing={editingId === e.id}
             onToggle={() => setExpandedId(prev => prev === e.id ? null : e.id)}
@@ -149,10 +156,23 @@ export default function EtapySection({ zakazkaId, etapy: initialEtapy, vsichniTe
               setEtapy(prev => prev.map(x => x.id === updated.id ? { ...updated, technici: x.technici } : x))
               setEditingId(null)
             }}
-            onDelete={() => {
+            onDelete={obnova => {
               setEtapy(prev => prev.filter(x => x.id !== e.id))
               if (expandedId === e.id) setExpandedId(null)
               router.refresh()
+              toast.success(`Etapa ${e.cislo} smazána`, {
+                duration: 10000,
+                action: {
+                  label: 'Vrátit',
+                  onClick: async () => {
+                    const res = await api.post(`/api/zakazky/${zakazkaId}/etapy`, obnova)
+                    if (res.ok) {
+                      toast.success(`Etapa ${e.cislo} obnovena`)
+                      router.refresh()
+                    }
+                  },
+                },
+              })
             }}
           />
         ))}
@@ -183,20 +203,21 @@ export default function EtapySection({ zakazkaId, etapy: initialEtapy, vsichniTe
 }
 
 function EtapaRow({
-  etapa, zakazkaId, vsichniTechnici, canEdit, isExpanded, isEditing,
+  etapa, zakazkaId, vsichniTechnici, canEdit, canDelete, isExpanded, isEditing,
   onToggle, onEditStart, onEditCancel, onUpdate, onDelete,
 }: {
   etapa: Etapa
   zakazkaId: string
   vsichniTechnici: TechnikRef[]
   canEdit: boolean
+  canDelete: boolean
   isExpanded: boolean
   isEditing: boolean
   onToggle: () => void
   onEditStart: () => void
   onEditCancel: () => void
   onUpdate: (e: Etapa) => void
-  onDelete: () => void
+  onDelete: (obnova: EtapaObnova) => void
 }) {
   const od = formatDate(etapa.montazOd)
   const do_ = formatDate(etapa.montazDo)
@@ -265,7 +286,7 @@ function EtapaRow({
               onSave={onUpdate}
               onCancel={onEditCancel}
               onDelete={onDelete}
-              canDelete={canEdit && etapa.predavaky.length === 0 && etapa.vyuctovani.length === 0}
+              canDelete={canDelete && etapa.predavaky.length === 0 && etapa.vyuctovani.length === 0}
             />
           ) : (
             <>
@@ -381,7 +402,7 @@ function EditEtapaForm({
   zakazkaId: string
   onSave: (e: Etapa) => void
   onCancel: () => void
-  onDelete: () => void
+  onDelete: (obnova: EtapaObnova) => void
   canDelete: boolean
 }) {
   const [nazev, setNazev] = useState(etapa.nazev ?? '')
@@ -391,7 +412,6 @@ function EditEtapaForm({
   const [poznamka, setPoznamka] = useState(etapa.poznamka ?? '')
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
-  const [confirmDelete, setConfirmDelete] = useState(false)
 
   async function handleSave() {
     setSaving(true)
@@ -406,11 +426,15 @@ function EditEtapaForm({
   }
 
   async function handleDelete() {
+    const ok = await confirmDialog(
+      `Etapa ${etapa.cislo} se smaže i s termínem a přiřazenými techniky. Hned po smazání ji ještě půjde vrátit.`,
+      { title: `Smazat etapu ${etapa.cislo}?`, confirmLabel: 'Smazat etapu', cancelLabel: 'Ponechat', danger: true },
+    )
+    if (!ok) return
     setDeleting(true)
     try {
-      const res = await api.delete(`/api/zakazky/${zakazkaId}/etapy/${etapa.id}`)
-      if (res.ok) onDelete()
-      else setConfirmDelete(false)
+      const res = await api.delete<{ obnova: EtapaObnova }>(`/api/zakazky/${zakazkaId}/etapy/${etapa.id}`)
+      if (res.ok && res.data) onDelete(res.data.obnova)
     } finally {
       setDeleting(false)
     }
@@ -457,24 +481,14 @@ function EditEtapaForm({
           className="w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-1.5 text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-green-500" />
       </div>
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        {canDelete && !confirmDelete && (
-          <button onClick={() => setConfirmDelete(true)} className="text-xs text-red-500 hover:text-red-700 dark:text-red-400">
-            Smazat etapu
+        {canDelete ? (
+          <button onClick={handleDelete} disabled={deleting} className="text-xs text-red-500 hover:text-red-700 dark:text-red-400 disabled:opacity-50">
+            {deleting ? 'Mažu…' : 'Smazat etapu'}
           </button>
-        )}
-        {confirmDelete && (
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-red-600 dark:text-red-400">Opravdu smazat?</span>
-            <button onClick={handleDelete} disabled={deleting} className="text-xs font-medium text-white bg-red-600 px-2 py-1 rounded disabled:opacity-50">
-              {deleting ? '…' : 'Smazat'}
-            </button>
-            <button onClick={() => setConfirmDelete(false)} className="text-xs text-gray-500">Zrušit</button>
-          </div>
-        )}
-        {!confirmDelete && <div />}
+        ) : <div />}
         <div className="flex gap-2">
           <button onClick={onCancel} className="text-xs text-gray-500 dark:text-slate-400 hover:text-gray-700 px-3 py-1.5 border border-gray-300 dark:border-slate-600 rounded-lg">
-            Zrušit
+            Zavřít
           </button>
           <button onClick={handleSave} disabled={saving}
             className="text-xs font-medium text-white bg-green-600 hover:bg-green-700 px-3 py-1.5 rounded-lg disabled:opacity-50">

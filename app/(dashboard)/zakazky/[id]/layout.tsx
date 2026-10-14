@@ -356,6 +356,7 @@ export default async function ZakazkaDetailLayout({
         }))}
         vsichniTechnici={vsichniTechnici}
         canEdit={canEdit}
+        canDelete={perms.zakazkyMazani}
         maPraciBezEtapy={zakazka._count.predavaky > 0 || zakazka.vyuctovani.some(v => !v.etapaId)}
       />
 
