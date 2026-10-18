@@ -4,6 +4,7 @@ import { getPerms } from '@/lib/permissions'
 import { listUsersWithPerm } from '@/lib/zakazkyHelpers'
 import { prisma } from '@/lib/prisma'
 import { notFound, redirect } from 'next/navigation'
+import { getOrgSettings } from '@/lib/orgSettings'
 import LeadyPageClient from './LeadyPageClient'
 
 export default async function LeadyPage() {
@@ -16,7 +17,7 @@ export default async function LeadyPage() {
   const orgId = session.user.orgId
   const perms = getPerms(session.user)
 
-  const [leady, users] = await Promise.all([
+  const [leady, users, settings] = await Promise.all([
     prisma.lead.findMany({
       where: { orgId },
       include: {
@@ -26,6 +27,7 @@ export default async function LeadyPage() {
       orderBy: { vytvoreno: 'desc' },
     }),
     listUsersWithPerm(orgId, 'obchod'),
+    getOrgSettings(orgId),
   ])
 
   const novychCount = leady.filter(l => l.status === 'NOVY').length
@@ -43,6 +45,7 @@ export default async function LeadyPage() {
       currentUserId={session.user.id}
       canEdit={perms.obchod}
       canDelete={perms.obchodMazani}
+      zdrojPovinny={settings.modulKpi}
     />
   )
 }

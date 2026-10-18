@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { getMobileOrWebSession, requireObchodnikOrAdmin } from '@/lib/mobile-helpers'
 import { logAction } from '@/lib/auditLog'
+import { vyhranoPriZmene } from '@/lib/dealUspech'
 import { createNotification } from '@/lib/createNotification'
 import { DuvodProhry, StavDealu } from '@prisma/client'
 
@@ -50,7 +51,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     data.duvodProhry = null
   }
 
-  await db.deal.update({ where: { id: params.id }, data })
+  await db.deal.update({ where: { id: params.id }, data: { ...data, ...vyhranoPriZmene(deal.stav, novyStav) } })
 
   await logAction({
     orgId,

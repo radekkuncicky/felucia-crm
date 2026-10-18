@@ -9,11 +9,11 @@ import { formatCislo, formatKc } from '../format'
 import { KPI_DEFS, kpiDef, type KpiDef, type KpiKod, type KpiJednotka } from './registry'
 import { semafor, type Semafor } from './semafor'
 import { mesicKlic, mesiceTrendu, posunMesic, mesicLabel } from './obdobi'
-import { POCITADLA, type KpiBod, type KpiZaznam } from './vypocty'
+import { POCITADLA, type KpiBod, type KpiRozpad, type KpiZaznam } from './vypocty'
 
 export type { KpiKod } from './registry'
 export type { Semafor } from './semafor'
-export type { KpiBod, KpiZaznam } from './vypocty'
+export type { KpiBod, KpiRozpad, KpiZaznam } from './vypocty'
 
 export interface KpiNastaveniEfektivni {
   kod: KpiKod
@@ -111,6 +111,7 @@ export interface KpiDetail extends KpiVysledek {
   zaznamyMesic: string
   zaznamyNadpis: string
   zaznamy: KpiZaznam[]
+  rozpad: KpiRozpad | null
 }
 
 export async function kpiDetail(orgId: string, kod: KpiKod, mesic?: string, now = new Date()): Promise<KpiDetail> {
@@ -125,6 +126,7 @@ export async function kpiDetail(orgId: string, kod: KpiKod, mesic?: string, now 
     zaznamyMesic,
     zaznamyNadpis: pocitadlo?.zaznamyNadpis ?? '',
     zaznamy: def.dostupne && pocitadlo ? await pocitadlo.zaznamy(db, orgId, zaznamyMesic) : [],
+    rozpad: def.dostupne && pocitadlo?.rozpad ? await pocitadlo.rozpad(db, orgId, zaznamyMesic) : null,
   }
 }
 

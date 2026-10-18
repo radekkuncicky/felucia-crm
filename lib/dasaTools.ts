@@ -6,6 +6,7 @@ import { generateDealKod } from '@/lib/dealKod'
 import { createWithUniqueKod } from '@/lib/uniqueKod'
 import { Technologie, StavDealu, TypAktivity, TypKlienta } from '@prisma/client'
 import { formatDate } from '@/lib/format'
+import { vyhranoPriZmene } from '@/lib/dealUspech'
 
 // ─── Tool definitions ────────────────────────────────────────────────────────
 
@@ -557,7 +558,7 @@ export async function executeDasaTool(
 
         await db.deal.update({
           where: { id: dealId },
-          data: { stav: stav as StavDealu },
+          data: { stav: stav as StavDealu, ...vyhranoPriZmene(deal.stav, stav) },
         })
 
         return { result: JSON.stringify({ ok: true, novyStav: stav }), navigateTo: `/deals/${dealId}` }

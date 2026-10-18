@@ -19,6 +19,7 @@ export default async function LeadDetailPage({ params }: { params: { id: string 
     where: { id: params.id, orgId },
     include: {
       assignedTo: { select: { id: true, jmeno: true, email: true, avatar: true } },
+      doporucilKlient: { select: { id: true, jmeno: true, prijmeni: true } },
       notes: {
         include: { user: { select: { id: true, jmeno: true, avatar: true } } },
         orderBy: { vytvoreno: 'asc' },

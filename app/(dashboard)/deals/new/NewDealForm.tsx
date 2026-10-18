@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Button, ButtonLink } from '@/components/ui/Button'
 import { Field, Input, Select } from '@/components/ui/Field'
 import ClientSelectWithCreate from '@/components/ClientSelectWithCreate'
+import ZdrojPoptavkyPole, { PRAZDNY_ZDROJ, zdrojPayload } from '@/components/ZdrojPoptavkyPole'
 
 const techOptions = [
   { value: 'KLIMA', label: 'Klimatizace' },
@@ -27,6 +28,7 @@ export default function NewDealForm({ clients, defaultClientId }: Props) {
   const [error, setError] = useState('')
   const [clientError, setClientError] = useState('')
   const [form, setForm] = useState({ clientId: defaultClientId, technologie: 'KLIMA', predmet: '' })
+  const [zdroj, setZdroj] = useState(PRAZDNY_ZDROJ)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -41,7 +43,7 @@ export default function NewDealForm({ clients, defaultClientId }: Props) {
       const res = await fetch('/api/deals', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, ...zdrojPayload(zdroj) }),
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
@@ -96,6 +98,8 @@ export default function NewDealForm({ clients, defaultClientId }: Props) {
           onChange={(e) => setForm((f) => ({ ...f, predmet: e.target.value }))}
         />
       </Field>
+
+      <ZdrojPoptavkyPole value={zdroj} onChange={setZdroj} />
 
       <div className="flex gap-3 pt-2">
         <Button type="submit" loading={saving}>Vytvořit případ</Button>

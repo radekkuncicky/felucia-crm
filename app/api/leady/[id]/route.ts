@@ -4,6 +4,7 @@ import { orgPrisma } from '@/lib/orgPrisma'
 import { logAction } from '@/lib/auditLog'
 import { NextResponse } from 'next/server'
 import { forbidden, getPerms } from '@/lib/permissions'
+import { parseZdroj } from '@/lib/zdrojPoptavky'
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
@@ -66,10 +67,30 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     }
   }
 
-  const updated = await orgPrisma(session.user.orgId).lead.update({
+  // Zdroj poptávky jde doplnit i u uzavřeného leadu (KPI 6). Převedený OP bez
+  // vlastního zdroje ho převezme, ať se rozpad podle zdroje neliší lead vs. OP.
+  const db = orgPrisma(session.user.orgId)
+  const zdroj = await parseZdroj(db, session.user.orgId, body)
+  if (typeof zdroj === 'string') return NextResponse.json({ error: zdroj }, { status: 400 })
+  Object.assign(data, zdroj)
+  if (zdroj.zdrojPoptavkyId && lead.prevedenNaOpId) {
+    await db.deal.updateMany({
+      where: { id: lead.prevedenNaOpId, zdrojPoptavkyId: null },
+      data: {
+        zdrojPoptavkyId: zdroj.zdrojPoptavkyId,
+        doporucilKlientId: zdroj.doporucilKlientId ?? lead.doporucilKlientId,
+        doporucilText: zdroj.doporucilText ?? lead.doporucilText,
+      },
+    })
+  }
+
+  const updated = await db.lead.update({
     where: { id: params.id },
     data,
-    include: { assignedTo: { select: { id: true, jmeno: true, email: true, avatar: true } } },
+    include: {
+      assignedTo: { select: { id: true, jmeno: true, email: true, avatar: true } },
+      doporucilKlient: { select: { id: true, jmeno: true, prijmeni: true } },
+    },
   })
   return NextResponse.json(updated)
 }

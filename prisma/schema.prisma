@@ -329,6 +329,7 @@ model Organization {
   aiUsageLogs          AiUsageLog[]
   zamereniDefinice     ZamereniDefinice[]
   kpiNastaveni         KpiNastaveni[]
+  zdrojePoptavky       ZdrojPoptavky[]
 
   @@map("organizations")
 }
@@ -439,6 +440,8 @@ model Client {
   servisniKontrakty ServisniKontrakt[]
   servisniZakazky   ServisniZakazka[]
   zakazky           Zakazka[]
+  doporucilLeady    Lead[]             @relation("LeadDoporucil")
+  doporucilOp       Deal[]             @relation("DealDoporucil")
 
   @@map("clients")
 }
@@ -477,10 +480,17 @@ model Deal {
   duvodProhry      String?
   duvodProhryKod   DuvodProhry?
   dphSazba         Int         @default(12)
+  // KPI 6 (docs/kpi-vedeni): zdroj poptávky, kdo doporučil, kdy OP vyhrál (přechod na USPECH)
+  zdrojPoptavkyId   String?
+  doporucilKlientId String?
+  doporucilText     String?
+  vyhrano           DateTime?
   vytvoreno        DateTime    @default(now())
 
   organization      Organization       @relation(fields: [orgId], references: [id])
   client            Client             @relation(fields: [clientId], references: [id])
+  zdrojPoptavky     ZdrojPoptavky?     @relation(fields: [zdrojPoptavkyId], references: [id])
+  doporucilKlient   Client?            @relation("DealDoporucil", fields: [doporucilKlientId], references: [id], onDelete: SetNull)
   user              User?              @relation(fields: [userId], references: [id])
   quoteItems        QuoteItem[]
   activities        Activity[]
@@ -494,6 +504,7 @@ model Deal {
   zamereni          Zamereni[]
 
   @@unique([orgId, kod])
+  @@index([orgId, vyhrano])
   @@map("deals")
 }
 
@@ -1764,7 +1775,12 @@ model Lead {
   email                String?
   telefon              String?
   firma                String?
+  // Kanál, kudy lead přišel (formulář / ručně / import) — ne zdroj poptávky
   zdroj                LeadZdroj  @default(RUCNE)
+  // Odkud o nás zákazník ví (číselník per org, KPI 6) + kdo doporučil
+  zdrojPoptavkyId      String?
+  doporucilKlientId    String?
+  doporucilText        String?
   status               LeadStatus @default(NOVY)
   zprava               String?
   // Strukturovaná metadata z webového formuláře (dřív se lepila do zprávy)
@@ -1787,6 +1803,8 @@ model Lead {
   organization       Organization @relation(fields: [orgId], references: [id])
   assignedTo         User?        @relation("LeadAssigned", fields: [assignedToId], references: [id])
   prevedenNaOp       Deal?        @relation(fields: [prevedenNaOpId], references: [id])
+  zdrojPoptavky      ZdrojPoptavky? @relation(fields: [zdrojPoptavkyId], references: [id])
+  doporucilKlient    Client?      @relation("LeadDoporucil", fields: [doporucilKlientId], references: [id], onDelete: SetNull)
   notes              LeadNote[]
   activities         Activity[]
 
@@ -1947,4 +1965,23 @@ model KpiNastaveni {
 
   @@unique([orgId, kod])
   @@map("kpi_nastaveni")
+}
+
+/// Zdroj poptávky — odkud o nás zákazník ví (KPI 6/7). Číselník per org, výchozí
+/// položky zakládá lib/zdrojPoptavky.ts. Kódy GOOGLE_ADS a DOPORUCENI mají význam v kódu.
+model ZdrojPoptavky {
+  id        String   @id @default(cuid())
+  orgId     String
+  kod       String
+  nazev     String
+  poradi    Int      @default(0)
+  aktivni   Boolean  @default(true)
+  vytvoreno DateTime @default(now())
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  leady        Lead[]
+  deals        Deal[]
+
+  @@unique([orgId, kod])
+  @@map("zdroje_poptavky")
 }

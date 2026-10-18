@@ -17,6 +17,7 @@ import { useUrlFilters } from '@/hooks/useUrlFilters'
 import { useShowMore } from '@/hooks/useShowMore'
 import { confirmDialog } from '@/components/ui/confirm'
 import { sluzbaLabel } from '@/lib/leadService'
+import ZdrojPoptavkyPole, { PRAZDNY_ZDROJ, zdrojPayload, type ZdrojHodnota } from '@/components/ZdrojPoptavkyPole'
 
 interface Lead {
   id: string
@@ -46,6 +47,8 @@ interface Props {
   currentUserId: string
   canEdit: boolean
   canDelete: boolean
+  /** Org s modulem KPI vyžaduje zdroj poptávky u ručně zadaného leadu (R11) */
+  zdrojPovinny: boolean
 }
 
 const STATUS_LABELS: Record<LeadStatus, string> = {
@@ -76,7 +79,7 @@ const ZDROJ_COLORS: Record<LeadZdroj, string> = {
   IMPORT: 'bg-orange-50 text-orange-700 dark:bg-orange-500/20 dark:text-orange-300',
 }
 
-export default function LeadyPageClient({ leady, users, novychCount, currentUserId, canEdit, canDelete }: Props) {
+export default function LeadyPageClient({ leady, users, novychCount, currentUserId, canEdit, canDelete, zdrojPovinny }: Props) {
   const router = useRouter()
   const { values: f, set, reset, activeCount } = useUrlFilters({ q: '', status: 'all', zdroj: 'all', obchodnik: 'all' })
   const search = f.q
@@ -92,7 +95,7 @@ export default function LeadyPageClient({ leady, users, novychCount, currentUser
     ...Object.entries(STATUS_LABELS).map(([k, v]) => ({ value: k, label: v })),
   ]
   const zdrojOptions = [
-    { value: 'all', label: 'Všechny zdroje' },
+    { value: 'all', label: 'Všechny kanály' },
     ...Object.entries(ZDROJ_LABELS).map(([k, v]) => ({ value: k, label: v })),
   ]
   const assignedOptions = [
@@ -316,6 +319,7 @@ export default function LeadyPageClient({ leady, users, novychCount, currentUser
       {showModal && (
         <AddLeadModal
           users={users}
+          zdrojPovinny={zdrojPovinny}
           onClose={() => setShowModal(false)}
           onCreated={id => { setShowModal(false); router.refresh(); router.push(`/leady/${id}`) }}
         />
@@ -324,8 +328,9 @@ export default function LeadyPageClient({ leady, users, novychCount, currentUser
   )
 }
 
-function AddLeadModal({ users, onClose, onCreated }: {
+function AddLeadModal({ users, zdrojPovinny, onClose, onCreated }: {
   users: User[]
+  zdrojPovinny: boolean
   onClose: () => void
   onCreated: (id: string) => void
 }) {
@@ -335,9 +340,15 @@ function AddLeadModal({ users, onClose, onCreated }: {
     jmeno: '', email: '', telefon: '', firma: '', zprava: '',
     assignedToId: '', odhadovanaHodnota: '',
   })
+  const [zdroj, setZdroj] = useState<ZdrojHodnota>(PRAZDNY_ZDROJ)
+  const [zdrojChyba, setZdrojChyba] = useState<string | null>(null)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (zdrojPovinny && !zdroj.zdrojPoptavkyId) {
+      setZdrojChyba('Vyberte, odkud o nás zákazník ví')
+      return
+    }
     setSaving(true)
     try {
       const res = await fetch('/api/leady', {
@@ -347,6 +358,7 @@ function AddLeadModal({ users, onClose, onCreated }: {
           ...form,
           assignedToId: form.assignedToId || null,
           odhadovanaHodnota: form.odhadovanaHodnota.replace(/\s/g, '').replace(',', '.') || null,
+          ...zdrojPayload(zdroj),
         }),
       })
       if (!res.ok) {
@@ -391,6 +403,12 @@ function AddLeadModal({ users, onClose, onCreated }: {
             <Input kind="tel" value={form.telefon} onChange={e => set('telefon', e.target.value)} />
           </Field>
         </div>
+        <ZdrojPoptavkyPole
+          value={zdroj}
+          onChange={v => { setZdroj(v); setZdrojChyba(null) }}
+          required={zdrojPovinny}
+          error={zdrojChyba}
+        />
         <Field label="Zpráva / poptávka">
           <Textarea rows={3} value={form.zprava} onChange={e => set('zprava', e.target.value)} />
         </Field>

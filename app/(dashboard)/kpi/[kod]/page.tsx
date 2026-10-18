@@ -81,6 +81,33 @@ export default async function KpiDetailPage({ params, searchParams }: {
         </section>
       )}
 
+      {k.rozpad && (
+        <section aria-labelledby="rozpad" className="rounded-xl border border-line bg-surface">
+          <div className="px-4 py-3 border-b border-line">
+            <h2 id="rozpad" className="text-sm font-semibold text-fg">{k.rozpad.nadpis}</h2>
+            <p className="text-xs text-muted">{mesicLabel(k.zaznamyMesic)}{k.rozpad.poznamka ? ` · ${k.rozpad.poznamka}` : ''}</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-xs text-muted text-right">
+                  <th scope="col" className="px-4 py-2 text-left font-medium">Zdroj</th>
+                  {k.rozpad.sloupce.map(c => <th key={c} scope="col" className="px-3 py-2 font-medium whitespace-nowrap">{c}</th>)}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {k.rozpad.radky.map(r => (
+                  <tr key={r.klic || 'bez'} className="text-right">
+                    <th scope="row" className={cn('px-4 py-2 text-left font-medium whitespace-nowrap', r.klic ? 'text-fg' : 'text-muted')}>{r.nazev}</th>
+                    {r.hodnoty.map((h, i) => <td key={i} className="px-3 py-2 text-fg whitespace-nowrap tabular-nums">{h}</td>)}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
       {k.def.dostupne ? (
         <section aria-labelledby="zaznamy" className="rounded-xl border border-line bg-surface">
           <div className="px-4 py-3 border-b border-line">

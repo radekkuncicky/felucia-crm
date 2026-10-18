@@ -57,13 +57,13 @@ export const KPI_DEFS: KpiDef[] = [
   },
   {
     kod: 'KONVERZE', cislo: 6, nazev: 'Konverze leadů', jednotka: '%', smer: 'VYSSI', vychoziCil: null,
-    popis: 'Vyhrané obchodní případy / leady podle měsíce vzniku leadu. Rozpad podle zdroje přijde s evidencí zdroje (fáze 2).',
+    popis: 'Vyhrané obchodní případy / leady podle měsíce vzniku leadu, v detailu rozpad podle zdroje poptávky.',
     granularita: 'MESIC', faze: 1, dostupne: true,
   },
   {
     kod: 'ADS_CENA', cislo: 7, nazev: 'Cena za případ z Google Ads', jednotka: 'Kč', smer: 'NIZSI', vychoziCil: null,
     popis: 'Měsíční útrata za Google Ads / vyhrané případy se zdrojem Google Ads.',
-    granularita: 'MESIC', faze: 3, dostupne: false, chybi: 'Zdroj poptávky (fáze 2) a měsíční útrata za Ads (fáze 3).',
+    granularita: 'MESIC', faze: 3, dostupne: false, chybi: 'Měsíční útrata za Google Ads (fáze 3). Zdroj poptávky už se eviduje.',
   },
   {
     kod: 'PARTY', cislo: 8, nazev: 'Dokončené zakázky', jednotka: 'ks', smer: 'VYSSI', vychoziCil: null,

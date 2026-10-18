@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit'
 import { notifyNewLead } from '@/lib/leadNotify'
+import { orgPrisma } from '@/lib/orgPrisma'
+import { jeZGoogleAds, zdrojIdPodleKodu, ZDROJ_GOOGLE_ADS } from '@/lib/zdrojPoptavky'
 
 const MAX_BODY_BYTES = 32 * 1024
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -167,6 +169,11 @@ export async function POST(req: NextRequest) {
   const attachmentsCount = typeof body.attachmentsInfo?.count === 'number' ? body.attachmentsInfo.count : null
   const attachmentsNote = typeof body.attachmentsInfo?.note === 'string' ? body.attachmentsInfo.note.trim().slice(0, 300) : null
   const pageUrl = typeof body.meta?.pageUrl === 'string' ? body.meta.pageUrl.trim().slice(0, 500) : null
+  // Google Ads podle gclid/UTM (meta.gclid, meta.utm_* nebo parametry v pageUrl); jinak bez zdroje
+  const meta = body.meta && typeof body.meta === 'object' ? (body.meta as Record<string, unknown>) : null
+  const zdrojPoptavkyId = jeZGoogleAds(pageUrl, meta, typeof meta?.landingUrl === 'string' ? meta.landingUrl : null)
+    ? await zdrojIdPodleKodu(orgPrisma(apiKey.orgId), apiKey.orgId, ZDROJ_GOOGLE_ADS)
+    : null
 
   const lead = await prisma.lead.create({
     data: {
@@ -182,6 +189,7 @@ export async function POST(req: NextRequest) {
       sluzba: service,
       zdrojFormulare: source,
       strankaUrl: pageUrl,
+      zdrojPoptavkyId,
       prilohy: attachmentsCount
         ? `${attachmentsCount}${attachmentsNote ? ` — ${attachmentsNote}` : ''}`
         : null,

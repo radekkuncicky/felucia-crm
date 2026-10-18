@@ -8,6 +8,17 @@ import { getPlanLimits } from './planLimits'
 import { logAction } from './auditLog'
 
 /**
+ * Datum výhry OP při změně stavu (KPI 6 počítá vyhrané OP podle měsíce výhry):
+ * přechod na USPECH ho nastaví, odchod z USPECH smaže, jinak beze změny.
+ */
+export function vyhranoPriZmene(stary: string, novy: string | undefined): { vyhrano?: Date | null } {
+  if (!novy || novy === stary) return {}
+  if (novy === 'USPECH') return { vyhrano: new Date() }
+  if (stary === 'USPECH') return { vyhrano: null }
+  return {}
+}
+
+/**
  * Přechod OP na USPECH po podpisu smlouvy (na místě i na dálku) — stejné
  * vedlejší efekty jako ruční přechod na webu: zakázka, volitelně zařízení
  * (automatickyServis), zvonky adminům a vlastníkovi. Kontrola povinné
@@ -34,7 +45,7 @@ export async function prevedDealNaUspechPoPodpisu(params: {
 
   await db.deal.update({
     where: { id: dealId },
-    data: { stav: 'USPECH', duvodProhry: null, duvodProhryKod: null },
+    data: { stav: 'USPECH', duvodProhry: null, duvodProhryKod: null, vyhrano: new Date() },
   })
 
   const zakazka = await createZakazkaFromDeal(dealId, orgId, userId ?? deal.userId)

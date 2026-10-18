@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
+import { jeZGoogleAds, zdrojIdPodleKodu, ZDROJ_GOOGLE_ADS } from '@/lib/zdrojPoptavky'
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit'
 import { notifyNewLead } from '@/lib/leadNotify'
 
@@ -90,10 +92,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Pole jmeno (nebo firma) je povinné.' }, { status: 400 })
   }
 
+  // Google Ads podle gclid / utm_* v těle (stránku formulář neposílá)
+  const zdrojPoptavkyId = jeZGoogleAds(body)
+    ? await zdrojIdPodleKodu(orgPrisma(apiKey.orgId), apiKey.orgId, ZDROJ_GOOGLE_ADS)
+    : null
+
   const lead = await prisma.lead.create({
     data: {
       orgId: apiKey.orgId,
       jmeno: fullName,
+      zdrojPoptavkyId,
       email: email || null,
       telefon: telefon || null,
       firma: firma || null,

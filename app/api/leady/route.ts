@@ -3,6 +3,8 @@ import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { getPerms, forbidden } from '@/lib/permissions'
+import { parseZdroj } from '@/lib/zdrojPoptavky'
+import { getOrgSettings } from '@/lib/orgSettings'
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
@@ -16,12 +18,14 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
   const status = searchParams.get('status')
   const zdroj = searchParams.get('zdroj')
+  const zdrojPoptavkyId = searchParams.get('zdrojPoptavkyId')
   const assignedToId = searchParams.get('assignedToId')
   const search = searchParams.get('search')
 
   const where: Record<string, unknown> = { orgId }
   if (status) where.status = status
   if (zdroj) where.zdroj = zdroj
+  if (zdrojPoptavkyId) where.zdrojPoptavkyId = zdrojPoptavkyId === 'bez' ? null : zdrojPoptavkyId
   if (assignedToId) where.assignedToId = assignedToId
   if (search) {
     where.OR = [
@@ -55,6 +59,12 @@ export async function POST(req: Request) {
   const orgId = session.user.orgId
   const db = orgPrisma(orgId)
   const body = await req.json()
+  const zdroj = await parseZdroj(db, orgId, body)
+  if (typeof zdroj === 'string') return NextResponse.json({ error: zdroj }, { status: 400 })
+  // R11: s modulem KPI je zdroj u ručně zadaného leadu povinný
+  if (!zdroj.zdrojPoptavkyId && (await getOrgSettings(orgId)).modulKpi) {
+    return NextResponse.json({ error: 'Vyberte, odkud o nás zákazník ví' }, { status: 400 })
+  }
 
   const lead = await db.lead.create({
     data: {
@@ -69,6 +79,7 @@ export async function POST(req: Request) {
       assignedToId: body.assignedToId || null,
       odhadovanaHodnota: body.odhadovanaHodnota ? parseFloat(body.odhadovanaHodnota) : null,
       tagy: body.tagy || [],
+      ...zdroj,
     },
   })
 

@@ -313,6 +313,12 @@ DROP POLICY IF EXISTS org_rls ON "zarizeni";
 CREATE POLICY org_rls ON "zarizeni" FOR ALL TO nanto_app
   USING ("orgId" = current_setting('app.org_id', true)) WITH CHECK ("orgId" = current_setting('app.org_id', true));
 
+-- ZdrojPoptavky
+ALTER TABLE "zdroje_poptavky" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_rls ON "zdroje_poptavky";
+CREATE POLICY org_rls ON "zdroje_poptavky" FOR ALL TO nanto_app
+  USING ("orgId" = current_setting('app.org_id', true)) WITH CHECK ("orgId" = current_setting('app.org_id', true));
+
 -- CenikPolozka (přes cenikId → ceniky)
 ALTER TABLE "cenik_polozky" ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS org_rls ON "cenik_polozky";

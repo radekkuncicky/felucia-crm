@@ -6,7 +6,8 @@
  */
 import type { OrgPrismaClient } from '../orgPrisma'
 import type { KpiKod } from './registry'
-import { formatKc } from '../format'
+import { formatCislo, formatKc } from '../format'
+import { quoteCelkemBezDph } from '../quoteMath'
 import { HISTORIE_OD, datumPraha, mesicKlic, mesicRozsah } from './obdobi'
 
 export interface KpiBod {
@@ -25,9 +26,18 @@ export interface KpiZaznam {
   href: string
 }
 
+/** Tabulka rozpadu hodnoty za měsíc (např. KPI 6 podle zdroje poptávky) */
+export interface KpiRozpad {
+  nadpis: string
+  sloupce: string[]
+  radky: { klic: string; nazev: string; hodnoty: string[] }[]
+  poznamka?: string
+}
+
 export interface KpiPocitadlo {
   trend(db: OrgPrismaClient, orgId: string, mesice: string[]): Promise<KpiBod[]>
   zaznamy(db: OrgPrismaClient, orgId: string, mesic: string): Promise<KpiZaznam[]>
+  rozpad?(db: OrgPrismaClient, orgId: string, mesic: string): Promise<KpiRozpad>
   /** Nadpis seznamu záznamů v detailu */
   zaznamyNadpis: string
   /** Poznámka k hodnotě (omezení dat ve fázi 1) */
@@ -57,10 +67,62 @@ const DEAL_STAV: Record<string, string> = {
   USPECH: 'vyhráno', PAS: 'prohráno', ZNEPLATNENO: 'zneplatněno',
 }
 
+const BEZ_ZDROJE = 'Neuvedeno'
+const procento = (a: number, b: number) => (b ? `${formatCislo(Math.round((a / b) * 1000) / 10)} %` : '—')
+
+/** Hodnota OP bez DPH z aktivní nabídky (fallback staré položky bez nabídky) — jako seznam OP */
+function hodnotaOp(d: { quotes: { items: Polozka[] }[]; quoteItems: Polozka[] }) {
+  return quoteCelkemBezDph(d.quotes[0]?.items ?? d.quoteItems)
+}
+type Polozka = { mnozstvi: unknown; cenaZaKus: unknown; sleva: unknown }
+const POLOZKY = { select: { mnozstvi: true, cenaZaKus: true, sleva: true } } as const
+
 /** KPI 6 — vyhrané OP / leady podle měsíce vzniku leadu (R12) */
 const konverze: KpiPocitadlo = {
   zaznamyNadpis: 'Leady měsíce, které nevedly k vyhranému případu',
-  poznamka: 'Poslední měsíce se ještě dopočítávají — od poptávky k podpisu trvá týdny.',
+  poznamka: 'Poslední měsíce se ještě dopočítávají — od poptávky k podpisu trvá týdny. Zdroj poptávky se eviduje od října 2026.',
+  /**
+   * Podle zdroje: konverze leadů vzniklých v měsíci (zdroj leadu) a vyhrané OP
+   * podle měsíce výhry (zdroj OP, Q18) — většina OP vzniká bez leadu.
+   */
+  async rozpad(db, orgId, mesic) {
+    const { od, do: doD } = mesicRozsah(mesic)
+    const [zdroje, leady, vyhrane] = await Promise.all([
+      db.zdrojPoptavky.findMany({ where: { orgId }, select: { id: true, nazev: true }, orderBy: { poradi: 'asc' } }),
+      db.lead.findMany({
+        where: { orgId, vytvoreno: { gte: od, lt: doD } },
+        select: { zdrojPoptavkyId: true, prevedenNaOp: { select: { stav: true } } },
+      }),
+      db.deal.findMany({
+        where: { orgId, stav: 'USPECH', vyhrano: { gte: od, lt: doD } },
+        select: {
+          zdrojPoptavkyId: true,
+          quotes: { where: { aktivni: true }, select: { items: POLOZKY } },
+          quoteItems: { where: { quoteId: null }, ...POLOZKY },
+        },
+      }),
+    ])
+    const radky = [...zdroje.map(z => ({ klic: z.id, nazev: z.nazev })), { klic: '', nazev: BEZ_ZDROJE }].map(z => {
+      const l = leady.filter(x => (x.zdrojPoptavkyId ?? '') === z.klic)
+      const lVyhrano = l.filter(x => x.prevedenNaOp?.stav === 'USPECH').length
+      const op = vyhrane.filter(x => (x.zdrojPoptavkyId ?? '') === z.klic)
+      return {
+        ...z,
+        pocty: [l.length, op.length],
+        hodnoty: [
+          String(l.length), String(lVyhrano), procento(lVyhrano, l.length),
+          String(op.length), formatKc(op.reduce((s, d) => s + hodnotaOp(d), 0)),
+        ],
+      }
+    })
+    return {
+      nadpis: 'Podle zdroje poptávky',
+      sloupce: ['Leady', 'Z nich vyhráno', 'Konverze', 'Vyhrané OP v měsíci', 'Hodnota bez DPH'],
+      // Prázdné zdroje skrýt, „Neuvedeno“ ukázat vždy (ukazuje mezeru v evidenci)
+      radky: radky.filter(r => r.klic === '' || r.pocty.some(Boolean)).map(({ klic, nazev, hodnoty }) => ({ klic, nazev, hodnoty })),
+      poznamka: 'Leady podle měsíce vzniku a zdroje leadu, vyhrané OP podle data výhry a zdroje OP (hodnota z aktivní nabídky).',
+    }
+  },
   async trend(db, orgId, mesice) {
     const { od, do: doD } = rozsahMesicu(mesice)
     const leady = await db.lead.findMany({
@@ -82,13 +144,16 @@ const konverze: KpiPocitadlo = {
     const { od, do: doD } = mesicRozsah(mesic)
     const leady = await db.lead.findMany({
       where: { orgId, vytvoreno: { gte: od, lt: doD }, NOT: { prevedenNaOp: { stav: 'USPECH' } } },
-      select: { id: true, jmeno: true, firma: true, status: true, sluzba: true, prevedenNaOp: { select: { stav: true } } },
+      select: {
+        id: true, jmeno: true, firma: true, status: true, sluzba: true,
+        prevedenNaOp: { select: { stav: true } }, zdrojPoptavky: { select: { nazev: true } },
+      },
       orderBy: { vytvoreno: 'asc' },
     })
     return leady.map(l => ({
       id: l.id,
       titulek: l.firma ? `${l.jmeno} (${l.firma})` : l.jmeno,
-      popis: [LEAD_STATUS[l.status] ?? l.status, l.prevedenNaOp ? `OP: ${DEAL_STAV[l.prevedenNaOp.stav] ?? l.prevedenNaOp.stav}` : null, l.sluzba]
+      popis: [LEAD_STATUS[l.status] ?? l.status, l.prevedenNaOp ? `OP: ${DEAL_STAV[l.prevedenNaOp.stav] ?? l.prevedenNaOp.stav}` : null, l.zdrojPoptavky?.nazev, l.sluzba]
         .filter(Boolean).join(' · '),
       href: `/leady/${l.id}`,
     }))

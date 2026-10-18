@@ -7,6 +7,8 @@ import Link from 'next/link'
 import { techLabels, zakazkaStavLabels } from '@/lib/constants'
 import DealTabs from './DealTabs'
 import DealEditForm from './DealEditForm'
+import DealZdrojCard from './DealZdrojCard'
+import { zdrojHodnota } from '@/lib/zdrojPoptavkyHodnota'
 import DealStatusBadge from './DealStatusBadge'
 import ActivitiesSection from './ActivitiesSection'
 import DealActions from './DealActions'
@@ -57,6 +59,8 @@ export default async function DealDetailPage({
         client: true,
         user: true,
         organization: true,
+        zdrojPoptavky: { select: { nazev: true } },
+        doporucilKlient: { select: { jmeno: true, prijmeni: true } },
         quotes: {
           include: { items: { include: { product: true }, orderBy: { poradi: 'asc' } } },
           orderBy: { vytvoreno: 'asc' },
@@ -343,6 +347,13 @@ export default async function DealDetailPage({
                 <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase mb-1">DPH sazba</p>
                 <p className="font-medium text-gray-900 dark:text-white">{deal.dphSazba} %</p>
               </div>
+              <DealZdrojCard
+                dealId={deal.id}
+                nazev={deal.zdrojPoptavky?.nazev ?? null}
+                doporucil={deal.doporucilKlient ? `${deal.doporucilKlient.jmeno} ${deal.doporucilKlient.prijmeni}`.trim() : deal.doporucilText}
+                hodnota={zdrojHodnota(deal)}
+                canEdit={perms.obchod}
+              />
             </div>
 
             {/* Active quote stats */}

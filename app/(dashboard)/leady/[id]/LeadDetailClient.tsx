@@ -9,11 +9,12 @@ import { formatDate, formatKcPresne } from '@/lib/format'
 import { confirmDialog } from '@/components/ui/confirm'
 import { Dialog } from '@/components/ui/Dialog'
 import { Button } from '@/components/ui/Button'
-import { Field, Input, Select } from '@/components/ui/Field'
+import { Field, Input, Select, Textarea } from '@/components/ui/Field'
 import { api } from '@/lib/api'
 import { leadPredmet, sluzbaLabel, sluzbaToTechnologie } from '@/lib/leadService'
 import LeadAktivity, { type LeadActivity } from './LeadAktivity'
 import ZapsatHovorDialog from '@/components/ZapsatHovorDialog'
+import ZdrojPoptavkyPole, { zdrojHodnota, zdrojPayload, type ZdrojHodnota } from '@/components/ZdrojPoptavkyPole'
 
 interface LeadNote {
   id: string
@@ -29,6 +30,10 @@ interface Lead {
   telefon: string | null
   firma: string | null
   zdroj: LeadZdroj
+  zdrojPoptavkyId: string | null
+  doporucilKlientId: string | null
+  doporucilText: string | null
+  doporucilKlient: { id: string; jmeno: string; prijmeni: string } | null
   status: LeadStatus
   zprava: string | null
   sluzba: string | null
@@ -104,6 +109,16 @@ export default function LeadDetailClient({ lead: initialLead, users, currentUser
   const [savingStatus, setSavingStatus] = useState(false)
 
   const isClosed = lead.status === 'PREVEDEN' || lead.status === 'ZRUSEN'
+  const [zdroj, setZdroj] = useState<ZdrojHodnota>(() => zdrojHodnota(initialLead))
+  const [zdrojUlozeny, setZdrojUlozeny] = useState(() => JSON.stringify(zdrojPayload(zdrojHodnota(initialLead))))
+  const zdrojZmenen = JSON.stringify(zdrojPayload(zdroj)) !== zdrojUlozeny
+  const [savingZdroj, setSavingZdroj] = useState(false)
+
+  async function ulozZdroj() {
+    setSavingZdroj(true)
+    if (await patch(zdrojPayload(zdroj))) setZdrojUlozeny(JSON.stringify(zdrojPayload(zdroj)))
+    setSavingZdroj(false)
+  }
 
   async function patch(data: Record<string, unknown>) {
     const res = await fetch(`/api/leady/${lead.id}`, {
@@ -120,6 +135,7 @@ export default function LeadDetailClient({ lead: initialLead, users, currentUser
       const body = await res.json().catch(() => null)
       toast.error(body?.error ?? 'Uložení se nezdařilo')
     }
+    return res.ok
   }
 
   async function handleDelete() {
@@ -442,6 +458,15 @@ export default function LeadDetailClient({ lead: initialLead, users, currentUser
             )}
           </div>
 
+          {/* Zdroj poptávky (KPI 6) — jde doplnit i u uzavřeného leadu */}
+          <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-4 space-y-3">
+            <h3 className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide">Zdroj poptávky</h3>
+            <ZdrojPoptavkyPole value={zdroj} onChange={setZdroj} disabled={!canEdit} />
+            {canEdit && zdrojZmenen && (
+              <Button size="sm" onClick={ulozZdroj} loading={savingZdroj}>Uložit zdroj</Button>
+            )}
+          </div>
+
           {/* 6. Odhadovaná hodnota */}
           <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl p-4">
             <h3 className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-3">Odhadovaná hodnota</h3>
@@ -507,7 +532,7 @@ export default function LeadDetailClient({ lead: initialLead, users, currentUser
                 <span className="text-gray-800 dark:text-slate-200 font-medium">{formatDate(lead.updatedAt)}</span>
               </div>
               <div className="flex justify-between py-1">
-                <span className="text-gray-500 dark:text-slate-400">Zdroj</span>
+                <span className="text-gray-500 dark:text-slate-400">Kanál</span>
                 <span className="text-gray-800 dark:text-slate-200 font-medium">{ZDROJ_LABELS[lead.zdroj]}</span>
               </div>
               {lead.zdrojFormulare && (
@@ -749,41 +774,18 @@ function CancelModal({ leadId, onClose, onCancelled }: {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 shadow-xl rounded-xl w-full max-w-md">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-slate-700">
-          <h2 className="text-base font-semibold text-gray-900 dark:text-white">Zamítnout lead</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-700 dark:text-white/60 dark:hover:text-white transition-colors">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-        <div className="p-6 space-y-4">
-          <div>
-            <label className="block text-xs text-gray-500 dark:text-white/65 mb-1">Důvod zamítnutí (volitelné)</label>
-            <textarea
-              rows={3}
-              value={reason}
-              onChange={e => setReason(e.target.value)}
-              placeholder="Proč se lead zamítá?"
-              className="w-full px-3 py-2 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-lg text-sm text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-slate-500 focus:outline-none focus:border-red-500/50 resize-none"
-            />
-          </div>
-          <div className="flex justify-end gap-3">
-            <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 dark:text-gray-500 dark:text-white/65 dark:hover:text-white transition-colors">
-              Zpět
-            </button>
-            <button
-              onClick={handleCancel}
-              disabled={saving}
-              className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
-            >
-              {saving ? 'Ukládám...' : 'Zamítnout lead'}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    <Dialog
+      open
+      onClose={onClose}
+      title="Zamítnout lead"
+      footer={<>
+        <Button variant="secondary" onClick={onClose}>Zpět</Button>
+        <Button variant="danger" onClick={handleCancel} loading={saving}>Zamítnout lead</Button>
+      </>}
+    >
+      <Field label="Důvod zamítnutí" hint="Volitelné">
+        <Textarea rows={3} value={reason} onChange={e => setReason(e.target.value)} placeholder="Proč se lead zamítá?" />
+      </Field>
+    </Dialog>
   )
 }

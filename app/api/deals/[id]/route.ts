@@ -7,6 +7,8 @@ import { getOrgSettings } from '@/lib/orgSettings'
 import { getPlanLimits } from '@/lib/planLimits'
 import { NextResponse } from 'next/server'
 import { logAction } from '@/lib/auditLog'
+import { vyhranoPriZmene } from '@/lib/dealUspech'
+import { parseZdroj } from '@/lib/zdrojPoptavky'
 import { createNotification } from '@/lib/createNotification'
 import { createZakazkaFromDeal } from '@/lib/zakazkaWorkflow'
 import { dealScopeWhere, forbidden, getPerms } from '@/lib/permissions'
@@ -38,6 +40,9 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     if (!assignedUser) return NextResponse.json({ error: 'Uživatel nenalezen' }, { status: 400 })
   }
 
+  const zdroj = await parseZdroj(db, orgId, body)
+  if (typeof zdroj === 'string') return NextResponse.json({ error: zdroj }, { status: 400 })
+
   // Check povinnaAktivitaUOP if transitioning to USPECH
   if (body.stav === 'USPECH' && deal.stav !== 'USPECH') {
     const orgSettings = await getOrgSettings(orgId)
@@ -65,6 +70,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       poznamky: body.poznamky !== undefined ? body.poznamky : deal.poznamky,
       duvodProhry: body.duvodProhry !== undefined ? body.duvodProhry : deal.duvodProhry,
       userId: body.userId !== undefined ? (body.userId || null) : deal.userId,
+      ...vyhranoPriZmene(deal.stav, body.stav),
+      ...zdroj,
     },
   })
 

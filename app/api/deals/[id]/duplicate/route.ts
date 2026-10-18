@@ -50,6 +50,9 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       kontaktniOsoba: deal.kontaktniOsoba,
       kontaktniTelefon: deal.kontaktniTelefon,
       poznamky: deal.poznamky,
+      zdrojPoptavkyId: deal.zdrojPoptavkyId,
+      doporucilKlientId: deal.doporucilKlientId,
+      doporucilText: deal.doporucilText,
       quoteItems: {
         create: deal.quoteItems.map((item) => ({
           productId: item.productId,

@@ -133,6 +133,9 @@ export async function POST(req: Request, { params }: { params: { id: string } })
             technologie,
             stav: 'NOVY',
             predmet,
+            zdrojPoptavkyId: lead.zdrojPoptavkyId,
+            doporucilKlientId: lead.doporucilKlientId,
+            doporucilText: lead.doporucilText,
           },
         })
         await tx.lead.update({

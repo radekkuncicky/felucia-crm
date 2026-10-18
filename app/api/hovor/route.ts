@@ -10,6 +10,7 @@ import { checkDealLimit } from '@/lib/checkPlanLimit'
 import { createWithUniqueKod } from '@/lib/uniqueKod'
 import { generateDealKod } from '@/lib/dealKod'
 import { logAction } from '@/lib/auditLog'
+import { parseZdroj, type ZdrojVstup } from '@/lib/zdrojPoptavky'
 
 const TECHNOLOGIE = new Set<string>(Object.values(Technologie))
 const CILE = ['OP', 'LEAD', 'NOVY_OP'] as const
@@ -57,6 +58,10 @@ export async function POST(req: Request) {
     splneno: true,
   }
 
+  // Zdroj poptávky u nového leadu / nového OP (KPI 6)
+  const zdroj = await parseZdroj(db, orgId, body)
+  if (typeof zdroj === 'string') return NextResponse.json({ error: zdroj }, { status: 400 })
+
   const telefon = str(body.telefon)
   const jmeno = str(body.jmeno)
   const firma = str(body.firma)
@@ -98,7 +103,7 @@ export async function POST(req: Request) {
             data: {
               orgId, jmeno: jmeno ?? firma!, firma, telefon, email,
               zdroj: 'RUCNE', status: 'KONTAKTOVAN', assignedToId: userId,
-              zprava: hovor.vysledek,
+              zprava: hovor.vysledek, ...zdroj,
             },
             select: { id: true, status: true },
           })
@@ -122,9 +127,17 @@ export async function POST(req: Request) {
   }
   if (!clientIdVstup && !jmeno && !firma) return NextResponse.json({ error: 'Vyplňte jméno volajícího' }, { status: 400 })
   const leadId = str(body.leadId)
+  let zdrojOp: Partial<ZdrojVstup> = zdroj
   if (leadId) {
-    const lead = await db.lead.findFirst({ where: { id: leadId, orgId }, select: { status: true } })
+    const lead = await db.lead.findFirst({
+      where: { id: leadId, orgId },
+      select: { status: true, zdrojPoptavkyId: true, doporucilKlientId: true, doporucilText: true },
+    })
     if (!lead || leadUzavren(lead.status)) return NextResponse.json({ error: 'Lead nenalezen nebo je uzavřený' }, { status: 404 })
+    // Převod leadu: OP převezme zdroj leadu, pokud ho dialog nezadal
+    if (!zdroj.zdrojPoptavkyId) {
+      zdrojOp = { zdrojPoptavkyId: lead.zdrojPoptavkyId, doporucilKlientId: lead.doporucilKlientId, doporucilText: lead.doporucilText }
+    }
   }
   if (!(await checkDealLimit(orgId))) {
     return NextResponse.json({
@@ -146,7 +159,7 @@ export async function POST(req: Request) {
           select: { id: true },
         })).id
         const deal = await tx.deal.create({
-          data: { orgId, clientId, userId, kod, technologie, stav: 'NOVY', predmet: str(body.predmet) },
+          data: { orgId, clientId, userId, kod, technologie, stav: 'NOVY', predmet: str(body.predmet), ...zdrojOp },
           select: { id: true, kod: true, predmet: true },
         })
         if (leadId) {

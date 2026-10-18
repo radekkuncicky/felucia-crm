@@ -62,6 +62,7 @@ export const TENANT_MODELS = new Set([
   'Objednavka',
   'ObjednavkaPolozka',
   'KpiNastaveni',
+  'ZdrojPoptavky',
 ])
 
 // where přes AND: pokud volající pošle vlastní orgId, podmínky se sečtou —

@@ -7,6 +7,7 @@ import { NextResponse } from 'next/server'
 import { Technologie, StavDealu } from '@prisma/client'
 import { checkDealLimit } from '@/lib/checkPlanLimit'
 import { logAction } from '@/lib/auditLog'
+import { parseZdroj } from '@/lib/zdrojPoptavky'
 import { createNotification } from '@/lib/createNotification'
 import { createWithUniqueKod } from '@/lib/uniqueKod'
 import { generateDealKod } from '@/lib/dealKod'
@@ -78,6 +79,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Chybí povinná pole' }, { status: 400 })
   }
   if (!(await isOwned(db, 'client', clientId))) return NextResponse.json({ error: 'Klient nenalezen' }, { status: 404 })
+  const zdroj = await parseZdroj(db, orgId, body)
+  if (typeof zdroj === 'string') return NextResponse.json({ error: zdroj }, { status: 400 })
 
   const canCreate = await checkDealLimit(orgId)
   if (!canCreate) {
@@ -99,6 +102,7 @@ export async function POST(req: Request) {
         technologie: technologie as Technologie,
         stav: StavDealu.NOVY,
         predmet: predmet || null,
+        ...zdroj,
       },
     }),
   )

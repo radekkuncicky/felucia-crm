@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/Button'
 import { Field, Input, Select, Textarea } from '@/components/ui/Field'
 import { TECHNOLOGIE_LABEL, addDaysStr } from '@/lib/calendarEvents'
 import type { HovorShody } from '@/lib/zapisHovoru'
+import ZdrojPoptavkyPole, { PRAZDNY_ZDROJ, zdrojPayload } from '@/components/ZdrojPoptavkyPole'
 
 /**
  * „Zapsat hovor" — telefon → kdo volá (klient s OP / lead) → kam hovor zapsat
@@ -57,6 +58,7 @@ export default function ZapsatHovorDialog({ open, onClose, predvyplneni }: {
   const [poznamka, setPoznamka] = useState('')
   const [technologie, setTechnologie] = useState('')
   const [predmet, setPredmet] = useState('')
+  const [zdroj, setZdroj] = useState(PRAZDNY_ZDROJ)
   const [dalsiTyp, setDalsiTyp] = useState<DalsiTyp>('')
   const [dalsiDatum, setDalsiDatum] = useState(addDaysStr(dnes(), 1))
   const [dalsiPopis, setDalsiPopis] = useState('')
@@ -100,6 +102,8 @@ export default function ZapsatHovorDialog({ open, onClose, predvyplneni }: {
   const cil = moznosti[Math.min(vybrano, moznosti.length - 1)]
   const novyKontakt = (cil.cil === 'LEAD' && !cil.leadId) || (cil.cil === 'NOVY_OP' && !cil.clientId && !cil.leadId)
   const naLeadu = cil.cil === 'LEAD'
+  // Zdroj poptávky jen u nově vznikajícího leadu / OP (převod leadu převezme jeho zdroj)
+  const zadatZdroj = (cil.cil === 'LEAD' || cil.cil === 'NOVY_OP') && !cil.leadId
   const dalsiTypy = (Object.keys(DALSI_LABEL) as Exclude<DalsiTyp, ''>[]).filter(t => !naLeadu || t !== 'SCHUZKA')
   const shodaCelkem = (shody?.klienti.length ?? 0) + (maLeady ? shody?.leady.length ?? 0 : 0)
 
@@ -109,7 +113,7 @@ export default function ZapsatHovorDialog({ open, onClose, predvyplneni }: {
 
   function reset() {
     setTelefon(''); setShody(null); setVybrano(0); setJmeno(''); setFirma(''); setSmer('PRICHOZI')
-    setPoznamka(''); setTechnologie(''); setPredmet(''); setDalsiTyp(''); setDalsiDatum(addDaysStr(dnes(), 1)); setDalsiPopis('')
+    setPoznamka(''); setTechnologie(''); setPredmet(''); setZdroj(PRAZDNY_ZDROJ); setDalsiTyp(''); setDalsiDatum(addDaysStr(dnes(), 1)); setDalsiPopis('')
   }
 
   function zavrit() {
@@ -133,6 +137,7 @@ export default function ZapsatHovorDialog({ open, onClose, predvyplneni }: {
         poznamka: poznamka || null,
         technologie: cil.cil === 'NOVY_OP' ? technologie : undefined,
         predmet: cil.cil === 'NOVY_OP' ? predmet || null : undefined,
+        ...(zadatZdroj ? zdrojPayload(zdroj) : {}),
         dalsiKrok: dalsiTyp ? { typ: dalsiTyp, datum: new Date(`${dalsiDatum}T08:00:00`).toISOString(), popis: dalsiPopis || null } : null,
       })
       if (!res.ok || !res.data) return
@@ -229,6 +234,8 @@ export default function ZapsatHovorDialog({ open, onClose, predvyplneni }: {
             </Field>
           </div>
         )}
+
+        {zadatZdroj && <ZdrojPoptavkyPole value={zdroj} onChange={setZdroj} />}
 
         <Field label="Poznámka k hovoru" hint="Co chtěl, na čem jste se domluvili">
           <Textarea rows={3} value={poznamka} onChange={e => setPoznamka(e.target.value)} />
