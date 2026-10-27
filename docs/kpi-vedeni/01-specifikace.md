@@ -124,6 +124,19 @@ Radkovo rozhodnutí.
   **„Výdej bez zakázky“** s kategorií (Provozní spotřeba / Jiné) a povinným důvodem. KPI 5 počítá
   výdeje mimo provozní spotřebu. Korekce zůstávají inventurou a do KPI nevstupují.
 
+- **R24 (Q1, 2026-10-13):** faktury a úhrady **jen z ABRA Flexi** (varianta b), žádné ruční
+  zadávání v CRM. Krok „Faktury + úhrady“ se přesouvá z fáze 2 do 3b. Fáze 2 začíná zdrojem
+  poptávky; KPI 1, 2, procento KPI 5 a tržby v KPI 4 čekají na přístupy do ABRA.
+
+- **R25 (Q18–Q20, Q22, Q23, 2026-10-18):**
+  - Q18: vyhrané OP podle zdroje se počítají podle **měsíce výhry** (`Deal.vyhrano`).
+  - Q19: kdo doporučil = **výběr klienta i volný text**.
+  - Q20: web formulář zdroj **nevynucuje**. Google Ads se pozná z konverzních stop
+    (gclid / gbraid / wbraid, utm_source=google + placené medium). Jinak zůstane prázdný
+    („Neuvedeno“). Zpětně se nedoplňuje.
+  - Q22: zakázka se 3 etapami = **3 dokončení** (3 předávací protokoly).
+  - Q23: party **zpětně nepřiřazovat**, platí od nasazení.
+
 ## 1. Co průzkum datového modelu ukázal a co z rozhodnutí plyne
 
 | Potřeba podle pravidel | Realita v `prisma/schema.prisma` |
@@ -510,6 +523,19 @@ Stav implementace:
   - Nástěnka dnes jede na holém `prisma`. KPI část bude čistě přes `orgPrisma`.
 
 ### Fáze 2 - nová evidence (~10-14 dní)
+**Stav:** krok 2 (zdroj poptávky) **IMPLEMENTOVÁN 2026-10-18** ve větvi `kpi-faze2-zdroj`:
+- migrace `20261018120000_zdroj_poptavky`: číselník `ZdrojPoptavky` (6 výchozích
+  zdrojů se založí při prvním čtení), `Lead`/`Deal.zdrojPoptavkyId` + kdo doporučil, `Deal.vyhrano`
+  (backfill z audit logu → vznik zakázky → vznik OP)
+- výběr zdroje: nový lead (s `modulKpi` povinný), detail leadu, nový OP, detail OP, zápis hovoru
+- převod leadu (i z hovoru) kopíruje zdroj na OP; webové leady s gclid/UTM → Google Ads
+- KPI 6: v detailu tabulka podle zdroje. Ukazuje konverzi leadů a vyhrané OP podle měsíce
+  výhry (počet a hodnota aktivní nabídky bez DPH).
+- Zdroj je na leadu i na OP, ne na zakázce. Zakázka ho čte přes `opId`, protože většina OP
+  (134 ze 151 v roce 2026) vzniká bez leadu.
+- Zbývá: správa číselníku v UI (zatím 6 výchozích) a posílání gclid z webu nanto.cz
+  (`meta.gclid` nebo parametry v `meta.pageUrl`).
+
 - **Pořadí (podle hodnoty pro audit):**
   1. **Faktury + úhrady** (`Faktura`, ruční zadání v detailu zakázky / vyúčtování) → KPI 2,
      seznam „K vyfakturování“ + upozornění manažerovi, KPI 1 (+ výjimky, dodatky), procento

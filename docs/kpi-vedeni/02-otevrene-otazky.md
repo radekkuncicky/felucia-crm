@@ -8,7 +8,7 @@ smysl, jsou uvedené varianty.
 
 ## Klíčová (určuje pořadí fází)
 
-### Q1. Faktury v CRM: ručně, nebo rovnou z ABRA Flexi?
+### Q1. ~~Faktury v CRM: ručně, nebo rovnou z ABRA Flexi?~~ — ROZHODNUTO (R24: z ABRA Flexi, varianta b)
 KPI 1, 2, 4 a 5 stojí na fakturách a úhradách, které CRM dnes nezná.
 - a) ruční zadání faktury a úhrady v CRM (fáze 2). Rychlejší start, ale dvojí práce vedle ABRA a
   bez historie.
@@ -88,13 +88,13 @@ Má systém takový výdej zakázat, nebo ho povolit a jen započítat do KPI?
 
 ## Zdroje a Ads (KPI 6, 7)
 
-### Q18. Zakázky podle zdroje
+### Q18. ~~Zakázky podle zdroje~~ — ROZHODNUTO (R25: měsíc výhry)
 Počítají se podle měsíce výhry OP, nebo podle měsíce vzniku leadu (jako konverze)?
 
-### Q19. Kdo doporučil
+### Q19. ~~Kdo doporučil~~ — ROZHODNUTO (R25: klient i volný text)
 Výběr existujícího klienta, volný text, nebo obojí?
 
-### Q20. Povinný zdroj a web formulář
+### Q20. ~~Povinný zdroj a web formulář~~ — ROZHODNUTO (R25: nevynucovat, Google Ads z gclid/UTM, zpětně ne)
 Lead z webového formuláře zdroj nezná. Má být povinný až při kvalifikaci / převodu na OP? Doplnit
 zdroj zpětně u leadů od 1. 1. 2026?
 
@@ -103,11 +103,11 @@ zdroj zpětně u leadů od 1. 1. 2026?
 
 ## Party (KPI 8)
 
-### Q22. Etapy
+### Q22. ~~Etapy~~ — ROZHODNUTO (R25: každá etapa = dokončení)
 Zakázka se třemi etapami = tři dokončení (tři podepsané předávací protokoly), nebo jedno (až
 poslední etapa)?
 
-### Q23. Historie
+### Q23. ~~Historie~~ — ROZHODNUTO (R25: zpětně ne)
 Přiřadit partu zpětně zakázkám od 1. 1. 2026?
 
 ## Jednatelé (KPI 9)
