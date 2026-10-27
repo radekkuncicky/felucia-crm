@@ -48,7 +48,7 @@ async function zalozOrg(slug: string, modulKpi: boolean) {
   await prisma.lead.create({ data: { orgId: org.id, jmeno: 'Lead výhra', vytvoreno: ZARI, prevedenNaOpId: opUspech.id, status: 'PREVEDEN' } })
   await prisma.lead.create({ data: { orgId: org.id, jmeno: 'Lead prohra', vytvoreno: ZARI, prevedenNaOpId: opPas.id, status: 'PREVEDEN' } })
   await prisma.lead.create({ data: { orgId: org.id, jmeno: 'Lead nic', vytvoreno: ZARI } })
-  const zakazka = await prisma.zakazka.create({ data: { orgId: org.id, cislo: `${slug}-Z1`, nazev: 'Montáž TČ', klientId: klient.id, opId: opUspech.id } })
+  const zakazka = await prisma.zakazka.create({ data: { orgId: org.id, cislo: `${slug}-Z1`, nazev: 'Montáž TČ', klientId: klient.id, opId: opUspech.id, hlavniTechnikId: technik.id } })
   await prisma.predavak.create({ data: { orgId: org.id, zakazkaId: zakazka.id, cislo: `${slug}-PP1`, technikId: technik.id, stav: 'PODPISAN', podpisano: ZARI } })
   return org.id
 }
@@ -191,6 +191,29 @@ describe('výpočty KPI fáze 1', () => {
     const k = await kpiDetail(orgId, 'PARTY', '2026-09')
     expect(k.trend.find(b => b.klic === '2026-09')?.hodnota).toBe(1)
     expect(k.zaznamy[0].href).toMatch(/^\/zakazky\/.+\/predavaky\/.+$/)
+  })
+
+  it('party: rozpad podle ★ hlavního technika etapy, jinak zakázky, a bez technika zvlášť', async () => {
+    const technik = await prisma.user.findFirstOrThrow({ where: { orgId, role: 'TECHNIK' } })
+    const druhy = await prisma.user.create({ data: { orgId, jmeno: 'Druhý technik', email: `${RUN}-t2@example.com`, hesloHash: 'x', role: 'TECHNIK' } })
+    const z1 = await prisma.zakazka.findFirstOrThrow({ where: { orgId } })
+    const etapa = await prisma.zakazkaEtapa.create({ data: { orgId, zakazkaId: z1.id, cislo: 2, nazev: 'Etapa 2', hlavniTechnikId: druhy.id } })
+    const z2 = await prisma.zakazka.create({ data: { orgId, cislo: `${RUN}-Z2`, nazev: 'Bez technika', klientId: z1.klientId } })
+    await prisma.predavak.create({ data: { orgId, zakazkaId: z1.id, etapaId: etapa.id, cislo: `${RUN}-PP2`, technikId: technik.id, stav: 'PODPISAN', podpisano: ZARI } })
+    await prisma.predavak.create({ data: { orgId, zakazkaId: z2.id, cislo: `${RUN}-PP3`, technikId: technik.id, stav: 'PODPISAN', podpisano: ZARI } })
+
+    const k = await kpiDetail(orgId, 'PARTY', '2026-09')
+    const zari = k.trend.find(b => b.klic === '2026-09')
+    expect(zari?.hodnota).toBe(3)
+    expect(zari?.detail).toBe('2 party, ø 1,5')
+    expect(k.rozpad?.radky.map(r => [r.nazev, r.hodnoty[0]])).toEqual([
+      ['Druhý technik', '1'], ['Technik', '1'], ['Bez hlavního technika', '1'],
+    ])
+    expect(k.zaznamy.map(z => z.hodnota).sort()).toEqual(['Bez hlavního technika', 'Druhý technik', 'Technik'])
+
+    await prisma.predavak.deleteMany({ where: { orgId, cislo: { in: [`${RUN}-PP2`, `${RUN}-PP3`] } } })
+    await prisma.zakazkaEtapa.delete({ where: { id: etapa.id } })
+    await prisma.zakazka.delete({ where: { id: z2.id } })
   })
 
   it('na Nástěnce jsou ve výchozím stavu jen KPI s daty', async () => {

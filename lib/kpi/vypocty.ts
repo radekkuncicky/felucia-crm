@@ -205,28 +205,69 @@ function vydejBezZakazky(orgId: string, od: Date, doD: Date) {
   }
 }
 
-/** KPI 8 — dokončené = podepsaný předávací protokol v měsíci (R13), fáze 1 bez rozpadu na party */
+/**
+ * KPI 8 — dokončené = podepsaný předávací protokol v měsíci (R13, etapa = dokončení R25).
+ * Parta = ★ hlavní technik etapy, jinak zakázky (rozhodnutí 2026-10-27: bez samostatné
+ * evidence part — hlavní technik se nastavuje sám prvním přiřazeným).
+ */
+const BEZ_PARTY = 'Bez hlavního technika'
+const PREDAVAK_PARTA = {
+  etapa: { select: { cislo: true, hlavniTechnik: { select: { id: true, jmeno: true } } } },
+  zakazka: { select: { cislo: true, nazev: true, hlavniTechnik: { select: { id: true, jmeno: true } }, klient: { select: { jmeno: true, prijmeni: true } } } },
+} as const
+type PredavakParta = { etapa: { hlavniTechnik: { id: string; jmeno: string } | null } | null; zakazka: { hlavniTechnik: { id: string; jmeno: string } | null } }
+const partaPredavaku = (p: PredavakParta) => p.etapa?.hlavniTechnik ?? p.zakazka.hlavniTechnik
+
 const party: KpiPocitadlo = {
   zaznamyNadpis: 'Předávací protokoly podepsané v měsíci',
-  poznamka: 'Zatím celkem za firmu — rozpad na montážní party přijde s evidencí part.',
+  poznamka: 'Parta = ★ hlavní technik etapy (jinak zakázky). Zakázky bez přiřazeného technika jsou „Bez hlavního technika“.',
+  async rozpad(db, orgId, mesic) {
+    const { od, do: doD } = mesicRozsah(mesic)
+    const rows = await db.predavak.findMany({
+      where: { orgId, podpisano: { gte: od, lt: doD } },
+      select: PREDAVAK_PARTA,
+    })
+    const map = new Map<string, { nazev: string; pocet: number }>()
+    for (const p of rows) {
+      const t = partaPredavaku(p)
+      const klic = t?.id ?? ''
+      const r = map.get(klic) ?? { nazev: t?.jmeno ?? BEZ_PARTY, pocet: 0 }
+      r.pocet++
+      map.set(klic, r)
+    }
+    // Party podle počtu sestupně, „Bez hlavního technika“ vždy na konec
+    const radky = Array.from(map.entries())
+      .sort(([ka, a], [kb, b]) => (ka === '' ? 1 : kb === '' ? -1 : b.pocet - a.pocet || a.nazev.localeCompare(b.nazev, 'cs')))
+      .map(([klic, r]) => ({ klic, nazev: r.nazev, hodnoty: [String(r.pocet), procento(r.pocet, rows.length)] }))
+    return {
+      nadpis: 'Podle party (★ hlavní technik)',
+      sloupce: ['Dokončeno', 'Podíl'],
+      radky,
+      poznamka: 'Každá podepsaná etapa se počítá zvlášť. Partu určuje ★ hlavní technik v detailu zakázky nebo etapy.',
+    }
+  },
   async trend(db, orgId, mesice) {
     const { od, do: doD } = rozsahMesicu(mesice)
     const rows = await db.predavak.findMany({
       where: { orgId, podpisano: { gte: od, lt: doD } },
-      select: { podpisano: true },
+      select: { podpisano: true, ...PREDAVAK_PARTA },
     })
     const map = seskup(rows, r => r.podpisano, mesice)
-    return mesice.map(klic => ({ klic, hodnota: map.get(klic)?.length ?? 0 }))
+    return mesice.map(klic => {
+      const r = map.get(klic) ?? []
+      const party = new Set(r.map(p => partaPredavaku(p)?.id).filter(Boolean)).size
+      return {
+        klic,
+        hodnota: r.length,
+        detail: party ? `${party} ${party === 1 ? 'parta' : party < 5 ? 'party' : 'part'}, ø ${formatCislo(Math.round((r.length / party) * 10) / 10)}` : undefined,
+      }
+    })
   },
   async zaznamy(db, orgId, mesic) {
     const { od, do: doD } = mesicRozsah(mesic)
     const rows = await db.predavak.findMany({
       where: { orgId, podpisano: { gte: od, lt: doD } },
-      select: {
-        id: true, cislo: true, zakazkaId: true, podpisano: true,
-        etapa: { select: { cislo: true } },
-        zakazka: { select: { cislo: true, nazev: true, klient: { select: { jmeno: true, prijmeni: true } } } },
-      },
+      select: { id: true, cislo: true, zakazkaId: true, podpisano: true, ...PREDAVAK_PARTA },
       orderBy: { podpisano: 'asc' },
     })
     return rows.map(p => ({
@@ -234,6 +275,7 @@ const party: KpiPocitadlo = {
       titulek: `${p.zakazka.cislo} · ${[p.zakazka.klient.jmeno, p.zakazka.klient.prijmeni].filter(Boolean).join(' ')}`,
       popis: [p.cislo, p.etapa ? `etapa ${p.etapa.cislo}` : null, p.zakazka.nazev, p.podpisano ? datumPraha(p.podpisano) : null]
         .filter(Boolean).join(' · '),
+      hodnota: partaPredavaku(p)?.jmeno ?? BEZ_PARTY,
       href: `/zakazky/${p.zakazkaId}/predavaky/${p.id}`,
     }))
   },

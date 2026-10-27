@@ -67,7 +67,7 @@ export const KPI_DEFS: KpiDef[] = [
   },
   {
     kod: 'PARTY', cislo: 8, nazev: 'Dokončené zakázky', jednotka: 'ks', smer: 'VYSSI', vychoziCil: null,
-    popis: 'Podepsané předávací protokoly v měsíci. Rozpad na montážní party přijde s evidencí part (fáze 2).',
+    popis: 'Podepsané předávací protokoly v měsíci (každá etapa zvlášť), v detailu rozpad podle party = ★ hlavního technika.',
     granularita: 'MESIC', faze: 1, dostupne: true,
   },
   {
