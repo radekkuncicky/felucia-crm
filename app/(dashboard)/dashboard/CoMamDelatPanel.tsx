@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { formatDate } from '@/lib/format'
 import DokoncitAktivituModal from '@/components/DokoncitAktivituModal'
@@ -89,6 +90,7 @@ const rowCls = 'flex items-center justify-between gap-3 text-sm hover:bg-gray-50
  * pod tím sbalené sekce OP bez aktivity / nové OP / servisy (dřívější žlutý ReminderPanel).
  */
 export default function CoMamDelatPanel() {
+  const router = useRouter()
   const [polozky, setPolozky] = useState<CoMamDelatPolozka[] | null>(null)
   const [notif, setNotif] = useState<NotifData | null>(null)
   const [openSection, setOpenSection] = useState<string | null>(null)
@@ -105,6 +107,8 @@ export default function CoMamDelatPanel() {
   }, [])
 
   async function hotovo(p: CoMamDelatPolozka) {
+    // Diktát se vyřizuje na své stránce (zpracování s Dášou / připojení)
+    if (p.diktat) { router.push(p.kontext.href); return }
     // Aktivita → dialog s výsledkem a nabídkou navazující aktivity
     if (p.druh === 'AKTIVITA') { setDokoncit(p); return }
     setBusy(p.id)

@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { leadJmeno } from '@/lib/activities'
+import { diktatHref } from '@/lib/diktat'
 import { dealScopeWhere, resolvePermissions, servisScopeWhere } from '@/lib/permissions'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { verifyCalendarToken } from '@/lib/calendarToken'
@@ -165,7 +166,9 @@ export async function GET(req: Request) {
     const dealName = a.deal ? (a.deal.predmet ?? a.deal.kod ?? '') : ''
 
     // Summary: "Jan Novák – Klimatizace – hovor" / "Jan Novák – Lead – hovor"
-    const summary = calendarTitle(klient, a.deal ? technologieLabel(a.deal.technologie) : 'Lead', AKTIVITA_DOPLNEK[a.typ] ?? a.typ.toLowerCase())
+    const summary = !a.deal && !a.lead
+      ? 'Diktát – zpracovat'
+      : calendarTitle(klient, a.deal ? technologieLabel(a.deal.technologie) : 'Lead', AKTIVITA_DOPLNEK[a.typ] ?? a.typ.toLowerCase())
 
     // Build description lines
     const descLines: string[] = []
@@ -182,7 +185,7 @@ export async function GET(req: Request) {
 
     const description = descLines.join('\n')
     const location = a.typ === 'SCHUZKA' ? (a.misto ?? undefined) : undefined
-    const href = a.deal ? `${base}/deals/${a.deal.id}?tab=aktivity` : `${base}/leady/${a.lead?.id ?? ''}`
+    const href = a.deal ? `${base}/deals/${a.deal.id}?tab=aktivity` : a.lead ? `${base}/leady/${a.lead.id}` : `${base}${diktatHref(a.id)}`
 
     vevents.push(vevent(`act-${a.id}`, dateStr, summary, description, href, location))
   }

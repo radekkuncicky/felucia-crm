@@ -633,7 +633,7 @@ enum ActivityStav {
 model Activity {
   id          String       @id @default(cuid())
   orgId       String
-  // Rodič: přesně jeden z dealId / leadId (CHECK v DB, migrace activity_lead)
+  // Rodič: nejvýš jeden z dealId / leadId (CHECK v DB); bez rodiče = diktát (lib/diktat.ts)
   dealId      String?
   leadId      String?
   userId      String?

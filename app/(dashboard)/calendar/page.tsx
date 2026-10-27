@@ -8,6 +8,7 @@ import {
   AKTIVITA_DOPLNEK, DOPLNEK, SERVIS_DOPLNEK, calendarTitle, dateRange, fmtTime, klientJmeno, servisTechnologie, technologieLabel, utcDateStr, zarizeniTech,
 } from '@/lib/calendarEvents'
 import { leadJmeno } from '@/lib/activities'
+import { DIKTAT_WHERE, diktatHref } from '@/lib/diktat'
 
 export default async function CalendarPage() {
   const session = await getServerSession(authOptions)
@@ -23,7 +24,7 @@ export default async function CalendarPage() {
   // Technik s přístupem jen ke svým zakázkám — u etap s přiřazenými techniky vidí jen ty svoje
   const isTechnik = isTechnikView(perms) && perms.zakazky !== 'VSE'
 
-  const [activities, leadActivities, deals, servisNavstevy, montazZakazky, kdykolivZakazky] = await Promise.all([
+  const [activities, leadActivities, diktaty, deals, servisNavstevy, montazZakazky, kdykolivZakazky] = await Promise.all([
     !dealScope ? [] : prisma.activity.findMany({
       where: { deal: { orgId, ...dealScope } },
       include: {
@@ -35,6 +36,12 @@ export default async function CalendarPage() {
     !perms.obchod || session.user.plan === 'STARTER' ? [] : prisma.activity.findMany({
       where: { orgId, leadId: { not: null } },
       include: { lead: { select: { id: true, jmeno: true, firma: true } } },
+      orderBy: { datum: 'asc' },
+    }),
+    // Nezpracované diktáty (úkoly bez rodiče) — jen vlastní
+    !perms.obchod ? [] : prisma.activity.findMany({
+      where: { orgId, ...DIKTAT_WHERE, OR: [{ resitelId: userId }, { resitelId: null, userId }] },
+      select: { id: true, typ: true, datum: true, cas: true, popis: true, stav: true },
       orderBy: { datum: 'asc' },
     }),
     !dealScope ? [] : prisma.deal.findMany({
@@ -135,6 +142,21 @@ export default async function CalendarPage() {
       klient: leadJmeno(a.lead),
       subtitle: a.popis ?? '',
       href: `/leady/${a.lead.id}`,
+      done: a.stav === 'DOKONCENA',
+      zruseno: a.stav === 'ZRUSENA',
+    })
+  }
+
+  for (const a of diktaty) {
+    events.push({
+      id: `act-${a.id}`,
+      kind: 'UKOL',
+      date: utcDateStr(a.datum),
+      time: a.cas ?? undefined,
+      title: 'Diktát – zpracovat',
+      klient: 'Diktát',
+      subtitle: a.popis?.slice(0, 120) ?? '',
+      href: diktatHref(a.id),
       done: a.stav === 'DOKONCENA',
       zruseno: a.stav === 'ZRUSENA',
     })

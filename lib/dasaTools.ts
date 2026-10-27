@@ -8,6 +8,10 @@ import { Technologie, StavDealu, TypAktivity, TypKlienta } from '@prisma/client'
 import { formatDate } from '@/lib/format'
 import { vyhranoPriZmene } from '@/lib/dealUspech'
 import { jeDuvodProhry, type DuvodProhryKod } from '@/lib/duvodProhry'
+import { DIKTAT_WHERE, pripojDiktat } from '@/lib/diktat'
+import { najdiVolajiciho } from '@/lib/zapisHovoru'
+import { nactiZdroje, parseZdroj } from '@/lib/zdrojPoptavky'
+import { getOrgSettings } from '@/lib/orgSettings'
 
 // ─── Tool definitions ────────────────────────────────────────────────────────
 
@@ -164,6 +168,67 @@ export const DASA_TOOLS = [
         duvodProhry: { type: 'string', description: 'Volitelný popis důvodu prohry' },
       },
       required: ['dealId', 'stav'],
+    },
+  },
+  {
+    name: 'get_diktat',
+    description: 'Načti text nezpracovaného diktátu podle ID (zpráva uživatele obsahuje [diktat:ID]).',
+    input_schema: {
+      type: 'object' as const,
+      properties: { diktatId: { type: 'string', description: 'ID diktátu' } },
+      required: ['diktatId'],
+    },
+  },
+  {
+    name: 'find_by_phone',
+    description: 'Najdi klienty (s otevřenými OP) a leady podle telefonního čísla. Použij vždy, když diktát obsahuje telefon.',
+    input_schema: {
+      type: 'object' as const,
+      properties: { telefon: { type: 'string', description: 'Telefonní číslo v libovolném formátu' } },
+      required: ['telefon'],
+    },
+  },
+  {
+    name: 'search_leads',
+    description: 'Hledej leady (poptávky) podle jména, firmy, e-mailu nebo telefonu.',
+    input_schema: {
+      type: 'object' as const,
+      properties: { q: { type: 'string', description: 'Jméno, firma, e-mail nebo telefon' } },
+      required: ['q'],
+    },
+  },
+  {
+    name: 'list_zdroje_poptavky',
+    description: 'Číselník zdrojů poptávky (odkud o nás zákazník ví) — potřebuješ ID pro create_lead.',
+    input_schema: { type: 'object' as const, properties: {} },
+  },
+  {
+    name: 'create_lead',
+    description: 'Založ nový lead (poptávku). Vyžaduje potvrzení uživatele. Když je modul KPI zapnutý, je zdroj poptávky povinný — nevíš-li ho z diktátu, zeptej se.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        jmeno: { type: 'string', description: 'Jméno a příjmení kontaktu' },
+        firma: { type: 'string' },
+        telefon: { type: 'string' },
+        email: { type: 'string' },
+        zprava: { type: 'string', description: 'Co zákazník chce — stručné shrnutí poptávky' },
+        zdrojPoptavkyId: { type: 'string', description: 'ID z list_zdroje_poptavky' },
+      },
+      required: ['jmeno'],
+    },
+  },
+  {
+    name: 'pripojit_diktat',
+    description: 'Připoj zpracovaný diktát k leadu nebo OP — v historii se z něj stane hovor a zmizí z úkolů. Zadej právě jedno z dealId / leadId. Proveď hned po založení nebo nalezení leadu/OP.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        diktatId: { type: 'string' },
+        dealId: { type: 'string', description: 'UUID OP' },
+        leadId: { type: 'string', description: 'UUID leadu' },
+      },
+      required: ['diktatId'],
     },
   },
 ]
@@ -576,6 +641,87 @@ export async function executeDasaTool(
         })
 
         return { result: JSON.stringify({ ok: true, novyStav: stav }), navigateTo: `/deals/${dealId}` }
+      }
+
+      case 'get_diktat': {
+        if (isTechnik) return { result: JSON.stringify({ chyba: 'Nedostatečná oprávnění' }) }
+        const d = await db.activity.findFirst({
+          where: { id: String(input.diktatId ?? ''), orgId, ...DIKTAT_WHERE },
+          select: { id: true, popis: true, vytvoreno: true, datum: true },
+        })
+        if (!d) return { result: JSON.stringify({ chyba: 'Diktát nenalezen nebo už je zpracovaný' }) }
+        return { result: JSON.stringify({ diktatId: d.id, text: d.popis, nadiktovano: formatDate(d.vytvoreno), ukolNa: formatDate(d.datum) }) }
+      }
+
+      case 'find_by_phone': {
+        if (isTechnik) return { result: JSON.stringify({ chyba: 'Nedostatečná oprávnění' }) }
+        const shody = await najdiVolajiciho(db, orgId, String(input.telefon ?? ''), isObchodnik ? { userId } : {})
+        if (!shody.klienti.length && !shody.leady.length) return { result: JSON.stringify({ zprava: 'Číslo v CRM není' }) }
+        return { result: JSON.stringify(shody) }
+      }
+
+      case 'search_leads': {
+        if (isTechnik) return { result: JSON.stringify({ chyba: 'Nedostatečná oprávnění' }) }
+        const q = String(input.q ?? '').trim()
+        if (!q) return { result: JSON.stringify({ zprava: 'Zadej hledaný výraz' }) }
+        const leady = await db.lead.findMany({
+          where: {
+            orgId,
+            OR: [
+              { jmeno: { contains: q, mode: 'insensitive' } },
+              { firma: { contains: q, mode: 'insensitive' } },
+              { email: { contains: q, mode: 'insensitive' } },
+              { telefon: { contains: q } },
+            ],
+          },
+          select: { id: true, jmeno: true, firma: true, telefon: true, email: true, status: true, vytvoreno: true, prevedenNaOpId: true },
+          orderBy: { vytvoreno: 'desc' },
+          take: 8,
+        })
+        if (!leady.length) return { result: JSON.stringify({ zprava: 'Žádné leady nenalezeny' }) }
+        return { result: JSON.stringify(leady) }
+      }
+
+      case 'list_zdroje_poptavky': {
+        const zdroje = (await nactiZdroje(db, orgId)).filter(z => z.aktivni)
+        const povinny = (await getOrgSettings(orgId)).modulKpi
+        return { result: JSON.stringify({ povinnyULeadu: povinny, zdroje: zdroje.map(z => ({ id: z.id, nazev: z.nazev })) }) }
+      }
+
+      case 'create_lead': {
+        if (!canCreate) return { result: JSON.stringify({ chyba: 'Nedostatečná oprávnění' }) }
+        const jmeno = String(input.jmeno ?? '').trim()
+        if (!jmeno) return { result: JSON.stringify({ chyba: 'Jméno je povinné' }) }
+        const zdroj = await parseZdroj(db, orgId, { zdrojPoptavkyId: input.zdrojPoptavkyId ?? null })
+        if (typeof zdroj === 'string') return { result: JSON.stringify({ chyba: zdroj }) }
+        if (!zdroj.zdrojPoptavkyId && (await getOrgSettings(orgId)).modulKpi) {
+          return { result: JSON.stringify({ chyba: 'Chybí zdroj poptávky — zeptej se uživatele, odkud o nás zákazník ví (list_zdroje_poptavky).' }) }
+        }
+        const text = (v: unknown, max: number) => (typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : null)
+        const lead = await db.lead.create({
+          data: {
+            orgId, jmeno: jmeno.slice(0, 200),
+            firma: text(input.firma, 200), telefon: text(input.telefon, 50), email: text(input.email, 200),
+            zprava: text(input.zprava, 2000),
+            zdroj: 'RUCNE', status: 'NOVY', assignedToId: userId,
+            ...zdroj,
+          },
+        })
+        return { result: JSON.stringify({ ok: true, leadId: lead.id }), navigateTo: `/leady/${lead.id}` }
+      }
+
+      case 'pripojit_diktat': {
+        if (!canCreate) return { result: JSON.stringify({ chyba: 'Nedostatečná oprávnění' }) }
+        const diktatId = String(input.diktatId ?? '')
+        const dealId = typeof input.dealId === 'string' && input.dealId ? input.dealId : null
+        const leadId = typeof input.leadId === 'string' && input.leadId ? input.leadId : null
+        if (!dealId === !leadId) return { result: JSON.stringify({ chyba: 'Zadej právě jedno z dealId / leadId' }) }
+        if (dealId && !(await db.deal.findFirst({ where: { id: dealId, orgId, ...(isObchodnik ? { userId } : {}) }, select: { id: true } }))) {
+          return { result: JSON.stringify({ chyba: 'OP nenalezen nebo nemáš přístup' }) }
+        }
+        const chyba = await pripojDiktat(db, orgId, diktatId, dealId ? { dealId } : { leadId: leadId! })
+        if (chyba) return { result: JSON.stringify({ chyba }) }
+        return { result: JSON.stringify({ ok: true }), navigateTo: dealId ? `/deals/${dealId}?tab=aktivity` : `/leady/${leadId}` }
       }
 
       default:

@@ -127,6 +127,18 @@ NÁSTROJE — kdy je použít:
 - create_client: nový klient — ZEPTEJ SE JEDNOU "Mám vytvořit?" před provedením
 - add_activity: aktivita k OP — proveď bez ptaní
 - change_deal_status: změna stavu — ZEPTEJ SE JEDNOU "Mám změnit stav na X?" před provedením
+- get_diktat, find_by_phone, search_leads, list_zdroje_poptavky, create_lead, pripojit_diktat: zpracování diktátu (níže)
+
+ZPRACOVÁNÍ DIKTÁTU (zpráva obsahuje [diktat:ID]):
+1. get_diktat → text. Je to záznam hovoru/poznámka obchodníka; vytáhni jméno, telefon, e-mail, místo, co chce, termín.
+2. Dohledej, kdo to je: find_by_phone (je-li telefon), jinak search_clients a search_leads podle jména.
+3. Navrhni JEDNÍM krátkým návrhem, co uděláš, a zeptej se "Mám to udělat?":
+   - existující otevřený OP → připojit diktát k OP (+ případně add_activity pro další krok)
+   - existující lead → připojit k leadu
+   - existující klient bez OP → create_deal + připojit k OP
+   - nikdo → create_lead (zprava = shrnutí poptávky) + připojit k leadu. Když je list_zdroje_poptavky povinnyULeadu, zeptej se zároveň na zdroj (nabídni názvy ze seznamu).
+   Zmiň i další krok, pokud ho diktát obsahuje (např. "zavolat zítra" → add_activity HOVOR k OP).
+4. Po potvrzení proveď vše najednou a VŽDY zakonči pripojit_diktat. Pak napiš 1–2 věty, co vzniklo, s odkazem.
 
 RYCHLÁ CENOVKA (typicky klimatizace, obchodník stojí u klienta):
 1. Najdi klienta (search_clients); když neexistuje, create_client (potvrzení). Pak najdi/založ OP (create_deal, potvrzení).
@@ -159,7 +171,7 @@ NIKDY nevracej plain text — vždy JSON objekt.`
 
   // ── Haiku for simple queries, Sonnet for actions ──────────────────────────
   const msgLower = message.toLowerCase()
-  const needsAction = /vytvoř|založ|přidej|udělej|vlož|sestav|nový|nová|nové|změň|nastav|přesuň|uprav|cenovk|nacen/.test(msgLower)
+  const needsAction = /vytvoř|založ|přidej|udělej|vlož|sestav|nový|nová|nové|změň|nastav|přesuň|uprav|cenovk|nacen|diktat|zpracuj|^ano|potvr/.test(msgLower)
   const model = needsAction ? 'claude-sonnet-4-6' : 'claude-haiku-4-5-20251001'
 
   // ── Build messages ────────────────────────────────────────────────────────

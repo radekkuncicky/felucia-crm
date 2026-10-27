@@ -1,10 +1,11 @@
 import { TypAktivity } from '@prisma/client'
 import type { Prisma } from '@prisma/client'
+import { diktatHref } from './diktat'
 
 /**
- * Sdílená pravidla aktivit. Aktivita visí buď na OP (dealId), nebo na leadu
- * (leadId) — přesně jeden rodič, hlídá i CHECK v DB (migrace activity_lead).
- * Na leadu jsou povolené jen hovory a e-maily.
+ * Sdílená pravidla aktivit. Aktivita visí na OP (dealId), nebo na leadu
+ * (leadId) — nejvýš jeden rodič, hlídá i CHECK v DB. Bez rodiče je jen
+ * nezpracovaný diktát (lib/diktat.ts). Na leadu jsou povolené jen hovory a e-maily.
  */
 
 export const LEAD_TYPY: TypAktivity[] = ['HOVOR', 'EMAIL']
@@ -90,10 +91,10 @@ export function leadJmeno(l: { jmeno: string; firma?: string | null }): string {
 
 /**
  * Rodič aktivity pro texty a odkazy: klient, popisek kontextu a URL.
- * `href` míří na tab aktivit OP, resp. na detail leadu.
+ * `href` míří na tab aktivit OP, resp. na detail leadu, u diktátu bez rodiče na jeho stránku.
  */
-export function activityParent(a: { deal?: DealLike | null; lead?: LeadLike | null }): {
-  druh: 'DEAL' | 'LEAD'
+export function activityParent(a: { id?: string; deal?: DealLike | null; lead?: LeadLike | null }): {
+  druh: 'DEAL' | 'LEAD' | 'DIKTAT'
   id: string
   klient: string
   kontextLabel: string
@@ -120,6 +121,9 @@ export function activityParent(a: { deal?: DealLike | null; lead?: LeadLike | nu
       kontext: 'Lead',
       href: `/leady/${a.lead.id}`,
     }
+  }
+  if (a.id) {
+    return { druh: 'DIKTAT', id: a.id, klient: '', kontextLabel: 'Diktát', kontext: 'Diktát', href: diktatHref(a.id) }
   }
   return null
 }

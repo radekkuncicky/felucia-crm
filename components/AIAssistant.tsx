@@ -82,8 +82,15 @@ export default function AIAssistant() {
     }
   }, [])
 
+  // Zpráva, kterou má Dáša po otevření hned poslat (např. „zpracuj diktát“ z lib/diktatDasa.ts)
+  const [pendingPrompt, setPendingPrompt] = useState<string | null>(null)
+
   useEffect(() => {
-    const handleOpen = () => setIsOpen(true)
+    const handleOpen = (e: Event) => {
+      setIsOpen(true)
+      const prompt = (e as CustomEvent<{ prompt?: unknown } | undefined>).detail?.prompt
+      if (typeof prompt === 'string' && prompt.trim()) setPendingPrompt(prompt)
+    }
     window.addEventListener('dasha:open', handleOpen)
     return () => window.removeEventListener('dasha:open', handleOpen)
   }, [])
@@ -198,6 +205,12 @@ export default function AIAssistant() {
     },
     [input, messages, isLoading, pathname, currentDeal, session, router]
   )
+
+  useEffect(() => {
+    if (!pendingPrompt || isLoading) return
+    setPendingPrompt(null)
+    sendMessage(pendingPrompt)
+  }, [pendingPrompt, isLoading, sendMessage])
 
   const toggleRecording = useCallback(() => {
     if (!hasSpeechSupport) return

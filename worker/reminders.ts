@@ -55,7 +55,7 @@ export async function processReminder(prisma: PrismaClient, activityId: string):
   const popis = activity.popis ? activity.popis.slice(0, 200) : null
   // „Hovor – Jan Novák" / při chybějícím klientovi popis
   const co = [typLabel, parent?.klient || popis?.slice(0, 80)].filter(Boolean).join(' – ')
-  const kontextKratky = parent?.druh === 'DEAL' ? (activity.deal?.kod || activity.deal?.predmet) : parent?.druh === 'LEAD' ? 'lead' : null
+  const kontextKratky = parent?.druh === 'DEAL' ? (activity.deal?.kod || activity.deal?.predmet) : parent?.druh === 'LEAD' ? 'lead' : parent?.druh === 'DIKTAT' ? 'diktát' : null
 
   await createNotification({
     orgId: activity.orgId,
@@ -63,7 +63,7 @@ export async function processReminder(prisma: PrismaClient, activityId: string):
     typ: 'PRIPOMINKA',
     zprava: `Připomínka: ${co}${parent?.klient && popis ? `: ${popis.slice(0, 80)}` : ''}${kontextKratky ? ` (${kontextKratky})` : ''}`,
     dealId: activity.dealId ?? undefined,
-    url: parent?.druh === 'LEAD' ? parent.href : undefined,
+    url: parent && parent.druh !== 'DEAL' ? parent.href : undefined,
   })
 
   if (!isEmailConfigured() || !prijemce.email || !prijemce.aktivni) return 'bell-only'

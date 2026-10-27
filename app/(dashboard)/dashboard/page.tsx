@@ -22,6 +22,7 @@ import { getOrgSettings } from '@/lib/orgSettings'
 import { dnesniVyjezdy } from '@/lib/dnesniVyjezdy'
 import { NavigateButton } from '@/components/NavigateButton'
 import { ZapsatHovorButton } from '@/components/ZapsatHovorDialog'
+import { DiktatButton } from '@/components/DiktatDialog'
 
 const stavLabels: Record<StavDealu, string> = {
   NOVY: 'Nový', JEDNANI: 'Jednání', NABIDKA: 'Nabídka',
@@ -192,6 +193,7 @@ export default async function DashboardPage() {
           </p>
         </div>
         {showObchod && <div className="flex items-center gap-2">
+          <DiktatButton />
           <ZapsatHovorButton />
           <Link href="/deals/new" className="hidden sm:flex items-center gap-2 bg-primary hover:bg-primary-hover text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -485,7 +487,7 @@ function UpcomingActivitiesGroups({
                     {act.popis ?? '—'}
                   </p>
                   <p className="text-xs text-gray-400 dark:text-slate-500 truncate">
-                    {parent?.druh === 'LEAD' ? 'Lead · ' : ''}{parent?.klient}
+                    {parent?.druh === 'LEAD' ? 'Lead · ' : parent?.druh === 'DIKTAT' ? 'Diktát · zpracovat' : ''}{parent?.klient}
                     {act.user?.jmeno ? ` · ${act.user.jmeno}` : ''}
                   </p>
                 </div>

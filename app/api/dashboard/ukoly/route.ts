@@ -1,5 +1,6 @@
 import { getServerSession } from 'next-auth'
 import { leadJmeno } from '@/lib/activities'
+import { diktatHref } from '@/lib/diktat'
 import { authOptions } from '@/lib/auth'
 import { getMobileSession } from '@/lib/mobile-auth'
 import { orgPrisma } from '@/lib/orgPrisma'
@@ -25,6 +26,8 @@ export type CoMamDelatPolozka = {
   parentId: string
   /** aktivita na leadu → follow-up jen hovor/e-mail */
   leadId: string | null
+  /** nezpracovaný diktát (aktivita bez rodiče) — hotovo se řeší na jeho stránce */
+  diktat?: boolean
   kontext: { label: string; popis: string | null; href: string }
 }
 
@@ -90,17 +93,16 @@ export async function GET(req: Request) {
       skupina: skupina(a.datum),
       parentId: a.deal?.id ?? a.lead?.id ?? '',
       leadId: a.lead?.id ?? null,
+      ...(!a.deal && !a.lead ? { diktat: true } : {}),
       kontext: a.deal
         ? {
             label: a.deal.kod ?? 'OP',
             popis: `${a.deal.client.jmeno} ${a.deal.client.prijmeni}`.trim() || a.deal.predmet,
             href: `/deals/${a.deal.id}?tab=aktivity`,
           }
-        : {
-            label: 'Lead',
-            popis: a.lead ? leadJmeno(a.lead) : null,
-            href: a.lead ? `/leady/${a.lead.id}` : '/activities',
-          },
+        : a.lead
+          ? { label: 'Lead', popis: leadJmeno(a.lead), href: `/leady/${a.lead.id}` }
+          : { label: 'Diktát', popis: 'zpracovat', href: diktatHref(a.id) },
     })),
     ...ukoly.map(u => ({
       id: u.id,

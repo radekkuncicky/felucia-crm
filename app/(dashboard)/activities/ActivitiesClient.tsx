@@ -19,6 +19,7 @@ import ShowMore from '@/components/ui/ShowMore'
 import { useUrlFilters } from '@/hooks/useUrlFilters'
 import { useShowMore } from '@/hooks/useShowMore'
 import DokoncitAktivituModal from '@/components/DokoncitAktivituModal'
+import { diktatHref } from '@/lib/diktat'
 
 const ACT_DEFS: ColumnDef[] = [
   { id: 'datum', label: 'Datum', defaultVisible: true, defaultWidth: 110 },
@@ -88,15 +89,15 @@ function StavDot({ stav }: { stav: Stav }) {
   return <span className={`inline-block w-2.5 h-2.5 rounded-full flex-shrink-0 ${stavConfig[stav]?.dot ?? 'bg-gray-400'}`} />
 }
 
-/** Odkaz na rodiče aktivity — OP (tab aktivit) nebo lead */
+/** Odkaz na rodiče aktivity — OP (tab aktivit), lead, nebo stránka nezpracovaného diktátu */
 function parentHref(act: Activity): string {
-  return act.deal ? `/deals/${act.deal.id}?tab=aktivity` : act.lead ? `/leady/${act.lead.id}` : '/activities'
+  return act.deal ? `/deals/${act.deal.id}?tab=aktivity` : act.lead ? `/leady/${act.lead.id}` : diktatHref(act.id)
 }
 
 function ParentLabel({ act, mono = 'text-gray-400' }: { act: Activity; mono?: string }) {
   if (act.deal) return <>{act.deal.kod && <span className={`font-mono text-xs ${mono} mr-1`}>{act.deal.kod}</span>}{act.deal.predmet ?? 'Bez předmětu'}</>
   if (act.lead) return <><span className={`text-xs ${mono} mr-1`}>Lead</span>{act.lead.jmeno}</>
-  return <>—</>
+  return <><span className={`text-xs ${mono} mr-1`}>Diktát</span>zpracovat</>
 }
 
 function KlientLink({ act, className }: { act: Activity; className: string }) {
@@ -211,7 +212,9 @@ function ActivityModal({ act, onClose, onSaved, onDeleted, onFollowUp }: {
             <Link href={parentHref(act)} className="text-xs font-normal text-green-600 hover:underline">
               {act.deal
                 ? <>{act.deal.kod ? `${act.deal.kod} · ` : ''}{act.deal.predmet ?? 'Bez předmětu'} — {act.deal.client.jmeno} {act.deal.client.prijmeni}</>
-                : <>Lead — {act.lead?.jmeno}{act.lead?.firma ? ` (${act.lead.firma})` : ''}</>}
+                : act.lead
+                  ? <>Lead — {act.lead.jmeno}{act.lead.firma ? ` (${act.lead.firma})` : ''}</>
+                  : <>Diktát — zpracovat</>}
             </Link>
           </div>
         </div>

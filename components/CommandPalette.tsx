@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import type { NavItem, NavIconKey } from '@/lib/navigation'
 import { NavIcon } from '@/components/NavIcon'
 import ZapsatHovorDialog from '@/components/ZapsatHovorDialog'
+import DiktatDialog from '@/components/DiktatDialog'
 
 type ResultType = 'deal' | 'client' | 'servis' | 'zakazka' | 'lead' | 'product'
 
@@ -79,6 +80,7 @@ export default function CommandPalette({ navigace, akce, canNewDeal }: Props) {
   const [recent, setRecent] = useState<SearchResult[]>([])
   /** telefon pro dialog Zapsat hovor (null = zavřený) */
   const [hovorTel, setHovorTel] = useState<string | null>(null)
+  const [diktat, setDiktat] = useState(false)
   const router = useRouter()
   const inputRef = useRef<HTMLInputElement>(null)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -195,6 +197,7 @@ export default function CommandPalette({ navigace, akce, canNewDeal }: Props) {
       items: [
         ...akce.map(a => ({ id: `act-${a.id}`, icon: icon(a.icon), label: a.label, href: a.href })),
         ...(canNewDeal ? [{ id: 'act-hovor', icon: icon('activity'), label: 'Zapsat hovor', action: () => setHovorTel('') }] : []),
+        ...(canNewDeal ? [{ id: 'act-diktat', icon: icon('activity'), label: 'Nadiktovat', action: () => setDiktat(true) }] : []),
       ],
     }] : []),
   ]
@@ -339,6 +342,7 @@ export default function CommandPalette({ navigace, akce, canNewDeal }: Props) {
     </div>
     )}
     <ZapsatHovorDialog open={hovorTel !== null} onClose={() => setHovorTel(null)} predvyplneni={{ telefon: hovorTel ?? '' }} />
+    <DiktatDialog open={diktat} onClose={() => setDiktat(false)} />
     </>
   )
 }

@@ -6,7 +6,7 @@
 // Shodu se stromem app/ hlídá tests/known-routes.test.ts.
 export const KNOWN_TOP_SEGMENTS = new Set([
   // app/(dashboard)
-  'activities', 'analytics', 'calendar', 'cenovka', 'clients', 'dashboard', 'deals', 'documents',
+  'activities', 'analytics', 'calendar', 'cenovka', 'clients', 'dashboard', 'deals', 'diktat', 'documents',
   'kpi', 'leady', 'predavaky', 'products', 'quote-templates', 'quotes', 'servis', 'settings', 'sklad', 'sod', 'zakazky',
   // app/(auth) a ostatní
   'api', 'auth', 'demo', 'forgot-password', 'login', 'magic-link', 'maintenance', 'nabidka', 'onboarding',
