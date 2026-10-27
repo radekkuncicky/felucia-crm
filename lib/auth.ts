@@ -4,7 +4,7 @@ import { hashAuthToken } from './authTokens'
 import CredentialsProvider from 'next-auth/providers/credentials'
 import bcrypt from 'bcryptjs'
 import { prisma } from './prisma'
-import { readImpersonateCookie } from './impersonate'
+import { readImpersonateCookie, clearImpersonateCookie } from './impersonate'
 import { resolvePermissions, ROLE_PRESETS } from './permissions'
 import { checkRateLimit } from './rateLimit'
 
@@ -138,6 +138,12 @@ export const authOptions: NextAuthOptions = {
       },
     }),
   ],
+  events: {
+    // Odhlášení ukončí i impersonaci superadmina
+    signOut() {
+      clearImpersonateCookie()
+    },
+  },
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
@@ -154,6 +160,9 @@ export const authOptions: NextAuthOptions = {
         token.perms = resolvePermissions(user.role, dbUser?.permissions, token.plan)
         token.sv = dbUser?.sessionVersion ?? 0
         token.permsAt = Date.now()
+        token.loginAt = Date.now()
+        // Nové přihlášení vždy začíná ve vlastní org — zbylá impersonace z minula pryč
+        clearImpersonateCookie()
         return token
       }
 
@@ -195,7 +204,9 @@ export const authOptions: NextAuthOptions = {
           if (imp) {
             // Verify cookie was set for THIS superadmin (prevents cookie-swap attacks)
             // + impersonovaný uživatel musí patřit cílové org
-            if (imp.orgId && imp.impersonatingUserId && imp.superAdminId === token.id) {
+            // Cookie z doby před tímto přihlášením (odhlášení ji nesmazalo) se ignoruje
+            const zMinulehoPrihlaseni = token.loginAt != null && (imp.vytvoreno ?? 0) < token.loginAt
+            if (imp.orgId && imp.impersonatingUserId && imp.superAdminId === token.id && !zMinulehoPrihlaseni) {
               const [targetOrg, targetUser] = await Promise.all([
                 prisma.organization.findUnique({
                   where: { id: imp.orgId },

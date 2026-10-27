@@ -42,6 +42,8 @@ declare module 'next-auth/jwt' {
     isDemo?: boolean
     perms?: Permissions
     permsAt?: number
+    /** Čas přihlášení (ms) — impersonační cookie starší než přihlášení se ignoruje */
+    loginAt?: number
     sv?: number
   }
 }

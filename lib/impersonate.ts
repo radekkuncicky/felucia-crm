@@ -9,6 +9,8 @@ export type ImpersonateCookie = {
   orgId: string
   orgNazev: string
   impersonatingUserId: string
+  /** Kdy impersonace začala (ms) — cookie z dřívějšího přihlášení se nepoužije */
+  vytvoreno?: number
 }
 
 /** Ověřená impersonační cookie aktuálního requestu (null mimo request context nebo bez cookie) */
@@ -19,6 +21,15 @@ export function readImpersonateCookie(): ImpersonateCookie | null {
   } catch {
     // cookies() mimo request (build, worker, testy)
     return null
+  }
+}
+
+/** Smazat impersonační cookie (route handler / server action; jinde tiše nic) */
+export function clearImpersonateCookie() {
+  try {
+    cookies().delete(IMPERSONATE_COOKIE)
+  } catch {
+    // mimo route handler cookies nejdou měnit
   }
 }
 

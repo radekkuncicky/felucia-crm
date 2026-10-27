@@ -7,7 +7,7 @@ import AIAssistant from '@/components/AIAssistant'
 import { Suspense } from 'react'
 import OnboardingModal from '@/components/OnboardingModal'
 import { getOrgSettings } from '@/lib/orgSettings'
-import { cookies } from 'next/headers'
+import { readImpersonateCookie } from '@/lib/impersonate'
 import ImpersonationBanner from '@/components/ImpersonationBanner'
 import DemoBanner from '@/components/DemoBanner'
 import { prisma } from '@/lib/prisma'
@@ -41,15 +41,12 @@ export default async function DashboardLayout({
   const predplatneAktivni = org?.stripeSubscriptionStatus === 'active' || org?.stripeSubscriptionStatus === 'trialing'
   const trialExpired = org?.trialEndsAt ? org.trialEndsAt < now && session.user.plan === 'STARTER' && !predplatneAktivni : false
 
-  // Impersonation banner
-  const cookieStore = cookies()
-  const impersonateCookie = cookieStore.get('sa_impersonate')
-  let impersonateData: { superAdminJmeno: string; orgNazev: string } | null = null
-  if (impersonateCookie) {
-    try {
-      impersonateData = JSON.parse(impersonateCookie.value)
-    } catch {}
-  }
+  // Impersonation banner — jen když session impersonaci opravdu uplatnila
+  // (cookie je podepsaná, JSON.parse na ni nefungoval a lišta s „Ukončit“ chyběla)
+  const imp = session.user.impersonating ? readImpersonateCookie() : null
+  const impersonateData = imp
+    ? { superAdminJmeno: imp.superAdminJmeno, orgNazev: session.user.impersonatingOrgNazev ?? imp.orgNazev }
+    : null
 
   // Announcement banner
   const sysSettings = await prisma.systemSettings.findFirst()

@@ -43,6 +43,7 @@ export async function POST(req: Request) {
     orgId: org.id,
     orgNazev: org.nazev,
     impersonatingUserId: adminUser.id,
+    vytvoreno: Date.now(),
   }
   // Podepsaná — obsah cookie rozhoduje o orgId celé session
   cookieStore.set('sa_impersonate', signCookieValue(payload, IMPERSONATE_COOKIE), {
