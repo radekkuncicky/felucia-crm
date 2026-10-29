@@ -18,7 +18,8 @@ const nextConfig = {
           { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+          // mikrofon jen pro vlastní origin — diktování (Dáša, Nadiktovat) přes Web Speech API
+          { key: 'Permissions-Policy', value: 'camera=(), microphone=(self), geolocation=()' },
           // Content-Security-Policy nastavuje middleware.ts (per-request nonce)
           { key: 'Cross-Origin-Opener-Policy', value: 'same-origin-allow-popups' },
           { key: 'Cross-Origin-Embedder-Policy', value: 'credentialless' },

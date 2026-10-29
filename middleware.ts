@@ -170,7 +170,9 @@ export async function middleware(req: NextRequest) {
     url.pathname.startsWith('/terms') ||
     url.pathname.startsWith('/privacy') ||
     url.pathname.startsWith('/support') ||
-    url.pathname.startsWith('/.well-known')
+    url.pathname.startsWith('/.well-known') ||
+    // OAuth souhlas MCP konektoru: přihlášení řeší stránka sama (callbackUrl zpět)
+    url.pathname.startsWith('/oauth/')
 
   const isOnboardingPage = url.pathname.startsWith('/onboarding')
 

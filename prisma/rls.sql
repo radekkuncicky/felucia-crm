@@ -133,6 +133,18 @@ DROP POLICY IF EXISTS org_rls ON "notifications";
 CREATE POLICY org_rls ON "notifications" FOR ALL TO nanto_app
   USING ("orgId" = current_setting('app.org_id', true)) WITH CHECK ("orgId" = current_setting('app.org_id', true));
 
+-- OAuthKod
+ALTER TABLE "oauth_kody" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_rls ON "oauth_kody";
+CREATE POLICY org_rls ON "oauth_kody" FOR ALL TO nanto_app
+  USING ("orgId" = current_setting('app.org_id', true)) WITH CHECK ("orgId" = current_setting('app.org_id', true));
+
+-- OAuthPripojeni
+ALTER TABLE "oauth_pripojeni" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_rls ON "oauth_pripojeni";
+CREATE POLICY org_rls ON "oauth_pripojeni" FOR ALL TO nanto_app
+  USING ("orgId" = current_setting('app.org_id', true)) WITH CHECK ("orgId" = current_setting('app.org_id', true));
+
 -- ObjednavkaPolozka
 ALTER TABLE "objednavka_polozky" ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS org_rls ON "objednavka_polozky";

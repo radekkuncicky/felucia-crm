@@ -37,6 +37,12 @@ const SECTIONS: { label: string; cards: CardDef[] }[] = [
         iconPath: <><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></>,
       },
       {
+        href: '/settings/konektory',
+        label: 'Připojené aplikace',
+        description: 'Claude a další AI aplikace s přístupem vaším jménem',
+        iconPath: <><path d="M9 17H7A5 5 0 0 1 7 7h2" /><path d="M15 7h2a5 5 0 1 1 0 10h-2" /><line x1="8" y1="12" x2="16" y2="12" /></>,
+      },
+      {
         href: '/settings/users',
         perm: 'spravaUzivatelu',
         label: 'Uživatelé',

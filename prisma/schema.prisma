@@ -331,6 +331,8 @@ model Organization {
   aiUsageLogs          AiUsageLog[]
   aiAuditLogs          AiAuditLog[]
   aiCekajiciAkce       AiCekajiciAkce[]
+  oauthKody            OAuthKod[]
+  oauthPripojeni       OAuthPripojeni[]
   zamereniDefinice     ZamereniDefinice[]
   kpiNastaveni         KpiNastaveni[]
   zdrojePoptavky       ZdrojPoptavky[]
@@ -391,6 +393,8 @@ model User {
   aiUsageLogs         AiUsageLog[]
   aiAuditLogs         AiAuditLog[]
   aiCekajiciAkce      AiCekajiciAkce[]
+  oauthKody           OAuthKod[]
+  oauthPripojeni      OAuthPripojeni[]
   zamereni            Zamereni[]
 
   @@unique([orgId, email])
@@ -1904,6 +1908,66 @@ model AiCekajiciAkce {
 
   @@index([orgId, userId])
   @@map("ai_cekajici_akce")
+}
+
+// ─── OAuth 2.1 pro MCP konektor (aplikace Claude → /api/mcp) ─────────────────
+
+/// Klient z dynamické registrace (RFC 7591) — veřejný, bez secretu, ještě bez vazby na org
+model OAuthKlient {
+  id           String   @id @default(cuid())
+  clientId     String   @unique
+  nazev        String
+  redirectUris String[]
+  vytvoreno    DateTime @default(now())
+
+  kody      OAuthKod[]
+  pripojeni OAuthPripojeni[]
+
+  @@map("oauth_klienti")
+}
+
+/// Autorizační kód (PKCE S256), jednorázový, platí 5 minut. Ukládá se jen hash.
+model OAuthKod {
+  id            String    @id @default(cuid())
+  orgId         String
+  userId        String
+  klientId      String
+  kodHash       String    @unique
+  redirectUri   String
+  codeChallenge String
+  resource      String?
+  expiruje      DateTime
+  pouzito       DateTime?
+  vytvoreno     DateTime  @default(now())
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  klient       OAuthKlient  @relation(fields: [klientId], references: [id], onDelete: Cascade)
+
+  @@map("oauth_kody")
+}
+
+/// Připojený konektor uživatele = jeden grant. Access token krátký, refresh se rotuje.
+/// Zrušení v Nastavení → Připojené konektory (zruseno) zneplatní oba tokeny.
+model OAuthPripojeni {
+  id                String    @id @default(cuid())
+  orgId             String
+  userId            String
+  klientId          String
+  accessHash        String    @unique
+  accessExpiruje    DateTime
+  refreshHash       String    @unique
+  refreshExpiruje   DateTime
+  posledniPouziti   DateTime?
+  zruseno           DateTime?
+  vytvoreno         DateTime  @default(now())
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  klient       OAuthKlient  @relation(fields: [klientId], references: [id], onDelete: Cascade)
+
+  @@index([orgId, userId])
+  @@map("oauth_pripojeni")
 }
 
 // ─── Felucia Sales: zaměření u klienta ───────────────────────────────────────

@@ -89,7 +89,7 @@ export const DASA_TOOLS = [
   },
   {
     name: 'create_quote',
-    description: 'Vytvoř cenovou nabídku (CN) k obchodnímu případu s položkami. Nevyžaduje potvrzení — akci proveď přímo.',
+    description: 'Vytvoř cenovou nabídku (CN) k obchodnímu případu s položkami.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -116,7 +116,7 @@ export const DASA_TOOLS = [
   },
   {
     name: 'create_deal',
-    description: 'Vytvoř nový obchodní případ (OP) pro existujícího klienta. Vyžaduje potvrzení uživatele.',
+    description: 'Vytvoř nový obchodní případ (OP) pro existujícího klienta.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -129,7 +129,7 @@ export const DASA_TOOLS = [
   },
   {
     name: 'create_client',
-    description: 'Vytvoř nového klienta. Vyžaduje potvrzení uživatele.',
+    description: 'Vytvoř nového klienta.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -204,7 +204,7 @@ export const DASA_TOOLS = [
   },
   {
     name: 'create_lead',
-    description: 'Založ nový lead (poptávku). Vyžaduje potvrzení uživatele. Když je modul KPI zapnutý, je zdroj poptávky povinný — nevíš-li ho z diktátu, zeptej se.',
+    description: 'Založ nový lead (poptávku). Když je modul KPI zapnutý, je zdroj poptávky povinný — nevíš-li ho z diktátu, zeptej se.',
     input_schema: {
       type: 'object' as const,
       properties: {

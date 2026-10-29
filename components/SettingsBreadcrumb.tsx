@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 
 const PAGE_LABELS: Record<string, string> = {
   '/settings/profile': 'Můj profil',
+  '/settings/konektory': 'Připojené aplikace',
   '/settings/users': 'Uživatelé',
   '/settings/company': 'Nastavení firmy',
   '/settings/contract-templates': 'Šablony smluv',

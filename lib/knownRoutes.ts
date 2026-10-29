@@ -10,7 +10,7 @@ export const KNOWN_TOP_SEGMENTS = new Set([
   'kpi', 'leady', 'predavaky', 'products', 'quote-templates', 'quotes', 'servis', 'settings', 'sklad', 'sod', 'zakazky',
   // app/(auth) a ostatní
   'api', 'auth', 'demo', 'forgot-password', 'login', 'magic-link', 'maintenance', 'nabidka', 'onboarding',
-  'podpis', 'privacy', 'reset-password', 'superadmin', 'support', 'terms', 'zarizeni',
+  'oauth', 'podpis', 'privacy', 'reset-password', 'superadmin', 'support', 'terms', 'zarizeni',
   // public/
   'templates', 'uploads', 'marketing',
   // app/.well-known (katalog pro AI agenty)

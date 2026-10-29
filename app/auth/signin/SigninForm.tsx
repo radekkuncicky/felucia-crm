@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 
 interface Props {
+  /** Kam po přihlášení (ověřená relativní cesta ze stránky) */
+  callbackUrl?: string | null
   org: { id: string; nazev: string; logo: string | null; slug: string } | null
 }
 
@@ -21,7 +23,7 @@ function LogoLeaf({ dark = false }: { dark?: boolean }) {
   )
 }
 
-export default function SigninForm({ org }: Props) {
+export default function SigninForm({ org, callbackUrl = null }: Props) {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -46,7 +48,7 @@ export default function SigninForm({ org }: Props) {
       setError(result.error === 'RATE_LIMITED' ? 'Příliš mnoho pokusů o přihlášení. Zkuste to za 15 minut.' : 'Nesprávný email nebo heslo.')
       setLoading(false)
     } else {
-      router.push('/dashboard')
+      router.push(callbackUrl ?? '/dashboard')
     }
   }
 
