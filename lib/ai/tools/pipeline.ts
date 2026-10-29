@@ -50,7 +50,8 @@ function stavK(op: OpAnalyza) {
 
 const prumer = (xs: number[]) => (xs.length ? Math.round((xs.reduce((s, x) => s + x, 0) / xs.length) * 10) / 10 : null)
 
-async function pipelineSnapshot(ctx: AiKontext, input: Record<string, unknown>, now: Date): Promise<AiToolResult> {
+/** Data pipeline_snapshot — sdílí je i weekly_report (sekce k urgenci) */
+export async function pipelineStav(ctx: AiKontext, input: Record<string, unknown>, now: Date) {
   const den = parseDen(input.k_datu) ?? parseDen(isoDen(now))!
   // konec zvoleného dne (dnes = teď), aby se počítaly i dnešní změny
   const konec = input.k_datu ? posunDny(den, 1) : now
@@ -110,7 +111,7 @@ async function pipelineSnapshot(ctx: AiKontext, input: Record<string, unknown>, 
     }),
   ])
 
-  return ok({
+  return {
     kDatu: isoDen(den),
     otevreno: { pocet: opy.length, hodnotaBezDph: Math.round(opy.reduce((s, x) => s + (x.op.hodnotaBezDph ?? 0), 0)) },
     stavy,
@@ -125,7 +126,7 @@ async function pipelineSnapshot(ctx: AiKontext, input: Record<string, unknown>, 
       },
     },
     poznamka: `Hodnota = aktivní nabídka (dnešní, i u data v minulosti). Stáří ve stavu z historie stavů (sahá do 30. 3. 2026). „Bez aktivity" = od poslední dokončené aktivity nebo poznámky k OP, jinak od založení; urgence nad ${DNY_BEZ_AKTIVITY} dní.${ctx.perms.obchodCiziOP ? '' : ' Jen tvoje OP a úkoly.'}`,
-  })
+  }
 }
 
 async function dealTimeline(ctx: AiKontext, input: Record<string, unknown>): Promise<AiToolResult> {
@@ -185,7 +186,7 @@ async function dealTimeline(ctx: AiKontext, input: Record<string, unknown>): Pro
 export async function executePipelineTool(ctx: AiKontext, name: string, input: Record<string, unknown>, now = new Date()): Promise<AiToolResult> {
   if (!ctx.perms.obchod) return chyba('Nemáš přístup k obchodu')
   const t0 = Date.now()
-  const out = name === 'pipeline_snapshot' ? await pipelineSnapshot(ctx, input, now)
+  const out = name === 'pipeline_snapshot' ? ok(await pipelineStav(ctx, input, now))
     : name === 'deal_timeline' ? await dealTimeline(ctx, input)
     : chyba(`Neznámý nástroj: ${name}`)
   console.log(`[mcp-pipeline] ${name} org=${ctx.orgId} user=${ctx.userId} ${Date.now() - t0}ms`)

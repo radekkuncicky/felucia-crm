@@ -70,7 +70,7 @@ describe('tenant jen z kontextu', () => {
 
   it('list_orders vrací jen zakázky vlastní org', async () => {
     const r = JSON.parse((await executeAiTool(admin, 'list_orders', { q: RUN })).result)
-    const ids = r.map((z: { id: string }) => z.id)
+    const ids = r.polozky.map((z: { id: string }) => z.id)
     expect(ids).toContain(zakazkaA)
     expect(ids).not.toContain(zakazkaB)
   })

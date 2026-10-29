@@ -30,7 +30,7 @@ export const DASA_TOOLS = [
   },
   {
     name: 'get_deal',
-    description: 'Získej detail konkrétního OP — stav, nabídky, aktivity.',
+    description: 'Detail jednoho OP: stav, klient, nabídky s cenami, aktivity. Použij, když se uživatel ptá na konkrétní OP; ID nebo kód získáš přes search_deals. Celou historii změn dává deal_timeline.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -41,7 +41,7 @@ export const DASA_TOOLS = [
   },
   {
     name: 'search_clients',
-    description: 'Hledej klienty podle jména, příjmení nebo emailu.',
+    description: 'Hledej klienty podle jména, příjmení nebo e-mailu. Použij před create_deal (potřebuješ ID klienta) a před create_client, ať nevznikne duplicita. Podle telefonu hledej přes find_by_phone.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -52,7 +52,7 @@ export const DASA_TOOLS = [
   },
   {
     name: 'search_products',
-    description: 'Hledej produkty v katalogu. Vrací ID, název, cenu, jednotku.',
+    description: 'Hledej produkty v katalogu podle názvu nebo kódu. Vrací ID, název, prodejní cenu a jednotku — použij při skládání položek pro create_quote.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -82,7 +82,7 @@ export const DASA_TOOLS = [
   },
   {
     name: 'get_briefing',
-    description: 'Vrátí přehled pro aktuálního uživatele: nesplněné úkoly, aktivity tento týden, OP bez aktivity déle než 7 dní.',
+    description: 'Osobní přehled přihlášeného uživatele: jeho nesplněné úkoly, aktivity tento týden a OP bez aktivity déle než 7 dní. Použij na „co mám dnes dělat“. Na firemní čísla použij weekly_report nebo pipeline_snapshot.',
     input_schema: {
       type: 'object' as const,
       properties: {},
@@ -90,7 +90,7 @@ export const DASA_TOOLS = [
   },
   {
     name: 'create_quote',
-    description: 'Vytvoř cenovou nabídku (CN) k obchodnímu případu s položkami.',
+    description: 'Vytvoř cenovou nabídku (CN) s položkami k existujícímu OP. Položky ber ze vzoru (get_quote_template) nebo z katalogu (search_products). Zápis — uživatel ho potvrzuje.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -117,7 +117,7 @@ export const DASA_TOOLS = [
   },
   {
     name: 'create_deal',
-    description: 'Vytvoř nový obchodní případ (OP) pro existujícího klienta.',
+    description: 'Založ nový obchodní případ (OP) pro existujícího klienta (ID z search_clients, nového klienta nejdřív create_client). Zápis — uživatel ho potvrzuje.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -130,7 +130,7 @@ export const DASA_TOOLS = [
   },
   {
     name: 'create_client',
-    description: 'Vytvoř nového klienta.',
+    description: 'Založ nového klienta (fyzická osoba nebo firma). Nejdřív ověř přes search_clients / find_by_phone, že už neexistuje. Zápis — uživatel ho potvrzuje.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -145,7 +145,7 @@ export const DASA_TOOLS = [
   },
   {
     name: 'add_activity',
-    description: 'Přidej aktivitu (úkol, schůzku, hovor, poznámku) k obchodnímu případu.',
+    description: 'Přidej k OP aktivitu: hovor, e-mail, schůzku, úkol (připomínka do budoucna, např. follow-up nabídky) nebo poznámku. Poznámku k zakázce nebo klientovi zapisuj přes add_note. Zápis — uživatel ho potvrzuje.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -159,7 +159,7 @@ export const DASA_TOOLS = [
   },
   {
     name: 'change_deal_status',
-    description: 'Změň stav obchodního případu.',
+    description: 'Změň stav OP (např. na USPECH při podpisu smlouvy, PAS při prohře — u prohry je povinný důvod). Zápis — uživatel ho potvrzuje.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -191,7 +191,7 @@ export const DASA_TOOLS = [
   },
   {
     name: 'search_leads',
-    description: 'Hledej leady (poptávky) podle jména, firmy, e-mailu nebo telefonu.',
+    description: 'Hledej leady (nezpracované poptávky před založením OP) podle jména, firmy, e-mailu nebo telefonu.',
     input_schema: {
       type: 'object' as const,
       properties: { q: { type: 'string', description: 'Jméno, firma, e-mail nebo telefon' } },

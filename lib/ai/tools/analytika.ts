@@ -64,7 +64,7 @@ const ok = (data: unknown): AiToolResult => ({ result: JSON.stringify(data) })
 const chyba = (text: string): AiToolResult => ({ result: JSON.stringify({ chyba: text }) })
 
 const DEN = 86_400_000
-const zaokr = (n: number, des = 0) => Math.round(n * 10 ** des) / 10 ** des
+export const zaokr = (n: number, des = 0) => Math.round(n * 10 ** des) / 10 ** des
 const fmtIso = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Prague', year: 'numeric', month: '2-digit', day: '2-digit' })
 /** „YYYY-MM-DD“ v pražském čase */
 export const isoDen = (d: Date | null | undefined) => (d ? fmtIso.format(d) : null)
@@ -77,7 +77,7 @@ export function parseDen(v: unknown): Date | null {
 }
 
 /** Období [od, do) z inputu; do je včetně → +1 den. Výchozí: tento měsíc do dneška. */
-function obdobi(input: Record<string, unknown>, now = new Date()): { od: Date; do: Date } | string {
+export function obdobi(input: Record<string, unknown>, now = new Date()): { od: Date; do: Date } | string {
   const dnes = isoDen(now)!
   const od = parseDen(input.od) ?? parseDen(`${dnes.slice(0, 8)}01`)!
   const doDen = parseDen(input.do) ?? parseDen(dnes)!
@@ -95,7 +95,7 @@ export function posunDny(pulnoc: Date, n: number) {
   return prahaPulnoc(t.getUTCFullYear(), t.getUTCMonth() + 1, t.getUTCDate())
 }
 
-const vObdobi = (d: Date | null, o: { od: Date; do: Date }) => !!d && d >= o.od && d < o.do
+export const vObdobi = (d: Date | null, o: { od: Date; do: Date }) => !!d && d >= o.od && d < o.do
 
 /** ISO týden „YYYY-Www“ podle pražského kalendářního dne */
 function tydenKlic(d: Date) {
@@ -232,7 +232,7 @@ interface Udalosti {
   nabidnute: OpAnalyza[]
 }
 
-function metriky(u: Udalosti) {
+export function metriky(u: Udalosti) {
   const vyhrane = u.uzavrene.filter(o => o.stav === 'USPECH')
   const prohrane = u.uzavrene.filter(o => o.stav === 'PAS')
   const objemVyhranych = vyhrane.reduce((s, o) => s + (o.hodnotaBezDph ?? 0), 0)
@@ -269,7 +269,7 @@ function rozdilProc(a: Metriky, b: Metriky) {
   return out
 }
 
-async function nactiUdalosti(ctx: AiKontext, o: { od: Date; do: Date }, opy: OpAnalyza[]): Promise<Udalosti> {
+export async function nactiUdalosti(ctx: AiKontext, o: { od: Date; do: Date }, opy: OpAnalyza[]): Promise<Udalosti> {
   const leady = await orgPrisma(ctx.orgId).lead.findMany({
     where: {
       orgId: ctx.orgId, vytvoreno: { gte: o.od, lt: o.do },
