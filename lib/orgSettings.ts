@@ -40,10 +40,15 @@ export type OrgSettingsData = {
 }
 
 export async function getOrgSettings(orgId: string): Promise<OrgSettingsData> {
-  const settings = await prisma.orgSettings.upsert({
-    where: { orgId },
-    update: {},
-    create: { orgId },
-  })
-  return settings
+  try {
+    return await prisma.orgSettings.upsert({
+      where: { orgId },
+      update: {},
+      create: { orgId },
+    })
+  } catch (err) {
+    // souběžné první volání (např. Promise.all) — řádek mezitím vložil jiný požadavek
+    if ((err as { code?: string }).code !== 'P2002') throw err
+    return prisma.orgSettings.findUniqueOrThrow({ where: { orgId } })
+  }
 }
