@@ -662,7 +662,7 @@ export async function executeDasaTool(
           },
         })
 
-        return { result: JSON.stringify({ ok: true, novyStav: stav }), navigateTo: `/deals/${dealId}` }
+        return { result: JSON.stringify({ ok: true, kod: deal.kod, novyStav: stav }), navigateTo: `/deals/${dealId}` }
       }
 
       case 'get_diktat': {

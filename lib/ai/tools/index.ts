@@ -111,7 +111,7 @@ function historieZapisu(name: string, input: Record<string, unknown>, r: Record<
     case 'add_activity':
       return !id(r.activityId) ? null : { typAkce: 'CREATE', typZaznamu: 'Activity', zaznamId: r.activityId as string, zaznamNazev: String(r.kod ?? ''), zmeny: { typ: input.typ } }
     case 'change_deal_status':
-      return !id(input.dealId) ? null : { typAkce: 'UPDATE', typZaznamu: 'Deal', zaznamId: input.dealId as string, zaznamNazev: '', zmeny: { stav: r.novyStav } }
+      return !id(input.dealId) ? null : { typAkce: 'UPDATE', typZaznamu: 'Deal', zaznamId: input.dealId as string, zaznamNazev: String(r.kod ?? ''), zmeny: { stav: r.novyStav } }
     case 'create_lead':
       return !id(r.leadId) ? null : { typAkce: 'CREATE', typZaznamu: 'Lead', zaznamId: r.leadId as string, zaznamNazev: String(input.jmeno ?? '') }
     case 'add_note':
