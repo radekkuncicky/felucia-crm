@@ -2,6 +2,8 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { prisma } from '@/lib/prisma'
 import { ROLE_PRESETS } from '@/lib/permissions'
 import { executeAiTool, nahledAkce, nastrojeProKontext } from '@/lib/ai/tools'
+import { orgPrisma } from '@/lib/orgPrisma'
+import { nastavAktivniNabidku } from '@/lib/quoteAktivni'
 import type { AiKontext } from '@/lib/ai/types'
 
 /**
@@ -157,15 +159,18 @@ describe('copy_quote', () => {
     expect(r.puvodni).toMatchObject({ celkemBezDph: 2600, pocetPolozek: 3 })
     expect(r.kod).toMatch(/^NAB-\d{2}-\d{4}$/)
     const kopie = await prisma.quote.findUnique({ where: { id: r.quoteId }, include: { items: { orderBy: { poradi: 'asc' } } } })
-    expect(kopie).toMatchObject({ orgId: orgA.id, dealId: ids.dCil, aktivni: false, dphSazba: 12 })
+    // cílový OP neměl aktivní nabídku → kopie se aktivuje jako v UI
+    expect(r).toMatchObject({ aktivni: true, predchoziAktivni: null, hodnotaOpBezDph: 2600 })
+    expect(kopie).toMatchObject({ orgId: orgA.id, dealId: ids.dCil, aktivni: true, dphSazba: 12 })
     expect(kopie!.items.map(i => [i.nazev, Number(i.sleva), i.poradi, i.dealId])).toEqual([
       ['Jednotka', 10, 0, ids.dCil], ['Montáž', 0, 1, ids.dCil], ['Doprava', 0, 2, ids.dCil],
     ])
     expect((await historie(r.quoteId))[0]).toMatchObject({ typAkce: 'CREATE', actorType: 'ai', aiSource: 'mcp' })
   })
 
-  it('akceptovanou nabídku zkopírovat jde', async () => {
-    expect((await run(mcp, 'copy_quote', { quoteId: ids.qAkcept, targetDealId: ids.dCil })).ok).toBe(true)
+  it('akceptovanou nabídku zkopírovat jde; OP s aktivní nabídkou ji bez aktivni=true nemění', async () => {
+    const r = await run(mcp, 'copy_quote', { quoteId: ids.qAkcept, targetDealId: ids.dCil })
+    expect(r).toMatchObject({ ok: true, aktivni: false })
   })
 })
 
@@ -244,6 +249,79 @@ describe('change_deal_client', () => {
   it('OP se smlouvou u podpisu odmítne', async () => {
     const op = await prisma.deal.findFirst({ where: { kod: `${RUN}-OP-SOD` } })
     expect((await run(mcp, 'change_deal_client', { dealId: op!.id, clientId: ids.firma })).varovani[0]).toMatch(/smlouva/)
+  })
+})
+
+describe('aktivní nabídka', () => {
+  const aktivni = (dealId: string) => prisma.quote.findMany({ where: { dealId, aktivni: true }, select: { id: true } })
+
+  it('set_active_quote: v OP právě jedna aktivní, nová hodnota OP, historie', async () => {
+    const op = await prisma.deal.create({ data: { orgId: orgA.id, clientId: ids.firma, kod: `${RUN}-OP-AKT`, technologie: 'KLIMA' } })
+    const stara = await nabidka(orgA.id, op.id, 'AKT1', { aktivni: true })
+    const nova = await nabidka(orgA.id, op.id, 'AKT2')
+    await prisma.quoteItem.create({ data: { dealId: op.id, quoteId: nova.id, nazev: 'Navíc', mnozstvi: 1, cenaZaKus: 400, poradi: 3 } })
+
+    const r = await run(mcp, 'set_active_quote', { quoteId: `${RUN}-AKT2` })
+    expect(r).toMatchObject({ ok: true, kod: `${RUN}-AKT2`, op: `${RUN}-OP-AKT`, predchoziAktivni: `${RUN}-AKT1`, hodnotaOpPredBezDph: 2600, hodnotaOpBezDph: 3000 })
+    expect((await aktivni(op.id)).map(q => q.id)).toEqual([nova.id])
+    expect((await historie(op.id)).at(-1)).toMatchObject({
+      typZaznamu: 'Deal', actorType: 'ai', aiSource: 'mcp',
+      zmeny: { aktivniNabidka: { z: `${RUN}-AKT1`, na: `${RUN}-AKT2` }, hodnotaBezDph: { z: 2600, na: 3000 } },
+    })
+
+    // už aktivní → bez zápisu
+    const pocet = await prisma.auditLog.count({ where: { zaznamId: op.id } })
+    expect(await run(mcp, 'set_active_quote', { quoteId: nova.id })).toMatchObject({ ok: true, bezZmeny: true })
+    expect(await prisma.auditLog.count({ where: { zaznamId: op.id } })).toBe(pocet)
+
+    // stará je teď neaktivní → jde smazat
+    expect((await run(mcp, 'delete_quote', { quoteId: stara.id })).ok).toBe(true)
+  })
+
+  it('odmítne akceptovanou aktivní, SOD u podpisu i zakázku bez force; s force projde', async () => {
+    const qDalsi = await nabidka(orgA.id, (await prisma.deal.findFirst({ where: { kod: `${RUN}-OP-A` } }))!.id, 'QDALSI')
+    const r = await run(mcp, 'set_active_quote', { quoteId: qDalsi.id })
+    expect(r.chyba).toMatch(/nezměněna/)
+    expect(r.varovani[0]).toMatch(/akceptovaná/)
+    expect((await prisma.quote.findUnique({ where: { id: ids.qAkcept } }))!.aktivni).toBe(true)
+
+    const dSod = (await prisma.deal.findFirst({ where: { kod: `${RUN}-OP-SOD` } }))!
+    const qSod2 = await nabidka(orgA.id, dSod.id, 'QSOD2')
+    expect((await run(mcp, 'set_active_quote', { quoteId: qSod2.id })).varovani[0]).toMatch(/smlouvu/)
+
+    const qZak = await nabidka(orgA.id, ids.dVyuct, 'QZAK')
+    expect((await run(mcp, 'set_active_quote', { quoteId: qZak.id })).varovani[0]).toMatch(/zakázku/)
+    expect(await aktivni(ids.dVyuct)).toHaveLength(0)
+
+    const f = await run(mcp, 'set_active_quote', { quoteId: qSod2.id, force: true })
+    expect(f).toMatchObject({ ok: true, predchoziAktivni: `${RUN}-QSOD` })
+    expect(f.upozorneni[0]).toMatch(/přes varování/)
+    expect((await aktivni(dSod.id)).map(q => q.id)).toEqual([qSod2.id])
+  })
+
+  it('copy_quote s aktivni=true přepne aktivní; u zamčeného OP odmítne a kopie nevznikne', async () => {
+    const op = await prisma.deal.create({ data: { orgId: orgA.id, clientId: ids.firma, kod: `${RUN}-OP-KOP`, technologie: 'KLIMA' } })
+    const puvodni = await nabidka(orgA.id, op.id, 'KOP1', { aktivni: true })
+    const r = await run(mcp, 'copy_quote', { quoteId: ids.qOdesl, targetDealId: op.id, aktivni: true })
+    expect(r).toMatchObject({ ok: true, aktivni: true, predchoziAktivni: `${RUN}-KOP1` })
+    expect((await aktivni(op.id)).map(q => q.id)).toEqual([r.quoteId])
+    expect((await prisma.quote.findUnique({ where: { id: puvodni.id } }))!.aktivni).toBe(false)
+
+    const pred = await prisma.quote.count({ where: { dealId: ids.dVyuct } })
+    const odm = await run(mcp, 'copy_quote', { quoteId: ids.qOdesl, targetDealId: ids.dVyuct, aktivni: true })
+    expect(odm.chyba).toMatch(/nezměněna/)
+    expect(await prisma.quote.count({ where: { dealId: ids.dVyuct } })).toBe(pred)
+
+    // výchozí: OP se zakázkou bez aktivní nabídky → kopie vznikne, ale neaktivní
+    const vychozi = await run(mcp, 'copy_quote', { quoteId: ids.qOdesl, targetDealId: ids.dVyuct })
+    expect(vychozi).toMatchObject({ ok: true, aktivni: false })
+  })
+
+  it('cizí firma: set_active_quote i sdílená funkce cizí nabídku nezmění', async () => {
+    expect((await run(mcp, 'set_active_quote', { quoteId: ids.qB })).chyba).toMatch(/nenalezena/)
+    expect((await run(mcp, 'copy_quote', { quoteId: ids.qA, targetDealId: ids.dB, aktivni: true })).chyba).toMatch(/nenalezen/)
+    await nastavAktivniNabidku(orgPrisma(orgA.id), { orgId: orgA.id, dealId: ids.dB, quoteId: ids.qB })
+    expect((await prisma.quote.findUnique({ where: { id: ids.qB } }))!.aktivni).toBe(false)
   })
 })
 

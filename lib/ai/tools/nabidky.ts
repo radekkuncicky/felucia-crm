@@ -3,7 +3,8 @@ import { orgPrisma } from '@/lib/orgPrisma'
 import { quoteCelkemBezDph, quoteCelkemSDph } from '@/lib/quoteMath'
 import { loadProductSnapshots, resolveNakupniCena } from '@/lib/quoteItems'
 import { zkopirujNabidku } from '@/lib/quoteCopy'
-import { SOD_ZAMYKA, duvodNelzeSmazat, duvodZamkuNabidky } from '@/lib/quoteZamek'
+import { SOD_ZAMYKA, duvodNelzeSmazat, duvodZamkuNabidky, duvodyZamkuAktivace } from '@/lib/quoteZamek'
+import { nastavAktivniNabidku } from '@/lib/quoteAktivni'
 import { scopeOp } from './analytika'
 import type { AiKontext, AiToolResult } from '../types'
 
@@ -64,23 +65,42 @@ export const NABIDKA_TOOLS = [
     name: 'copy_quote',
     description:
       'Zkopíruj nabídku i se slevami, DPH a pořadím položek do jiného OP — i OP jiného klienta (např. když zakázku přebírá firma). ' +
-      'Kopie je neaktivní a dostane nové číslo; vrátí její součet i součet originálu pro kontrolu. Zápis — uživatel ho potvrzuje.',
+      'Kopie dostane nové číslo; vrátí její součet i součet originálu pro kontrolu. Když cílový OP nemá aktivní nabídku, kopie se stane aktivní; ' +
+      'aktivni=true ji nastaví jako aktivní i místo stávající (pravidla jako set_active_quote), aktivni=false nikdy. Zápis — uživatel ho potvrzuje.',
     input_schema: {
       type: 'object' as const,
       properties: {
         quoteId: { type: 'string', description: 'ID nebo kód kopírované nabídky' },
         targetDealId: { type: 'string', description: 'ID nebo kód cílového OP (např. OP-26-196)' },
         nazev: { type: 'string', description: 'Název kopie, výchozí „Kopie - <název>“' },
+        aktivni: { type: 'boolean', description: 'Nastavit kopii jako aktivní nabídku cílového OP; výchozí = jen když OP aktivní nabídku nemá' },
       },
       required: ['quoteId', 'targetDealId'],
     },
   },
   {
     name: 'delete_quote',
-    description: 'Smaž nabídku. Jde jen u neaktivní rozpracované nabídky, která nebyla odeslaná ani sdílená klientovi. Zápis — uživatel ho potvrzuje.',
+    description:
+      'Smaž nabídku. Jde jen u neaktivní rozpracované nabídky, která nebyla odeslaná ani sdílená klientovi. ' +
+      'Aktivní nabídku smažeš až poté, co přes set_active_quote nastavíš jako aktivní jinou nabídku téhož OP. Zápis — uživatel ho potvrzuje.',
     input_schema: {
       type: 'object' as const,
       properties: { quoteId: { type: 'string', description: 'ID nebo kód nabídky' } },
+      required: ['quoteId'],
+    },
+  },
+  {
+    name: 'set_active_quote',
+    description:
+      'Nastav nabídku jako aktivní v jejím OP (ostatní nabídky OP přestanou být aktivní). Aktivní nabídka určuje hodnotu OP a je podkladem pro smlouvu. ' +
+      'Vrátí dříve aktivní nabídku a novou hodnotu OP. Odmítne, když je současná aktivní nabídka akceptovaná nebo má OP smlouvu u podpisu či podepsanou nebo zakázku — ' +
+      'force=true jen na výslovné přání uživatele. Zápis — uživatel ho potvrzuje.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        quoteId: { type: 'string', description: 'ID nebo kód nabídky (např. NAB-26-0300)' },
+        force: { type: 'boolean', description: 'Změnit i přes akceptovanou nabídku / smlouvu / zakázku — jen když to uživatel výslovně chce' },
+      },
       required: ['quoteId'],
     },
   },
@@ -332,6 +352,90 @@ async function changeDealClient(ctx: AiKontext, input: Record<string, unknown>):
   }
 }
 
+// ─── set_active_quote ───────────────────────────────────────────────────────
+
+/** Současná aktivní nabídka OP a pravidla změny; null u `zamek` = lze měnit */
+async function stavAktivace(ctx: AiKontext, dealId: string) {
+  const db = orgPrisma(ctx.orgId)
+  const soucasna = await db.quote.findFirst({
+    where: { orgId: ctx.orgId, dealId, aktivni: true },
+    select: { id: true, kod: true, stav: true, items: { select: { mnozstvi: true, cenaZaKus: true, sleva: true } } },
+  })
+  return { soucasna, varovani: await duvodyZamkuAktivace(db, ctx.orgId, dealId, soucasna) }
+}
+
+const odmitnutiAktivace = (kod: string | null, varovani: string[]): AiToolResult => ({
+  result: JSON.stringify({
+    chyba: `Aktivní nabídka v OP ${kod ?? ''} nezměněna: ${varovani.join('; ')}. Nic se nezměnilo.`,
+    varovani,
+    napoveda: 'Změna jde jen na výslovné přání uživatele s force=true.',
+  }),
+})
+
+/**
+ * Přepne aktivní nabídku OP (sdílená funkce s webem) a zapíše Historii OP.
+ * Pravidla zámku ověřuje volající přes stavAktivace.
+ */
+async function aktivuj(
+  ctx: AiKontext,
+  q: { id: string; kod: string | null; items: { mnozstvi: unknown; cenaZaKus: unknown; sleva: unknown }[] },
+  op: { id: string; kod: string | null },
+  stav: Awaited<ReturnType<typeof stavAktivace>>,
+) {
+  await nastavAktivniNabidku(orgPrisma(ctx.orgId), { orgId: ctx.orgId, dealId: op.id, quoteId: q.id })
+  const vysledek = {
+    predchoziAktivni: stav.soucasna?.kod ?? null,
+    hodnotaOpPredBezDph: stav.soucasna ? kc(quoteCelkemBezDph(stav.soucasna.items)) : null,
+    hodnotaOpBezDph: kc(quoteCelkemBezDph(q.items)),
+    ...(stav.varovani.length ? { upozorneni: [`Změněno přes varování: ${stav.varovani.join('; ')}.`] } : {}),
+  }
+  await orgPrisma(ctx.orgId).auditLog.create({
+    data: {
+      orgId: ctx.orgId, userId: ctx.userId, typAkce: 'UPDATE', typZaznamu: 'Deal', zaznamId: op.id, zaznamNazev: op.kod ?? '',
+      zmeny: { aktivniNabidka: { z: vysledek.predchoziAktivni, na: q.kod }, hodnotaBezDph: { z: vysledek.hodnotaOpPredBezDph, na: vysledek.hodnotaOpBezDph } },
+      actorType: 'ai', aiSource: ctx.zdroj,
+    },
+  })
+  return vysledek
+}
+
+async function setActiveQuote(ctx: AiKontext, input: Record<string, unknown>): Promise<AiToolResult> {
+  const q = await najdiNabidku(ctx, input.quoteId)
+  if (!q) return chyba('Nabídka nenalezena nebo nemáš přístup')
+  const op = { id: q.deal.id, kod: q.deal.kod }
+  const zaklad = { quoteId: q.id, kod: q.kod, dealId: op.id, op: op.kod }
+  if (q.aktivni) return ok({ ok: true, bezZmeny: true, ...zaklad, hodnotaOpBezDph: kc(quoteCelkemBezDph(q.items)), zprava: 'Nabídka už je aktivní' })
+  const stav = await stavAktivace(ctx, op.id)
+  if (stav.varovani.length && input.force !== true) return odmitnutiAktivace(op.kod, stav.varovani)
+  return { result: JSON.stringify({ ok: true, ...zaklad, ...(await aktivuj(ctx, q, op, stav)) }), navigateTo: `/deals/${op.id}` }
+}
+
+async function copyQuote(ctx: AiKontext, input: Record<string, unknown>): Promise<AiToolResult> {
+  const q = await najdiNabidku(ctx, input.quoteId)
+  if (!q) return chyba('Nabídka nenalezena nebo nemáš přístup')
+  const cil = await najdiOp(ctx, input.targetDealId)
+  if (!cil) return chyba('Cílový OP nenalezen nebo nemáš přístup')
+
+  // aktivace: výslovné aktivni=true podle pravidel (odmítnutí = kopie nevznikne);
+  // výchozí jako UI — jen když cílový OP aktivní nabídku nemá a nic tomu nebrání
+  const stav = input.aktivni === false ? null : await stavAktivace(ctx, cil.id)
+  if (input.aktivni === true && stav!.varovani.length && input.force !== true) return odmitnutiAktivace(cil.kod, stav!.varovani)
+  const aktivovat = input.aktivni === true || (input.aktivni === undefined && !stav!.soucasna && !stav!.varovani.length)
+
+  const nazev = String(input.nazev ?? '').trim() || `Kopie - ${q.nazev}`
+  const kopie = await zkopirujNabidku(orgPrisma(ctx.orgId), { orgId: ctx.orgId, quote: q, targetDealId: cil.id, nazev })
+  const aktivace = aktivovat ? await aktivuj(ctx, kopie, cil, stav!) : null
+  return {
+    result: JSON.stringify({
+      ok: true, quoteId: kopie.id, kod: kopie.kod, nazev: kopie.nazev, dealId: cil.id, op: cil.kod, klient: klientJmeno(cil.client),
+      celkemBezDph: kc(quoteCelkemBezDph(kopie.items)), pocetPolozek: kopie.items.length,
+      aktivni: !!aktivace, ...(aktivace ?? {}),
+      puvodni: { kod: q.kod, celkemBezDph: kc(quoteCelkemBezDph(q.items)), pocetPolozek: q.items.length },
+    }),
+    navigateTo: `/deals/${cil.id}`,
+  }
+}
+
 // ─── Náhled pro potvrzovací kartu ───────────────────────────────────────────
 
 export async function popisNabidkaAkce(ctx: AiKontext, name: string, input: Record<string, unknown>) {
@@ -348,10 +452,15 @@ export async function popisNabidkaAkce(ctx: AiKontext, name: string, input: Reco
   switch (name) {
     case 'copy_quote': {
       const op = await najdiOp(ctx, input.targetDealId)
-      return { titulek: 'Zkopírovat nabídku', radky: [nabidka, `→ ${op ? `${op.kod} (${klientJmeno(op.client)})` : String(input.targetDealId ?? '?')}`] }
+      return {
+        titulek: 'Zkopírovat nabídku',
+        radky: [nabidka, `→ ${op ? `${op.kod} (${klientJmeno(op.client)})` : String(input.targetDealId ?? '?')}${input.aktivni === true ? ' jako aktivní' : ''}`],
+      }
     }
     case 'delete_quote':
       return { titulek: 'Smazat nabídku', radky: [nabidka] }
+    case 'set_active_quote':
+      return { titulek: 'Nastavit aktivní nabídku', radky: [nabidka] }
     default: {
       const pocet = (k: string) => (Array.isArray(input[k]) ? (input[k] as unknown[]).length : 0)
       return {
@@ -377,23 +486,12 @@ export async function executeNabidkaTool(ctx: AiKontext, name: string, input: Re
     case 'update_quote':
       out = await updateQuote(ctx, input)
       break
-    case 'copy_quote': {
-      const q = await najdiNabidku(ctx, input.quoteId)
-      if (!q) { out = chyba('Nabídka nenalezena nebo nemáš přístup'); break }
-      const cil = await najdiOp(ctx, input.targetDealId)
-      if (!cil) { out = chyba('Cílový OP nenalezen nebo nemáš přístup'); break }
-      const nazev = String(input.nazev ?? '').trim() || `Kopie - ${q.nazev}`
-      const kopie = await zkopirujNabidku(orgPrisma(ctx.orgId), { orgId: ctx.orgId, quote: q, targetDealId: cil.id, nazev })
-      out = {
-        result: JSON.stringify({
-          ok: true, quoteId: kopie.id, kod: kopie.kod, nazev: kopie.nazev, dealId: cil.id, op: cil.kod, klient: klientJmeno(cil.client),
-          celkemBezDph: kc(quoteCelkemBezDph(kopie.items)), pocetPolozek: kopie.items.length,
-          puvodni: { kod: q.kod, celkemBezDph: kc(quoteCelkemBezDph(q.items)), pocetPolozek: q.items.length },
-        }),
-        navigateTo: `/deals/${cil.id}`,
-      }
+    case 'copy_quote':
+      out = await copyQuote(ctx, input)
       break
-    }
+    case 'set_active_quote':
+      out = await setActiveQuote(ctx, input)
+      break
     case 'delete_quote': {
       const q = await najdiNabidku(ctx, input.quoteId)
       if (!q) { out = chyba('Nabídka nenalezena nebo nemáš přístup'); break }

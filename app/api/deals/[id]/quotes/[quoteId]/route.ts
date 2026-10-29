@@ -6,6 +6,7 @@ import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { maskNakupky } from '@/lib/maskNakupky'
+import { nastavAktivniNabidku } from '@/lib/quoteAktivni'
 
 export async function PATCH(req: Request, { params }: { params: { id: string; quoteId: string } }) {
   const session = await getServerSession(authOptions)
@@ -24,10 +25,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string; qu
     return NextResponse.json({ error: 'Šablona nenalezena' }, { status: 404 })
   }
 
-  // If setting as active, deactivate all others first
-  if (body.aktivni === true) {
-    await db.quote.updateMany({ where: { dealId: params.id, id: { not: params.quoteId } }, data: { aktivni: false } })
-  }
+  // aktivní nabídka: ostatní v OP vypnout v jedné transakci (sdíleno s AI set_active_quote)
+  if (body.aktivni === true) await nastavAktivniNabidku(db, { orgId, dealId: params.id, quoteId: params.quoteId })
 
   const updated = await db.quote.update({
     where: { id: params.quoteId },

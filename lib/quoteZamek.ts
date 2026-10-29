@@ -22,9 +22,28 @@ export async function duvodZamkuNabidky(db: OrgPrismaClient, orgId: string, q: N
   return null
 }
 
+/**
+ * Proč v OP nejde změnit aktivní nabídku (prázdné = jde): současná aktivní je
+ * akceptovaná, nebo OP má smlouvu u podpisu / podepsanou či zakázku — aktivní
+ * nabídka je jejich cenový podklad. Hlídá se i u OP zatím bez aktivní nabídky.
+ */
+export async function duvodyZamkuAktivace(
+  db: OrgPrismaClient, orgId: string, dealId: string, soucasna: { kod: string | null; stav: string } | null,
+): Promise<string[]> {
+  const [sod, zakazka] = await Promise.all([
+    db.sod.findFirst({ where: { orgId, dealId, stav: { in: [...SOD_ZAMYKA] } }, select: { cislo: true, stav: true } }),
+    db.zakazka.findFirst({ where: { orgId, opId: dealId }, select: { cislo: true } }),
+  ])
+  return [
+    ...(soucasna?.stav === 'AKCEPTOVANA' ? [`současná aktivní nabídka ${soucasna.kod ?? ''} je akceptovaná klientem`] : []),
+    ...(sod ? [`OP má smlouvu ${sod.cislo} ${sod.stav === 'PODEPSANO' ? 'podepsanou' : 'u podpisu'}`] : []),
+    ...(zakazka ? [`OP má zakázku ${zakazka.cislo}`] : []),
+  ]
+}
+
 /** Proč nabídku nejde smazat (null = jde): jen neaktivní rozpracovaná, nikdy neodeslaná ani nesdílená */
 export function duvodNelzeSmazat(q: NabidkaZamek): string | null {
-  if (q.aktivni) return 'Aktivní nabídku nejde smazat — nejdřív označ jako aktivní jinou.'
+  if (q.aktivni) return 'Aktivní nabídku nejde smazat — nejdřív nastav jako aktivní jinou nabídku OP (set_active_quote).'
   if (q.stav !== 'ROZPRACOVANA' || q.odeslanoAt) return 'Nabídka už byla odeslaná klientovi — smazat jde jen rozpracovaná.'
   if (q.shareTokenHash) return 'Nabídka má sdílený odkaz pro klienta — nejdřív ho zruš.'
   return null

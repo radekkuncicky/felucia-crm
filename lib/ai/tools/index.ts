@@ -21,7 +21,7 @@ export const AI_TOOLS = [...DASA_TOOLS, ...ZAKAZKA_TOOLS, ...ANALYTIKA_TOOLS, ..
 export const CONFIRM_TOOLS = new Set([
   'create_quote', 'create_deal', 'create_client', 'add_activity', 'change_deal_status', 'create_lead',
   'update_order_status', 'add_note',
-  'update_quote', 'copy_quote', 'delete_quote', 'change_deal_client', 'update_client',
+  'update_quote', 'copy_quote', 'delete_quote', 'set_active_quote', 'change_deal_client', 'update_client',
 ])
 
 /**
@@ -268,6 +268,7 @@ export async function nahledAkce(ctx: AiKontext, name: string, rawInput: unknown
       case 'update_quote':
       case 'copy_quote':
       case 'delete_quote':
+      case 'set_active_quote':
       case 'change_deal_client':
         return await popisNabidkaAkce(ctx, name, input)
       case 'update_client':
