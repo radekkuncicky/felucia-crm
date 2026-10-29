@@ -17,6 +17,8 @@ const TITULKY: Record<string, string> = {
   add_note: 'Přidat poznámku', list_deals: 'Výpis obchodních případů', sales_stats: 'Statistiky obchodu',
   pipeline_snapshot: 'Stav pipeline', deal_timeline: 'Časová osa OP', operations_stats: 'Statistiky realizace',
   weekly_report: 'Týdenní report', help_analytics: 'Nápověda k analytice',
+  get_quote: 'Detail nabídky', update_quote: 'Upravit nabídku', copy_quote: 'Zkopírovat nabídku', delete_quote: 'Smazat nabídku',
+  change_deal_client: 'Přesunout OP na jiného klienta', update_client: 'Upravit klienta',
 }
 
 const ZASADY = `Jsi napojený na Felucia CRM (HVAC firmy: tepelná čerpadla, klimatizace, rekuperace).

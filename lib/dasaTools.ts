@@ -13,6 +13,7 @@ import { DIKTAT_WHERE, pripojDiktat } from '@/lib/diktat'
 import { najdiVolajiciho } from '@/lib/zapisHovoru'
 import { nactiZdroje, parseZdroj } from '@/lib/zdrojPoptavky'
 import { getOrgSettings } from '@/lib/orgSettings'
+import { slozAdresu } from '@/lib/klientAdresa'
 
 // ─── Tool definitions ────────────────────────────────────────────────────────
 
@@ -139,6 +140,11 @@ export const DASA_TOOLS = [
         prijmeni: { type: 'string', description: 'Pro firmu prázdný string' },
         telefon: { type: 'string' },
         email: { type: 'string' },
+        ulice: { type: 'string', description: 'Název ulice (bez čísla)' },
+        cislo: { type: 'string', description: 'Číslo popisné/orientační, např. 1034/28' },
+        obec: { type: 'string', description: 'Obec / město' },
+        castObce: { type: 'string', description: 'Část obce — použije se místo ulice u obcí bez ulic' },
+        psc: { type: 'string', description: 'PSČ, např. 746 01' },
       },
       required: ['typKlienta', 'jmeno'],
     },
@@ -589,6 +595,8 @@ export async function executeDasaTool(
         const jmeno = String(input.jmeno ?? '').trim()
         const prijmeni = input.prijmeni ? String(input.prijmeni).trim() : ''
         if (!jmeno) return { result: JSON.stringify({ chyba: 'Jméno klienta je povinné' }) }
+        const adresa = slozAdresu(input)
+        if (typeof adresa === 'string') return { result: JSON.stringify({ chyba: adresa }) }
 
         const client = await db.client.create({
           data: {
@@ -597,6 +605,7 @@ export async function executeDasaTool(
             jmeno, prijmeni,
             telefon: input.telefon ? String(input.telefon) : null,
             email: input.email ? String(input.email) : null,
+            ...adresa,
           },
         })
 

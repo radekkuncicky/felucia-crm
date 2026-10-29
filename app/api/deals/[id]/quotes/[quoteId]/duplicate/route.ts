@@ -5,8 +5,7 @@ import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { maskNakupky } from '@/lib/maskNakupky'
-import { generateQuoteKod } from '@/lib/quoteKod'
-import { createWithUniqueKod } from '@/lib/uniqueKod'
+import { zkopirujNabidku } from '@/lib/quoteCopy'
 
 export async function POST(req: Request, { params }: { params: { id: string; quoteId: string } }) {
   const session = await getServerSession(authOptions)
@@ -21,34 +20,7 @@ export async function POST(req: Request, { params }: { params: { id: string; quo
   })
   if (!quote) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const newQuote = await createWithUniqueKod(() => generateQuoteKod(orgId), kod => db.quote.create({
-    data: {
-      orgId,
-      dealId: params.id,
-      kod,
-      nazev: `${quote.nazev} (kopie)`,
-      popis: quote.popis,
-      dphSazba: quote.dphSazba,
-      aktivni: false,
-      items: {
-        create: quote.items.map((item) => ({
-          dealId: params.id,
-          productId: item.productId,
-          nazev: item.nazev,
-          mnozstvi: item.mnozstvi,
-          cenaZaKus: item.cenaZaKus,
-          nakupniCena: item.nakupniCena,
-          sleva: item.sleva,
-          dphSazba: item.dphSazba,
-          jednotka: item.jednotka,
-          kod: item.kod,
-          poznamky: item.poznamky,
-          poradi: item.poradi,
-        })),
-      },
-    },
-    include: { items: { include: { product: true }, orderBy: { poradi: 'asc' } } },
-  }))
+  const newQuote = await zkopirujNabidku(db, { orgId, quote, targetDealId: params.id, nazev: `${quote.nazev} (kopie)` })
 
   return NextResponse.json(maskNakupky(newQuote, getPerms(session.user)), { status: 201 })
 }

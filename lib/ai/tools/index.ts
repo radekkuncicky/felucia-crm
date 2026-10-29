@@ -5,6 +5,8 @@ import { ZAKAZKA_TOOLS, ZAKAZKA_TOOL_NAMES, executeZakazkaTool, popisZakazkaAkce
 import { ANALYTIKA_TOOLS, ANALYTIKA_TOOL_NAMES, executeAnalytikaTool } from './analytika'
 import { PIPELINE_TOOLS, PIPELINE_TOOL_NAMES, executePipelineTool } from './pipeline'
 import { PROVOZ_TOOLS, PROVOZ_TOOL_NAMES, executeProvozTool } from './provoz'
+import { NABIDKA_TOOLS, NABIDKA_TOOL_NAMES, executeNabidkaTool, popisNabidkaAkce } from './nabidky'
+import { KLIENT_TOOLS, KLIENT_TOOL_NAMES, executeKlientTool, popisKlientAkce } from './klienti'
 import type { AiKontext, AiNahledAkce, AiToolResult } from '../types'
 
 /**
@@ -13,12 +15,13 @@ import type { AiKontext, AiNahledAkce, AiToolResult } from '../types'
  * kontext ze serveru (AiKontext); orgId od modelu se zahazuje.
  */
 
-export const AI_TOOLS = [...DASA_TOOLS, ...ZAKAZKA_TOOLS, ...ANALYTIKA_TOOLS, ...PIPELINE_TOOLS, ...PROVOZ_TOOLS]
+export const AI_TOOLS = [...DASA_TOOLS, ...ZAKAZKA_TOOLS, ...ANALYTIKA_TOOLS, ...PIPELINE_TOOLS, ...PROVOZ_TOOLS, ...NABIDKA_TOOLS, ...KLIENT_TOOLS]
 
 /** Zápisy, které se provedou až po potvrzení uživatelem (karta Potvrdit / Zrušit) */
 export const CONFIRM_TOOLS = new Set([
   'create_quote', 'create_deal', 'create_client', 'add_activity', 'change_deal_status', 'create_lead',
   'update_order_status', 'add_note',
+  'update_quote', 'copy_quote', 'delete_quote', 'change_deal_client', 'update_client',
 ])
 
 /**
@@ -44,6 +47,9 @@ export function nastrojeProKontext(ctx: AiKontext) {
       const zakazky = ctx.perms.zakazky !== 'ZADNE'
       return t.name === 'operations_stats' ? zakazky : t.name === 'weekly_report' ? zakazky || ctx.perms.obchod : true
     }
+    // práce s existujícími nabídkami a přesun OP zatím jen v konektoru
+    if (NABIDKA_TOOL_NAMES.has(t.name)) return ctx.zdroj === 'mcp' && ctx.perms.obchod
+    if (t.name === 'update_client') return ctx.perms.obchod || ctx.perms.zakazkyEdit
     if (OBCHOD_ZAPISY.has(t.name)) return ctx.perms.obchod
     if (t.name === 'update_order_status') return ctx.perms.zakazkyEdit
     return true
@@ -90,7 +96,7 @@ export async function zapisAudit(
   }
 }
 
-type HistorieZaznam = { typAkce: 'CREATE' | 'UPDATE'; typZaznamu: string; zaznamId: string; zaznamNazev: string; zmeny?: Record<string, unknown> }
+type HistorieZaznam = { typAkce: 'CREATE' | 'UPDATE' | 'DELETE'; typZaznamu: string; zaznamId: string; zaznamNazev: string; zmeny?: Record<string, unknown> }
 
 /** Úspěšný zápis asistentky → záznam v historii (audit_logs) s actorType "ai", připsaný uživateli */
 function historieZapisu(name: string, input: Record<string, unknown>, r: Record<string, unknown>): HistorieZaznam | null {
@@ -112,6 +118,16 @@ function historieZapisu(name: string, input: Record<string, unknown>, r: Record<
       if (id(r.zakazkaId)) return { typAkce: 'UPDATE', typZaznamu: 'Zakazka', zaznamId: r.zakazkaId as string, zaznamNazev: String(r.cislo ?? ''), zmeny: { komentar: true } }
       if (id(r.klientId)) return { typAkce: 'UPDATE', typZaznamu: 'Client', zaznamId: r.klientId as string, zaznamNazev: '', zmeny: { poznamka: true } }
       return null
+    case 'update_quote':
+      return !id(r.quoteId) ? null : { typAkce: 'UPDATE', typZaznamu: 'Quote', zaznamId: r.quoteId as string, zaznamNazev: String(r.kod ?? ''), zmeny: { ...(r.zmeny as object), celkemBezDph: r.celkemBezDph } }
+    case 'copy_quote':
+      return !id(r.quoteId) ? null : { typAkce: 'CREATE', typZaznamu: 'Quote', zaznamId: r.quoteId as string, zaznamNazev: String(r.kod ?? ''), zmeny: { kopieZ: (r.puvodni as { kod?: string } | undefined)?.kod ?? null, op: r.op } }
+    case 'delete_quote':
+      return !id(r.quoteId) ? null : { typAkce: 'DELETE', typZaznamu: 'Quote', zaznamId: r.quoteId as string, zaznamNazev: `${r.kod ?? ''} ${r.nazev ?? ''}`.trim() }
+    case 'change_deal_client':
+      return !id(r.dealId) ? null : { typAkce: 'UPDATE', typZaznamu: 'Deal', zaznamId: r.dealId as string, zaznamNazev: String(r.kod ?? ''), zmeny: { klientPred: r.klientPred, klientPo: r.klientNovy, zakazky: r.presunuteZakazky } }
+    case 'update_client':
+      return !id(r.klientId) ? null : { typAkce: 'UPDATE', typZaznamu: 'Client', zaznamId: r.klientId as string, zaznamNazev: String(r.nazev ?? ''), zmeny: r.zmeny as Record<string, unknown> }
     // update_order_status zapisuje historii sám (lib/zakazkaStav.ts)
     default:
       return null
@@ -163,6 +179,10 @@ export async function executeAiTool(
       ? await executePipelineTool(ctx, name, input)
       : PROVOZ_TOOL_NAMES.has(name)
       ? await executeProvozTool(ctx, name, input)
+      : NABIDKA_TOOL_NAMES.has(name)
+      ? await executeNabidkaTool(ctx, name, input)
+      : KLIENT_TOOL_NAMES.has(name)
+      ? await executeKlientTool(ctx, name, input)
       : await executeDasaTool(name, input, { id: ctx.userId, orgId: ctx.orgId, role: ctx.role, jmeno: ctx.jmeno, perms: ctx.perms })
   } catch (err) {
     console.error(`${logPrefix(ctx)} nástroj ${name} selhal:`, err)
@@ -245,6 +265,13 @@ export async function nahledAkce(ctx: AiKontext, name: string, rawInput: unknown
       case 'update_order_status':
       case 'add_note':
         return await popisZakazkaAkce(ctx, name, input)
+      case 'update_quote':
+      case 'copy_quote':
+      case 'delete_quote':
+      case 'change_deal_client':
+        return await popisNabidkaAkce(ctx, name, input)
+      case 'update_client':
+        return await popisKlientAkce(ctx, input)
     }
   } catch (err) {
     console.error(`${logPrefix(ctx)} náhled ${name} selhal:`, err)

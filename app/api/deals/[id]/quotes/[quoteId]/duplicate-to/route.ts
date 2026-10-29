@@ -4,8 +4,7 @@ import { forbidden, getPerms } from '@/lib/permissions'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
-import { generateQuoteKod } from '@/lib/quoteKod'
-import { createWithUniqueKod } from '@/lib/uniqueKod'
+import { zkopirujNabidku } from '@/lib/quoteCopy'
 
 export async function POST(req: Request, { params }: { params: { id: string; quoteId: string } }) {
   const session = await getServerSession(authOptions)
@@ -26,34 +25,9 @@ export async function POST(req: Request, { params }: { params: { id: string; quo
 
   const targetDeal = await db.deal.findFirst({ where: { id: targetDealId, orgId } })
   if (!targetDeal) return NextResponse.json({ error: 'Target deal not found' }, { status: 404 })
+  if (!(await canAccessDeal(session.user, getPerms(session.user), targetDeal.id))) return forbidden()
 
-  const newQuote = await createWithUniqueKod(() => generateQuoteKod(orgId), kod => db.quote.create({
-    data: {
-      orgId,
-      dealId: targetDealId,
-      kod,
-      nazev: `Kopie - ${quote.nazev}`,
-      popis: quote.popis,
-      dphSazba: quote.dphSazba,
-      aktivni: false,
-      items: {
-        create: quote.items.map(item => ({
-          dealId: targetDealId,
-          productId: item.productId,
-          nazev: item.nazev,
-          mnozstvi: item.mnozstvi,
-          cenaZaKus: item.cenaZaKus,
-          nakupniCena: item.nakupniCena,
-          sleva: item.sleva,
-          dphSazba: item.dphSazba,
-          jednotka: item.jednotka,
-          kod: item.kod,
-          poznamky: item.poznamky,
-          poradi: item.poradi,
-        })),
-      },
-    },
-  }))
+  const newQuote = await zkopirujNabidku(db, { orgId, quote, targetDealId, nazev: `Kopie - ${quote.nazev}` })
 
   return NextResponse.json({ dealId: targetDealId, quoteId: newQuote.id })
 }
