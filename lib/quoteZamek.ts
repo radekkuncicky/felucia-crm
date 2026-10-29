@@ -29,9 +29,15 @@ export function zamekNabidky(q: { aktivni: boolean; stav: string }, podklad: Pod
     : `Aktivní nabídka je podkladem zakázky ${podklad.cislo} — uprav kopii.`
 }
 
-export async function duvodZamkuNabidky(db: OrgPrismaClient, orgId: string, q: NabidkaZamek): Promise<string | null> {
+export async function duvodZamkuNabidky(db: OrgPrismaClient, orgId: string, q: Pick<NabidkaZamek, 'dealId' | 'aktivni' | 'stav'>): Promise<string | null> {
   if (q.stav === 'AKCEPTOVANA' || !q.aktivni) return zamekNabidky(q, null)
   return zamekNabidky(q, await podkladOp(db, orgId, q.dealId))
+}
+
+/** Zámek nabídky podle ID — pro API routy, které mění obsah nabídky (null = jde nebo neexistuje) */
+export async function zamekNabidkyPodleId(db: OrgPrismaClient, orgId: string, quoteId: string): Promise<string | null> {
+  const q = await db.quote.findFirst({ where: { id: quoteId, orgId }, select: { dealId: true, aktivni: true, stav: true } })
+  return q ? duvodZamkuNabidky(db, orgId, q) : null
 }
 
 /**

@@ -7,6 +7,7 @@ import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { maskNakupky } from '@/lib/maskNakupky'
 import { nastavAktivniNabidku } from '@/lib/quoteAktivni'
+import { zamekNabidkyPodleId } from '@/lib/quoteZamek'
 
 export async function PATCH(req: Request, { params }: { params: { id: string; quoteId: string } }) {
   const session = await getServerSession(authOptions)
@@ -21,6 +22,14 @@ export async function PATCH(req: Request, { params }: { params: { id: string; qu
   if (!quote) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const body = await req.json()
+  // obsah zamčené nabídky se nemění; aktivace a vzhled PDF (templateId) jdou dál
+  const meniObsah = (body.nazev !== undefined && body.nazev !== quote.nazev)
+    || (body.popis !== undefined && (body.popis ?? '') !== (quote.popis ?? ''))
+    || (body.dphSazba !== undefined && Number(body.dphSazba) !== quote.dphSazba)
+  if (meniObsah) {
+    const zamek = await zamekNabidkyPodleId(db, orgId, params.quoteId)
+    if (zamek) return NextResponse.json({ error: zamek }, { status: 409 })
+  }
   if (body.templateId && !(await isOwned(db, 'quoteTemplate', body.templateId))) {
     return NextResponse.json({ error: 'Šablona nenalezena' }, { status: 404 })
   }
@@ -54,6 +63,9 @@ export async function DELETE(req: Request, { params }: { params: { id: string; q
     where: { id: params.quoteId, deal: { id: params.id, orgId } },
   })
   if (!quote) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  const zamek = await zamekNabidkyPodleId(db, orgId, params.quoteId)
+  if (zamek) return NextResponse.json({ error: zamek }, { status: 409 })
 
   await db.quote.delete({ where: { id: params.quoteId } })
   return NextResponse.json({ ok: true })

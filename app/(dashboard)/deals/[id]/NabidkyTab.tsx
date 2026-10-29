@@ -22,6 +22,7 @@ import { CSS } from '@dnd-kit/utilities'
 import ProductCatalogModal from '@/components/ProductCatalogModal'
 import ConfirmModal from '@/components/ConfirmModal'
 import { toast } from 'sonner'
+import { zamekNabidky, type PodkladOp } from '@/lib/quoteZamek'
 import { Button, buttonClasses } from '@/components/ui/Button'
 import { Menu } from '@/components/ui/Menu'
 import { IconEye, IconDownload, IconCopy, IconArrowRight, IconBell } from '@/components/ui/Icons'
@@ -123,6 +124,8 @@ interface Props {
   dealKod?: string | null
   /** stav OP — po akceptaci nabídky se nabídne posun do „Před uzavřením“ */
   dealStav?: string
+  /** smlouva u podpisu / zakázka OP — zamyká aktivní nabídku (lib/quoteZamek) */
+  podkladOp?: PodkladOp
   quotes: QuoteData[]
   products: ProductData[]
   templates: TemplateData[]
@@ -550,6 +553,7 @@ function DuplicateToModal({
 export default function NabidkyTab({
   dealId,
   dealStav,
+  podkladOp = null,
   quotes: initQuotes,
   products,
   templates,
@@ -643,6 +647,8 @@ export default function NabidkyTab({
 
   const selectedQuote =
     quotes.find(q => q.id === selectedQuoteId) ?? null
+  // akceptovaná nabídka / aktivní nabídka OP se smlouvou u podpisu nebo zakázkou — jen ke čtení (server totéž hlídá)
+  const zamek = selectedQuote ? zamekNabidky(selectedQuote, podkladOp) : null
   const dphRate = selectedQuote?.dphSazba ?? dealDph
   const total =
     selectedQuote?.items.reduce(
@@ -692,7 +698,7 @@ export default function NabidkyTab({
     setSaveStatus('saving')
     const items = quotesRef.current.find(q => q.id === qId)?.items ?? []
     try {
-      await Promise.all(
+      const odpovedi = await Promise.all(
         items.map(item =>
           fetch(
             `/api/deals/${dealId}/quotes/${qId}/items/${item.id}`,
@@ -716,6 +722,14 @@ export default function NabidkyTab({
           )
         )
       )
+      const odmitnuto = odpovedi.find(r => !r.ok)
+      if (odmitnuto) {
+        const e = await odmitnuto.json().catch(() => null)
+        toast.error(e?.error ?? 'Změny se nepodařilo uložit')
+        setSaveStatus('dirty')
+        refreshServerData()
+        return
+      }
       isDirtyRef.current = false
       setIsDirty(false)
       setSaveStatus('saved')
@@ -775,7 +789,7 @@ export default function NabidkyTab({
 
   async function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event
-    if (!over || active.id === over.id || !selectedQuoteId) return
+    if (!over || active.id === over.id || !selectedQuoteId || zamek) return
     const items = selectedQuote?.items ?? []
     const oldIdx = items.findIndex(i => i.id === active.id)
     const newIdx = items.findIndex(i => i.id === over.id)
@@ -849,7 +863,7 @@ export default function NabidkyTab({
 
   async function applyTemplate(tplId: string) {
     const tpl = templates.find(t => t.id === tplId)
-    if (!tpl) return
+    if (!tpl || zamek) return
     setSaving(true)
     try {
       const res = await fetch(`/api/deals/${dealId}/quotes`, {
@@ -1121,7 +1135,7 @@ export default function NabidkyTab({
   }
 
   async function addInlineItem() {
-    if (!selectedQuoteId) return
+    if (!selectedQuoteId || zamek) return
     setSaving(true)
     try {
       const existingItems = selectedQuote?.items ?? []
@@ -1169,7 +1183,7 @@ export default function NabidkyTab({
   }
 
   async function deleteItemConfirm() {
-    if (!selectedQuoteId || !deleteItemId) return
+    if (!selectedQuoteId || !deleteItemId || zamek) return
     const res = await fetch(
       `/api/deals/${dealId}/quotes/${selectedQuoteId}/items/${deleteItemId}`,
       { method: 'DELETE' }
@@ -1194,7 +1208,7 @@ export default function NabidkyTab({
   }
 
   async function moveItem(itemId: string, dir: 'up' | 'down') {
-    if (!selectedQuoteId || !selectedQuote) return
+    if (!selectedQuoteId || !selectedQuote || zamek) return
     const items = selectedQuote.items
     const idx = items.findIndex(i => i.id === itemId)
     if (idx === -1) return
@@ -1424,11 +1438,12 @@ export default function NabidkyTab({
                     type="button"
                     data-compact
                     onClick={() => {
+                      if (zamek) return
                       setEditingNameId(selectedQuote.id)
                       setEditingNameValue(selectedQuote.nazev)
                     }}
                     className="hover:text-primary dark:hover:text-primary-light text-left"
-                    title="Klikněte pro přejmenování"
+                    title={zamek ?? 'Klikněte pro přejmenování'}
                   >
                     {selectedQuote.nazev}
                   </button>
@@ -1472,6 +1487,7 @@ export default function NabidkyTab({
                   DPH:
                 </span>
                 <select
+                  disabled={!!zamek}
                   value={selectedQuote.dphSazba}
                   onChange={e =>
                     updateQuoteDph(selectedQuote.id, Number(e.target.value))
@@ -1524,8 +1540,8 @@ export default function NabidkyTab({
                   ? '✓ Uloženo'
                   : '●'}
               </span>
-              <Button size="sm" variant="secondary" onClick={addInlineItem} disabled={saving}>+ Položka</Button>
-              <Button size="sm" variant="secondary" onClick={() => setShowProductModal(true)}>Z katalogu</Button>
+              <Button size="sm" variant="secondary" onClick={addInlineItem} disabled={saving || !!zamek}>+ Položka</Button>
+              <Button size="sm" variant="secondary" onClick={() => setShowProductModal(true)} disabled={!!zamek}>Z katalogu</Button>
               <a
                 href={`/api/quotes/${selectedQuote.id}/preview`}
                 target="_blank"
@@ -1552,15 +1568,23 @@ export default function NabidkyTab({
                 label="Další akce s nabídkou"
                 items={[
                   ...(isDirty ? [{ label: 'Uložit hned', onSelect: () => doSave() }] : []),
-                  { label: 'Přejmenovat', onSelect: () => { setEditingNameId(selectedQuote.id); setEditingNameValue(selectedQuote.nazev) } },
+                  ...(zamek ? [] : [{ label: 'Přejmenovat', onSelect: () => { setEditingNameId(selectedQuote.id); setEditingNameValue(selectedQuote.nazev) } }]),
                   ...(selectedQuote.stav === 'AKCEPTOVANA' || selectedQuote.stav === 'ODMITNUTA'
                     ? [{ label: 'Vrátit stav na Odeslaná', onSelect: () => zmenitStavNabidky(selectedQuote.id, 'ODESLANA') }] : []),
-                  ...(quotes.length > 1 ? [{ label: 'Smazat nabídku', onSelect: () => setDeleteQuoteId(selectedQuote.id), danger: true, separator: true }] : []),
+                  ...(quotes.length > 1 && !zamek ? [{ label: 'Smazat nabídku', onSelect: () => setDeleteQuoteId(selectedQuote.id), danger: true, separator: true }] : []),
                 ]}
               />
             </div>
           </div>
 
+          {zamek && (
+            <div role="status" className="px-4 py-2 border-b border-amber-200 dark:border-amber-900/40 bg-amber-50 dark:bg-amber-950/30 text-sm text-amber-800 dark:text-amber-300">
+              🔒 Jen ke čtení: {zamek}
+            </div>
+          )}
+
+          {/* Zamčená nabídka: fieldset vypne všechna pole a tlačítka položek najednou */}
+          <fieldset disabled={!!zamek} className="min-w-0 m-0 p-0 border-0">
           {/* Popis */}
           <div className="px-4 py-2 border-b border-gray-100 dark:border-slate-700">
             <textarea
@@ -1906,6 +1930,7 @@ export default function NabidkyTab({
             </div>
           </DndContext>
           </div>{/* end hidden md:block */}
+          </fieldset>
         </div>
       )}
 

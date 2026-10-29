@@ -28,6 +28,7 @@ import { DalsiKrokCard } from './DalsiKrokCard'
 import { formatCislo } from '@/lib/format'
 import { getDefiniceProZamereni, vyplneneSekce } from '@/lib/zamereniDefinice'
 import { klientAdresa } from '@/lib/mobile-helpers'
+import { podkladOp } from '@/lib/quoteZamek'
 
 function fmt(d: Date | null) {
   if (!d) return ''
@@ -116,7 +117,7 @@ export default async function DealDetailPage({
   if (deal.stav === 'ZNEPLATNENO' && !perms.obchodMazani) notFound()
 
   // Zakázka vzniklá z tohoto OP (auto-create při Úspěchu)
-  const [linkedZakazka, posledniSmlouva] = await Promise.all([
+  const [linkedZakazka, posledniSmlouva, podklad] = await Promise.all([
     prisma.zakazka.findFirst({
       where: { opId: deal.id, orgId },
       select: { id: true, cislo: true, stav: true },
@@ -126,6 +127,8 @@ export default async function DealDetailPage({
       select: { id: true, stav: true },
       orderBy: { vytvoreno: 'desc' },
     }),
+    // co zamyká aktivní nabídku (smlouva u podpisu / zakázka) — editor ji pak ukáže jen ke čtení
+    podkladOp(prisma as unknown as import('@/lib/orgPrisma').OrgPrismaClient, orgId, deal.id),
   ])
 
   const klientAdresaText = klientAdresa(deal.client)
@@ -417,6 +420,7 @@ export default async function DealDetailPage({
           dealId={deal.id}
           dealKod={deal.kod}
           dealStav={deal.stav}
+          podkladOp={podklad}
           dphSazba={deal.dphSazba}
           quotes={deal.quotes.map(q => ({
             id: q.id,

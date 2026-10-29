@@ -4,6 +4,7 @@ import { forbidden, getPerms } from '@/lib/permissions'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
+import { zamekNabidkyPodleId } from '@/lib/quoteZamek'
 
 export async function PUT(req: Request, { params }: { params: { id: string; quoteId: string } }) {
   const session = await getServerSession(authOptions)
@@ -16,6 +17,8 @@ export async function PUT(req: Request, { params }: { params: { id: string; quot
     where: { id: params.quoteId, deal: { id: params.id, orgId } },
   })
   if (!quote) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  const zamek = await zamekNabidkyPodleId(db, orgId, params.quoteId)
+  if (zamek) return NextResponse.json({ error: zamek }, { status: 409 })
 
   const { items } = await req.json()
   if (!Array.isArray(items)) return NextResponse.json({ error: 'Invalid body' }, { status: 400 })

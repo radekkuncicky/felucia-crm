@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { mobileDealScope, getMobileOrWebSession, requireObchodnikOrAdmin } from '@/lib/mobile-helpers'
 import { quoteCelkemBezDph, quoteCelkemSDph } from '@/lib/quoteMath'
+import { zamekNabidkyPodleId } from '@/lib/quoteZamek'
+import { nastavAktivniNabidku } from '@/lib/quoteAktivni'
 
 // GET /api/mobile/obchod/nabidka/[id] — detail varianty vč. položek.
 // nakupniCena je v odpovědi jen tady (endpoint pro obchodníka) — appka ji
@@ -84,6 +86,12 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     return NextResponse.json({ error: 'Neplatný požadavek' }, { status: 400 })
   }
 
+  // obsah zamčené nabídky (akceptovaná / podklad SOD u podpisu či zakázky) se nemění; aktivace jde
+  if ((typeof body.nazev === 'string' && body.nazev.trim()) || body.dphSazba !== undefined || body.platnostDo !== undefined || Array.isArray(body.items)) {
+    const zamek = await zamekNabidkyPodleId(db, orgId, quote.id)
+    if (zamek) return NextResponse.json({ error: zamek }, { status: 409 })
+  }
+
   const data: Record<string, unknown> = {}
   if (typeof body.nazev === 'string' && body.nazev.trim()) data.nazev = body.nazev.trim()
   if (body.dphSazba !== undefined) {
@@ -95,8 +103,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     data.platnostDo = body.platnostDo ? new Date(body.platnostDo) : null
   }
   if (body.aktivni === true) {
-    await db.quote.updateMany({ where: { dealId: quote.dealId, id: { not: quote.id } }, data: { aktivni: false } })
-    data.aktivni = true
+    await nastavAktivniNabidku(db, { orgId, dealId: quote.dealId, quoteId: quote.id })
   } else if (body.aktivni === false) {
     data.aktivni = false
   }
@@ -151,7 +158,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
   if (Object.keys(data).length > 0) {
     await db.quote.update({ where: { id: quote.id }, data })
-  } else if (!Array.isArray(body.items)) {
+  } else if (!Array.isArray(body.items) && body.aktivni !== true) {
     return NextResponse.json({ error: 'Žádná pole ke změně' }, { status: 400 })
   }
 
@@ -177,6 +184,8 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
   if (quote.odeslanoAt) {
     return NextResponse.json({ error: 'Odeslanou nabídku nelze smazat' }, { status: 409 })
   }
+  const zamek = await zamekNabidkyPodleId(db, session!.user.orgId, quote.id)
+  if (zamek) return NextResponse.json({ error: zamek }, { status: 409 })
 
   await db.quote.delete({ where: { id: quote.id } })
   return NextResponse.json({ ok: true })

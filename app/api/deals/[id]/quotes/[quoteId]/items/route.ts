@@ -6,6 +6,7 @@ import { NextResponse } from 'next/server'
 import { maskNakupky } from '@/lib/maskNakupky'
 import { forbidden, getPerms } from '@/lib/permissions'
 import { loadProductSnapshots, resolveNakupniCena } from '@/lib/quoteItems'
+import { zamekNabidkyPodleId } from '@/lib/quoteZamek'
 
 export async function POST(req: Request, { params }: { params: { id: string; quoteId: string } }) {
   const session = await getServerSession(authOptions)
@@ -19,6 +20,8 @@ export async function POST(req: Request, { params }: { params: { id: string; quo
     where: { id: params.quoteId, deal: { id: params.id, orgId } },
   })
   if (!quote) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  const zamek = await zamekNabidkyPodleId(db, orgId, params.quoteId)
+  if (zamek) return NextResponse.json({ error: zamek }, { status: 409 })
 
   const body = await req.json()
 
