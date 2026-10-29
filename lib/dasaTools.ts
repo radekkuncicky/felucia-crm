@@ -6,6 +6,7 @@ import { generateDealKod } from '@/lib/dealKod'
 import { createWithUniqueKod } from '@/lib/uniqueKod'
 import { Technologie, StavDealu, TypAktivity, TypKlienta } from '@prisma/client'
 import { formatDate } from '@/lib/format'
+import { quoteCelkemBezDph } from '@/lib/quoteMath'
 import { vyhranoPriZmene } from '@/lib/dealUspech'
 import { jeDuvodProhry, type DuvodProhryKod } from '@/lib/duvodProhry'
 import { DIKTAT_WHERE, pripojDiktat } from '@/lib/diktat'
@@ -18,7 +19,7 @@ import { getOrgSettings } from '@/lib/orgSettings'
 export const DASA_TOOLS = [
   {
     name: 'search_deals',
-    description: 'Hledej obchodní případy (OP) podle kódu, jména klienta nebo předmětu. Použij vždy, když potřebuješ UUID dealu před tvorbou nabídky nebo jiné akcí.',
+    description: 'Hledej obchodní případy (OP) podle kódu, jména klienta nebo předmětu (max 50, s datem založení, hodnotou nabídky a obchodníkem). Použij vždy, když potřebuješ UUID dealu před tvorbou nabídky nebo jiné akcí.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -280,20 +281,32 @@ export async function executeDasaTool(
             }),
           },
           select: {
-            id: true, kod: true, predmet: true, technologie: true, stav: true,
+            id: true, kod: true, predmet: true, technologie: true, stav: true, vytvoreno: true,
             client: { select: { jmeno: true, prijmeni: true } },
+            user: { select: { jmeno: true } },
+            // hodnota = aktivní nabídka, jinak nejnovější (jako list_deals)
+            quotes: {
+              select: { aktivni: true, items: { select: { mnozstvi: true, cenaZaKus: true, sleva: true } } },
+              orderBy: { vytvoreno: 'desc' },
+            },
           },
-          take: 8,
+          take: 50,
           orderBy: { vytvoreno: 'desc' },
         })
 
         if (deals.length === 0) return { result: JSON.stringify({ zprava: 'Žádné OP nenalezeny' }) }
         return {
-          result: JSON.stringify(deals.map(d => ({
-            id: d.id, kod: d.kod, predmet: d.predmet, technologie: d.technologie,
-            stav: d.stav,
-            klient: d.client ? `${d.client.jmeno} ${d.client.prijmeni ?? ''}`.trim() : '?',
-          }))),
+          result: JSON.stringify(deals.map(d => {
+            const nabidka = d.quotes.find(q => q.aktivni) ?? d.quotes[0]
+            return {
+              id: d.id, kod: d.kod, predmet: d.predmet, technologie: d.technologie,
+              stav: d.stav,
+              klient: d.client ? `${d.client.jmeno} ${d.client.prijmeni ?? ''}`.trim() : '?',
+              zalozeno: formatDate(d.vytvoreno),
+              obchodnik: d.user?.jmeno ?? null,
+              ...(isTechnik ? {} : { hodnotaNabidkyBezDph: nabidka ? Math.round(quoteCelkemBezDph(nabidka.items)) : null }),
+            }
+          })),
         }
       }
 
