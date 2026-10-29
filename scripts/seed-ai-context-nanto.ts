@@ -6,6 +6,8 @@
  *
  * Text je doslova ze sekce „Kontext NANTO" (audit NANTO, říjen 2026).
  */
+// .env musí být načtené dřív, než se vyhodnotí lib/prisma (importy se hoistují)
+import 'dotenv/config'
 import { prisma } from '../lib/prisma'
 
 const KONTEXT_NANTO = `Zákazníci jsou B2C. Firma dělá tepelná čerpadla, klimatizace, rekuperace a podlahové topení.
