@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { formatDateTime } from '@/lib/format'
 import { IconClipboard, IconBox, IconNote } from '@/components/ui/Icons'
+import { AiAkceTip } from '@/components/ui/AiAkceTip'
 
 interface Komentar {
   id: string
@@ -19,6 +20,8 @@ interface AuditEntry {
   zmeny: Record<string, unknown>
   vytvoreno: string
   userJmeno: string | null
+  actorType: string
+  aiSource: string | null
 }
 
 interface Props {
@@ -32,11 +35,15 @@ function formatZmeny(zmeny: Record<string, unknown>): string {
   if (zmeny.stavPred && zmeny.stavPo) return `Stav: ${zmeny.stavPred} → ${zmeny.stavPo}`
   if (zmeny.stav) return `Stav: ${zmeny.stav}`
   if (zmeny.storno) return `Storno: ${zmeny.duvod ?? ''}`
+  if (zmeny.komentar) return 'Přidán komentář'
   return JSON.stringify(zmeny)
 }
 
 export default function HistorieTab({ zakazkaId, komentare: initialKomentare, currentUserId, aktivity }: Props) {
   const [view, setView] = useState<'komentare' | 'aktivita'>('komentare')
+  const [jenAi, setJenAi] = useState(false)
+  const maAi = aktivity.some(a => a.actorType === 'ai')
+  const zobrazene = jenAi ? aktivity.filter(a => a.actorType === 'ai') : aktivity
   const [komentare, setKomentare] = useState(initialKomentare)
   const [text, setText] = useState('')
   const [loading, setLoading] = useState(false)
@@ -147,17 +154,23 @@ export default function HistorieTab({ zakazkaId, komentare: initialKomentare, cu
         </>
       ) : (
         <div className="flex-1 overflow-y-auto">
-          {aktivity.length === 0 ? (
+          {maAi && (
+            <label className="flex items-center gap-2 px-5 pt-3 text-xs text-gray-500 dark:text-slate-400 cursor-pointer w-fit">
+              <input type="checkbox" checked={jenAi} onChange={e => setJenAi(e.target.checked)} className="rounded border-gray-300 dark:border-slate-600" />
+              Jen akce AI asistentky
+            </label>
+          )}
+          {zobrazene.length === 0 ? (
             <div className="text-center py-10 text-gray-400 dark:text-slate-500 text-sm">Žádná aktivita</div>
           ) : (
             <div className="px-5 py-4 space-y-4">
-              {aktivity.map((a, i) => (
+              {zobrazene.map((a, i) => (
                 <div key={a.id} className="flex gap-3">
                   <div className="flex flex-col items-center">
                     <div className="w-8 h-8 rounded-full bg-gray-100 dark:bg-slate-700 flex items-center justify-center text-sm flex-shrink-0">
                       {a.typZaznamu === 'Zakazka' ? <IconClipboard className="w-4 h-4" /> : a.typZaznamu === 'ZakazkaPolozka' ? <IconBox className="w-4 h-4" /> : <IconNote className="w-4 h-4" />}
                     </div>
-                    {i < aktivity.length - 1 && <div className="w-0.5 flex-1 bg-gray-100 dark:bg-slate-700 mt-2" />}
+                    {i < zobrazene.length - 1 && <div className="w-0.5 flex-1 bg-gray-100 dark:bg-slate-700 mt-2" />}
                   </div>
                   <div className="pb-4 min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -169,7 +182,12 @@ export default function HistorieTab({ zakazkaId, komentare: initialKomentare, cu
                       </span>
                     </div>
                     <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">{formatZmeny(a.zmeny)}</p>
-                    {a.userJmeno && <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">· {a.userJmeno}</p>}
+                    {a.userJmeno && (
+                      <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5 flex items-center gap-1">
+                        · {a.userJmeno}
+                        {a.actorType === 'ai' && <AiAkceTip zdroj={a.aiSource} />}
+                      </p>
+                    )}
                   </div>
                 </div>
               ))}

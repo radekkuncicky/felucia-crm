@@ -3,6 +3,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
 import CompanySettingsForm from './CompanySettingsForm'
+import AiKontextForm from './AiKontextForm'
 import { getPerms } from '@/lib/permissions'
 
 export default async function CompanySettingsPage() {
@@ -31,6 +32,7 @@ export default async function CompanySettingsPage() {
         logo: org.logo ?? '',
         logoBw: org.logoBw ?? '',
       }} />
+      <AiKontextForm initial={org.aiContext ?? ''} />
     </div>
   )
 }

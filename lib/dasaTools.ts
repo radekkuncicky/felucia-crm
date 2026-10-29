@@ -601,7 +601,7 @@ export async function executeDasaTool(
         })
         if (!deal) return { result: JSON.stringify({ chyba: 'OP nenalezen nebo nemáš přístup' }) }
 
-        await db.activity.create({
+        const aktivita = await db.activity.create({
           data: {
             orgId, dealId, userId,
             typ: String(input.typ ?? 'POZNAMKA') as TypAktivity,
@@ -610,7 +610,7 @@ export async function executeDasaTool(
           },
         })
 
-        return { result: JSON.stringify({ ok: true }) }
+        return { result: JSON.stringify({ ok: true, activityId: aktivita.id, dealId, kod: deal.kod }) }
       }
 
       case 'change_deal_status': {

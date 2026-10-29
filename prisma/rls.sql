@@ -19,6 +19,18 @@ DROP POLICY IF EXISTS org_rls ON "activities";
 CREATE POLICY org_rls ON "activities" FOR ALL TO nanto_app
   USING ("orgId" = current_setting('app.org_id', true)) WITH CHECK ("orgId" = current_setting('app.org_id', true));
 
+-- AiAuditLog
+ALTER TABLE "ai_audit_logs" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_rls ON "ai_audit_logs";
+CREATE POLICY org_rls ON "ai_audit_logs" FOR ALL TO nanto_app
+  USING ("orgId" = current_setting('app.org_id', true)) WITH CHECK ("orgId" = current_setting('app.org_id', true));
+
+-- AiCekajiciAkce
+ALTER TABLE "ai_cekajici_akce" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_rls ON "ai_cekajici_akce";
+CREATE POLICY org_rls ON "ai_cekajici_akce" FOR ALL TO nanto_app
+  USING ("orgId" = current_setting('app.org_id', true)) WITH CHECK ("orgId" = current_setting('app.org_id', true));
+
 -- AiUsageLog
 ALTER TABLE "ai_usage_logs" ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS org_rls ON "ai_usage_logs";

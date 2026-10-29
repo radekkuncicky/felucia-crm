@@ -260,6 +260,8 @@ model Organization {
   dic           String?
   sidlo         String?
   web           String?
+  /// Firemní kontext pro AI asistentku (jak firma funguje) — vkládá se do systémového promptu, edituje admin
+  aiContext     String?   @db.Text
   logo          String?
   logoBw        String?
   prilohaVopPath   String?
@@ -327,6 +329,8 @@ model Organization {
   documents            Document[]
   leady                Lead[]
   aiUsageLogs          AiUsageLog[]
+  aiAuditLogs          AiAuditLog[]
+  aiCekajiciAkce       AiCekajiciAkce[]
   zamereniDefinice     ZamereniDefinice[]
   kpiNastaveni         KpiNastaveni[]
   zdrojePoptavky       ZdrojPoptavky[]
@@ -385,6 +389,8 @@ model User {
   assignedLeady       Lead[]               @relation("LeadAssigned")
   leadNotes           LeadNote[]
   aiUsageLogs         AiUsageLog[]
+  aiAuditLogs         AiAuditLog[]
+  aiCekajiciAkce      AiCekajiciAkce[]
   zamereni            Zamereni[]
 
   @@unique([orgId, email])
@@ -819,6 +825,10 @@ model AuditLog {
   zaznamId     String
   zaznamNazev  String
   zmeny        Json     @default("{}")
+  /// Kdo akci provedl: "user" | "ai" (AI asistentka jménem userId)
+  actorType    String   @default("user")
+  /// U actorType "ai": "web" (Dáša v CRM) | "mcp" (hlasový konektor)
+  aiSource     String?
   vytvoreno    DateTime @default(now())
 
   organization Organization @relation(fields: [orgId], references: [id])
@@ -1850,6 +1860,50 @@ model AiUsageLog {
   @@index([orgId, vytvoreno])
   @@index([userId, vytvoreno])
   @@map("ai_usage_logs")
+}
+
+/// Každé volání nástroje AI asistentky (web i MCP) — vstup a výsledek jen sem, v UI se nezobrazují
+model AiAuditLog {
+  id        String   @id @default(cuid())
+  orgId     String
+  userId    String
+  zdroj     String   @default("web") // web | mcp
+  nastroj   String
+  vstup     Json     @default("{}")
+  vysledek  String?  @db.Text
+  /// PROVEDENO (čtení / bez potvrzení) | NAVRZENO | POTVRZENO | ZRUSENO | CHYBA
+  stav      String
+  vytvoreno DateTime @default(now())
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  user         User         @relation(fields: [userId], references: [id])
+
+  @@index([orgId, vytvoreno])
+  @@map("ai_audit_logs")
+}
+
+/// Zápisové akce asistentky čekající na potvrzení uživatelem + stav konverzace pro pokračování
+model AiCekajiciAkce {
+  id        String   @id @default(cuid())
+  orgId     String
+  userId    String
+  model     String
+  system    String   @db.Text
+  /// Zprávy pro Claude API až po assistant zprávu s tool_use (včetně)
+  zpravy    Json
+  /// Hotové výsledky nástrojů z téhož kola (čtení), které se pošlou spolu s výsledky zápisů
+  hotove    Json     @default("[]")
+  /// [{ id, name, input }] — zápisy k potvrzení
+  akce      Json
+  stav      String   @default("CEKA") // CEKA | POTVRZENO | ZRUSENO
+  expiruje  DateTime
+  vytvoreno DateTime @default(now())
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  user         User         @relation(fields: [userId], references: [id])
+
+  @@index([orgId, userId])
+  @@map("ai_cekajici_akce")
 }
 
 // ─── Felucia Sales: zaměření u klienta ───────────────────────────────────────

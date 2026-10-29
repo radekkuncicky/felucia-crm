@@ -7,7 +7,13 @@ import { cn } from '@/lib/cn'
  * Ikona „i" s vysvětlivkou. Na rozdíl od `title` funguje i na dotyku
  * a z klávesnice: klik/Enter otevře, klik mimo nebo Esc zavře.
  */
-export function InfoTip({ text, label = 'Vysvětlivka', className }: { text: string; label?: string; className?: string }) {
+export function InfoTip({ text, label = 'Vysvětlivka', className, icon }: {
+  text: string
+  label?: string
+  className?: string
+  /** Vlastní ikona místo „i" (dědí barvu tlačítka přes currentColor) */
+  icon?: React.ReactNode
+}) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLSpanElement>(null)
   const id = useId()
@@ -33,9 +39,11 @@ export function InfoTip({ text, label = 'Vysvětlivka', className }: { text: str
         onClick={() => setOpen(o => !o)}
         className="hit-area text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 transition-colors"
       >
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
+        {icon ?? (
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        )}
       </button>
       {open && (
         <span

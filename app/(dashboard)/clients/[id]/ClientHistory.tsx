@@ -1,9 +1,11 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
 import { formatDate } from '@/lib/format'
 import { ActivityTypeIcon } from '@/components/ui/ActivityTypeIcon'
 import { IconClipboard } from '@/components/ui/Icons'
+import { AiAkceTip } from '@/components/ui/AiAkceTip'
 
 interface HistoryItem {
   date: string
@@ -12,9 +14,14 @@ interface HistoryItem {
   sub: string
   href: string
   icon: string
+  aiSource: string | null
 }
 
 export default function ClientHistory({ history }: { history: HistoryItem[] }) {
+  const [jenAi, setJenAi] = useState(false)
+  const maAi = history.some(h => h.aiSource)
+  const zobrazene = jenAi ? history.filter(h => h.aiSource) : history
+
   if (history.length === 0) {
     return (
       <div className="bg-white rounded-xl border border-gray-200 p-10 text-center text-sm text-gray-400">
@@ -25,8 +32,14 @@ export default function ClientHistory({ history }: { history: HistoryItem[] }) {
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      {maAi && (
+        <label className="flex items-center gap-2 px-6 pt-3 text-xs text-gray-500 cursor-pointer w-fit">
+          <input type="checkbox" checked={jenAi} onChange={e => setJenAi(e.target.checked)} className="rounded border-gray-300" />
+          Jen akce AI asistentky
+        </label>
+      )}
       <div className="divide-y divide-gray-100">
-        {history.map((item, idx) => (
+        {zobrazene.map((item, idx) => (
           <Link
             key={idx}
             href={item.href}
@@ -39,8 +52,12 @@ export default function ClientHistory({ history }: { history: HistoryItem[] }) {
               <p className="text-sm font-medium text-gray-900 group-hover:text-blue-700 line-clamp-2">{item.label}</p>
               <p className="text-xs text-gray-500 mt-0.5">{item.sub}</p>
             </div>
-            <div className="flex-shrink-0 text-xs text-gray-400 whitespace-nowrap mt-0.5">
+            <div className="flex-shrink-0 text-xs text-gray-400 whitespace-nowrap mt-0.5 flex items-center gap-1">
               {formatDate(item.date)}
+              {item.aiSource && (
+                // tooltip uvnitř odkazu — klik na ikonku nemá otevřít záznam
+                <span onClick={e => e.preventDefault()}><AiAkceTip zdroj={item.aiSource} /></span>
+              )}
             </div>
           </Link>
         ))}

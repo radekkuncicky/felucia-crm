@@ -112,7 +112,21 @@ export default async function ClientDetailPage({
     sub: string
     href: string
     icon: string
+    /** Záznam založila AI asistentka (zdroj web / mcp), jinak null */
+    aiSource: string | null
   }
+
+  // Které OP / aktivity založila AI asistentka (audit_logs.actorType = ai)
+  const aiZaznamy = await prisma.auditLog.findMany({
+    where: {
+      orgId,
+      actorType: 'ai',
+      typAkce: 'CREATE',
+      zaznamId: { in: client.deals.flatMap(d => [d.id, ...d.activities.map(a => a.id)]) },
+    },
+    select: { zaznamId: true, aiSource: true },
+  })
+  const aiZdroj = new Map(aiZaznamy.map(a => [a.zaznamId, a.aiSource ?? 'web']))
 
   const history: HistoryItem[] = []
 
@@ -124,6 +138,7 @@ export default async function ClientDetailPage({
       sub: `${deal.kod ?? ''} · Vytvořen · ${stavLabels[deal.stav]}`,
       href: `/deals/${deal.id}`,
       icon: 'DEAL',
+      aiSource: aiZdroj.get(deal.id) ?? null,
     })
     for (const act of deal.activities) {
       history.push({
@@ -133,6 +148,7 @@ export default async function ClientDetailPage({
         sub: `${deal.predmet ?? deal.kod ?? 'OP'} · ${act.typ}`,
         href: `/deals/${deal.id}?tab=aktivity`,
         icon: act.typ,
+        aiSource: aiZdroj.get(act.id) ?? null,
       })
     }
   }

@@ -7,11 +7,29 @@ import { useTheme } from 'next-themes'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { useOrgSettings } from '@/context/OrgSettingsContext'
+import { Button } from '@/components/ui/Button'
+
+interface PendingAction {
+  id: string
+  akce: { titulek: string; radky: string[] }[]
+}
+
+type PendingStav = 'ceka' | 'odesila' | 'potvrzeno' | 'zruseno' | 'propadlo'
 
 interface ChatMessage {
   role: 'user' | 'assistant'
   content: string
   quickReplies?: string[]
+  pendingAction?: PendingAction
+  pendingStav?: PendingStav
+}
+
+/** Text zprávy pro historii — u karty se připíše, jak dopadla, ať Dáša ví, co se stalo */
+function historyContent(m: ChatMessage): string {
+  if (!m.pendingAction) return m.content
+  const co = m.pendingAction.akce.map(a => a.titulek).join(', ')
+  const jak = m.pendingStav === 'potvrzeno' ? 'potvrzeno' : m.pendingStav === 'zruseno' ? 'zrušeno' : 'nevyřízeno'
+  return `${m.content}\n[Návrh: ${co} — ${jak}]`.trim()
 }
 
 interface Deal {
@@ -128,6 +146,33 @@ export default function AIAssistant() {
       .catch(() => {})
   }, [isOpen])
 
+  // Odpověď z /api/ai-assistant i /confirm: zpráva, případná karta k potvrzení, navigace
+  const pridejOdpoved = useCallback((data: {
+    message?: string; quickReplies?: unknown; pendingAction?: PendingAction; navigateTo?: string
+    creditsUsed?: number | null; creditsLimit?: number | null
+  }) => {
+    if (data.creditsUsed !== undefined) setCreditsUsed(data.creditsUsed)
+    if (data.creditsLimit !== undefined) setCreditsLimit(data.creditsLimit)
+    const quickReplies: string[] = Array.isArray(data.quickReplies) ? data.quickReplies : []
+    const content = data.message ?? ''
+    if (content || data.pendingAction) {
+      setMessages(prev => [...prev, {
+        role: 'assistant', content, quickReplies,
+        ...(data.pendingAction ? { pendingAction: data.pendingAction, pendingStav: 'ceka' as const } : {}),
+      }])
+    }
+    // Server-side navigation after action
+    if (data.navigateTo) {
+      const kam = data.navigateTo
+      setTimeout(() => {
+        router.push(kam)
+        router.refresh()
+      }, 600)
+    } else if (!data.pendingAction) {
+      router.refresh()
+    }
+  }, [router])
+
   const sendMessage = useCallback(
     async (text?: string) => {
       const messageText = text ?? input.trim()
@@ -150,8 +195,14 @@ export default function AIAssistant() {
         : messageText
 
       const userMessage: ChatMessage = { role: 'user', content: messageText }
-      const history = messages.map(m => ({ role: m.role, content: m.content }))
-      setMessages(prev => [...prev, userMessage])
+      const history = messages
+        .map(m => ({ role: m.role, content: historyContent(m) }))
+        .filter(m => m.content.trim())
+      // nevyřízená karta po nové zprávě propadá — návrh vznikl k jinému kontextu
+      setMessages(prev => [
+        ...prev.map(m => (m.pendingStav === 'ceka' ? { ...m, pendingStav: 'propadlo' as const } : m)),
+        userMessage,
+      ])
       setInput('')
       setIsLoading(true)
 
@@ -180,31 +231,44 @@ export default function AIAssistant() {
           return
         }
 
-        if (data.creditsUsed !== undefined) setCreditsUsed(data.creditsUsed)
-        if (data.creditsLimit !== undefined) setCreditsLimit(data.creditsLimit)
-
-        const responseMessage = data.message ?? 'Omlouvám se, nastala chyba.'
-        const quickReplies: string[] = Array.isArray(data.quickReplies) ? data.quickReplies : []
-
-        setMessages(prev => [...prev, { role: 'assistant', content: responseMessage, quickReplies }])
-
-        // Server-side navigation after action
-        if (data.navigateTo) {
-          setTimeout(() => {
-            router.push(data.navigateTo)
-            router.refresh()
-          }, 600)
-        } else {
-          router.refresh()
-        }
+        pridejOdpoved(data)
       } catch {
         setMessages(prev => [...prev, { role: 'assistant', content: 'Omlouvám se, nastala chyba při komunikaci.' }])
       } finally {
         setIsLoading(false)
       }
     },
-    [input, messages, isLoading, pathname, currentDeal, session, router]
+    [input, messages, isLoading, pathname, currentDeal, session, pridejOdpoved]
   )
+
+  const vyridNavrh = useCallback(async (index: number, potvrdit: boolean) => {
+    const msg = messages[index]
+    if (!msg?.pendingAction || msg.pendingStav !== 'ceka' || isLoading) return
+    const nastav = (stav: PendingStav) =>
+      setMessages(prev => prev.map((m, i) => (i === index ? { ...m, pendingStav: stav } : m)))
+    nastav('odesila')
+    setIsLoading(true)
+    try {
+      const res = await fetch('/api/ai-assistant/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: msg.pendingAction.id, potvrdit }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        nastav('propadlo')
+        setMessages(prev => [...prev, { role: 'assistant', content: data.error ?? 'Omlouvám se, nastala chyba.' }])
+        return
+      }
+      nastav(potvrdit ? 'potvrzeno' : 'zruseno')
+      pridejOdpoved(data)
+    } catch {
+      nastav('ceka')
+      setMessages(prev => [...prev, { role: 'assistant', content: 'Omlouvám se, nastala chyba při komunikaci.' }])
+    } finally {
+      setIsLoading(false)
+    }
+  }, [messages, isLoading, pridejOdpoved])
 
   useEffect(() => {
     if (!pendingPrompt || isLoading) return
@@ -386,7 +450,7 @@ export default function AIAssistant() {
                     {msg.role === 'assistant' && (
                       <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#4CAF50', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 700, flexShrink: 0, alignSelf: 'flex-end' }}>D</div>
                     )}
-                    <div style={{ maxWidth: '78%', padding: '10px 14px', borderRadius: msg.role === 'user' ? '18px 18px 4px 18px' : '4px 18px 18px 18px', background: msg.role === 'user' ? '#4CAF50' : c.asstBubbleBg, border: msg.role === 'assistant' ? `1px solid ${c.asstBubbleBorder}` : 'none', fontSize: '13.5px', lineHeight: '1.55', color: msg.role === 'user' ? '#111827' : c.msgText, boxShadow: msg.role === 'assistant' ? '0 1px 3px rgba(0,0,0,0.06)' : 'none' }}>
+                    {(msg.content || !msg.pendingAction) && <div style={{ maxWidth: '78%', padding: '10px 14px', borderRadius: msg.role === 'user' ? '18px 18px 4px 18px' : '4px 18px 18px 18px', background: msg.role === 'user' ? '#4CAF50' : c.asstBubbleBg, border: msg.role === 'assistant' ? `1px solid ${c.asstBubbleBorder}` : 'none', fontSize: '13.5px', lineHeight: '1.55', color: msg.role === 'user' ? '#111827' : c.msgText, boxShadow: msg.role === 'assistant' ? '0 1px 3px rgba(0,0,0,0.06)' : 'none' }}>
                       {msg.role === 'assistant' ? (
                         <div className="dasha-md">
                           <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
@@ -394,8 +458,41 @@ export default function AIAssistant() {
                       ) : (
                         <span style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</span>
                       )}
-                    </div>
+                    </div>}
                   </div>
+
+                  {msg.pendingAction && (
+                    <div
+                      className="ml-9 mt-1.5 max-w-[85%] rounded-xl border border-[#C8E6C9] bg-white p-3 text-[13px] text-gray-900 shadow-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                      role="group"
+                      aria-label="Návrh změny ke schválení"
+                    >
+                      <ul className="space-y-2">
+                        {msg.pendingAction.akce.map((a, ai) => (
+                          <li key={ai}>
+                            <div className="font-semibold">{a.titulek}</div>
+                            {a.radky.filter(Boolean).map((r, ri) => (
+                              <div key={ri} className="whitespace-pre-wrap text-gray-600 dark:text-slate-300">{r}</div>
+                            ))}
+                          </li>
+                        ))}
+                      </ul>
+                      {msg.pendingStav === 'ceka' || msg.pendingStav === 'odesila' ? (
+                        <div className="mt-3 flex gap-2">
+                          <Button size="sm" loading={msg.pendingStav === 'odesila'} disabled={isLoading} onClick={() => vyridNavrh(i, true)}>
+                            Potvrdit
+                          </Button>
+                          <Button size="sm" variant="secondary" disabled={isLoading} onClick={() => vyridNavrh(i, false)}>
+                            Zrušit
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="mt-2 text-xs text-gray-500 dark:text-slate-400">
+                          {msg.pendingStav === 'potvrzeno' ? '✓ Potvrzeno' : msg.pendingStav === 'zruseno' ? 'Zrušeno' : 'Návrh propadl'}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {isLastAssistant && !input && msg.quickReplies && msg.quickReplies.length > 0 && (
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '6px', paddingLeft: '36px' }}>

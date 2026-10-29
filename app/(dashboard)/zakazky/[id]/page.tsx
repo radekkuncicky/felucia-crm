@@ -75,7 +75,7 @@ export default async function ZakazkaDetailPage({
       orderBy: { vytvoreno: 'asc' },
     }),
     prisma.auditLog.findMany({
-      where: { zaznamId: params.id },
+      where: { orgId, zaznamId: params.id },
       include: { user: { select: { jmeno: true } } },
       orderBy: { vytvoreno: 'desc' },
       take: 50,
@@ -270,6 +270,8 @@ export default async function ZakazkaDetailPage({
             zmeny: a.zmeny as Record<string, unknown>,
             vytvoreno: a.vytvoreno.toISOString(),
             userJmeno: a.user?.jmeno ?? null,
+            actorType: a.actorType,
+            aiSource: a.aiSource,
           }))}
         />
       )}

@@ -2,17 +2,8 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
-import { ZakazkaStav } from '@prisma/client'
 import { getPerms, forbidden } from '@/lib/permissions'
-
-const validTransitions: Record<ZakazkaStav, ZakazkaStav[]> = {
-  NOVA: ['PRIRAZENA'],
-  PRIRAZENA: ['NOVA', 'V_REALIZACI'],
-  V_REALIZACI: ['PRIRAZENA', 'PREDANA'],
-  PREDANA: ['V_REALIZACI', 'VYUCTOVANA'],
-  VYUCTOVANA: ['PREDANA', 'HOTOVO'],
-  HOTOVO: ['VYUCTOVANA'],
-}
+import { jeZakazkaStav, zmenStavZakazky } from '@/lib/zakazkaStav'
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
@@ -24,34 +15,10 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const { stav } = await req.json()
 
   if (!stav) return NextResponse.json({ error: 'Chybí stav' }, { status: 400 })
+  if (!jeZakazkaStav(stav)) return NextResponse.json({ error: 'Neplatný stav' }, { status: 422 })
 
-  const zakazka = await db.zakazka.findFirst({ where: { id: params.id, orgId } })
-  if (!zakazka) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  const r = await zmenStavZakazky(db, { orgId, userId: session.user.id, zakazkaId: params.id, stav })
+  if (!r.ok) return NextResponse.json({ error: r.status === 404 ? 'Not found' : r.chyba }, { status: r.status })
 
-  const allowed = validTransitions[zakazka.stav] ?? []
-  if (!allowed.includes(stav)) {
-    return NextResponse.json({ error: `Přechod ze stavu ${zakazka.stav} do ${stav} není povolen` }, { status: 422 })
-  }
-
-  const updated = await db.zakazka.update({
-    where: { id: params.id },
-    data: {
-      stav,
-      uzavreno: stav === 'HOTOVO' ? new Date() : undefined,
-    },
-  })
-
-  await db.auditLog.create({
-    data: {
-      orgId,
-      userId: session.user.id,
-      typAkce: 'UPDATE',
-      typZaznamu: 'Zakazka',
-      zaznamId: params.id,
-      zaznamNazev: zakazka.cislo,
-      zmeny: { stavPred: zakazka.stav, stavPo: stav },
-    },
-  })
-
-  return NextResponse.json(updated)
+  return NextResponse.json(r.zakazka)
 }
