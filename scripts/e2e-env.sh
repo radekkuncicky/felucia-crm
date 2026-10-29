@@ -34,6 +34,7 @@ e2e_env_build() {
   (cd "$ENVDIR" && npx prisma db push --accept-data-loss --url "$TEST_DB_URL" >/dev/null)
   psql "$TEST_DB_URL" -q -f "$ENVDIR/prisma/rls.sql" 2>/dev/null
   psql "$TEST_DB_URL" -q -f "$ENVDIR/prisma/webhook-triggers.sql" 2>/dev/null
+  psql "$TEST_DB_URL" -q -f "$ENVDIR/prisma/deal-stav-triggers.sql" 2>/dev/null
 
   echo "==> Build (izolovaný, s cache)"
   (cd "$ENVDIR" && npm run build > /tmp/e2e-build.log 2>&1) \

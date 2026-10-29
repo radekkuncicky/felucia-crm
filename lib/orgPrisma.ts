@@ -16,6 +16,7 @@ export const TENANT_MODELS = new Set([
   'Client',
   'Category',
   'Deal',
+  'DealStavZmena',
   'Product',
   'Cenik',
   'Quote',

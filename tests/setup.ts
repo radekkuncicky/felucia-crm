@@ -28,7 +28,7 @@ for (const key of ['RLS_DB_USER', 'RLS_DB_PASSWORD'] as const) {
 
 // RLS policies + webhook triggery na test DB (idempotentní; db push je nevytváří)
 import { execFileSync } from 'child_process'
-for (const file of ['../prisma/rls.sql', '../prisma/webhook-triggers.sql']) {
+for (const file of ['../prisma/rls.sql', '../prisma/webhook-triggers.sql', '../prisma/deal-stav-triggers.sql']) {
   execFileSync('psql', [testUrl, '-q', '-f', path.resolve(__dirname, file)], {
     stdio: ['ignore', 'ignore', 'ignore'],
   })

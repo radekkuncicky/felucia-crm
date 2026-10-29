@@ -330,6 +330,7 @@ model Organization {
   leady                Lead[]
   aiUsageLogs          AiUsageLog[]
   aiAuditLogs          AiAuditLog[]
+  dealStavZmeny        DealStavZmena[]
   aiCekajiciAkce       AiCekajiciAkce[]
   oauthKody            OAuthKod[]
   oauthPripojeni       OAuthPripojeni[]
@@ -392,6 +393,7 @@ model User {
   leadNotes           LeadNote[]
   aiUsageLogs         AiUsageLog[]
   aiAuditLogs         AiAuditLog[]
+  dealStavZmeny       DealStavZmena[]
   aiCekajiciAkce      AiCekajiciAkce[]
   oauthKody           OAuthKod[]
   oauthPripojeni      OAuthPripojeni[]
@@ -512,6 +514,7 @@ model Deal {
   sod               Sod[]
   lead              Lead?
   zamereni          Zamereni[]
+  stavZmeny         DealStavZmena[]
 
   @@unique([orgId, kod])
   @@index([orgId, vyhrano])
@@ -1884,6 +1887,27 @@ model AiAuditLog {
 
   @@index([orgId, vytvoreno])
   @@map("ai_audit_logs")
+}
+
+/// Historie stavů OP. Zapisuje ji DB trigger nad deals (každá změna stavu,
+/// odkudkoli); kdo změnil, doplní trigger nad audit_logs. Viz migrace
+/// 20261029180000_deal_stav_historie.
+model DealStavZmena {
+  id        String     @id @default(cuid())
+  orgId     String
+  dealId    String
+  zStavu    StavDealu?
+  naStav    StavDealu
+  zmenilId  String?
+  vytvoreno DateTime   @default(now())
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  deal         Deal         @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  zmenil       User?        @relation(fields: [zmenilId], references: [id], onDelete: SetNull)
+
+  @@index([dealId, vytvoreno])
+  @@index([orgId, vytvoreno])
+  @@map("deal_stav_zmeny")
 }
 
 /// Zápisové akce asistentky čekající na potvrzení uživatelem + stav konverzace pro pokračování

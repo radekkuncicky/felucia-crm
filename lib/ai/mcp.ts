@@ -15,6 +15,7 @@ const TITULKY: Record<string, string> = {
   list_zdroje_poptavky: 'Zdroje poptávky', create_lead: 'Založit lead', pripojit_diktat: 'Připojit diktát',
   list_orders: 'Seznam zakázek', get_order: 'Detail zakázky', update_order_status: 'Změnit stav zakázky',
   add_note: 'Přidat poznámku', list_deals: 'Výpis obchodních případů', sales_stats: 'Statistiky obchodu',
+  pipeline_snapshot: 'Stav pipeline', deal_timeline: 'Časová osa OP',
 }
 
 const ZASADY = `Jsi napojený na Felucia CRM (HVAC firmy: tepelná čerpadla, klimatizace, rekuperace).

@@ -3,6 +3,7 @@ import { formatDate, formatKc } from '@/lib/format'
 import { DASA_TOOLS, executeDasaTool } from '@/lib/dasaTools'
 import { ZAKAZKA_TOOLS, ZAKAZKA_TOOL_NAMES, executeZakazkaTool, popisZakazkaAkce } from './zakazky'
 import { ANALYTIKA_TOOLS, ANALYTIKA_TOOL_NAMES, executeAnalytikaTool } from './analytika'
+import { PIPELINE_TOOLS, PIPELINE_TOOL_NAMES, executePipelineTool } from './pipeline'
 import type { AiKontext, AiNahledAkce, AiToolResult } from '../types'
 
 /**
@@ -11,7 +12,7 @@ import type { AiKontext, AiNahledAkce, AiToolResult } from '../types'
  * kontext ze serveru (AiKontext); orgId od modelu se zahazuje.
  */
 
-export const AI_TOOLS = [...DASA_TOOLS, ...ZAKAZKA_TOOLS, ...ANALYTIKA_TOOLS]
+export const AI_TOOLS = [...DASA_TOOLS, ...ZAKAZKA_TOOLS, ...ANALYTIKA_TOOLS, ...PIPELINE_TOOLS]
 
 /** Zápisy, které se provedou až po potvrzení uživatelem (karta Potvrdit / Zrušit) */
 export const CONFIRM_TOOLS = new Set([
@@ -36,7 +37,7 @@ const OBCHOD_ZAPISY = new Set(['create_quote', 'create_deal', 'create_client', '
 export function nastrojeProKontext(ctx: AiKontext) {
   return AI_TOOLS.filter(t => {
     // analytika obchodu jen v konektoru (Claude) — webové Dáše by jen zvětšila prompt
-    if (ANALYTIKA_TOOL_NAMES.has(t.name)) return ctx.zdroj === 'mcp' && ctx.perms.obchod
+    if (ANALYTIKA_TOOL_NAMES.has(t.name) || PIPELINE_TOOL_NAMES.has(t.name)) return ctx.zdroj === 'mcp' && ctx.perms.obchod
     if (OBCHOD_ZAPISY.has(t.name)) return ctx.perms.obchod
     if (t.name === 'update_order_status') return ctx.perms.zakazkyEdit
     return true
@@ -152,6 +153,8 @@ export async function executeAiTool(
       ? await executeZakazkaTool(ctx, name, input)
       : ANALYTIKA_TOOL_NAMES.has(name)
       ? await executeAnalytikaTool(ctx, name, input)
+      : PIPELINE_TOOL_NAMES.has(name)
+      ? await executePipelineTool(ctx, name, input)
       : await executeDasaTool(name, input, { id: ctx.userId, orgId: ctx.orgId, role: ctx.role, jmeno: ctx.jmeno, perms: ctx.perms })
   } catch (err) {
     console.error(`${logPrefix(ctx)} nástroj ${name} selhal:`, err)

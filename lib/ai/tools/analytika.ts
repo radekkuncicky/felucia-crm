@@ -7,13 +7,14 @@ import type { AiKontext, AiToolResult } from '../types'
 // ─── Analytika obchodu pro MCP (jen čtení) ──────────────────────────────────
 //
 // Data se agregují v JS (stovky OP na firmu) — bez raw SQL nemusí řešit RLS
-// kontext ani časová pásma. Datum uzavření prohraného OP a poslední změny stavu
-// bere z historie (audit_logs, eviduje se od 30. 3. 2026), výhru z Deal.vyhrano.
+// kontext ani časová pásma. Datum uzavření prohraného OP a změny stavu bere
+// z historie stavů (deal_stav_zmeny; zpětně doplněná z audit_logs od 30. 3. 2026),
+// výhru z Deal.vyhrano.
 
 const STAVY = ['NOVY', 'JEDNANI', 'NABIDKA', 'PRED_UZAVRENIM', 'USPECH', 'PAS'] as const
 type Stav = (typeof STAVY)[number]
-const TECHNOLOGIE = ['KLIMA', 'TEPELNE_CERPADLO', 'REKUPERACE', 'PODLAHOVE_TOPENI', 'VZDUCHOTECHNIKA', 'JINE'] as const
-type Technologie = (typeof TECHNOLOGIE)[number]
+export const TECHNOLOGIE = ['KLIMA', 'TEPELNE_CERPADLO', 'REKUPERACE', 'PODLAHOVE_TOPENI', 'VZDUCHOTECHNIKA', 'JINE'] as const
+export type Technologie = (typeof TECHNOLOGIE)[number]
 
 const OBDOBI_PROPS = {
   od: { type: 'string', description: 'Začátek období YYYY-MM-DD (včetně)' },
@@ -66,9 +67,9 @@ const DEN = 86_400_000
 const zaokr = (n: number, des = 0) => Math.round(n * 10 ** des) / 10 ** des
 const fmtIso = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Prague', year: 'numeric', month: '2-digit', day: '2-digit' })
 /** „YYYY-MM-DD“ v pražském čase */
-const isoDen = (d: Date | null | undefined) => (d ? fmtIso.format(d) : null)
+export const isoDen = (d: Date | null | undefined) => (d ? fmtIso.format(d) : null)
 
-function parseDen(v: unknown): Date | null {
+export function parseDen(v: unknown): Date | null {
   const m = typeof v === 'string' ? /^(\d{4})-(\d{2})-(\d{2})/.exec(v.trim()) : null
   if (!m) return null
   const d = prahaPulnoc(Number(m[1]), Number(m[2]), Number(m[3]))
@@ -88,7 +89,7 @@ function obdobi(input: Record<string, unknown>, now = new Date()): { od: Date; d
 /** Počet kalendářních dní období (střídání letního času neposune hranice) */
 const pocetDni = (o: { od: Date; do: Date }) => Math.round((o.do.getTime() - o.od.getTime()) / DEN)
 /** Pražská půlnoc o `n` dní posunutá */
-function posunDny(pulnoc: Date, n: number) {
+export function posunDny(pulnoc: Date, n: number) {
   const [y, m, den] = isoDen(pulnoc)!.split('-').map(Number)
   const t = new Date(Date.UTC(y, m - 1, den + n))
   return prahaPulnoc(t.getUTCFullYear(), t.getUTCMonth() + 1, t.getUTCDate())
@@ -132,6 +133,8 @@ export interface OpAnalyza {
   hodnotaSDph: number | null
   pocetNabidek: number
   posledniAktivita: Date | null
+  /** Historie stavů vzestupně; první záznam = stav při založení */
+  historie: { stav: string; kdy: Date }[]
   duvodProhryKod: string | null
   duvodProhry: string | null
   /** Kdy OP dostal první nabídku: odeslání, jinak vytvoření (odeslání se zatím skoro neeviduje) */
@@ -139,17 +142,8 @@ export interface OpAnalyza {
 }
 
 /** Rozsah obchodníka: bez práva na cizí OP jen vlastní */
-function scopeOp(ctx: AiKontext): Prisma.DealWhereInput {
+export function scopeOp(ctx: AiKontext): Prisma.DealWhereInput {
   return ctx.perms.obchodCiziOP ? {} : { userId: ctx.userId }
-}
-
-/** Stav ze záznamu historie: {"stav":"PAS"} nebo {"stav":{"z":"NOVY","na":"USPECH"}} */
-function stavZeZmen(zmeny: unknown): string | null {
-  if (!zmeny || typeof zmeny !== 'object') return null
-  const s = (zmeny as Record<string, unknown>).stav
-  if (typeof s === 'string') return s
-  if (s && typeof s === 'object' && typeof (s as Record<string, unknown>).na === 'string') return (s as Record<string, string>).na
-  return null
 }
 
 export async function nactiOp(ctx: AiKontext, where: Prisma.DealWhereInput = {}, now = new Date()): Promise<OpAnalyza[]> {
@@ -167,28 +161,20 @@ export async function nactiOp(ctx: AiKontext, where: Prisma.DealWhereInput = {},
         orderBy: { vytvoreno: 'desc' },
       },
       quoteItems: { where: { quoteId: null }, ...POLOZKY },
-      activities: { where: { datum: { lte: now } }, select: { datum: true }, orderBy: { datum: 'desc' }, take: 1 },
+      activities: {
+        // kontakt = dokončená aktivita nebo poznámka; naplánovaná po termínu se nestala
+        where: { datum: { lte: now }, OR: [{ stav: 'DOKONCENA' }, { typ: 'POZNAMKA', stav: { not: 'ZRUSENA' } }] },
+        select: { datum: true }, orderBy: { datum: 'desc' }, take: 1,
+      },
+      stavZmeny: { where: { vytvoreno: { lte: now } }, select: { naStav: true, zStavu: true, vytvoreno: true }, orderBy: { vytvoreno: 'asc' } },
     },
   })
   if (deals.length === 0) return []
 
-  const historie = await db.auditLog.findMany({
-    where: { orgId: ctx.orgId, typZaznamu: 'Deal', zaznamId: { in: deals.map(d => d.id) } },
-    select: { zaznamId: true, zmeny: true, vytvoreno: true },
-    orderBy: { vytvoreno: 'asc' },
-  })
-  const zmenyStavu = new Map<string, { stav: string; kdy: Date }[]>()
-  for (const h of historie) {
-    const stav = stavZeZmen(h.zmeny)
-    if (!stav) continue
-    const arr = zmenyStavu.get(h.zaznamId) ?? []
-    arr.push({ stav, kdy: h.vytvoreno })
-    zmenyStavu.set(h.zaznamId, arr)
-  }
-
   return deals.map(d => {
-    const zmeny = zmenyStavu.get(d.id) ?? []
-    const posledniDoStavu = [...zmeny].reverse().find(z => z.stav === d.stav)?.kdy ?? null
+    const historie = d.stavZmeny.map(z => ({ stav: z.naStav as string, kdy: z.vytvoreno }))
+    const zmeny = d.stavZmeny.filter(z => z.zStavu !== null)
+    const posledniDoStavu = [...historie].reverse().find(z => z.stav === d.stav)?.kdy ?? null
     const uzavreno = d.stav === 'USPECH' ? (d.vyhrano ?? posledniDoStavu) : d.stav === 'PAS' ? posledniDoStavu : null
     // hodnota OP = aktivní nabídka, jinak nejnovější, jinak staré položky bez nabídky (jako seznam OP)
     const nabidka = d.quotes.find(q => q.aktivni) ?? d.quotes[0]
@@ -201,12 +187,13 @@ export async function nactiOp(ctx: AiKontext, where: Prisma.DealWhereInput = {},
       obchodnikId: d.userId, obchodnik: d.user?.jmeno ?? null,
       zdrojId: d.zdrojPoptavkyId, zdroj: d.zdrojPoptavky?.nazev ?? null,
       zalozeno: d.vytvoreno,
-      zmenaStavu: zmeny.length ? zmeny[zmeny.length - 1].kdy : null,
+      zmenaStavu: zmeny.length ? zmeny[zmeny.length - 1].vytvoreno : null,
       uzavreno,
       hodnotaBezDph: bez === null ? null : zaokr(bez, 2),
       hodnotaSDph: bez === null ? null : zaokr(bez * (1 + sazba / 100), 2),
       pocetNabidek: d.quotes.length,
       posledniAktivita: d.activities[0]?.datum ?? null,
+      historie,
       duvodProhryKod: d.duvodProhryKod, duvodProhry: d.duvodProhry,
       nabidnuto: d.quotes.reduce<Date | null>((min, q) => {
         const t = q.odeslanoAt ?? q.vytvoreno
@@ -216,7 +203,7 @@ export async function nactiOp(ctx: AiKontext, where: Prisma.DealWhereInput = {},
   })
 }
 
-const dnyMezi = (a: Date, b: Date) => Math.floor((b.getTime() - a.getTime()) / DEN)
+export const dnyMezi = (a: Date, b: Date) => Math.floor((b.getTime() - a.getTime()) / DEN)
 
 function opVystup(o: OpAnalyza, now: Date) {
   return {
@@ -232,7 +219,7 @@ function opVystup(o: OpAnalyza, now: Date) {
   }
 }
 
-const POZNAMKA_HISTORIE = 'Datum uzavření prohraných OP a změny stavu jsou z historie změn, která se eviduje od 30. 3. 2026 — u starších OP může chybět (null).'
+const POZNAMKA_HISTORIE = 'Datum uzavření prohraných OP a změny stavu jsou z historie stavů, která sahá do 30. 3. 2026 — u starších změn může chybět (null).'
 
 // ─── sales_stats ────────────────────────────────────────────────────────────
 

@@ -85,6 +85,12 @@ DROP POLICY IF EXISTS org_rls ON "custom_fields";
 CREATE POLICY org_rls ON "custom_fields" FOR ALL TO nanto_app
   USING ("orgId" = current_setting('app.org_id', true)) WITH CHECK ("orgId" = current_setting('app.org_id', true));
 
+-- DealStavZmena
+ALTER TABLE "deal_stav_zmeny" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_rls ON "deal_stav_zmeny";
+CREATE POLICY org_rls ON "deal_stav_zmeny" FOR ALL TO nanto_app
+  USING ("orgId" = current_setting('app.org_id', true)) WITH CHECK ("orgId" = current_setting('app.org_id', true));
+
 -- Deal
 ALTER TABLE "deals" ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS org_rls ON "deals";
