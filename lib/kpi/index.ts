@@ -34,6 +34,10 @@ export interface KpiVysledek {
   prubezne: number | null
   /** Jednotka zobrazené hodnoty a cíle (fáze 1 může cíl porovnat jen ve stejné jednotce) */
   jednotka: KpiJednotka
+  /** Počítá se z dat (false = chybí evidence nebo napojení) */
+  pocita: boolean
+  /** Krátce na dlaždici, na co KPI čeká */
+  cekaNa?: string
   /** Cíl porovnatelný s hodnotou (jinak null — KPI 5 má cíl v % tržeb, hodnotu zatím v Kč) */
   cilPorovnatelny: number | null
   semafor: Semafor
@@ -55,7 +59,8 @@ export async function nactiNastaveni(db: OrgPrismaClient, orgId: string): Promis
     const r = map.get(def.kod)
     return {
       kod: def.kod,
-      aktivni: r ? r.aktivni : def.dostupne,
+      // KPI z ABRA se na Nástěnku přidávají ručně v /kpi/nastaveni — většina org ABRA nemá
+      aktivni: r ? r.aktivni : def.dostupne && !def.zAbra,
       cil: r ? (r.cil !== null ? Number(r.cil) : null) : def.vychoziCil,
       poradi: r ? r.poradi : def.cislo,
     }
@@ -68,18 +73,28 @@ function porovnatelnyCil(def: KpiDef, cil: number | null) {
   return cil
 }
 
-async function vypocti(db: OrgPrismaClient, orgId: string, def: KpiDef, nast: KpiNastaveniEfektivni, now: Date): Promise<KpiVysledek> {
+/** Má org stažené faktury z ABRA Flexi? Bez nich KPI z faktur nemají z čeho počítat. */
+async function maAbra(db: OrgPrismaClient, orgId: string) {
+  return (await db.abraFaktura.count({ where: { orgId } })) > 0
+}
+
+const pocita = (def: KpiDef, abra: boolean) => def.dostupne && !!POCITADLA[def.kod] && (!def.zAbra || abra)
+
+async function vypocti(db: OrgPrismaClient, orgId: string, def: KpiDef, nast: KpiNastaveniEfektivni, now: Date, abra: boolean): Promise<KpiVysledek> {
   const aktualni = mesicKlic(now)
   const uzavreny = posunMesic(aktualni, -1)
   const pocitadlo = POCITADLA[def.kod]
   const cil = porovnatelnyCil(def, nast.cil)
-  if (!def.dostupne || !pocitadlo) {
+  if (!pocita(def, abra) || !pocitadlo) {
+    const bezAbra = def.dostupne && def.zAbra
     return {
       def, nastaveni: nast, hodnota: null, mesic: uzavreny, prubezne: null, jednotka: def.jednotka,
-      cilPorovnatelny: cil, semafor: 'BEZ_DAT', trend: [], poznamka: def.chybi,
+      cilPorovnatelny: cil, semafor: 'BEZ_DAT', trend: [], pocita: false,
+      cekaNa: bezAbra ? 'napojení ABRA Flexi' : def.cekaNa,
+      poznamka: bezAbra ? 'Počítá se z vydaných faktur a jejich úhrad v ABRA Flexi — organizace ji zatím nemá napojenou.' : def.chybi,
     }
   }
-  const trend = await pocitadlo.trend(db, orgId, mesiceTrendu(now))
+  const trend = await pocitadlo.trend(db, orgId, mesiceTrendu(now), now)
   const bod = trend.find(b => b.klic === uzavreny)
   const hodnota = bod?.hodnota ?? null
   return {
@@ -93,6 +108,7 @@ async function vypocti(db: OrgPrismaClient, orgId: string, def: KpiDef, nast: Kp
     cilPorovnatelny: cil,
     semafor: semafor(hodnota, cil, def.smer),
     trend,
+    pocita: true,
     poznamka: pocitadlo.poznamka,
   }
 }
@@ -103,7 +119,8 @@ export async function kpiPrehled(orgId: string, opts: { jenAktivni?: boolean; no
   const now = opts.now ?? new Date()
   const nastaveni = await nactiNastaveni(db, orgId)
   const vybrane = opts.jenAktivni ? nastaveni.filter(n => n.aktivni) : nastaveni
-  return Promise.all(vybrane.map(n => vypocti(db, orgId, kpiDef(n.kod)!, n, now)))
+  const abra = await maAbra(db, orgId)
+  return Promise.all(vybrane.map(n => vypocti(db, orgId, kpiDef(n.kod)!, n, now, abra)))
 }
 
 export interface KpiDetail extends KpiVysledek {
@@ -118,15 +135,15 @@ export async function kpiDetail(orgId: string, kod: KpiKod, mesic?: string, now 
   const db = orgPrisma(orgId)
   const nastaveni = (await nactiNastaveni(db, orgId)).find(n => n.kod === kod)!
   const def = kpiDef(kod)!
-  const vysledek = await vypocti(db, orgId, def, nastaveni, now)
+  const vysledek = await vypocti(db, orgId, def, nastaveni, now, await maAbra(db, orgId))
   const pocitadlo = POCITADLA[kod]
   const zaznamyMesic = mesic ?? vysledek.mesic
   return {
     ...vysledek,
     zaznamyMesic,
     zaznamyNadpis: pocitadlo?.zaznamyNadpis ?? '',
-    zaznamy: def.dostupne && pocitadlo ? await pocitadlo.zaznamy(db, orgId, zaznamyMesic) : [],
-    rozpad: def.dostupne && pocitadlo?.rozpad ? await pocitadlo.rozpad(db, orgId, zaznamyMesic) : null,
+    zaznamy: vysledek.pocita && pocitadlo ? await pocitadlo.zaznamy(db, orgId, zaznamyMesic, now) : [],
+    rozpad: vysledek.pocita && pocitadlo?.rozpad ? await pocitadlo.rozpad(db, orgId, zaznamyMesic) : null,
   }
 }
 

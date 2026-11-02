@@ -13,6 +13,12 @@ GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO nanto_app;
 ALTER DEFAULT PRIVILEGES FOR ROLE nanto IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO nanto_app;
 ALTER DEFAULT PRIVILEGES FOR ROLE nanto IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO nanto_app;
 
+-- AbraFaktura
+ALTER TABLE "abra_faktury" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_rls ON "abra_faktury";
+CREATE POLICY org_rls ON "abra_faktury" FOR ALL TO nanto_app
+  USING ("orgId" = current_setting('app.org_id', true)) WITH CHECK ("orgId" = current_setting('app.org_id', true));
+
 -- Activity
 ALTER TABLE "activities" ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS org_rls ON "activities";

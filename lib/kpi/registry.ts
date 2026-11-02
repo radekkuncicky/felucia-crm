@@ -27,28 +27,32 @@ export interface KpiDef {
   dostupne: boolean
   /** Co chybí, dokud KPI není dostupné */
   chybi?: string
+  /** Počítá se z faktur z ABRA Flexi — bez napojení org ukazuje „bez dat“ */
+  zAbra?: boolean
+  /** Krátce na dlaždici: „čeká na …“ */
+  cekaNa?: string
 }
 
 export const KPI_DEFS: KpiDef[] = [
   {
     kod: 'ZALOHY', cislo: 1, nazev: 'SOD se zálohou 70 %', jednotka: '%', smer: 'VYSSI', vychoziCil: 90,
     popis: 'Podíl podepsaných SOD, u kterých je před objednáním materiálu (jinak do 14 dní od podpisu) uhrazeno min. 70 % ceny s DPH.',
-    granularita: 'TYDEN', faze: 2, dostupne: false, chybi: 'Evidence faktur a úhrad záloh (fáze 2).',
+    granularita: 'TYDEN', faze: 2, dostupne: true, zAbra: true,
   },
   {
     kod: 'FAKTURACE', cislo: 2, nazev: 'Předání → faktura', jednotka: 'dny', smer: 'NIZSI', vychoziCil: 1,
     popis: 'Kalendářní dny od podpisu předávacího protokolu zákazníkem do první vyúčtovací faktury, každá etapa zvlášť.',
-    granularita: 'TYDEN', faze: 2, dostupne: false, chybi: 'Evidence vyúčtovacích faktur (fáze 2).',
+    granularita: 'TYDEN', faze: 2, dostupne: true, zAbra: true,
   },
   {
     kod: 'HOTOVOST', cislo: 3, nazev: 'Hotovost', jednotka: 'Kč', smer: 'VYSSI', vychoziCil: 0,
     popis: 'Zůstatek účtu a čerpání kontokorentu, cíl kladná hotovost.',
-    granularita: 'TYDEN', faze: 3, dostupne: false, chybi: 'Týdenní ruční zadání zůstatku (fáze 3), později ABRA Flexi.',
+    granularita: 'TYDEN', faze: 3, dostupne: false, cekaNa: 'zůstatek účtu', chybi: 'Čeká na zůstatek účtu — banku nám účetní přes ABRA nezpřístupnili, zbývá týdenní ruční zadání.',
   },
   {
     kod: 'MARZE', cislo: 4, nazev: 'Hrubá marže po zakázce', jednotka: '%', smer: 'VYSSI', vychoziCil: 35,
     popis: 'Vyfakturováno bez DPH minus materiál, práce (hodiny × vnitřní sazba), subdodávky a provize, po vyúčtování zakázky.',
-    granularita: 'MESIC', faze: 2, dostupne: false, chybi: 'Faktury, výkaz hodin a sazby, subdodávky a provize (fáze 2).',
+    granularita: 'MESIC', faze: 2, dostupne: false, cekaNa: 'výkaz hodin', chybi: 'Tržby už jsou z ABRA Flexi, čeká na výkaz hodin na zakázce, sazby a provize.',
   },
   {
     kod: 'MATERIAL_BEZ_ZAKAZKY', cislo: 5, nazev: 'Materiál bez zakázky', jednotka: 'Kč', smer: 'NIZSI', vychoziCil: 1,
@@ -63,7 +67,7 @@ export const KPI_DEFS: KpiDef[] = [
   {
     kod: 'ADS_CENA', cislo: 7, nazev: 'Cena za případ z Google Ads', jednotka: 'Kč', smer: 'NIZSI', vychoziCil: null,
     popis: 'Měsíční útrata za Google Ads / vyhrané případy se zdrojem Google Ads.',
-    granularita: 'MESIC', faze: 3, dostupne: false, chybi: 'Měsíční útrata za Google Ads (fáze 3). Zdroj poptávky už se eviduje.',
+    granularita: 'MESIC', faze: 3, dostupne: false, cekaNa: 'útratu za Ads', chybi: 'Čeká na měsíční útratu za Google Ads. Zdroj poptávky už se eviduje.',
   },
   {
     kod: 'PARTY', cislo: 8, nazev: 'Dokončené zakázky', jednotka: 'ks', smer: 'VYSSI', vychoziCil: null,
@@ -73,12 +77,12 @@ export const KPI_DEFS: KpiDef[] = [
   {
     kod: 'HODINY_JEDNATELU', cislo: 9, nazev: 'Hodiny jednatelů na montáži', jednotka: 'h', smer: 'NIZSI', vychoziCil: 0,
     popis: 'Součet výkazů práce uživatelů s rolí Jednatel, cíl nula do konce 2027.',
-    granularita: 'MESIC', faze: 2, dostupne: false, chybi: 'Výkaz hodin na zakázce (fáze 2).',
+    granularita: 'MESIC', faze: 2, dostupne: false, cekaNa: 'výkaz hodin', chybi: 'Čeká na výkaz hodin na zakázce.',
   },
   {
     kod: 'ZISK', cislo: 10, nazev: 'Zisk běžného provozu', jednotka: '%', smer: 'VYSSI', vychoziCil: 6,
     popis: 'Výsledek hospodaření bez jednorázových položek / tržby.',
-    granularita: 'MESIC', faze: 3, dostupne: false, chybi: 'Měsíční ruční zadání výsledku (fáze 3), později ABRA Flexi.',
+    granularita: 'MESIC', faze: 3, dostupne: false, cekaNa: 'výsledek hospodaření', chybi: 'Čeká na měsíční výsledek hospodaření (ruční zadání nebo ABRA Flexi).',
   },
 ]
 

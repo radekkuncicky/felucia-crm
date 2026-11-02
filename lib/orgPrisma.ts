@@ -63,6 +63,7 @@ export const TENANT_MODELS = new Set([
   'Objednavka',
   'ObjednavkaPolozka',
   'KpiNastaveni',
+  'AbraFaktura',
   'ZdrojPoptavky',
   'AiAuditLog',
   'AiCekajiciAkce',

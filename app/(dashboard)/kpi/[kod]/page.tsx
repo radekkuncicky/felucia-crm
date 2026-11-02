@@ -54,7 +54,7 @@ export default async function KpiDetailPage({ params, searchParams }: {
         <p className="text-sm text-muted rounded-lg bg-surface-2 border border-line px-3 py-2">{k.poznamka}</p>
       )}
 
-      {k.def.dostupne && k.trend.length > 0 && (
+      {k.pocita && k.trend.length > 0 && (
         <section aria-labelledby="trend" className="rounded-xl border border-line bg-surface p-4">
           <h2 id="trend" className="text-sm font-semibold text-fg mb-3">Vývoj po měsících</h2>
           <div className="flex items-end gap-1.5 h-36 overflow-x-auto">
@@ -108,7 +108,7 @@ export default async function KpiDetailPage({ params, searchParams }: {
         </section>
       )}
 
-      {k.def.dostupne ? (
+      {k.pocita && (
         <section aria-labelledby="zaznamy" className="rounded-xl border border-line bg-surface">
           <div className="px-4 py-3 border-b border-line">
             <h2 id="zaznamy" className="text-sm font-semibold text-fg">{k.zaznamyNadpis}</h2>
@@ -132,8 +132,6 @@ export default async function KpiDetailPage({ params, searchParams }: {
             <p className="px-4 py-6 text-sm text-muted text-center">V tomto měsíci nic.</p>
           )}
         </section>
-      ) : (
-        <p className="text-sm text-muted">Toto KPI patří do fáze {k.def.faze}. {k.def.chybi}</p>
       )}
     </div>
   )

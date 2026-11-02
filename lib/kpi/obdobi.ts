@@ -30,6 +30,12 @@ export function prahaPulnoc(y: number, m: number, d: number): Date {
   return new Date(t)
 }
 
+/** Pražská půlnoc dne, do kterého okamžik patří */
+export function prahaDen(d: Date): Date {
+  const c = casti(d)
+  return prahaPulnoc(c.y, c.m, c.d)
+}
+
 /** Klíč měsíce „YYYY-MM“ v pražském čase */
 export function mesicKlic(d: Date): string {
   const c = casti(d)

@@ -8,7 +8,7 @@ import type { OrgPrismaClient } from '../orgPrisma'
 import type { KpiKod } from './registry'
 import { formatCislo, formatKc } from '../format'
 import { quoteCelkemBezDph } from '../quoteMath'
-import { HISTORIE_OD, datumPraha, mesicKlic, mesicRozsah } from './obdobi'
+import { HISTORIE_OD, datumPraha, mesicKlic, mesicRozsah, prahaDen } from './obdobi'
 
 export interface KpiBod {
   /** Měsíc „YYYY-MM“ */
@@ -35,8 +35,9 @@ export interface KpiRozpad {
 }
 
 export interface KpiPocitadlo {
-  trend(db: OrgPrismaClient, orgId: string, mesice: string[]): Promise<KpiBod[]>
-  zaznamy(db: OrgPrismaClient, orgId: string, mesic: string): Promise<KpiZaznam[]>
+  /** `now` = okamžik výpočtu (KPI z faktur hodnotí jen to, co už má být vyřízené) */
+  trend(db: OrgPrismaClient, orgId: string, mesice: string[], now?: Date): Promise<KpiBod[]>
+  zaznamy(db: OrgPrismaClient, orgId: string, mesic: string, now?: Date): Promise<KpiZaznam[]>
   rozpad?(db: OrgPrismaClient, orgId: string, mesic: string): Promise<KpiRozpad>
   /** Nadpis seznamu záznamů v detailu */
   zaznamyNadpis: string
@@ -281,7 +282,153 @@ const party: KpiPocitadlo = {
   },
 }
 
+/**
+ * KPI 1 — SOD s uhrazenými ≥ 70 % ceny s DPH do rozhodného data (R1–R3):
+ * první odeslaná objednávka materiálu zakázky, jinak podpis SOD + 14 dní.
+ * Úhrady z ABRA Flexi (záloha i faktura, bez dobropisů) přes zakázku OP.
+ * SOD před rozhodným datem „čeká“ a do hodnoty nevstupuje (Q3). Výjimky a
+ * dodatky CRM zatím neeviduje.
+ */
+const ZALOHA_PODIL = 0.7
+const DEN = 86_400_000
+
+async function vyhodnotSod(db: OrgPrismaClient, orgId: string, od: Date, doD: Date, now: Date) {
+  const sody = await db.sod.findMany({
+    where: { orgId, stav: 'PODEPSANO', podepsano: { gte: od, lt: doD } },
+    select: {
+      id: true, cislo: true, klientJmeno: true, cenaSDph: true, podepsano: true, dealId: true,
+      deal: {
+        select: {
+          zakazky: {
+            select: {
+              id: true, cislo: true,
+              objednavky: { where: { odeslano: { not: null } }, select: { odeslano: true } },
+              abraFaktury: { where: { typ: { in: ['ZALOHA', 'FAKTURA'] } }, select: { celkemSDph: true, zbyvaUhradit: true, uhrazeno: true } },
+            },
+          },
+        },
+      },
+    },
+    orderBy: { podepsano: 'asc' },
+  })
+  return sody.map(s => {
+    const zakazky = s.deal.zakazky
+    const objednano = zakazky.flatMap(z => z.objednavky.map(o => o.odeslano!)).sort((a, b) => a.getTime() - b.getTime())[0]
+    const rozhodne = objednano ?? new Date(s.podepsano!.getTime() + 14 * DEN)
+    // Flexi zná jen den úhrady — uhrazeno v den rozhodného data ještě platí
+    const uzaverka = prahaDen(rozhodne)
+    const uhrazeno = zakazky.flatMap(z => z.abraFaktury)
+      .filter(f => f.uhrazeno && f.uhrazeno <= uzaverka)
+      .reduce((sum, f) => sum + Number(f.celkemSDph) - Number(f.zbyvaUhradit), 0)
+    const cena = Number(s.cenaSDph ?? 0)
+    const podil = cena > 0 ? uhrazeno / cena : null
+    const stav = rozhodne > now ? 'CEKA' as const : podil !== null && podil >= ZALOHA_PODIL ? 'SPLNENO' as const : 'NESPLNENO' as const
+    return { ...s, zakazka: zakazky[0] ?? null, rozhodne, objednano: !!objednano, uhrazeno, cena, podil, stav }
+  })
+}
+
+const zalohy: KpiPocitadlo = {
+  zaznamyNadpis: 'Smlouvy podepsané v měsíci, které 70 % zálohy nesplnily nebo ještě čekají',
+  poznamka: 'Úhrady z ABRA Flexi. Rozhodné datum = první odeslaná objednávka materiálu, jinak 14 dní od podpisu SOD; do té doby SOD čeká. Faktura se k zakázce přiřadí, jen když má ve Flexi vyplněné číslo zakázky.',
+  async trend(db, orgId, mesice, now = new Date()) {
+    const { od, do: doD } = rozsahMesicu(mesice)
+    const map = seskup(await vyhodnotSod(db, orgId, od, doD, now), s => s.podepsano, mesice)
+    return mesice.map(klic => {
+      const r = map.get(klic) ?? []
+      const hodnocene = r.filter(s => s.stav !== 'CEKA')
+      const splneno = hodnocene.filter(s => s.stav === 'SPLNENO').length
+      const ceka = r.length - hodnocene.length
+      return {
+        klic,
+        hodnota: hodnocene.length ? Math.round((splneno / hodnocene.length) * 1000) / 10 : null,
+        detail: `${splneno} z ${hodnocene.length}${ceka ? `, ${ceka} čeká` : ''}`,
+      }
+    })
+  },
+  async zaznamy(db, orgId, mesic, now = new Date()) {
+    const { od, do: doD } = mesicRozsah(mesic)
+    const rows = (await vyhodnotSod(db, orgId, od, doD, now)).filter(s => s.stav !== 'SPLNENO')
+    return rows.map(s => ({
+      id: s.id,
+      titulek: `${s.cislo} · ${s.klientJmeno}`,
+      popis: [
+        s.stav === 'CEKA' ? `čeká do ${datumPraha(s.rozhodne)}` : `nesplněno k ${datumPraha(s.rozhodne)}`,
+        s.objednano ? 'objednávka materiálu' : '14 dní od podpisu',
+        s.zakazka ? `zakázka ${s.zakazka.cislo}` : 'bez zakázky',
+        `uhrazeno ${formatKc(s.uhrazeno)} z ${formatKc(s.cena)}`,
+      ].join(' · '),
+      hodnota: s.podil !== null ? procento(s.uhrazeno, s.cena) : 'bez ceny',
+      href: s.zakazka ? `/zakazky/${s.zakazka.id}` : `/deals/${s.dealId}`,
+    }))
+  },
+}
+
+/**
+ * KPI 2 — kalendářní dny od podpisu předávacího protokolu do první faktury
+ * z ABRA Flexi vystavené ten den nebo později (R4). Každá etapa zvlášť: faktura
+ * s koncovkou jiné etapy (26-047-2) se k etapě 1 nepočítá. Nevyfakturované
+ * předání se počítá dny do dneška — hodnota roste, dokud faktura nevznikne.
+ */
+async function predaniFaktury(db: OrgPrismaClient, orgId: string, od: Date, doD: Date, now: Date) {
+  const rows = await db.predavak.findMany({
+    where: { orgId, podpisano: { gte: od, lt: doD } },
+    select: {
+      id: true, cislo: true, zakazkaId: true, podpisano: true,
+      etapa: { select: { cislo: true } },
+      zakazka: {
+        select: {
+          cislo: true, klient: { select: { jmeno: true, prijmeni: true } },
+          abraFaktury: { where: { typ: 'FAKTURA' }, select: { kod: true, vystaveno: true, etapaCislo: true }, orderBy: { vystaveno: 'asc' } },
+        },
+      },
+    },
+    orderBy: { podpisano: 'asc' },
+  })
+  const dnes = prahaDen(now)
+  return rows.map(p => {
+    const den = prahaDen(p.podpisano!)
+    const faktura = p.zakazka.abraFaktury.find(f =>
+      f.vystaveno >= den && (!p.etapa || f.etapaCislo === null || f.etapaCislo === p.etapa.cislo))
+    const dny = Math.round(((faktura?.vystaveno ?? dnes).getTime() - den.getTime()) / DEN)
+    return { ...p, faktura: faktura ?? null, dny }
+  })
+}
+
+const fakturace: KpiPocitadlo = {
+  zaznamyNadpis: 'Předání v měsíci a dny do faktury',
+  poznamka: 'Faktury z ABRA Flexi. Bez faktury se počítají dny do dneška. Faktura se k zakázce přiřadí, jen když má ve Flexi vyplněné číslo zakázky (u etapy s koncovkou, např. 26-047-2).',
+  async trend(db, orgId, mesice, now = new Date()) {
+    const { od, do: doD } = rozsahMesicu(mesice)
+    const map = seskup(await predaniFaktury(db, orgId, od, doD, now), p => p.podpisano, mesice)
+    return mesice.map(klic => {
+      const r = map.get(klic) ?? []
+      const bez = r.filter(p => !p.faktura).length
+      return {
+        klic,
+        hodnota: r.length ? Math.round((r.reduce((s, p) => s + p.dny, 0) / r.length) * 10) / 10 : null,
+        detail: `${r.length} předání${bez ? `, ${bez} bez faktury` : ''}`,
+      }
+    })
+  },
+  async zaznamy(db, orgId, mesic, now = new Date()) {
+    const { od, do: doD } = mesicRozsah(mesic)
+    const rows = await predaniFaktury(db, orgId, od, doD, now)
+    return rows.sort((a, b) => Number(!!a.faktura) - Number(!!b.faktura) || b.dny - a.dny).map(p => ({
+      id: p.id,
+      titulek: `${p.zakazka.cislo} · ${[p.zakazka.klient.jmeno, p.zakazka.klient.prijmeni].filter(Boolean).join(' ')}`,
+      popis: [
+        p.cislo, p.etapa ? `etapa ${p.etapa.cislo}` : null, `předáno ${datumPraha(p.podpisano!)}`,
+        p.faktura ? `faktura ${p.faktura.kod} ${datumPraha(p.faktura.vystaveno)}` : 'bez faktury',
+      ].filter(Boolean).join(' · '),
+      hodnota: `${p.dny} d`,
+      href: `/zakazky/${p.zakazkaId}/predavaky/${p.id}`,
+    }))
+  },
+}
+
 export const POCITADLA: Partial<Record<KpiKod, KpiPocitadlo>> = {
+  ZALOHY: zalohy,
+  FAKTURACE: fakturace,
   KONVERZE: konverze,
   MATERIAL_BEZ_ZAKAZKY: materialBezZakazky,
   PARTY: party,

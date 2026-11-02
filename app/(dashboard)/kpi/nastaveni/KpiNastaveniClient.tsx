@@ -17,7 +17,7 @@ interface Polozka {
   cil: number | null
   poradi: number
   dostupne: boolean
-  faze: number
+  cekaNa?: string
 }
 
 export default function KpiNastaveniClient({ polozky: initial }: { polozky: Polozka[] }) {
@@ -73,7 +73,7 @@ export default function KpiNastaveniClient({ polozky: initial }: { polozky: Polo
               <span className="min-w-0">
                 <span className="block text-sm font-medium text-fg">{p.cislo}. {p.nazev}</span>
                 <span className="block text-xs text-muted">
-                  {p.dostupne ? 'Počítá se z dat CRM' : `Bez dat — fáze ${p.faze}`}
+                  {p.dostupne ? 'Počítá se z dat CRM' : `Bez dat — čeká na ${p.cekaNa ?? 'evidenci'}`}
                 </span>
               </span>
             </label>

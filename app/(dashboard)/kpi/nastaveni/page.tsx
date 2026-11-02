@@ -18,7 +18,7 @@ export default async function KpiNastaveniPage() {
   const nastaveni = await nactiNastaveni(orgPrisma(orgId), orgId)
   const polozky = nastaveni.map(n => {
     const def = kpiDef(n.kod)!
-    return { ...n, cislo: def.cislo, nazev: def.nazev, jednotka: def.kod === 'MATERIAL_BEZ_ZAKAZKY' || def.kod === 'ZALOHY' ? '%' : def.jednotka, smer: def.smer, dostupne: def.dostupne, faze: def.faze }
+    return { ...n, cislo: def.cislo, nazev: def.nazev, jednotka: def.kod === 'MATERIAL_BEZ_ZAKAZKY' || def.kod === 'ZALOHY' ? '%' : def.jednotka, smer: def.smer, dostupne: def.dostupne, cekaNa: def.cekaNa }
   })
 
   return (

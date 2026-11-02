@@ -6,6 +6,8 @@ import { sweepWebhookOutbox, deliverWebhook } from './webhooks'
 import { sweepExpirovanePodpisy, sweepPripominkyPodpisu } from './podpisy'
 import { sweepNabidkyFollowUp } from './followupy'
 import { sweepKpiTydenniSouhrn } from './kpiSouhrn'
+import { abraKonfigurace } from '../lib/abra/flexi'
+import { synchronizujAbra } from '../lib/abra/sync'
 import { QUEUE_WEBHOOK_SWEEP, QUEUE_WEBHOOK_DELIVER, type WebhookJob } from '../lib/webhooks'
 
 /**
@@ -18,6 +20,7 @@ import { QUEUE_WEBHOOK_SWEEP, QUEUE_WEBHOOK_DELIVER, type WebhookJob } from '../
  *  - webhooks-sweep    cron každou minutu, vymete webhook_outbox
  *  - webhook-deliver   doručení jedné události na jeden endpoint
  *  - kpi-tydenni-souhrn  pondělí 7:00 Europe/Prague, souhrn KPI vedení jednatelům
+ *  - abra-sync         každých 30 min 6–20 h, vydané faktury z ABRA Flexi (jen čtení), když je v .env
  */
 
 const QUEUE_SWEEP = 'reminders-sweep'
@@ -102,7 +105,21 @@ async function main() {
     if (n > 0) console.log(`[kpi-souhrn] odesláno ${n} týdenních souhrnů KPI`)
   })
 
-  console.log('[worker] běží — fronty:', QUEUE_SWEEP, QUEUE_REMINDER, QUEUE_WEBHOOK_SWEEP, QUEUE_WEBHOOK_DELIVER, QUEUE_PODPISY_SWEEP, QUEUE_FOLLOWUP_SWEEP, QUEUE_KPI_SOUHRN)
+  const QUEUE_ABRA_SYNC = 'abra-sync'
+  const abra = abraKonfigurace()
+  await boss.createQueue(QUEUE_ABRA_SYNC)
+  if (abra) {
+    // Data jsou malá (~60 kB), v noci se ve Flexi nic neděje
+    await boss.schedule(QUEUE_ABRA_SYNC, '*/30 6-20 * * *', {}, { tz: 'Europe/Prague' })
+    await boss.work(QUEUE_ABRA_SYNC, async () => {
+      const r = await synchronizujAbra(prisma, abra)
+      console.log(`[abra] faktur ${r.celkem}, se zakázkou ${r.sparovano}, smazáno ${r.smazano}`)
+    })
+  } else {
+    await boss.unschedule(QUEUE_ABRA_SYNC)
+  }
+
+  console.log('[worker] běží — fronty:', QUEUE_SWEEP, QUEUE_REMINDER, QUEUE_WEBHOOK_SWEEP, QUEUE_WEBHOOK_DELIVER, QUEUE_PODPISY_SWEEP, QUEUE_FOLLOWUP_SWEEP, QUEUE_KPI_SOUHRN, abra ? QUEUE_ABRA_SYNC : '(abra-sync vypnuto)')
 
   const shutdown = async (signal: string) => {
     console.log(`[worker] ${signal}, ukončuji…`)

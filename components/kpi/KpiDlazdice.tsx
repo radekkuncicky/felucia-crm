@@ -69,7 +69,7 @@ export function KpiDlazdice({ k, className }: { k: KpiVysledek; className?: stri
             {bezDat ? 'chybí data' : formatKpi(k.hodnota, k.jednotka)}
           </p>
           <p className="text-[11px] text-muted mt-0.5 truncate">
-            {bezDat ? `fáze ${k.def.faze}` : `${mesicLabel(k.mesic)} · ${formatCil(k.def, k.nastaveni.cil)}`}
+            {k.pocita ? `${mesicLabel(k.mesic)} · ${formatCil(k.def, k.nastaveni.cil)}` : `čeká na ${k.cekaNa ?? 'evidenci'}`}
           </p>
         </div>
         {!bezDat && <MiniTrend k={k} />}

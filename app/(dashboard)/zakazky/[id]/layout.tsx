@@ -22,6 +22,7 @@ import EtapySection from './EtapySection'
 import ZakazkaTechnici from './ZakazkaTechnici'
 import CopyLinkButton from './CopyLinkButton'
 import TitulniFotoUpload from './TitulniFotoUpload'
+import AbraFaktury from './AbraFaktury'
 import { SbalitelnyDetail, SbalitelnaCast, SbalitPrepinac, RychleAkce } from './MobilniHlavicka'
 import { radekBezDph } from '@/lib/quoteMath'
 
@@ -66,6 +67,9 @@ export default async function ZakazkaDetailLayout({
       polozky: { select: { stav: true, nakupniCena: true, mnozstvi: true } },
       vyuctovani: { select: { stav: true, etapaId: true, polozky: { select: { mnozstvi: true, prodejniCena: true, sleva: true } } } },
       _count: { select: { predavaky: { where: { etapaId: null } } } },
+      abraFaktury: perms.financeProdejni
+        ? { orderBy: { vystaveno: 'asc' as const }, select: { id: true, kod: true, typ: true, typDokl: true, etapaCislo: true, vystaveno: true, splatnost: true, uhrazeno: true, celkemSDph: true, zbyvaUhradit: true } }
+        : false,
       objednavky: { where: { stav: { in: ['NAVRH', 'ODESLANA', 'CASTECNE_DORUCENA'] } }, select: { id: true } },
       techniciRel: { orderBy: { prirazeno: 'asc' }, select: { technik: { select: { id: true, jmeno: true } } } },
       etapy: {
@@ -415,6 +419,9 @@ export default async function ZakazkaDetailLayout({
             </>
           )}
         </div>
+      )}
+      {perms.financeProdejni && (
+        <AbraFaktury faktury={zakazka.abraFaktury.map(f => ({ ...f, celkemSDph: Number(f.celkemSDph), zbyvaUhradit: Number(f.zbyvaUhradit) }))} />
       )}
       </SbalitelnaCast>
 
