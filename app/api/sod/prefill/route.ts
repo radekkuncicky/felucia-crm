@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { forbidden, getPerms } from '@/lib/permissions'
 import { orgPrisma } from '@/lib/orgPrisma'
+import { vychoziZaloha } from '@/lib/zaloha'
 import { NextResponse } from 'next/server'
 import { predmetDilaByTechnologie, kategorieByTechnologie } from '@/lib/sodHelpers'
 import { prisma } from '@/lib/prisma'
@@ -60,7 +61,7 @@ export async function GET(req: Request) {
     cenaBezDph: Math.round(cenaBezDph),
     cenaSDph: Math.round(cenaSDph),
     dphSazba,
-    zalohaKc: Math.round(cenaSDph * 0.70),
+    zalohaKc: vychoziZaloha(Math.round(cenaSDph)),
     zalohaSplatnost: 14,
     realizaceOd: deal.terminRealizace ? deal.terminRealizace.toISOString().slice(0, 10) : '',
     realizaceDo: deal.terminPrevzeti ? deal.terminPrevzeti.toISOString().slice(0, 10) : '',

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Field, Input } from '@/components/ui/Field'
+import { ZalohaUpozorneni } from '@/components/ZalohaUpozorneni'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import SodTemplateEditor from '@/components/SodTemplateEditor'
@@ -263,7 +264,10 @@ export default function SodEditClient({ sodId, cislo, hasTemplate, initialText, 
           </div>
 
           <Section title="Záloha">
-            <SodField label="Výše zálohy (Kč)" name="zalohaKc" value={form.zalohaKc} onChange={setField} type="number" placeholder="50000" />
+            <div>
+              <SodField label="Výše zálohy (Kč)" name="zalohaKc" value={form.zalohaKc} onChange={setField} type="number" placeholder="50000" />
+              <ZalohaUpozorneni zaloha={Number(form.zalohaKc) || 0} cenaSDph={Number(form.cenaSDph) || 0} onNastavit={c => setField('zalohaKc', String(c))} />
+            </div>
             <SodField label="Splatnost zálohy (dní)" name="zalohaSplatnost" value={form.zalohaSplatnost} onChange={setField} type="number" placeholder="14" />
           </Section>
 

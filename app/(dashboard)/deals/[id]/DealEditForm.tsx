@@ -4,9 +4,11 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { formatCislo } from '@/lib/format'
 import { zeptatSeNaDuvodProhry } from '@/components/DuvodProhryDialog'
+import { ZalohaUpozorneni } from '@/components/ZalohaUpozorneni'
 
+// nahoru — zaokrouhlení dolů by 70 % zálohy podstřelilo (KPI 1)
 function roundToThousand(n: number): number {
-  return Math.round(n / 1000) * 1000
+  return Math.ceil(n / 1000) * 1000
 }
 
 const stavOptions = [
@@ -174,12 +176,15 @@ export default function DealEditForm({
               <p className="text-sm text-primary dark:text-primary-light font-medium">
                 = {formatCislo(pctComputed)} Kč
                 <span className="text-xs text-gray-400 dark:text-slate-500 font-normal ml-1.5">
-                  (z {formatCislo(Math.round(aktivniNabidkaCena))} Kč s DPH, zaokrouhleno na tisíce)
+                  (z {formatCislo(Math.round(aktivniNabidkaCena))} Kč s DPH, nahoru na tisíce)
                 </span>
               </p>
             ) : null}
           </div>
         )}
+        {aktivniNabidkaCena ? (
+          <ZalohaUpozorneni zaloha={Number(form.hodnotaZalohy) || 0} cenaSDph={aktivniNabidkaCena} onNastavit={c => set('hodnotaZalohy', String(c))} />
+        ) : null}
       </div>
 
       <div>

@@ -1,6 +1,7 @@
 import fs from 'fs/promises'
 import path from 'path'
 import { formatDate } from '@/lib/format'
+import { vychoziZaloha } from './zaloha'
 
 const techToTemplate: Record<string, string> = {
   TEPELNE_CERPADLO: 'cn-tepelne-cerpadlo.html',
@@ -46,8 +47,7 @@ export async function buildQuoteHtml(quote: QuoteWithRelations): Promise<string>
   const dphSazba = Number(quote.dphSazba ?? deal.dphSazba)
   const dphCastka = bezDph * (dphSazba / 100)
   const sDph = bezDph + dphCastka
-  // Záloha: 70% from price WITH DPH
-  const zaloha = deal.hodnotaZalohy ? Number(deal.hodnotaZalohy) : Math.round(sDph * 0.7)
+  const zaloha = deal.hodnotaZalohy ? Number(deal.hodnotaZalohy) : vychoziZaloha(sDph)
 
   const fmt = (n: number) => n.toLocaleString('cs-CZ', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
   const today = formatDate(new Date())

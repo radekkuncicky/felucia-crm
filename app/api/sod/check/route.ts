@@ -6,6 +6,7 @@ import { NextResponse } from 'next/server'
 import { buildSodRenderData, sodPlaceholderValues } from '@/lib/sodRender'
 import { formatDate } from '@/lib/format'
 import { prisma } from '@/lib/prisma'
+import { vychoziZaloha } from '@/lib/zaloha'
 
 // Placeholdery, které se nikdy nevyplňují ručně (auto / nemá smysl je
 // ukazovat jako prázdné pole k doplnění).
@@ -65,7 +66,7 @@ export async function GET(req: Request) {
     : 0
   const dphSazba = Number(quote?.dphSazba ?? (deal as { dphSazba?: unknown }).dphSazba ?? 21)
   const cenaSDph = Math.round(cenaBezDph * (1 + dphSazba / 100))
-  const defaultZaloha = deal.hodnotaZalohy ? Math.round(Number(deal.hodnotaZalohy)) : Math.round(cenaSDph * 0.7)
+  const defaultZaloha = deal.hodnotaZalohy ? Math.round(Number(deal.hodnotaZalohy)) : vychoziZaloha(cenaSDph)
 
   return NextResponse.json({
     emptyPlaceholders,

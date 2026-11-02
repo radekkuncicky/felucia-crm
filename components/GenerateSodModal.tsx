@@ -8,6 +8,7 @@ import { formatKc } from '@/lib/format'
 import DateRangePickerInput from '@/components/DateRangePickerInput'
 import SodPrilohyPicker, { defaultSodPrilohy, type SodPrilohy, type SodPrilohyDostupne } from '@/components/SodPrilohyPicker'
 import { countWorkingDays, formatIsoCz } from '@/lib/workingDays'
+import { ZalohaUpozorneni } from '@/components/ZalohaUpozorneni'
 
 // Placeholdery, které mají v modalu vlastní pole (níže). Zbytek prázdných
 // se vypíše dynamicky jako „Doplnit do smlouvy".
@@ -422,6 +423,7 @@ export default function GenerateSodModal({ dealId, templates, onClose }: Props) 
                         disabled={generating}
                         className={empty.includes('hodnota_zalohy') ? inputEmptyCls : inputCls}
                       />
+                      <ZalohaUpozorneni zaloha={Number(zalohaKc) || 0} cenaSDph={checkData.prefill.cenaSDph} onNastavit={c => setZalohaKc(String(c))} />
                     </div>
                     <div>
                       <Label empty={empty.includes('zaloha_splatnost')}>Splatnost (dní)</Label>
