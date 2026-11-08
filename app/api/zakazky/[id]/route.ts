@@ -93,6 +93,12 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       montazDo: body.montazDo !== undefined ? (body.montazDo ? new Date(body.montazDo) : null) : undefined,
       kdykoliv: typeof body.kdykoliv === 'boolean' ? body.kdykoliv : undefined,
       hlavniTechnikId: body.hlavniTechnikId !== undefined ? (body.hlavniTechnikId || null) : undefined,
+      // SOD podepsaná papírově mimo Felucii (ruční příznak)
+      ...(typeof body.sodPapirove === 'boolean'
+        ? body.sodPapirove
+          ? { sodPapirovePodepsano: new Date(), sodPapirovePodepsalJmeno: session.user.jmeno ?? null }
+          : { sodPapirovePodepsano: null, sodPapirovePodepsalJmeno: null }
+        : {}),
     },
   })
 

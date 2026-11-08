@@ -1157,28 +1157,31 @@ model Notification {
 }
 
 model Zakazka {
-  id              String      @id @default(cuid())
-  orgId           String
-  cislo           String
-  opId            String?
-  klientId        String
-  nazev           String
-  technologie     String?
-  vedouciId       String?
+  id                       String      @id @default(cuid())
+  orgId                    String
+  cislo                    String
+  opId                     String?
+  klientId                 String
+  nazev                    String
+  technologie              String?
+  vedouciId                String?
   /// Hlavní technik (vedoucí party na montáži) — jeden z přiřazených techniků
-  hlavniTechnikId String?
-  stav            ZakazkaStav @default(NOVA)
-  typ             ZakazkaTyp  @default(OBCHODNI)
-  poznamka        String?
-  pokyny          String?
-  mistoStavby     String?
-  titulniFotoUrl  String?
-  montazOd        DateTime?
-  montazDo        DateTime?
-  kdykoliv        Boolean     @default(false) // lze montovat kdykoliv — výplň volného místa ve výjezdu
-  vytvoreno       DateTime    @default(now())
-  uzavreno        DateTime?
-  updatedAt       DateTime    @updatedAt
+  hlavniTechnikId          String?
+  stav                     ZakazkaStav @default(NOVA)
+  typ                      ZakazkaTyp  @default(OBCHODNI)
+  poznamka                 String?
+  pokyny                   String?
+  mistoStavby              String?
+  titulniFotoUrl           String?
+  montazOd                 DateTime?
+  montazDo                 DateTime?
+  kdykoliv                 Boolean     @default(false) // lze montovat kdykoliv — výplň volného místa ve výjezdu
+  /// SOD podepsaná papírově mimo Felucii (ruční příznak; online podpis se čte ze Sod.stav)
+  sodPapirovePodepsano     DateTime?
+  sodPapirovePodepsalJmeno String?
+  vytvoreno                DateTime    @default(now())
+  uzavreno                 DateTime?
+  updatedAt                DateTime    @updatedAt
 
   organization  Organization       @relation(fields: [orgId], references: [id])
   op            Deal?              @relation(fields: [opId], references: [id])

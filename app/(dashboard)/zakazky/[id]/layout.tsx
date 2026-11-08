@@ -23,6 +23,8 @@ import ZakazkaTechnici from './ZakazkaTechnici'
 import CopyLinkButton from './CopyLinkButton'
 import TitulniFotoUpload from './TitulniFotoUpload'
 import AbraFaktury from './AbraFaktury'
+import SodStavBadge from './SodStavBadge'
+import { sodStavZakazky } from '@/lib/sodStavZakazky'
 import { SbalitelnyDetail, SbalitelnaCast, SbalitPrepinac, RychleAkce } from './MobilniHlavicka'
 import { radekBezDph } from '@/lib/quoteMath'
 
@@ -95,6 +97,15 @@ export default async function ZakazkaDetailLayout({
       })
     : []
   const techniciZakazky = zakazka.techniciRel.map(t => t.technik)
+
+  // Stav SOD (přes OP) + ruční papírový podpis
+  const sody = zakazka.opId
+    ? await prisma.sod.findMany({
+        where: { dealId: zakazka.opId, orgId },
+        select: { id: true, cislo: true, stav: true, podepsano: true, vytvoreno: true },
+      })
+    : []
+  const sodStav = sodStavZakazky(sody, zakazka.sodPapirovePodepsano)
 
   // Polozky stats for progress bar
   const polozkyTotal = zakazka.polozky.length
@@ -196,6 +207,20 @@ export default async function ZakazkaDetailLayout({
                       <span className="text-xs px-2 py-0.5 rounded-full bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 font-medium">
                         {techLabels[zakazka.technologie as keyof typeof techLabels] ?? zakazka.technologie}
                       </span>
+                    )}
+                    {zakazka.typ === 'OBCHODNI' && (
+                      <SodStavBadge
+                        zakazkaId={zakazka.id}
+                        kod={sodStav.kod}
+                        label={sodStav.label}
+                        sodCislo={sodStav.sod?.cislo ?? null}
+                        datum={sodStav.datum?.toISOString() ?? null}
+                        papirove={zakazka.sodPapirovePodepsano
+                          ? { datum: zakazka.sodPapirovePodepsano.toISOString(), kdo: zakazka.sodPapirovePodepsalJmeno ?? null }
+                          : null}
+                        opHref={zakazka.opId && perms.obchod ? `/deals/${zakazka.opId}?tab=smlouvy` : null}
+                        canEdit={canEdit}
+                      />
                     )}
                   </div>
                   <h1 className="text-xl font-bold text-gray-900 dark:text-white leading-tight">{zakazka.nazev}</h1>
