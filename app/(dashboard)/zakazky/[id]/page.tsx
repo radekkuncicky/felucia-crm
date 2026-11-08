@@ -13,6 +13,7 @@ import VyuctovaniTab from './VyuctovaniTab'
 import PodkladyTab from './PodkladyTab'
 import KontaktyTab from './KontaktyTab'
 import UkolyTab from './UkolyTab'
+import TlakovaZkouska from './TlakovaZkouska'
 import { UKOL_ORDER_BY, UKOL_SELECT } from '@/lib/zakazkaUkol'
 import { radekBezDph } from '@/lib/quoteMath'
 
@@ -160,6 +161,9 @@ export default async function ZakazkaDetailPage({
               showVyuctovani={perms.financeProdejni}
               etapy={zakazka.etapy ?? []}
             />
+          </section>
+          <section id="tlakova-zkouska" className="scroll-mt-24">
+            <TlakovaZkouska zakazkaId={zakazka.id} technologie={zakazka.technologie ?? null} zkousel={session.user.jmeno ?? ''} />
           </section>
           {perms.financeProdejni && (
             <section id="vyuctovani" className="scroll-mt-24">
