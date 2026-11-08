@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useId } from 'react'
 import { Dialog } from '@/components/ui/Dialog'
 import { Button } from '@/components/ui/Button'
 import ClientFormFields, { PRAZDNY_KLIENT, clientPayload, najdiDuplicitu, validateClient, type ClientFormData } from '@/components/ClientForm'
+import { odpovidaHledani } from '@/lib/hledani'
 
 export interface Client {
   id: string
@@ -145,10 +146,7 @@ export default function ClientSelectWithCreate({ clients, value, onChange, onSel
 
   const filtered = clients.filter(c => {
     if (!inputVal) return true
-    const name = `${c.prijmeni} ${c.jmeno}`.toLowerCase()
-    const name2 = `${c.jmeno} ${c.prijmeni}`.toLowerCase()
-    const q = inputVal.toLowerCase()
-    return name.includes(q) || name2.includes(q)
+    return odpovidaHledani(inputVal, c.jmeno, c.prijmeni)
   })
 
   const selectedClient = clients.find(c => c.id === value)

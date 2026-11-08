@@ -32,6 +32,7 @@ e2e_env_build() {
   TEST_DB_URL="$(grep '^DATABASE_URL' "$ENVDIR/.env" | cut -d'"' -f2)"
   PROD_DB_URL="$(grep '^DATABASE_URL' "$ROOT/.env" | cut -d'"' -f2)"
   (cd "$ENVDIR" && npx prisma db push --accept-data-loss --url "$TEST_DB_URL" >/dev/null)
+  psql "$TEST_DB_URL" -q -f "$ENVDIR/prisma/migrations/20261108120000_unaccent_hledani/migration.sql" 2>/dev/null
   psql "$TEST_DB_URL" -q -f "$ENVDIR/prisma/rls.sql" 2>/dev/null
   psql "$TEST_DB_URL" -q -f "$ENVDIR/prisma/webhook-triggers.sql" 2>/dev/null
   psql "$TEST_DB_URL" -q -f "$ENVDIR/prisma/deal-stav-triggers.sql" 2>/dev/null

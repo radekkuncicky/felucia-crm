@@ -3,6 +3,7 @@ import { orgPrisma } from '@/lib/orgPrisma'
 import { zakazkyScopeWhere } from '@/lib/permissions'
 import { getMobileOrWebSession, requireTechnikOrAdmin, klientAdresa, toAbsoluteUrl } from '@/lib/mobile-helpers'
 import type { ZakazkaStav } from '@prisma/client'
+import { najdiKlientIds } from '@/lib/clientSearch'
 
 export async function GET(req: Request) {
   const host = req.headers.get('host') ?? ''
@@ -30,6 +31,7 @@ export async function GET(req: Request) {
   const AKTIVNI: ZakazkaStav[] = ['NOVA', 'PRIRAZENA', 'V_REALIZACI']
   const HOTOVE: ZakazkaStav[] = ['PREDANA', 'VYUCTOVANA', 'HOTOVO']
 
+  const klientIds = q ? ((await najdiKlientIds(db, orgId, q)) ?? []) : []
   const where = {
     orgId,
     ...(stavParam ? { stav: stavParam } : {}),
@@ -42,8 +44,7 @@ export async function GET(req: Request) {
             { cislo: { contains: q, mode: 'insensitive' as const } },
             { nazev: { contains: q, mode: 'insensitive' as const } },
             { mistoStavby: { contains: q, mode: 'insensitive' as const } },
-            { klient: { jmeno: { contains: q, mode: 'insensitive' as const } } },
-            { klient: { prijmeni: { contains: q, mode: 'insensitive' as const } } },
+            { klientId: { in: klientIds } },
           ],
         }
       : {}),

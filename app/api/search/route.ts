@@ -8,6 +8,7 @@ import { authOptions } from '@/lib/auth'
 import { getMobileSession } from '@/lib/mobile-auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
+import { najdiKlientIds } from '@/lib/clientSearch'
 
 export async function GET(req: Request) {
   const webSession = await getServerSession(authOptions)
@@ -35,17 +36,14 @@ export async function GET(req: Request) {
   if (q.length < 2) return NextResponse.json([])
 
   const contains = { contains: q, mode: 'insensitive' as const }
+  // Klienti bez ohledu na diakritiku — použije se i pro OP/servis/zakázky podle jména klienta
+  const klientIds = (await najdiKlientIds(db, orgId, q)) ?? []
   const [clients, deals, servis, zakazky, leady, produkty] = await Promise.all([
     db.client.findMany({
       where: {
         orgId,
         AND: [clientScope],
-        OR: [
-          { jmeno: { contains: q, mode: 'insensitive' } },
-          { prijmeni: { contains: q, mode: 'insensitive' } },
-          { email: { contains: q, mode: 'insensitive' } },
-          { telefon: { contains: q, mode: 'insensitive' } },
-        ],
+        id: { in: klientIds },
       },
       take: 5,
       select: { id: true, jmeno: true, prijmeni: true, email: true },
@@ -57,8 +55,7 @@ export async function GET(req: Request) {
         OR: [
           { kod: { contains: q, mode: 'insensitive' } },
           { predmet: { contains: q, mode: 'insensitive' } },
-          { client: { jmeno: { contains: q, mode: 'insensitive' } } },
-          { client: { prijmeni: { contains: q, mode: 'insensitive' } } },
+          { clientId: { in: klientIds } },
         ],
       },
       take: 5,
@@ -72,9 +69,8 @@ export async function GET(req: Request) {
             OR: [
               { cislo: { contains: q, mode: 'insensitive' } },
               { popis: { contains: q, mode: 'insensitive' } },
-              { klient: { jmeno: { contains: q, mode: 'insensitive' } } },
-              { klient: { prijmeni: { contains: q, mode: 'insensitive' } } },
-              { kontrakt: { klient: { prijmeni: { contains: q, mode: 'insensitive' } } } },
+              { klientId: { in: klientIds } },
+              { kontrakt: { klientId: { in: klientIds } } },
               { zarizeni: { nazev: { contains: q, mode: 'insensitive' } } },
             ],
           },
@@ -99,8 +95,7 @@ export async function GET(req: Request) {
               { cislo: contains },
               { nazev: contains },
               { mistoStavby: contains },
-              { klient: { jmeno: contains } },
-              { klient: { prijmeni: contains } },
+              { klientId: { in: klientIds } },
             ],
           },
           take: 5,

@@ -1,4 +1,5 @@
 'use client'
+import { odpovidaHledani } from '@/lib/hledani'
 
 import EmptyState from '@/components/ui/EmptyState'
 import { useMemo } from 'react'
@@ -107,8 +108,7 @@ export default function ZakazkySeznamClient({ zakazky, orgUsers, canCreate }: Pr
       if (fTechnik && z.technik?.id !== fTechnik) return false
       if (fTyp && z.typ !== fTyp) return false
       if (q) {
-        const hay = [z.cislo, z.klientNazev, z.popis, z.predmet, z.technik?.jmeno].filter(Boolean).join(' ').toLowerCase()
-        if (!hay.includes(q)) return false
+        if (!odpovidaHledani(q, z.cislo, z.klientNazev, z.popis, z.predmet, z.technik?.jmeno)) return false
       }
       return true
     })

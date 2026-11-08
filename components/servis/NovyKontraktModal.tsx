@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { api } from '@/lib/api'
 import { SERVIS_TYP_LABELS, type ServisTyp } from './types'
+import { odpovidaHledani } from '@/lib/hledani'
 
 interface ZarizeniItem {
   id: string
@@ -38,7 +39,7 @@ export default function NovyKontraktModal({ zarizeniList, zarizeniId: fixedZariz
   })
 
   const filtered = zarizeniList.filter(z =>
-    !search || `${z.nazev} ${z.klient.jmeno} ${z.klient.prijmeni} ${z.vyrobniCislo ?? ''}`.toLowerCase().includes(search.toLowerCase()),
+    odpovidaHledani(search, z.nazev, z.klient.jmeno, z.klient.prijmeni, z.vyrobniCislo),
   )
 
   async function submit() {

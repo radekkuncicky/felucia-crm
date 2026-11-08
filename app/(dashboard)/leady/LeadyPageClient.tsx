@@ -18,6 +18,7 @@ import { useShowMore } from '@/hooks/useShowMore'
 import { confirmDialog } from '@/components/ui/confirm'
 import { sluzbaLabel } from '@/lib/leadService'
 import ZdrojPoptavkyPole, { PRAZDNY_ZDROJ, zdrojPayload, type ZdrojHodnota } from '@/components/ZdrojPoptavkyPole'
+import { odpovidaHledani } from '@/lib/hledani'
 
 interface Lead {
   id: string
@@ -113,13 +114,7 @@ export default function LeadyPageClient({ leady, users, novychCount, currentUser
         if (filterAssigned !== 'me' && l.assignedTo?.id !== filterAssigned) return false
       }
       if (search) {
-        const q = search.toLowerCase()
-        return (
-          l.jmeno.toLowerCase().includes(q) ||
-          l.email?.toLowerCase().includes(q) ||
-          l.firma?.toLowerCase().includes(q) ||
-          l.telefon?.toLowerCase().includes(q)
-        )
+        return odpovidaHledani(search, l.jmeno, l.email, l.firma, l.telefon)
       }
       return true
     })

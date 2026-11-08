@@ -11,6 +11,7 @@ import ShowMore from '@/components/ui/ShowMore'
 import { useUrlFilters } from '@/hooks/useUrlFilters'
 import { useShowMore } from '@/hooks/useShowMore'
 import { formatDate } from '@/lib/format'
+import { odpovidaHledani } from '@/lib/hledani'
 
 interface ClientRow {
   id: string
@@ -58,14 +59,8 @@ export default function ClientsTable({ clients }: Props) {
 
   const filtered = useMemo(() => {
     if (!search.trim()) return clients
-    const q = search.toLowerCase()
     return clients.filter(c =>
-      c.jmeno.toLowerCase().includes(q) ||
-      c.prijmeni.toLowerCase().includes(q) ||
-      (c.email ?? '').toLowerCase().includes(q) ||
-      (c.telefon ?? '').toLowerCase().includes(q) ||
-      (c.ico ?? '').toLowerCase().includes(q) ||
-      (c.mesto ?? '').toLowerCase().includes(q)
+      odpovidaHledani(search, c.jmeno, c.prijmeni, c.email, c.telefon, c.ico, c.mesto)
     )
   }, [clients, search])
   const more = useShowMore(filtered, search)

@@ -12,6 +12,7 @@ import { createNotification } from '@/lib/createNotification'
 import { createWithUniqueKod } from '@/lib/uniqueKod'
 import { generateDealKod } from '@/lib/dealKod'
 import { getPerms, forbidden, dealScopeWhere } from '@/lib/permissions'
+import { najdiKlientIds } from '@/lib/clientSearch'
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions) ?? await getMobileSession(req)
@@ -39,6 +40,7 @@ export async function GET(req: Request) {
     return NextResponse.json(deal)
   }
 
+  const klientIds = !kodFilter && search ? ((await najdiKlientIds(db, orgId, search)) ?? []) : []
   const deals = await db.deal.findMany({
     where: {
       orgId,
@@ -50,8 +52,7 @@ export async function GET(req: Request) {
             OR: [
               { predmet: { contains: search, mode: 'insensitive' } },
               { kod: { contains: search, mode: 'insensitive' } },
-              { client: { jmeno: { contains: search, mode: 'insensitive' } } },
-              { client: { prijmeni: { contains: search, mode: 'insensitive' } } },
+              { clientId: { in: klientIds } },
             ],
           }
         : {}),

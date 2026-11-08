@@ -7,6 +7,7 @@ import { quoteCelkemBezDph, radekBezDph } from '@/lib/quoteMath'
 import { TECHNOLOGIE, type Technologie, isoDen, obdobi, parseDen } from './analytika'
 import type { Prisma } from '@prisma/client'
 import type { AiKontext, AiToolResult } from '../types'
+import { najdiKlientIds } from '@/lib/clientSearch'
 
 // ─── Nástroje nad zakázkami (realizace) + poznámka k zakázce / klientovi ─────
 
@@ -207,6 +208,7 @@ export async function executeZakazkaTool(
       const podle = input.podle === 'zalozeni' ? 'zalozeni' : 'montaz'
       const limit = Math.min(200, Math.max(1, Math.floor(Number(input.limit) || (maObdobi ? 100 : 10))))
 
+      const klientIds = q ? ((await najdiKlientIds(db, ctx.orgId, q)) ?? []) : []
       const zakazky = await db.zakazka.findMany({
         where: {
           orgId,
@@ -225,8 +227,7 @@ export async function executeZakazkaTool(
                 { cislo: { contains: q, mode: 'insensitive' } },
                 { nazev: { contains: q, mode: 'insensitive' } },
                 { mistoStavby: { contains: q, mode: 'insensitive' } },
-                { klient: { jmeno: { contains: q, mode: 'insensitive' } } },
-                { klient: { prijmeni: { contains: q, mode: 'insensitive' } } },
+                { klientId: { in: klientIds } },
               ],
             } : {},
           ],

@@ -7,6 +7,7 @@ import { generateDealKod } from '@/lib/dealKod'
 import { logAction } from '@/lib/auditLog'
 import { Technologie, TypKlienta } from '@prisma/client'
 import { quoteCelkemBezDph } from '@/lib/quoteMath'
+import { najdiKlientIds } from '@/lib/clientSearch'
 
 const TECHNOLOGIE = Object.values(Technologie)
 
@@ -24,6 +25,7 @@ export async function GET(req: Request) {
   const moje = searchParams.get('moje') === '1'
   const stavy = (searchParams.get('stav') ?? '').split(',').map(s => s.trim()).filter(Boolean)
 
+  const klientIds = q ? ((await najdiKlientIds(db, orgId, q)) ?? []) : []
   const deals = await db.deal.findMany({
     where: {
       orgId,
@@ -36,8 +38,7 @@ export async function GET(req: Request) {
               { predmet: { contains: q, mode: 'insensitive' } },
               { kod: { contains: q, mode: 'insensitive' } },
               { adresaDila: { contains: q, mode: 'insensitive' } },
-              { client: { jmeno: { contains: q, mode: 'insensitive' } } },
-              { client: { prijmeni: { contains: q, mode: 'insensitive' } } },
+              { clientId: { in: klientIds } },
             ],
           }
         : {}),

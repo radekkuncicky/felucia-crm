@@ -1,4 +1,4 @@
-import type { Permissions } from '@/lib/permissions'
+import { clientScopeWhere, type Permissions } from '@/lib/permissions'
 import { hasDeal } from '@/lib/activities'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { generateQuoteKod } from '@/lib/quoteKod'
@@ -14,6 +14,7 @@ import { najdiVolajiciho } from '@/lib/zapisHovoru'
 import { nactiZdroje, parseZdroj } from '@/lib/zdrojPoptavky'
 import { getOrgSettings } from '@/lib/orgSettings'
 import { slozAdresu } from '@/lib/klientAdresa'
+import { najdiKlientIds } from '@/lib/clientSearch'
 
 // ─── Tool definitions ────────────────────────────────────────────────────────
 
@@ -270,6 +271,7 @@ export async function executeDasaTool(
         const q = String(input.q ?? '').trim()
         const isUuid = /^[0-9a-f-]{36}$/i.test(q)
         const isOpKod = /^OP-\d{2}-\d{3}$/i.test(q)
+        const klientIds = isUuid || isOpKod ? [] : ((await najdiKlientIds(db, orgId, q)) ?? [])
 
         const deals = await db.deal.findMany({
           where: {
@@ -281,8 +283,7 @@ export async function executeDasaTool(
               OR: [
                 { kod: { contains: q, mode: 'insensitive' } },
                 { predmet: { contains: q, mode: 'insensitive' } },
-                { client: { jmeno: { contains: q, mode: 'insensitive' } } },
-                { client: { prijmeni: { contains: q, mode: 'insensitive' } } },
+                { clientId: { in: klientIds } },
               ],
             }),
           },
@@ -363,15 +364,11 @@ export async function executeDasaTool(
         if (isTechnik) return { result: JSON.stringify({ chyba: 'Nedostatečná oprávnění' }) }
         const q = String(input.q ?? '').trim()
 
+        const clientScope = clientScopeWhere(perms, userId)
+        if (clientScope === null) return { result: JSON.stringify({ chyba: 'Nedostatečná oprávnění' }) }
+        const ids = (await najdiKlientIds(db, orgId, q)) ?? []
         const clients = await db.client.findMany({
-          where: {
-            orgId,
-            OR: [
-              { jmeno: { contains: q, mode: 'insensitive' } },
-              { prijmeni: { contains: q, mode: 'insensitive' } },
-              { email: { contains: q, mode: 'insensitive' } },
-            ],
-          },
+          where: { orgId, id: { in: ids }, anonymizedAt: null, AND: [clientScope] },
           select: { id: true, jmeno: true, prijmeni: true, email: true, telefon: true, typKlienta: true },
           take: 8,
         })

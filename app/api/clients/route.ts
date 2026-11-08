@@ -5,6 +5,7 @@ import { getMobileSession } from '@/lib/mobile-auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import { logAction } from '@/lib/auditLog'
+import { najdiKlientIds } from '@/lib/clientSearch'
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions) ?? await getMobileSession(req)
@@ -17,17 +18,12 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
   const search = searchParams.get('search') ?? ''
 
-  const clients = await orgPrisma(orgId).client.findMany({
+  const db = orgPrisma(orgId)
+  const ids = await najdiKlientIds(db, orgId, search)
+  const clients = await db.client.findMany({
     where: {
       AND: [clientScope],
-      ...(search ? {
-        OR: [
-          { jmeno: { contains: search, mode: 'insensitive' } },
-          { prijmeni: { contains: search, mode: 'insensitive' } },
-          { email: { contains: search, mode: 'insensitive' } },
-          { telefon: { contains: search, mode: 'insensitive' } },
-        ],
-      } : {}),
+      ...(ids ? { id: { in: ids } } : {}),
     },
     select: { id: true, jmeno: true, prijmeni: true, email: true, telefon: true },
     orderBy: { vytvoreno: 'desc' },
