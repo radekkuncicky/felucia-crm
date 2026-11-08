@@ -29,10 +29,11 @@ export default async function VyuctovaniDetailPage({
           id: true, cislo: true, nazev: true, stav: true,
           klient: { select: { jmeno: true, prijmeni: true } },
           vedouci: { select: { id: true, jmeno: true } },
-          op: { select: { quotes: { where: { aktivni: true }, select: { dphSazba: true }, take: 1 } } },
+          op: { select: { quotes: { where: { aktivni: true }, select: { dphSazba: true, kod: true, nazev: true, items: { orderBy: { poradi: 'asc' }, select: { productId: true, kod: true, nazev: true, jednotka: true, mnozstvi: true, cenaZaKus: true, sleva: true } } }, take: 1 } } },
         },
       },
       schvalil: { select: { jmeno: true } },
+      etapa: { select: { cislo: true } },
       predavak: {
         select: {
           id: true, cislo: true, podpisano: true, klientPritomen: true,
@@ -71,6 +72,8 @@ export default async function VyuctovaniDetailPage({
     ? Number(v.zakazka.op.quotes[0].dphSazba)
     : (orgSettings?.zakazkyDefaultDph ?? 12)
 
+  const aktivniCN = v.zakazka.op?.quotes?.[0] ?? null
+
   return (
     <VyuctovaniDetailClient
       vyuctovani={{
@@ -98,6 +101,8 @@ export default async function VyuctovaniDetailPage({
         },
         polozky: v.polozky.map(p => ({
           id: p.id,
+          productId: p.productId,
+          kod: p.kod,
           nazev: p.nazev,
           mnozstvi: Number(p.mnozstvi),
           jednotka: p.jednotka,
@@ -115,6 +120,14 @@ export default async function VyuctovaniDetailPage({
       dalsiEtapaCislo={dalsiEtapaCislo}
       zakazkaStav={v.zakazka.stav}
       canEditZakazka={perms.zakazkyEdit}
+      etapaCislo={v.etapa?.cislo ?? null}
+      cnProPorovnani={aktivniCN ? {
+        nazev: [aktivniCN.kod, aktivniCN.nazev].filter(Boolean).join(' — ') || 'Aktivní nabídka',
+        polozky: aktivniCN.items.map(i => ({
+          productId: i.productId, kod: i.kod, nazev: i.nazev ?? '', jednotka: i.jednotka,
+          mnozstvi: Number(i.mnozstvi), cenaZaKus: Number(i.cenaZaKus), sleva: Number(i.sleva ?? 0),
+        })),
+      } : null}
     />
   )
 }

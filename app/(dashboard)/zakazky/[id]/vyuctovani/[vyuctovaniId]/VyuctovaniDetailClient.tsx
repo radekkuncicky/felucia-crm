@@ -9,6 +9,7 @@ import { Dialog } from '@/components/ui/Dialog'
 import { api } from '@/lib/api'
 import { formatCislo, formatKc, formatDate } from '@/lib/format'
 import { radekBezDph } from '@/lib/quoteMath'
+import PorovnaniSCN, { type CNProPorovnani } from './PorovnaniSCN'
 
 const STAV_LABELS: Record<VyuctovaniStav, string> = {
   NAVRH: 'Návrh',
@@ -23,6 +24,8 @@ const STAV_COLORS: Record<VyuctovaniStav, string> = {
 
 interface Polozka {
   id: string
+  productId?: string | null
+  kod?: string | null
   nazev: string
   mnozstvi: number
   jednotka: string
@@ -73,13 +76,16 @@ interface Props {
   zakazkaStav?: ZakazkaStav
   /** zakazkyEdit — zakládat etapy a měnit stav zakázky */
   canEditZakazka?: boolean
+  /** aktivní cenová nabídka OP pro „Porovnat s CN" (null = není) */
+  cnProPorovnani?: CNProPorovnani | null
+  etapaCislo?: number | null
 }
 
 const fmtKc = formatKc
 
 type NewRow = { nazev: string; mnozstvi: string; jednotka: string; prodejniCena: string; nakupniCena: string; dphSazba: number }
 
-export default function VyuctovaniDetailClient({ vyuctovani: initial, canApprove, canDelete, showNakupky, defaultDph, dalsiEtapaCislo, zakazkaStav, canEditZakazka = false }: Props) {
+export default function VyuctovaniDetailClient({ vyuctovani: initial, canApprove, canDelete, showNakupky, defaultDph, dalsiEtapaCislo, zakazkaStav, canEditZakazka = false, cnProPorovnani = null, etapaCislo = null }: Props) {
   const router = useRouter()
   const isAdmin = canDelete
   const isManager = canApprove
@@ -395,6 +401,11 @@ export default function VyuctovaniDetailClient({ vyuctovani: initial, canApprove
             <div className="flex items-center gap-3 flex-wrap">
               <span className="font-mono text-2xl font-bold text-[#1B5E20] dark:text-green-400">{initial.cislo}</span>
               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${STAV_COLORS[stav]}`}>{STAV_LABELS[stav]}</span>
+              <PorovnaniSCN
+                cn={cnProPorovnani}
+                etapaCislo={etapaCislo}
+                vyuPolozky={polozky.map(p => ({ productId: p.productId ?? null, kod: p.kod ?? null, nazev: p.nazev, jednotka: p.jednotka, mnozstvi: p.mnozstvi, prodejniCena: p.prodejniCena, sleva: p.sleva }))}
+              />
             </div>
             <p className="text-sm text-gray-600 dark:text-slate-400">
               {initial.zakazka.nazev}

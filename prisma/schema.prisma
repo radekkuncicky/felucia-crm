@@ -1591,6 +1591,9 @@ model Vyuctovani {
 model VyuctovaniPolozka {
   id           String   @id @default(cuid())
   vyuctovaniId String
+  /// Původ položky (z nabídky přes zakázku) — pro porovnání vyúčtování s CN
+  productId    String?
+  kod          String?
   nazev        String
   mnozstvi     Decimal  @default(1)
   jednotka     String   @default("ks")

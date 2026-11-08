@@ -109,6 +109,8 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         polozky: {
           create: zahrnutePolozky.map((p, idx) => ({
             nazev: p.nazev,
+            productId: p.zakazkaPolozka?.productId ?? null,
+            kod: p.zakazkaPolozka?.kod ?? null,
             mnozstvi: p.mnozstviPouzito,
             jednotka: p.jednotka,
             prodejniCena: p.zakazkaPolozka?.prodejniCena ?? 0,
