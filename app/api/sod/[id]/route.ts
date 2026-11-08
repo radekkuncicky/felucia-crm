@@ -7,6 +7,7 @@ import { renderSodTemplate } from '@/lib/sodRender'
 import { buildSodRenderDataFromSodRecord } from '@/lib/sodRender'
 import { NextResponse } from 'next/server'
 import { getPerms, forbidden } from '@/lib/permissions'
+import { propisAdresuDila } from '@/lib/adresaDila'
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
@@ -97,6 +98,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
       ...(body.prilohaNabidka !== undefined ? { prilohaNabidka: Boolean(body.prilohaNabidka) } : {}),
     },
   })
+
+  if (body.adresaDila !== undefined) await propisAdresuDila(sod.dealId, orgId, updated.adresaDila, db)
 
   return NextResponse.json(updated)
 }

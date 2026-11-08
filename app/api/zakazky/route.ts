@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server'
 import { generateZakazkaCislo, polozkyZAktivniNabidky } from '@/lib/zakazkaWorkflow'
 import { userHasPerm } from '@/lib/zakazkyHelpers'
 import { getPerms, forbidden, zakazkyScopeWhere } from '@/lib/permissions'
+import { adresaDilaProDeal } from '@/lib/adresaDila'
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
@@ -70,7 +71,7 @@ export async function POST(req: Request) {
     }
     const op = await db.deal.findFirst({ where: { id: body.opId, orgId }, select: { kod: true, adresaDila: true } })
     opKod = op?.kod ?? null
-    opAdresaDila = op?.adresaDila ?? null
+    opAdresaDila = op ? await adresaDilaProDeal(body.opId, orgId, db) : null
   }
   const cislo = await generateZakazkaCislo(orgId, opKod)
 

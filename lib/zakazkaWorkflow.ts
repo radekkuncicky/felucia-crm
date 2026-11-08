@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma'
+import { adresaDilaProDeal } from '@/lib/adresaDila'
 
 /**
  * Vygeneruje číslo zakázky ve formátu RR-NNN.
@@ -66,9 +67,10 @@ export async function createZakazkaFromDeal(dealId: string, orgId: string, vedou
   })
   if (!deal) return null
 
-  const [cislo, polozky] = await Promise.all([
+  const [cislo, polozky, mistoStavby] = await Promise.all([
     generateZakazkaCislo(orgId, deal.kod),
     polozkyZAktivniNabidky(dealId, orgId),
+    adresaDilaProDeal(dealId, orgId),
   ])
 
   return prisma.zakazka.create({
@@ -79,6 +81,7 @@ export async function createZakazkaFromDeal(dealId: string, orgId: string, vedou
       klientId: deal.clientId,
       nazev: deal.predmet ?? `${deal.client.jmeno} ${deal.client.prijmeni}`.trim(),
       technologie: deal.technologie ?? null,
+      mistoStavby,
       vedouciId,
       stav: 'NOVA',
       polozky: polozky.length > 0 ? { create: polozky } : undefined,

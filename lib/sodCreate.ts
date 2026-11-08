@@ -1,4 +1,5 @@
 import type { OrgPrismaClient } from '@/lib/orgPrisma'
+import { propisAdresuDila } from '@/lib/adresaDila'
 import { generateSodCislo } from '@/lib/sodHelpers'
 import { applySodFormOverrides, buildSodRenderData, renderSodTemplate } from '@/lib/sodRender'
 import { isHtmlContent, sanitizeFullDocumentHtml } from '@/lib/sanitizeHtml'
@@ -86,6 +87,9 @@ export async function createSodFromDeal(
       ...(rest.prilohaCenik !== undefined ? { prilohaCenik: Boolean(rest.prilohaCenik) } : {}),
     },
   })
+
+  // Místo instalace ze SOD → OP (+ zakázka bez místa stavby)
+  await propisAdresuDila(dealId, orgId, sod.adresaDila, db)
 
   // Termín realizace vybraný v kalendáři (ISO od–do) se propíše do OP:
   // terminRealizace = začátek (předání staveniště), terminPrevzeti = konec (předání díla)
