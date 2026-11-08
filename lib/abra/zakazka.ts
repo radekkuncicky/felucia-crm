@@ -17,6 +17,9 @@ const TECHNOLOGIE: Record<string, string> = {
   VZDUCHOTECHNIKA: 'Vzduchotechnika',
 }
 
+/** Do Flexi jdou jen čísla zakázek bez koncovky etapy (26-047) */
+export const CISLO_ZAKAZKY_ABRA = /^\d{2}-\d{3,}$/
+
 export interface ZakazkaProAbru {
   cislo: string
   technologie: string | null
@@ -47,6 +50,8 @@ export type VysledekOdeslani = {
   /** ID adresáře odběratele (null u dry-run nového záznamu) */
   adresarId: string | null
   adresarZalozen: boolean
+  /** Zakázka s tímto kódem už ve Flexi byla (třeba ručně založená účetní) */
+  existovala: boolean
 }
 
 /**
@@ -58,22 +63,22 @@ export async function odesliZakazkuDoAbry(
   z: ZakazkaProAbru,
   opts: { dryRun?: boolean; nazev?: string; poznam?: string } = {},
 ): Promise<VysledekOdeslani> {
-  if (!/^\d{2}-\d{3,}$/.test(z.cislo)) throw new Error(`Číslo zakázky ${z.cislo} není ve tvaru RR-NNN`)
+  if (!CISLO_ZAKAZKY_ABRA.test(z.cislo)) throw new Error(`Číslo zakázky ${z.cislo} není ve tvaru RR-NNN`)
   const [existujici] = await abraGet<{ id: string; firma?: string }>(k, 'zakazka', {
     filtr: `kod = '${z.cislo}'`,
     params: { detail: 'custom:id,kod,firma' },
   })
-  if (existujici?.firma) return { stav: 'EXISTUJE', abraId: existujici.id, adresarId: null, adresarZalozen: false }
+  if (existujici?.firma) return { stav: 'EXISTUJE', abraId: existujici.id, adresarId: null, adresarZalozen: false, existovala: true }
 
   const adresar = await zajistiAdresar(k, z.klient, { dryRun: opts.dryRun })
   // U dry-run nového adresáře ID ještě není — zakázka se pak nanečisto validuje bez firmy
   const firma = adresar.abraId
 
   if (existujici) {
-    if (opts.dryRun) return { stav: 'NANECISTO', abraId: existujici.id, adresarId: firma, adresarZalozen: adresar.zalozeno }
+    if (opts.dryRun) return { stav: 'NANECISTO', abraId: existujici.id, adresarId: firma, adresarZalozen: adresar.zalozeno, existovala: true }
     await abraZapis(k, 'zakazka', { id: existujici.id, firma: firma! })
-    return { stav: 'DOPLNENA_FIRMA', abraId: existujici.id, adresarId: firma, adresarZalozen: adresar.zalozeno }
+    return { stav: 'DOPLNENA_FIRMA', abraId: existujici.id, adresarId: firma, adresarZalozen: adresar.zalozeno, existovala: true }
   }
   const { id } = await abraZapis(k, 'zakazka', zaznamZakazkyAbra(z, { ...opts, firma }), { dryRun: opts.dryRun })
-  return { stav: opts.dryRun ? 'NANECISTO' : 'ZALOZENO', abraId: id, adresarId: firma, adresarZalozen: adresar.zalozeno }
+  return { stav: opts.dryRun ? 'NANECISTO' : 'ZALOZENO', abraId: id, adresarId: firma, adresarZalozen: adresar.zalozeno, existovala: false }
 }

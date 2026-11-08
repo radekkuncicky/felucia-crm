@@ -23,6 +23,9 @@ import ZakazkaTechnici from './ZakazkaTechnici'
 import CopyLinkButton from './CopyLinkButton'
 import TitulniFotoUpload from './TitulniFotoUpload'
 import AbraFaktury from './AbraFaktury'
+import AbraZakazkaTlacitko from './AbraZakazkaTlacitko'
+import { abraKonfigurace } from '@/lib/abra/flexi'
+import { CISLO_ZAKAZKY_ABRA } from '@/lib/abra/zakazka'
 import SodStavBadge from './SodStavBadge'
 import { sodStavZakazky } from '@/lib/sodStavZakazky'
 import { SbalitelnyDetail, SbalitelnaCast, SbalitPrepinac, RychleAkce } from './MobilniHlavicka'
@@ -87,6 +90,11 @@ export default async function ZakazkaDetailLayout({
   })
 
   if (!zakazka) notFound()
+
+  // F2: ruční založení zakázky v ABRA Flexi — jen org napojená na Flexi a jen správce
+  const abraTlacitko = perms.nastaveniOrg
+    && abraKonfigurace()?.orgSlug === session.user.orgSlug
+    && CISLO_ZAKAZKY_ABRA.test(zakazka.cislo)
 
   // Technici organizace pro výběr (hlavička + etapy) — jen pro editaci
   const vsichniTechnici = canEdit
@@ -313,8 +321,16 @@ export default async function ZakazkaDetailLayout({
             </div>
 
             {/* Right actions */}
-            {(perms.zakazkyMazani || perms.servisDispecink) && (
+            {(perms.zakazkyMazani || perms.servisDispecink || abraTlacitko) && (
               <SbalitelnaCast>
+                <div className="flex flex-wrap items-center gap-2">
+                {abraTlacitko && (
+                  <AbraZakazkaTlacitko
+                    zakazkaId={zakazka.id}
+                    odeslano={zakazka.abraOdeslano?.toISOString() ?? null}
+                    abraId={zakazka.abraZakazkaId}
+                  />
+                )}
                 <ZakazkaDetailHeader
                   zakazkaId={zakazka.id}
                   stav={zakazka.stav}
@@ -323,6 +339,7 @@ export default async function ZakazkaDetailLayout({
                   canServis={perms.servisDispecink}
                   hasServiceModule={getPlanLimits(session!.user.plan as string).hasServiceModule}
                 />
+                </div>
               </SbalitelnaCast>
             )}
           </div>
