@@ -57,7 +57,7 @@ function post(body: Record<string, unknown>) {
   return new Request('http://localhost/api/sod', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ klientAdresa: 'Sídelní 1, 602 00 Brno', mistoShodne: true, ...body }),
   })
 }
 

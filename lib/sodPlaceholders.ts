@@ -2,7 +2,7 @@
 // mohl použít i klientský GenerateSodModal i serverové routy.
 export const SOD_PLACEHOLDER_LABELS: Record<string, string> = {
   klient_jmeno: 'Jméno klienta',
-  klient_adresa: 'Adresa klienta',
+  klient_adresa: 'Sídlo / trvalé bydliště objednatele',
   klient_email: 'E-mail klienta',
   klient_telefon: 'Telefon klienta',
   klient_ico: 'IČO klienta',
@@ -10,7 +10,7 @@ export const SOD_PLACEHOLDER_LABELS: Record<string, string> = {
   kontaktni_osoba: 'Kontaktní osoba',
   kontaktni_telefon: 'Kontaktní telefon',
   predmet: 'Předmět díla',
-  adresa_dila: 'Adresa díla',
+  adresa_dila: 'Místo instalace (adresa díla)',
   obchodnik: 'Obchodník',
   termin_realizace: 'Termín realizace',
   termin_prevzeti: 'Termín předání',

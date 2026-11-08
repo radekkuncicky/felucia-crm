@@ -104,6 +104,11 @@ export function buildSodRenderDataFromSodRecord(
  */
 export function applySodFormOverrides(data: SodRenderData, form: Record<string, unknown>): SodRenderData {
   const out = { ...data }
+  // Objednatel a místo instalace potvrzené ve formuláři mají přednost před daty z OP/klienta
+  if (typeof form.klientAdresa === 'string' && form.klientAdresa.trim()) out.klientAdresa = form.klientAdresa.trim()
+  if (typeof form.adresaDila === 'string' && form.adresaDila.trim()) out.adresaDila = form.adresaDila.trim()
+  if (typeof form.klientIco === 'string' && form.klientIco.trim()) out.klientIco = form.klientIco.trim()
+  if (typeof form.klientDic === 'string' && form.klientDic.trim()) out.klientDic = form.klientDic.trim()
   if (form.pocetDniRealizace != null) out.pocetDniRealizace = String(form.pocetDniRealizace)
   if (form.zmenaTerm != null) out.zmenaTerm = String(form.zmenaTerm)
   if (form.terminPrevzeti != null) out.terminPrevzeti = String(form.terminPrevzeti)

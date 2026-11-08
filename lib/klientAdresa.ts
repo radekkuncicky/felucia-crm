@@ -30,3 +30,29 @@ export function slozAdresu(a: AdresaVstup): { ulice?: string | null; mesto?: str
   }
   return out
 }
+
+/** Adresa klienta jako jeden řádek „Ulice 1, 602 00 Brno“ (sídlo / bydliště do smlouvy). */
+export function adresaKlientaText(k: { ulice?: string | null; mesto?: string | null; psc?: string | null }): string {
+  return [txt(k.ulice), [txt(k.psc), txt(k.mesto)].filter(Boolean).join(' ')].filter(Boolean).join(', ')
+}
+
+/**
+ * Jednořádková adresa → pole klienta (ulice / psc / mesto). Best-effort:
+ * PSČ se najde podle pěti číslic, „Česko/Česká republika“ se zahodí,
+ * první část je ulice, zbytek obec. Bez rozpoznatelné obce vrací null.
+ */
+export function rozlozAdresu(text: string | null | undefined): { ulice: string | null; mesto: string; psc: string | null } | null {
+  const casti = txt(text).split(',').map((c) => c.trim()).filter(Boolean)
+    .filter((c) => !/^(česko|česká republika|czech republic|cz)$/i.test(c))
+  if (casti.length === 0) return null
+  let psc: string | null = null
+  const bezPsc = casti.map((c) => {
+    const m = c.match(/\b(\d{3})\s?(\d{2})\b/)
+    if (!m || psc) return c
+    psc = `${m[1]} ${m[2]}`
+    return c.replace(m[0], '').replace(/\s+/g, ' ').trim()
+  }).filter(Boolean)
+  if (bezPsc.length === 0) return null
+  if (bezPsc.length === 1) return { ulice: null, mesto: bezPsc[0], psc }
+  return { ulice: bezPsc[0], mesto: bezPsc.slice(1).join(', '), psc }
+}

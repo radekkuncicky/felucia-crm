@@ -4,6 +4,7 @@ import { mobileDealScope, getMobileOrWebSession, requireObchodnikOrAdmin } from 
 import { createSodFromDeal } from '@/lib/sodCreate'
 import { quoteCelkemBezDph, quoteCelkemSDph } from '@/lib/quoteMath'
 import { logAction } from '@/lib/auditLog'
+import { overObjednatele, doplnKlientaZeSmlouvy, type SodObjednatel } from '@/lib/sodObjednatel'
 
 // POST /api/mobile/obchod/pripady/[id]/sod — SOD z odsouhlasené varianty nabídky.
 // { quoteId, templateId, terminPrevzeti?, poznamky? } — quoteId se nejdřív
@@ -27,6 +28,13 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     terminPrevzeti?: string
     poznamky?: string
     overrides?: Record<string, string>
+    // Sídlo a místo instalace (novější verze appky). Pokud appka pošle cokoli
+    // z toho, platí stejné povinné potvrzení jako na webu.
+    klientAdresa?: string
+    adresaDila?: string
+    mistoShodne?: boolean
+    klientIco?: string
+    klientDic?: string
   }
   try { body = await req.json() } catch {
     return NextResponse.json({ error: 'Neplatný požadavek' }, { status: 400 })
@@ -35,6 +43,13 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   if (!body.quoteId) return NextResponse.json({ error: 'quoteId je povinný' }, { status: 400 })
   if (!body.templateId && !body.typ) {
     return NextResponse.json({ error: 'templateId nebo typ je povinný' }, { status: 400 })
+  }
+
+  let objednatel: SodObjednatel | null = null
+  if (body.mistoShodne !== undefined || body.adresaDila !== undefined || body.klientAdresa !== undefined) {
+    const o = overObjednatele(body)
+    if (typeof o === 'string') return NextResponse.json({ error: o }, { status: 400 })
+    objednatel = o
   }
 
   const quote = await db.quote.findFirst({
@@ -63,9 +78,11 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       dphSazba: quote.dphSazba,
       terminPrevzeti: body.terminPrevzeti ?? null,
       poznamky: body.poznamky ?? null,
+      ...(objednatel ? { klientAdresa: objednatel.klientAdresa, adresaDila: objednatel.adresaDila, klientIco: objednatel.klientIco, klientDic: objednatel.klientDic } : {}),
     },
   })
   if ('error' in result) return NextResponse.json({ error: result.error }, { status: 404 })
+  if (objednatel) await doplnKlientaZeSmlouvy(db, orgId, deal.id, objednatel)
 
   await logAction({
     orgId,

@@ -48,7 +48,7 @@ function req(url: string, method: string, body: Record<string, unknown>) {
 describe('Místo instalace ze SOD → zakázka', () => {
   it('nová SOD propíše adresu díla do OP a zakázka ji převezme', async () => {
     const deal = await novyDeal('a')
-    const res = await sodPost(req('http://localhost/api/sod', 'POST', { dealId: deal.id, typ: 'DPH_21_BEZ_ZALOHY', adresaDila: 'Lesní 12, Hustopeče' }))
+    const res = await sodPost(req('http://localhost/api/sod', 'POST', { dealId: deal.id, typ: 'DPH_21_BEZ_ZALOHY', klientAdresa: 'Domovská 1, Brno', mistoShodne: false, adresaDila: 'Lesní 12, Hustopeče' }))
     expect(res.status).toBe(201)
 
     const op = await prisma.deal.findUnique({ where: { id: deal.id } })
@@ -60,7 +60,7 @@ describe('Místo instalace ze SOD → zakázka', () => {
 
   it('úprava adresy v SOD doplní existující zakázku bez místa stavby, vyplněnou nepřepíše', async () => {
     const deal = await novyDeal('b')
-    const res = await sodPost(req('http://localhost/api/sod', 'POST', { dealId: deal.id, typ: 'DPH_21_BEZ_ZALOHY' }))
+    const res = await sodPost(req('http://localhost/api/sod', 'POST', { dealId: deal.id, typ: 'DPH_21_BEZ_ZALOHY', klientAdresa: 'Domovská 1, Brno', mistoShodne: true }))
     const sod = await res.json()
     const z = await prisma.zakazka.create({ data: { orgId, cislo: `${RUN}-b`, opId: deal.id, klientId: clientId, nazev: 'x' } })
 

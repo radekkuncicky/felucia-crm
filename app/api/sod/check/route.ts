@@ -7,6 +7,7 @@ import { buildSodRenderData, sodPlaceholderValues } from '@/lib/sodRender'
 import { formatDate } from '@/lib/format'
 import { prisma } from '@/lib/prisma'
 import { vychoziZaloha } from '@/lib/zaloha'
+import { adresaKlientaText } from '@/lib/klientAdresa'
 
 // Placeholdery, které se nikdy nevyplňují ručně (auto / nemá smysl je
 // ukazovat jako prázdné pole k doplnění).
@@ -72,6 +73,14 @@ export async function GET(req: Request) {
     emptyPlaceholders,
     usedPlaceholders: Array.from(usedInTemplate),
     seZalohou,
+    // Objednatel a místo instalace — modal je potvrzuje zvlášť (sídlo ≠ místo instalace)
+    objednatel: {
+      typKlienta: deal.client.typKlienta,
+      sidlo: adresaKlientaText(deal.client),
+      ico: deal.client.ico ?? '',
+      dic: deal.client.dic ?? '',
+      adresaDila: deal.adresaDila ?? '',
+    },
     prilohy: {
       hasVop: !!org?.prilohaVopPath,
       hasVzsp: !!org?.prilohaVzspPath,
