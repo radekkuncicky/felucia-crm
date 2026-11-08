@@ -8,6 +8,7 @@ import { PROVOZ_TOOLS, PROVOZ_TOOL_NAMES, executeProvozTool } from './provoz'
 import { NABIDKA_TOOLS, NABIDKA_TOOL_NAMES, executeNabidkaTool, popisNabidkaAkce } from './nabidky'
 import { KLIENT_TOOLS, KLIENT_TOOL_NAMES, executeKlientTool, popisKlientAkce } from './klienti'
 import type { AiKontext, AiNahledAkce, AiToolResult } from '../types'
+import { slozAdresu } from '@/lib/klientAdresa'
 
 /**
  * Jediný registr nástrojů AI asistentky — používá ho webová Dáša
@@ -183,7 +184,7 @@ export async function executeAiTool(
       ? await executeNabidkaTool(ctx, name, input)
       : KLIENT_TOOL_NAMES.has(name)
       ? await executeKlientTool(ctx, name, input)
-      : await executeDasaTool(name, input, { id: ctx.userId, orgId: ctx.orgId, role: ctx.role, jmeno: ctx.jmeno, perms: ctx.perms })
+      : await executeDasaTool(name, input, { id: ctx.userId, orgId: ctx.orgId, role: ctx.role, jmeno: ctx.jmeno, perms: ctx.perms, zdroj: ctx.zdroj })
   } catch (err) {
     console.error(`${logPrefix(ctx)} nástroj ${name} selhal:`, err)
     out = { result: JSON.stringify({ chyba: 'Interní chyba nástroje' }) }
@@ -240,11 +241,15 @@ export async function nahledAkce(ctx: AiKontext, name: string, rawInput: unknown
           radky: [k ? `${k.jmeno} ${k.prijmeni}`.trim() : '?', [s(input.technologie), s(input.predmet)].filter(Boolean).join(' — ')],
         }
       }
-      case 'create_client':
+      case 'create_client': {
+        const adresa = slozAdresu(input)
+        const adresaRadek = typeof adresa === 'string' ? adresa
+          : [adresa.ulice, [adresa.psc, adresa.mesto].filter(Boolean).join(' ')].filter(Boolean).join(', ')
         return {
           titulek: 'Založit klienta',
-          radky: [`${s(input.jmeno)} ${s(input.prijmeni)}`.trim(), [s(input.telefon), s(input.email)].filter(Boolean).join(' · ')].filter(Boolean),
+          radky: [`${s(input.jmeno)} ${s(input.prijmeni)}`.trim(), [s(input.telefon), s(input.email)].filter(Boolean).join(' · '), adresaRadek].filter(Boolean),
         }
+      }
       case 'add_activity': {
         const datum = new Date(s(input.datum))
         return {

@@ -14,6 +14,7 @@ import { najdiVolajiciho } from '@/lib/zapisHovoru'
 import { nactiZdroje, parseZdroj } from '@/lib/zdrojPoptavky'
 import { getOrgSettings } from '@/lib/orgSettings'
 import { slozAdresu } from '@/lib/klientAdresa'
+import { najdiDuplicitnihoKlienta } from '@/lib/clientDuplicate'
 import { najdiKlientIds } from '@/lib/clientSearch'
 
 // ─── Tool definitions ────────────────────────────────────────────────────────
@@ -132,7 +133,7 @@ export const DASA_TOOLS = [
   },
   {
     name: 'create_client',
-    description: 'Založ nového klienta (fyzická osoba nebo firma). Nejdřív ověř přes search_clients / find_by_phone, že už neexistuje. Zápis — uživatel ho potvrzuje.',
+    description: 'Založ nového klienta (fyzická osoba nebo firma) včetně adresy. Nejdřív ověř přes search_clients / find_by_phone, že už neexistuje. Zápis — uživatel ho potvrzuje. V Claude jde o dva kroky: první volání vrátí náhled (a případný duplikát) — ukaž ho uživateli a po jeho souhlasu zavolej znovu se stejnými údaji a potvrdit=true.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -146,6 +147,7 @@ export const DASA_TOOLS = [
         obec: { type: 'string', description: 'Obec / město' },
         castObce: { type: 'string', description: 'Část obce — použije se místo ulice u obcí bez ulic' },
         psc: { type: 'string', description: 'PSČ, např. 746 01' },
+        potvrdit: { type: 'boolean', description: 'true až po souhlasu uživatele s náhledem' },
       },
       required: ['typKlienta', 'jmeno'],
     },
@@ -249,6 +251,8 @@ export interface DasaUser {
   role: string
   jmeno: string
   perms: Permissions
+  /** 'mcp' = Claude konektor: zápisy potvrzuje druhým voláním s potvrdit=true */
+  zdroj?: string
 }
 
 export async function executeDasaTool(
@@ -594,6 +598,35 @@ export async function executeDasaTool(
         if (!jmeno) return { result: JSON.stringify({ chyba: 'Jméno klienta je povinné' }) }
         const adresa = slozAdresu(input)
         if (typeof adresa === 'string') return { result: JSON.stringify({ chyba: adresa }) }
+
+        const nazevNoveho = typKlienta === 'FIRMA' ? jmeno : `${jmeno} ${prijmeni}`.trim()
+
+        // web potvrzuje kartou před spuštěním; MCP potvrzuje druhým voláním
+        if (user.zdroj === 'mcp' && input.potvrdit !== true) {
+          const kandidati = await db.client.findMany({
+            where: { orgId, anonymizedAt: null },
+            select: { id: true, jmeno: true, prijmeni: true, telefon: true, email: true },
+          })
+          const dup = najdiDuplicitnihoKlienta(kandidati, {
+            jmeno, prijmeni,
+            telefon: input.telefon ? String(input.telefon) : null,
+            email: input.email ? String(input.email) : null,
+          })
+          return {
+            result: JSON.stringify({
+              nahled: true,
+              klient: nazevNoveho,
+              typKlienta,
+              telefon: input.telefon ? String(input.telefon) : null,
+              email: input.email ? String(input.email) : null,
+              adresa: [adresa.ulice, [adresa.psc, adresa.mesto].filter(Boolean).join(' ')].filter(Boolean).join(', ') || null,
+              ...(dup ? { moznyDuplikat: { klientId: dup.id, nazev: `${dup.jmeno} ${dup.prijmeni}`.trim(), telefon: dup.telefon, email: dup.email } } : {}),
+              napoveda: dup
+                ? 'Nic se zatím nezaložilo. POZOR: podobný klient už existuje — zeptej se uživatele, jestli nejde o něj (pak ho případně uprav přes update_client). Založ nového jen na výslovný souhlas: create_client znovu se stejnými údaji a potvrdit=true.'
+                : 'Nic se zatím nezaložilo. Ukaž uživateli údaje a po jeho souhlasu zavolej create_client znovu se stejnými údaji a potvrdit=true.',
+            }),
+          }
+        }
 
         const client = await db.client.create({
           data: {

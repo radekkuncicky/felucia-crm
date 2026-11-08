@@ -327,10 +327,27 @@ describe('aktivní nabídka', () => {
 
 describe('klienti', () => {
   it('create_client složí adresu jako ARES', async () => {
-    const r = await run(mcp, 'create_client', { typKlienta: 'FYZICKA_OSOBA', jmeno: 'Petr', prijmeni: 'Novák', ulice: 'Na Vizině', cislo: '1034/28', obec: 'Ostrava', psc: '71000' })
+    const r = await run(mcp, 'create_client', { typKlienta: 'FYZICKA_OSOBA', jmeno: 'Petr', prijmeni: 'Novák', ulice: 'Na Vizině', cislo: '1034/28', obec: 'Ostrava', psc: '71000', potvrdit: true })
     expect(await prisma.client.findUnique({ where: { id: r.clientId } })).toMatchObject({ ulice: 'Na Vizině 1034/28', mesto: 'Ostrava', psc: '710 00' })
-    const r2 = await run(mcp, 'create_client', { typKlienta: 'FYZICKA_OSOBA', jmeno: 'Eva', prijmeni: 'Malá', castObce: 'Lhotka', cislo: '12', obec: 'Hať' })
+    const r2 = await run(mcp, 'create_client', { typKlienta: 'FYZICKA_OSOBA', jmeno: 'Eva', prijmeni: 'Malá', castObce: 'Lhotka', cislo: '12', obec: 'Hať', potvrdit: true })
     expect(await prisma.client.findUnique({ where: { id: r2.clientId } })).toMatchObject({ ulice: 'Lhotka 12', mesto: 'Hať' })
+  })
+
+  it('create_client v MCP nejdřív jen náhled (adresa + duplikát), zápis až s potvrdit', async () => {
+    const vstup = { typKlienta: 'FYZICKA_OSOBA', jmeno: 'Ota', prijmeni: 'Náhledový', telefon: '603 999 888', ulice: 'Hlavní', cislo: '5', obec: 'Opava', psc: '74601' }
+    const pred = await prisma.client.count({ where: { orgId: orgA.id } })
+    const n = await run(mcp, 'create_client', vstup)
+    expect(n).toMatchObject({ nahled: true, klient: 'Ota Náhledový', adresa: 'Hlavní 5, 746 01 Opava' })
+    expect(n.moznyDuplikat).toBeUndefined()
+    expect(await prisma.client.count({ where: { orgId: orgA.id } })).toBe(pred)
+
+    const karta = await nahledAkce(mcp, 'create_client', vstup)
+    expect(karta.radky).toContain('Hlavní 5, 746 01 Opava')
+
+    const r = await run(mcp, 'create_client', { ...vstup, potvrdit: true })
+    expect(r.ok).toBe(true)
+    const dup = await run(mcp, 'create_client', { ...vstup, jmeno: 'Jiný' })
+    expect(dup.moznyDuplikat).toMatchObject({ klientId: r.clientId })
   })
 
   it('update_client v MCP nejdřív jen náhled, zápis až s potvrdit', async () => {
