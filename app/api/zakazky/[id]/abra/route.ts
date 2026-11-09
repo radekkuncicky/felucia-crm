@@ -6,7 +6,7 @@ import { getPerms, forbidden } from '@/lib/permissions'
 import { logAudit } from '@/lib/audit'
 import { abraKonfigurace, AbraChyba } from '@/lib/abra/flexi'
 import { nazevZakazkyAbra, odesliZakazkuDoAbry, CISLO_ZAKAZKY_ABRA } from '@/lib/abra/zakazka'
-import { nazevKlienta } from '@/lib/abra/adresar'
+import { nazevKlienta, NeuplnyOdberatel } from '@/lib/abra/adresar'
 
 /**
  * POST { dryRun } — založí zakázku (i s odběratelem) v ABRA Flexi.
@@ -34,7 +34,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   const body = await req.json().catch(() => ({})) as { dryRun?: unknown }
   const dryRun = body.dryRun !== false
-  const zakazka = { cislo: z.cislo, technologie: z.technologie, klient: z.klient }
+  const zakazka = { id: z.id, cislo: z.cislo, technologie: z.technologie, klient: z.klient }
 
   try {
     const r = await odesliZakazkuDoAbry(k, zakazka, { dryRun })
@@ -64,6 +64,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       abraId,
     })
   } catch (e) {
+    if (e instanceof NeuplnyOdberatel) return NextResponse.json({ error: e.message, chybi: e.chybi }, { status: 422 })
     if (e instanceof AbraChyba) return NextResponse.json({ error: e.message }, { status: 502 })
     throw e
   }

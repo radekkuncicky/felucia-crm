@@ -26,6 +26,24 @@ export interface KlientProAbru {
 
 export const extIdKlienta = (clientId: string) => `ext:FELUCIA:klient:${clientId}`
 
+/** Odběratel nemá údaje, které musí být na daňovém dokladu (Rocketas 2026-11-09) */
+export class NeuplnyOdberatel extends Error {
+  constructor(public chybi: string[]) {
+    super(`U klienta chybí ${chybi.join(', ')} — na faktuře musí být celá adresa${chybi.includes('IČO') ? ' a u firmy IČO' : ''}. Doplňte je v kartě klienta.`)
+  }
+}
+
+/** Co chybí pro založení odběratele: vždy ulice, město, PSČ; u firmy IČO. DIČ jen pokud ho firma má (neplátci ho nemají). */
+export function chybejiciUdajeOdberatele(k: KlientProAbru): string[] {
+  const prazdne = (v?: string | null) => !v?.trim()
+  const chybi: string[] = []
+  if (prazdne(k.ulice)) chybi.push('ulice')
+  if (prazdne(k.mesto)) chybi.push('město')
+  if (prazdne(k.psc)) chybi.push('PSČ')
+  if (k.typKlienta === 'FIRMA' && prazdne(k.ico)) chybi.push('IČO')
+  return chybi
+}
+
 export function nazevKlienta(k: Pick<KlientProAbru, 'typKlienta' | 'jmeno' | 'prijmeni'>): string {
   return (k.typKlienta === 'FIRMA' ? k.jmeno : `${k.jmeno} ${k.prijmeni}`).trim()
 }
@@ -57,6 +75,9 @@ export async function zajistiAdresar(
 ): Promise<{ abraId: string | null; zalozeno: boolean }> {
   const existujici = await abraGetJeden<{ id: string }>(k, 'adresar', extIdKlienta(klient.id), { detail: 'custom:id' })
   if (existujici) return { abraId: existujici.id, zalozeno: false }
+  // Existující záznam nepřepisujeme, takže neúplný by na fakturách zůstal neúplný → nezakládat
+  const chybi = chybejiciUdajeOdberatele(klient)
+  if (chybi.length) throw new NeuplnyOdberatel(chybi)
   const { id } = await abraZapis(k, 'adresar', zaznamAdresare(klient), opts)
   return { abraId: opts.dryRun ? null : id, zalozeno: true }
 }

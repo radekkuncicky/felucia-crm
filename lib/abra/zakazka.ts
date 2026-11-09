@@ -5,8 +5,10 @@
  * koncovek etap (26-047), stav MÁME, nikdy ho neměnit na HOTOVO (účetní by pak
  * nemohla dopisovat). Párování zpět jde přes kód (stejně jako u faktur).
  * Odběratel (`firma`) = adresář klienta, viz ./adresar.
+ * Externí kód `ext:FELUCIA:zakazka:<id zakázky>` (Rocketas 2026-11-09) — stálé ID
+ * z Felucie, podle něj se zakázka hledá jako první (kód mohla účetní přejmenovat).
  */
-import { abraGet, abraZapis, type AbraKonfigurace } from './flexi'
+import { abraGet, abraGetJeden, abraZapis, type AbraKonfigurace } from './flexi'
 import { nazevKlienta, zajistiAdresar, type KlientProAbru } from './adresar'
 
 const TECHNOLOGIE: Record<string, string> = {
@@ -20,7 +22,11 @@ const TECHNOLOGIE: Record<string, string> = {
 /** Do Flexi jdou jen čísla zakázek bez koncovky etapy (26-047) */
 export const CISLO_ZAKAZKY_ABRA = /^\d{2}-\d{3,}$/
 
+export const extIdZakazky = (zakazkaId: string) => `ext:FELUCIA:zakazka:${zakazkaId}`
+
 export interface ZakazkaProAbru {
+  /** ID zakázky ve Felucii → externí kód ve Flexi */
+  id: string
   cislo: string
   technologie: string | null
   klient: KlientProAbru
@@ -36,6 +42,7 @@ export function nazevZakazkyAbra(z: ZakazkaProAbru): string {
 
 export function zaznamZakazkyAbra(z: ZakazkaProAbru, extra: { nazev?: string; poznam?: string; firma?: string | null } = {}) {
   return {
+    id: extIdZakazky(z.id),
     kod: z.cislo,
     nazev: extra.nazev ?? nazevZakazkyAbra(z),
     stavZakazky: 'code:MÁME',
@@ -64,10 +71,14 @@ export async function odesliZakazkuDoAbry(
   opts: { dryRun?: boolean; nazev?: string; poznam?: string } = {},
 ): Promise<VysledekOdeslani> {
   if (!CISLO_ZAKAZKY_ABRA.test(z.cislo)) throw new Error(`Číslo zakázky ${z.cislo} není ve tvaru RR-NNN`)
-  const [existujici] = await abraGet<{ id: string; firma?: string }>(k, 'zakazka', {
+  // Nejdřív podle ext kódu (POST se stejným ext by jinak přepsal i kód), pak podle kódu (ruční zakázky)
+  const detail = { detail: 'custom:id,kod,firma' }
+  const podleExt = await abraGetJeden<{ id: string; firma?: string }>(k, 'zakazka', extIdZakazky(z.id), detail)
+  const [podleKodu] = podleExt ? [] : await abraGet<{ id: string; firma?: string }>(k, 'zakazka', {
     filtr: `kod = '${z.cislo}'`,
-    params: { detail: 'custom:id,kod,firma' },
+    params: detail,
   })
+  const existujici = podleExt ?? podleKodu
   if (existujici?.firma) return { stav: 'EXISTUJE', abraId: existujici.id, adresarId: null, adresarZalozen: false, existovala: true }
 
   const adresar = await zajistiAdresar(k, z.klient, { dryRun: opts.dryRun })
@@ -76,7 +87,8 @@ export async function odesliZakazkuDoAbry(
 
   if (existujici) {
     if (opts.dryRun) return { stav: 'NANECISTO', abraId: existujici.id, adresarId: firma, adresarZalozen: adresar.zalozeno, existovala: true }
-    await abraZapis(k, 'zakazka', { id: existujici.id, firma: firma! })
+    // Ruční zakázce rovnou přidáme i náš ext kód (Flexi: první ID záznam určí, další se přidají)
+    await abraZapis(k, 'zakazka', { id: podleExt ? existujici.id : [existujici.id, extIdZakazky(z.id)], firma: firma! })
     return { stav: 'DOPLNENA_FIRMA', abraId: existujici.id, adresarId: firma, adresarZalozen: adresar.zalozeno, existovala: true }
   }
   const { id } = await abraZapis(k, 'zakazka', zaznamZakazkyAbra(z, { ...opts, firma }), { dryRun: opts.dryRun })
