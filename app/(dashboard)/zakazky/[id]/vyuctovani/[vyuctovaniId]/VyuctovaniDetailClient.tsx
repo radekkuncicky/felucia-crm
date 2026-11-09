@@ -9,7 +9,7 @@ import { Dialog } from '@/components/ui/Dialog'
 import { api } from '@/lib/api'
 import { formatCislo, formatKc, formatDate } from '@/lib/format'
 import { radekBezDph } from '@/lib/quoteMath'
-import PorovnaniSCN, { type CNProPorovnani } from './PorovnaniSCN'
+import PorovnaniSCN, { type CNProPorovnani, type VyuProPorovnani } from './PorovnaniSCN'
 
 const STAV_LABELS: Record<VyuctovaniStav, string> = {
   NAVRH: 'Návrh',
@@ -79,13 +79,15 @@ interface Props {
   /** aktivní cenová nabídka OP pro „Porovnat s CN" (null = není) */
   cnProPorovnani?: CNProPorovnani | null
   etapaCislo?: number | null
+  /** ostatní vyúčtování zakázky (pro porovnání celé zakázky s CN) */
+  ostatniVyuctovani?: (Omit<VyuProPorovnani, 'aktualni'> & { vytvoreno: string })[]
 }
 
 const fmtKc = formatKc
 
 type NewRow = { nazev: string; mnozstvi: string; jednotka: string; prodejniCena: string; nakupniCena: string; dphSazba: number }
 
-export default function VyuctovaniDetailClient({ vyuctovani: initial, canApprove, canDelete, showNakupky, defaultDph, dalsiEtapaCislo, zakazkaStav, canEditZakazka = false, cnProPorovnani = null, etapaCislo = null }: Props) {
+export default function VyuctovaniDetailClient({ vyuctovani: initial, canApprove, canDelete, showNakupky, defaultDph, dalsiEtapaCislo, zakazkaStav, canEditZakazka = false, cnProPorovnani = null, etapaCislo = null, ostatniVyuctovani = [] }: Props) {
   const router = useRouter()
   const isAdmin = canDelete
   const isManager = canApprove
@@ -403,8 +405,13 @@ export default function VyuctovaniDetailClient({ vyuctovani: initial, canApprove
               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${STAV_COLORS[stav]}`}>{STAV_LABELS[stav]}</span>
               <PorovnaniSCN
                 cn={cnProPorovnani}
-                etapaCislo={etapaCislo}
-                vyuPolozky={polozky.map(p => ({ productId: p.productId ?? null, kod: p.kod ?? null, nazev: p.nazev, jednotka: p.jednotka, mnozstvi: p.mnozstvi, prodejniCena: p.prodejniCena, sleva: p.sleva }))}
+                vyuctovani={[
+                  ...ostatniVyuctovani.map(o => ({ ...o, aktualni: false, razeni: o.vytvoreno })),
+                  {
+                    id: initial.id, cislo: initial.cislo, stav, etapaCislo, aktualni: true, razeni: initial.vytvoreno,
+                    polozky: polozky.map(p => ({ productId: p.productId ?? null, kod: p.kod ?? null, nazev: p.nazev, jednotka: p.jednotka, mnozstvi: p.mnozstvi, prodejniCena: p.prodejniCena, sleva: p.sleva })),
+                  },
+                ].sort((a, b) => a.razeni.localeCompare(b.razeni))}
               />
             </div>
             <p className="text-sm text-gray-600 dark:text-slate-400">

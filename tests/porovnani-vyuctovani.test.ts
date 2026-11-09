@@ -49,4 +49,22 @@ describe('porovnejVyuctovaniSCN', () => {
     const r = porovnejVyuctovaniSCN([cn({ nazev: 'Potrubí', jednotka: 'm' })], [vy({ nazev: 'Potrubí', jednotka: 'ks' })])
     expect(r.radky.map((x) => x.stav)).toEqual(['CHYBI', 'NAVIC'])
   })
+
+  it('víc vyúčtování: součet přes zakázku + rozpad po vyúčtováních, navíc se slučuje', () => {
+    const r = porovnejVyuctovaniSCN(
+      [cn({ nazev: 'Montáž', jednotka: 'hod', mnozstvi: 10, cenaZaKus: 800 }), cn({ nazev: 'Revize', cenaZaKus: 1500 })],
+      [
+        vy({ vyuId: 'V1', nazev: 'Montáž', jednotka: 'hod', mnozstvi: 6, prodejniCena: 800 }),
+        vy({ vyuId: 'V1', nazev: 'Dojezd', prodejniCena: 500 }),
+        vy({ vyuId: 'V2', nazev: 'Montáž', jednotka: 'hod', mnozstvi: 4, prodejniCena: 800 }),
+        vy({ vyuId: 'V2', nazev: 'Dojezd', prodejniCena: 500 }),
+      ],
+    )
+    expect(r.radky.map((x) => [x.nazev, x.stav, x.rozdil, x.poVyu])).toEqual([
+      ['Montáž', 'SHODA', 0, { V1: { mnozstvi: 6, celkem: 4800 }, V2: { mnozstvi: 4, celkem: 3200 } }],
+      ['Revize', 'CHYBI', -1500, {}],
+      ['Dojezd', 'NAVIC', 1000, { V1: { mnozstvi: 1, celkem: 500 }, V2: { mnozstvi: 1, celkem: 500 } }],
+    ])
+    expect(r.souhrn).toMatchObject({ cnCelkem: 9500, vyuCelkem: 9000, rozdil: -500 })
+  })
 })

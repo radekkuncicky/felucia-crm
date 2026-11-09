@@ -74,6 +74,16 @@ export default async function VyuctovaniDetailPage({
 
   const aktivniCN = v.zakazka.op?.quotes?.[0] ?? null
 
+  // Ostatní vyúčtování zakázky — porovnání s CN jde přes celou zakázku (všechny etapy)
+  const ostatniVyu = aktivniCN ? await prisma.vyuctovani.findMany({
+    where: { zakazkaId: params.id, orgId, id: { not: v.id } },
+    orderBy: { vytvoreno: 'asc' },
+    select: {
+      id: true, cislo: true, stav: true, vytvoreno: true, etapa: { select: { cislo: true } },
+      polozky: { select: { productId: true, kod: true, nazev: true, jednotka: true, mnozstvi: true, prodejniCena: true, sleva: true } },
+    },
+  }) : []
+
   return (
     <VyuctovaniDetailClient
       vyuctovani={{
@@ -128,6 +138,13 @@ export default async function VyuctovaniDetailPage({
           mnozstvi: Number(i.mnozstvi), cenaZaKus: Number(i.cenaZaKus), sleva: Number(i.sleva ?? 0),
         })),
       } : null}
+      ostatniVyuctovani={ostatniVyu.map(o => ({
+        id: o.id, cislo: o.cislo, stav: o.stav, vytvoreno: o.vytvoreno.toISOString(), etapaCislo: o.etapa?.cislo ?? null,
+        polozky: o.polozky.map(p => ({
+          productId: p.productId, kod: p.kod, nazev: p.nazev, jednotka: p.jednotka,
+          mnozstvi: Number(p.mnozstvi), prodejniCena: Number(p.prodejniCena), sleva: Number(p.sleva),
+        })),
+      }))}
     />
   )
 }
