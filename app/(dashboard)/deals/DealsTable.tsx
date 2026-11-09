@@ -14,6 +14,7 @@ import ListToolbar from '@/components/ui/ListToolbar'
 import { useUrlFilters } from '@/hooks/useUrlFilters'
 import { ResizeHandle } from '@/components/ResizeHandle'
 import { formatDate, formatKcPresne } from '@/lib/format'
+import { odpovidaHledani } from '@/lib/hledani'
 
 interface DealRow {
   id: string
@@ -116,12 +117,7 @@ export default function DealsTable({ deals, showZneplatnene = false, showMarze =
   const filtered = useMemo(() => {
     let rows = deals
     if (search) {
-      const q = search.toLowerCase()
-      rows = rows.filter(d =>
-        d.kod?.toLowerCase().includes(q) ||
-        d.predmet?.toLowerCase().includes(q) ||
-        d.clientJmeno.toLowerCase().includes(q)
-      )
+      rows = rows.filter(d => odpovidaHledani(search, d.kod, d.predmet, d.clientJmeno))
     }
     if (filterStav) rows = rows.filter(d => (stavOverrides[d.id] ?? d.stav) === filterStav)
     if (filterTech) rows = rows.filter(d => d.technologie === filterTech)

@@ -8,7 +8,7 @@ import { authOptions } from '@/lib/auth'
 import { getMobileSession } from '@/lib/mobile-auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
-import { najdiKlientIds } from '@/lib/clientSearch'
+import { najdiKlientIds, najdiIdsBezDiakritiky } from '@/lib/clientSearch'
 
 export async function GET(req: Request) {
   const webSession = await getServerSession(authOptions)
@@ -35,9 +35,13 @@ export async function GET(req: Request) {
   const q = searchParams.get('q')?.trim() ?? ''
   if (q.length < 2) return NextResponse.json([])
 
-  const contains = { contains: q, mode: 'insensitive' as const }
   // Klienti bez ohledu na diakritiku — použije se i pro OP/servis/zakázky podle jména klienta
   const klientIds = (await najdiKlientIds(db, orgId, q)) ?? []
+  const ids = async (co: Parameters<typeof najdiIdsBezDiakritiky>[2], kdyz: unknown) =>
+    kdyz ? ((await najdiIdsBezDiakritiky(db, orgId, co, q)) ?? []) : []
+  const [dealIds, servisIds, zakazkaIds, leadIds, produktIds] = await Promise.all([
+    ids('deal', true), ids('servis', servisScope), ids('zakazka', zakazkyScope), ids('lead', hledatLeady), ids('product', hledatProdukty),
+  ])
   const [clients, deals, servis, zakazky, leady, produkty] = await Promise.all([
     db.client.findMany({
       where: {
@@ -53,8 +57,7 @@ export async function GET(req: Request) {
         orgId,
         AND: [dealScope],
         OR: [
-          { kod: { contains: q, mode: 'insensitive' } },
-          { predmet: { contains: q, mode: 'insensitive' } },
+          { id: { in: dealIds } },
           { clientId: { in: klientIds } },
         ],
       },
@@ -67,8 +70,7 @@ export async function GET(req: Request) {
             orgId,
             AND: [servisScope],
             OR: [
-              { cislo: { contains: q, mode: 'insensitive' } },
-              { popis: { contains: q, mode: 'insensitive' } },
+              { id: { in: servisIds } },
               { klientId: { in: klientIds } },
               { kontrakt: { klientId: { in: klientIds } } },
               { zarizeni: { nazev: { contains: q, mode: 'insensitive' } } },
@@ -92,9 +94,7 @@ export async function GET(req: Request) {
             orgId,
             AND: [zakazkyScope],
             OR: [
-              { cislo: contains },
-              { nazev: contains },
-              { mistoStavby: contains },
+              { id: { in: zakazkaIds } },
               { klientId: { in: klientIds } },
             ],
           },
@@ -105,7 +105,7 @@ export async function GET(req: Request) {
       : Promise.resolve([]),
     hledatLeady
       ? db.lead.findMany({
-          where: { orgId, OR: [{ jmeno: contains }, { firma: contains }, { email: contains }, { telefon: contains }] },
+          where: { orgId, id: { in: leadIds } },
           take: 5,
           orderBy: { vytvoreno: 'desc' },
           select: { id: true, jmeno: true, firma: true, email: true, telefon: true },
@@ -113,7 +113,7 @@ export async function GET(req: Request) {
       : Promise.resolve([]),
     hledatProdukty
       ? db.product.findMany({
-          where: { orgId, aktivni: true, OR: [{ nazev: contains }, { kod: contains }] },
+          where: { orgId, aktivni: true, id: { in: produktIds } },
           take: 5,
           orderBy: { nazev: 'asc' },
           select: { id: true, kod: true, nazev: true, produktovaRada: true },

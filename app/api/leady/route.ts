@@ -1,6 +1,7 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
+import { najdiIdsBezDiakritiky } from '@/lib/clientSearch'
 import { NextResponse } from 'next/server'
 import { getPerms, forbidden } from '@/lib/permissions'
 import { parseZdroj } from '@/lib/zdrojPoptavky'
@@ -28,12 +29,7 @@ export async function GET(req: Request) {
   if (zdrojPoptavkyId) where.zdrojPoptavkyId = zdrojPoptavkyId === 'bez' ? null : zdrojPoptavkyId
   if (assignedToId) where.assignedToId = assignedToId
   if (search) {
-    where.OR = [
-      { jmeno: { contains: search, mode: 'insensitive' } },
-      { email: { contains: search, mode: 'insensitive' } },
-      { firma: { contains: search, mode: 'insensitive' } },
-      { telefon: { contains: search, mode: 'insensitive' } },
-    ]
+    where.id = { in: (await najdiIdsBezDiakritiky(db, orgId, 'lead', search)) ?? [] }
   }
 
   const leady = await db.lead.findMany({

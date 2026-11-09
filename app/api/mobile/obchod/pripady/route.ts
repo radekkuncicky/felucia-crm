@@ -7,7 +7,7 @@ import { generateDealKod } from '@/lib/dealKod'
 import { logAction } from '@/lib/auditLog'
 import { Technologie, TypKlienta } from '@prisma/client'
 import { quoteCelkemBezDph } from '@/lib/quoteMath'
-import { najdiKlientIds } from '@/lib/clientSearch'
+import { najdiKlientIds, najdiIdsBezDiakritiky } from '@/lib/clientSearch'
 
 const TECHNOLOGIE = Object.values(Technologie)
 
@@ -35,9 +35,7 @@ export async function GET(req: Request) {
       ...(q
         ? {
             OR: [
-              { predmet: { contains: q, mode: 'insensitive' } },
-              { kod: { contains: q, mode: 'insensitive' } },
-              { adresaDila: { contains: q, mode: 'insensitive' } },
+              { id: { in: (await najdiIdsBezDiakritiky(db, orgId, 'deal', q)) ?? [] } },
               { clientId: { in: klientIds } },
             ],
           }

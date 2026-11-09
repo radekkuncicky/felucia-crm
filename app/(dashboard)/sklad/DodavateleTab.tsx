@@ -9,6 +9,7 @@ import { doplnZAres } from '@/lib/ares'
 import { confirmDialog } from '@/components/ui/confirm'
 import { formatDate, formatKcPresne } from '@/lib/format'
 import { OBJ_STAV_LABELS, OBJ_STAV_COLORS } from './objednavkyStav'
+import { odpovidaHledani } from '@/lib/hledani'
 
 /** Záložka Dodavatelé na /sklad — seznam, založení/úprava, detail s produkty a objednávkami. */
 
@@ -217,8 +218,7 @@ export default function DodavateleTab({ canEdit, showNakupky, search, initialId 
     if (res.ok) { toast.success(d.pocetObjednavek > 0 ? 'Dodavatel deaktivován' : 'Dodavatel smazán'); if (detailId === d.id) setDetailId(null); load() }
   }
 
-  const q = search.toLowerCase()
-  const filtered = (rows ?? []).filter(d => !q || `${d.nazev} ${d.ico ?? ''} ${d.email ?? ''} ${d.kontaktOsoba ?? ''} ${d.mesto ?? ''}`.toLowerCase().includes(q))
+  const filtered = (rows ?? []).filter(d => odpovidaHledani(search, d.nazev, d.ico, d.email, d.kontaktOsoba, d.mesto))
 
   return (
     <>

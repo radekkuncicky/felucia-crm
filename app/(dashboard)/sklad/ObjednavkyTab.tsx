@@ -6,6 +6,7 @@ import { formatDate, formatKcPresne } from '@/lib/format'
 import FilterDropdown from '@/components/ui/FilterDropdown'
 import ObjednavkaDetail, { type ObjednavkaDto } from '@/components/objednavky/ObjednavkaDetail'
 import { OBJ_STAV_LABELS, OBJ_STAV_COLORS } from './objednavkyStav'
+import { odpovidaHledani } from '@/lib/hledani'
 
 /** Záložka Objednávky na /sklad — přehled všech objednávek org s detailem v panelu. */
 
@@ -48,8 +49,7 @@ export default function ObjednavkyTab({ showNakupky, search, initialId }: Props)
     if (extra?.id === o.id) setExtra(o)
   }
 
-  const q = search.toLowerCase()
-  const filtered = (rows ?? []).filter(o => !q || `${o.cislo} ${o.dodavatel.nazev} ${o.zakazka?.cislo ?? ''} ${o.zakazka?.nazev ?? ''}`.toLowerCase().includes(q))
+  const filtered = (rows ?? []).filter(o => odpovidaHledani(search, o.cislo, o.dodavatel.nazev, o.zakazka?.cislo, o.zakazka?.nazev))
 
   return (
     <>

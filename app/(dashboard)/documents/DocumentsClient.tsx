@@ -4,6 +4,7 @@ import { confirmDialog } from '@/components/ui/confirm'
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { formatDate } from '@/lib/format'
 import { IconDocument, IconChart, IconNote, IconBox, IconWarning, IconCamera } from '@/components/ui/Icons'
+import { odpovidaHledani } from '@/lib/hledani'
 
 interface Doc {
   id: string
@@ -135,10 +136,7 @@ export default function DocumentsClient() {
   const storageExceeded = storage ? storage.used >= storage.limit : false
   const storagePercent = storage ? Math.min(100, Math.round(Number(storage.used) / Number(storage.limit) * 100)) : 0
 
-  const filtered = docs.filter(d =>
-    d.nazev.toLowerCase().includes(search.toLowerCase()) ||
-    (d.popis ?? '').toLowerCase().includes(search.toLowerCase())
-  )
+  const filtered = docs.filter(d => odpovidaHledani(search, d.nazev, d.popis))
 
   return (
     <div className="space-y-4">

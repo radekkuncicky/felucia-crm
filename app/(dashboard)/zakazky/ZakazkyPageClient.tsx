@@ -17,6 +17,7 @@ import { useUrlFilters } from '@/hooks/useUrlFilters'
 import { useShowMore } from '@/hooks/useShowMore'
 import EmptyState from '@/components/ui/EmptyState'
 import KeSchvaleniBar, { type KeSchvaleniPolozka } from './KeSchvaleniBar'
+import { odpovidaHledani } from '@/lib/hledani'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -593,10 +594,7 @@ export default function ZakazkyPageClient({ zakazky, vedouci, isTechnik, canCrea
       }
       if (stavFilter && z.stav !== stavFilter) return false
       if (vedouciFilter && z.vedouciId !== vedouciFilter) return false
-      if (search) {
-        const q = search.toLowerCase()
-        if (!z.cislo.toLowerCase().includes(q) && !z.nazev.toLowerCase().includes(q) && !z.klientJmeno.toLowerCase().includes(q)) return false
-      }
+      if (search && !odpovidaHledani(search, z.cislo, z.nazev, z.klientJmeno)) return false
       if (montazFilter === 'bez_terminu' && z.montazOd !== null) return false
       if (montazFilter === 'kdykoliv' && !z.kdykoliv) return false
       if (montazFilter === 'po_terminu') {
@@ -638,10 +636,7 @@ export default function ZakazkyPageClient({ zakazky, vedouci, isTechnik, canCrea
     return localZakazky.filter(z => {
       if (!HOTOVE_STAVY.includes(z.stav)) return false
       if (vedouciFilter && z.vedouciId !== vedouciFilter) return false
-      if (search) {
-        const q = search.toLowerCase()
-        if (!z.cislo.toLowerCase().includes(q) && !z.nazev.toLowerCase().includes(q) && !z.klientJmeno.toLowerCase().includes(q)) return false
-      }
+      if (search && !odpovidaHledani(search, z.cislo, z.nazev, z.klientJmeno)) return false
       return true
     })
   }, [localZakazky, view, pohled, stavFilter, vedouciFilter, search, montazFilter])

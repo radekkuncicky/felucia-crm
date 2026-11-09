@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { formatCislo } from '@/lib/format'
 import FilterDropdown from '@/components/ui/FilterDropdown'
+import { odpovidaHledani } from '@/lib/hledani'
 
 interface ProductCategory { id: string; nazev: string; barva: string }
 interface Product { id: string; kod: string | null; nazev: string; categories: ProductCategory[]; jednotka: string; standardniCena: number }
@@ -43,7 +44,7 @@ export default function CenikDetail({ cenikId, cenikNazev, cenikKod, products, c
   }, [cenikId])
 
   const filtered = polozky.filter(p => {
-    const matchSearch = !search || p.product.nazev.toLowerCase().includes(search.toLowerCase()) || (p.product.kod ?? '').toLowerCase().includes(search.toLowerCase())
+    const matchSearch = odpovidaHledani(search, p.product.nazev, p.product.kod)
     const matchCat = !catFilter || p.product.categories.some(c => c.id === catFilter)
     return matchSearch && matchCat
   })
@@ -51,7 +52,7 @@ export default function CenikDetail({ cenikId, cenikNazev, cenikKod, products, c
   // Products not yet in ceník
   const inCenik = new Set(polozky.map(p => p.product.id))
   const availableProducts = products.filter(p => !inCenik.has(p.id) &&
-    (!addSearch || p.nazev.toLowerCase().includes(addSearch.toLowerCase()) || (p.kod ?? '').toLowerCase().includes(addSearch.toLowerCase())) &&
+    odpovidaHledani(addSearch, p.nazev, p.kod) &&
     (!addCatFilter || p.categories.some(c => c.id === addCatFilter))
   )
 

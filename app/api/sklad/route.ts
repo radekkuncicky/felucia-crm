@@ -1,6 +1,7 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
+import { najdiIdsBezDiakritiky } from '@/lib/clientSearch'
 import { NextResponse } from 'next/server'
 import { SkladPohybTyp } from '@prisma/client'
 import { getPerms, forbidden } from '@/lib/permissions'
@@ -23,7 +24,7 @@ export async function GET(req: Request) {
   const where: Record<string, unknown> = { orgId }
   if (typ) where.typ = typ
   if (zakazkaId) where.zakazkaId = zakazkaId
-  if (search) where.nazev = { contains: search, mode: 'insensitive' }
+  if (search) where.id = { in: (await najdiIdsBezDiakritiky(db, orgId, 'skladPohyb', search, 5000)) ?? [] }
   if (od || do_) {
     where.vytvoreno = {
       ...(od ? { gte: new Date(od) } : {}),

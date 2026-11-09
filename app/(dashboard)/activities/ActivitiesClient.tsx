@@ -20,6 +20,7 @@ import { useUrlFilters } from '@/hooks/useUrlFilters'
 import { useShowMore } from '@/hooks/useShowMore'
 import DokoncitAktivituModal from '@/components/DokoncitAktivituModal'
 import { diktatHref } from '@/lib/diktat'
+import { odpovidaHledani } from '@/lib/hledani'
 
 const ACT_DEFS: ColumnDef[] = [
   { id: 'datum', label: 'Datum', defaultVisible: true, defaultWidth: 110 },
@@ -291,14 +292,10 @@ export default function ActivitiesClient({ activities: initActivities, defaultTy
       if (od && a.datum < od) return false
       if (do_ && a.datum > do_) return false
       if (stavFilter && a.stav !== stavFilter) return false
-      if (search) {
-        const q = search.toLowerCase()
-        const hay = [
-          a.popis, a.deal?.kod, a.deal?.predmet, a.deal?.client.jmeno, a.deal?.client.prijmeni,
-          a.lead?.jmeno, a.lead?.firma, a.user?.jmeno,
-        ].filter(Boolean).join(' ').toLowerCase()
-        if (!hay.includes(q)) return false
-      }
+      if (search && !odpovidaHledani(search,
+        a.popis, a.deal?.kod, a.deal?.predmet, a.deal?.client.jmeno, a.deal?.client.prijmeni,
+        a.lead?.jmeno, a.lead?.firma, a.user?.jmeno,
+      )) return false
       return true
     })
   }, [activities, typ, od, do_, stavFilter, search])

@@ -21,6 +21,7 @@ import {
   type OrgUser,
   type Zarizeni,
 } from '@/components/servis/types'
+import { odpovidaHledani } from '@/lib/hledani'
 
 interface KlientSkupina {
   klient: { id: string; jmeno: string; prijmeni: string; telefon: string | null; adresa: string | null }
@@ -132,18 +133,17 @@ export default function PortfolioClient({ klienti, clients, orgUsers, canManage,
   )
 
   const filtered = useMemo(() => {
-    const q = hledat.trim().toLowerCase()
+    const q = hledat.trim()
     return klienti.filter(s => {
       if (filtr === 'kontrakt' && !maAktivniKontrakt(s)) return false
       if (filtr === 'bez-kontraktu' && !maZarizeniBezKontraktu(s)) return false
       if (filtr === 'zaruka' && !maKonciciZaruku(s)) return false
       if (!q) return true
-      const hay = [
+      return odpovidaHledani(q,
         s.klient.jmeno, s.klient.prijmeni, s.klient.telefon, s.klient.adresa,
         ...s.zarizeni.flatMap(z => [z.nazev, z.vyrobniCislo, ...z.kontrakty.map(k => k.nazev), ...z.kontrakty.map(k => k.cisloKontraktu)]),
         ...s.kontraktyBezZarizeni.map(k => k.nazev),
-      ].filter(Boolean).join(' ').toLowerCase()
-      return hay.includes(q)
+      )
     })
   }, [klienti, hledat, filtr])
 

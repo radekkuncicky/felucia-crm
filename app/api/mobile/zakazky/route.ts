@@ -3,7 +3,7 @@ import { orgPrisma } from '@/lib/orgPrisma'
 import { zakazkyScopeWhere } from '@/lib/permissions'
 import { getMobileOrWebSession, requireTechnikOrAdmin, klientAdresa, toAbsoluteUrl } from '@/lib/mobile-helpers'
 import type { ZakazkaStav } from '@prisma/client'
-import { najdiKlientIds } from '@/lib/clientSearch'
+import { najdiKlientIds, najdiIdsBezDiakritiky } from '@/lib/clientSearch'
 
 export async function GET(req: Request) {
   const host = req.headers.get('host') ?? ''
@@ -32,6 +32,7 @@ export async function GET(req: Request) {
   const HOTOVE: ZakazkaStav[] = ['PREDANA', 'VYUCTOVANA', 'HOTOVO']
 
   const klientIds = q ? ((await najdiKlientIds(db, orgId, q)) ?? []) : []
+  const zakazkaIds = q ? ((await najdiIdsBezDiakritiky(db, orgId, 'zakazka', q)) ?? []) : []
   const where = {
     orgId,
     ...(stavParam ? { stav: stavParam } : {}),
@@ -41,9 +42,7 @@ export async function GET(req: Request) {
     ...(q
       ? {
           OR: [
-            { cislo: { contains: q, mode: 'insensitive' as const } },
-            { nazev: { contains: q, mode: 'insensitive' as const } },
-            { mistoStavby: { contains: q, mode: 'insensitive' as const } },
+            { id: { in: zakazkaIds } },
             { klientId: { in: klientIds } },
           ],
         }

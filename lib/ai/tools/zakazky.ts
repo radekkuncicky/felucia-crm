@@ -7,7 +7,7 @@ import { quoteCelkemBezDph, radekBezDph } from '@/lib/quoteMath'
 import { TECHNOLOGIE, type Technologie, isoDen, obdobi, parseDen } from './analytika'
 import type { Prisma } from '@prisma/client'
 import type { AiKontext, AiToolResult } from '../types'
-import { najdiKlientIds } from '@/lib/clientSearch'
+import { najdiKlientIds, najdiIdsBezDiakritiky } from '@/lib/clientSearch'
 
 // ─── Nástroje nad zakázkami (realizace) + poznámka k zakázce / klientovi ─────
 
@@ -224,9 +224,7 @@ export async function executeZakazkaTool(
               : montazVRozsahuWhere(isoDen(o.od)!, isoDen(new Date(o.do.getTime() - 1))!),
             q ? {
               OR: [
-                { cislo: { contains: q, mode: 'insensitive' } },
-                { nazev: { contains: q, mode: 'insensitive' } },
-                { mistoStavby: { contains: q, mode: 'insensitive' } },
+                { id: { in: (await najdiIdsBezDiakritiky(db, ctx.orgId, 'zakazka', q)) ?? [] } },
                 { klientId: { in: klientIds } },
               ],
             } : {},

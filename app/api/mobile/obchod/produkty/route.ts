@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { orgPrisma } from '@/lib/orgPrisma'
+import { najdiIdsBezDiakritiky } from '@/lib/clientSearch'
 import { getMobileOrWebSession, requireObchodnikOrAdmin } from '@/lib/mobile-helpers'
 
 /**
@@ -47,11 +48,7 @@ export async function GET(req: Request) {
       aktivni: true,
       ...(q
         ? {
-            OR: [
-              { nazev: { contains: q, mode: 'insensitive' } },
-              { kod: { contains: q, mode: 'insensitive' } },
-              { produktovaRada: { contains: q, mode: 'insensitive' } },
-            ],
+            id: { in: (await najdiIdsBezDiakritiky(db, orgId, 'product', q, 5000)) ?? [] },
           }
         : {}),
     },

@@ -1,6 +1,7 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
+import { najdiIdsBezDiakritiky } from '@/lib/clientSearch'
 import { NextResponse } from 'next/server'
 import { generateZakazkaCislo, polozkyZAktivniNabidky } from '@/lib/zakazkaWorkflow'
 import { userHasPerm } from '@/lib/zakazkyHelpers'
@@ -29,10 +30,8 @@ export async function GET(req: Request) {
   if (vedouciId) where.vedouciId = vedouciId
   if (typ) where.typ = typ
   if (search) {
-    where.OR = [
-      { cislo: { contains: search, mode: 'insensitive' } },
-      { nazev: { contains: search, mode: 'insensitive' } },
-    ]
+    // bez diakritiky, i podle klienta a místa stavby
+    where.id = { in: (await najdiIdsBezDiakritiky(db, orgId, 'zakazka', search)) ?? [] }
   }
 
   const zakazky = await db.zakazka.findMany({

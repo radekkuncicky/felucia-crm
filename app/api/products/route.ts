@@ -1,6 +1,7 @@
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
+import { najdiIdsBezDiakritiky } from '@/lib/clientSearch'
 import { getPlanLimits } from '@/lib/planLimits'
 import { NextResponse } from 'next/server'
 import { getPerms, forbidden, canEditKatalog } from '@/lib/permissions'
@@ -23,10 +24,7 @@ export async function GET(req: Request) {
 
   const where: Record<string, unknown> = { orgId }
   if (search) {
-    where.OR = [
-      { nazev: { contains: search, mode: 'insensitive' } },
-      { kod: { contains: search, mode: 'insensitive' } },
-    ]
+    where.id = { in: (await najdiIdsBezDiakritiky(db, orgId, 'product', search, 5000)) ?? [] }
   }
   if (categoryId) where.categories = { some: { id: categoryId } }
   if (productLine) where.produktovaRada = productLine

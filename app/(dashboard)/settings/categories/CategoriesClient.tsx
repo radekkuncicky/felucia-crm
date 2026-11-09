@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import ConfirmModal from '@/components/ConfirmModal'
 import { IconTag } from '@/components/ui/Icons'
+import { odpovidaHledani } from '@/lib/hledani'
 
 interface Product {
   id: string
@@ -110,10 +111,7 @@ function ProductPickerModal({
   const [saving, setSaving] = useState(false)
 
   const filtered = useMemo(() => {
-    const q = search.toLowerCase()
-    return availableProducts.filter(p =>
-      p.nazev.toLowerCase().includes(q) || (p.kod ?? '').toLowerCase().includes(q)
-    )
+    return availableProducts.filter(p => odpovidaHledani(search, p.nazev, p.kod))
   }, [search, availableProducts])
 
   function toggle(id: string) {

@@ -17,6 +17,7 @@ import ShowMore from '@/components/ui/ShowMore'
 import { useUrlFilters } from '@/hooks/useUrlFilters'
 import { useShowMore } from '@/hooks/useShowMore'
 import { api } from '@/lib/api'
+import { odpovidaHledani } from '@/lib/hledani'
 
 const PROD_DEFS: ColumnDef[] = [
   { id: 'kod', label: 'Kód', defaultVisible: true, defaultWidth: 100 },
@@ -94,10 +95,7 @@ function ProductsTab({ products, categories, canEdit, showNakladoveCeny = true, 
 
   const filtered = products.filter(p => {
     if (!showInactive && !p.aktivni) return false
-    const q = search.toLowerCase()
-    const matchSearch = !q || p.nazev.toLowerCase().includes(q) ||
-      (p.kod ?? '').toLowerCase().includes(q) ||
-      (p.produktovaRada ?? '').toLowerCase().includes(q)
+    const matchSearch = odpovidaHledani(search, p.nazev, p.kod, p.produktovaRada)
     const matchCat = !catFilter || p.categories.some(c => c.id === catFilter)
     if (jenBezDodavatele && p.maDodavatele) return false
     return matchSearch && matchCat

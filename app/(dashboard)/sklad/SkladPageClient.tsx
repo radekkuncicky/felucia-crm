@@ -13,6 +13,7 @@ import { toast } from 'sonner'
 import { Dialog } from '@/components/ui/Dialog'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Select } from '@/components/ui/Field'
+import { odpovidaHledani } from '@/lib/hledani'
 
 const TYP_LABELS: Record<SkladPohybTyp, string> = {
   PRIJEM_SKLAD: 'Příjem na sklad',
@@ -358,14 +359,7 @@ export default function SkladPageClient({ pohyby: initialPohyby, zasoby: initial
     return pohyby.filter(p => {
       if (typFilter && p.typ !== typFilter) return false
       if (zakazkaFilter && p.zakazka?.id !== zakazkaFilter) return false
-      if (search) {
-        const q = search.toLowerCase()
-        const haystack = [p.nazev, p.zakazka?.cislo, p.zakazka?.klient, p.zakazka?.technologie]
-          .filter(Boolean)
-          .join(' ')
-          .toLowerCase()
-        if (!haystack.includes(q)) return false
-      }
+      if (search && !odpovidaHledani(search, p.nazev, p.zakazka?.cislo, p.zakazka?.klient, p.zakazka?.technologie)) return false
       if (datumOd && p.vytvoreno < datumOd) return false
       if (datumDo && p.vytvoreno.slice(0, 10) > datumDo) return false
       return true
@@ -373,10 +367,10 @@ export default function SkladPageClient({ pohyby: initialPohyby, zasoby: initial
   }, [pohyby, typFilter, zakazkaFilter, search, datumOd, datumDo])
 
   const filteredZasoby = useMemo(() => {
-    const q = search.toLowerCase()
+    const q = search
     return zasoby.filter(z => {
       if (jenPodMinimem && !(z.minMnozstvi !== null && z.dostupne <= z.minMnozstvi)) return false
-      if (q && !`${z.kod ?? ''} ${z.nazev}`.toLowerCase().includes(q)) return false
+      if (q && !odpovidaHledani(q, z.kod, z.nazev)) return false
       return true
     })
   }, [zasoby, search, jenPodMinimem])
