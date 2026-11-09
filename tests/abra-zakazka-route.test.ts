@@ -16,6 +16,7 @@ let orgId: string
 let userId: string
 let zakazkaId: string
 let zakazkaEtapaId: string
+let zakazkaBezAdresyId: string
 
 const ok = (winstrom: object) => new Response(JSON.stringify({ winstrom }), { status: 200 })
 const nenalezeno = () => new Response('{}', { status: 404 })
@@ -32,7 +33,9 @@ beforeAll(async () => {
   const org = await prisma.organization.create({ data: { nazev: 'Test ABRA route', slug: RUN, plan: 'STANDARD' } })
   orgId = org.id
   userId = (await prisma.user.create({ data: { orgId, jmeno: 'Admin', email: `${RUN}@example.com`, role: 'ADMIN', hesloHash: 'x' } })).id
-  const klient = await prisma.client.create({ data: { orgId, jmeno: 'Jan', prijmeni: 'Novák', mesto: 'Ostrava' } })
+  const klient = await prisma.client.create({ data: { orgId, jmeno: 'Jan', prijmeni: 'Novák', ulice: 'Hlavní 1', mesto: 'Ostrava', psc: '70200' } })
+  const bezAdresy = await prisma.client.create({ data: { orgId, jmeno: 'Petr', prijmeni: 'Bezadresný', mesto: 'Ostrava' } })
+  zakazkaBezAdresyId = (await prisma.zakazka.create({ data: { orgId, cislo: '26-902', klientId: bezAdresy.id, nazev: 'z', technologie: 'KLIMA' } })).id
   zakazkaId = (await prisma.zakazka.create({ data: { orgId, cislo: '26-901', klientId: klient.id, nazev: 'x', technologie: 'KLIMA' } })).id
   zakazkaEtapaId = (await prisma.zakazka.create({ data: { orgId, cislo: 'S-26-001', klientId: klient.id, nazev: 'y' } })).id
 })
@@ -67,18 +70,27 @@ describe('POST /api/zakazky/[id]/abra', () => {
     expect((await POST(req({ dryRun: true }), { params: { id: zakazkaEtapaId } })).status).toBe(422)
   })
 
+  it('klient bez úplné adresy 422 se seznamem chybějících údajů', async () => {
+    prihlas('ADMIN')
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => ok({ zakazka: [], adresar: [] })))
+    const res = await POST(req({ dryRun: true }), { params: { id: zakazkaBezAdresyId } })
+    expect(res.status).toBe(422)
+    expect((await res.json()).chybi).toEqual(['ulice', 'PSČ'])
+  })
+
   it('dry-run vrátí náhled a nic neuloží', async () => {
     prihlas('ADMIN')
     const f = vi.fn()
-      .mockResolvedValueOnce(ok({ zakazka: [] }))
-      .mockResolvedValueOnce(nenalezeno())
+      .mockResolvedValueOnce(nenalezeno()) // zakázka podle ext kódu
+      .mockResolvedValueOnce(ok({ zakazka: [] })) // zakázka podle kódu
+      .mockResolvedValueOnce(nenalezeno()) // adresář podle ext ID
       .mockResolvedValueOnce(ok({ success: 'true', results: [{ id: '1' }] }))
       .mockResolvedValueOnce(ok({ success: 'true', results: [{ id: '2' }] }))
     vi.stubGlobal('fetch', f)
     const res = await POST(req({ dryRun: true }), { params: { id: zakazkaId } })
     expect(res.status).toBe(200)
     expect(await res.json()).toMatchObject({ stav: 'NANECISTO', kod: '26-901', nazev: 'Novák Jan - Klimatizace', odberatel: 'Jan Novák', adresarNovy: true, existovala: false })
-    expect(f.mock.calls.slice(2).every(c => String(c[0]).endsWith('?dry-run=true'))).toBe(true)
+    expect(f.mock.calls.slice(3).every(c => String(c[0]).endsWith('?dry-run=true'))).toBe(true)
     const z = await prisma.zakazka.findUnique({ where: { id: zakazkaId } })
     expect(z?.abraOdeslano).toBeNull()
   })
@@ -102,6 +114,7 @@ describe('POST /api/zakazky/[id]/abra', () => {
   it('ostrý zápis uloží ID z Flexi a audit', async () => {
     prihlas('ADMIN')
     vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce(nenalezeno())
       .mockResolvedValueOnce(ok({ zakazka: [] }))
       .mockResolvedValueOnce(ok({ adresar: [{ id: '500' }] }))
       .mockResolvedValueOnce(ok({ success: 'true', results: [{ id: '123' }] })))
