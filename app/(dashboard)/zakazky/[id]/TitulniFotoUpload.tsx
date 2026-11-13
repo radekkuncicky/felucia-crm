@@ -60,7 +60,7 @@ export default function TitulniFotoUpload({ zakazkaId, titulniFotoUrl, canEdit, 
             src={titulniFotoUrl}
             alt="Titulní foto"
             onClick={() => setPreview(true)}
-            className="w-24 h-24 sm:w-32 sm:h-32 rounded-xl object-cover cursor-pointer border border-gray-200 dark:border-slate-600 shadow-sm hover:opacity-90 transition-opacity"
+            className="w-20 h-20 rounded-xl object-cover cursor-pointer border border-gray-200 dark:border-slate-600 shadow-sm hover:opacity-90 transition-opacity"
           />
           {canEdit && (
             <button
@@ -91,7 +91,7 @@ export default function TitulniFotoUpload({ zakazkaId, titulniFotoUrl, canEdit, 
       <button
         onClick={() => fileRef.current?.click()}
         disabled={uploading}
-        className="flex-shrink-0 w-24 h-24 sm:w-32 sm:h-32 rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-600 hover:border-primary dark:hover:border-primary-light flex flex-col items-center justify-center gap-1.5 text-gray-400 dark:text-slate-500 hover:text-primary dark:hover:text-primary-light transition-colors disabled:opacity-50"
+        className="flex-shrink-0 w-20 h-20 rounded-xl border-2 border-dashed border-gray-300 dark:border-slate-600 hover:border-primary dark:hover:border-primary-light flex flex-col items-center justify-center gap-1.5 text-gray-400 dark:text-slate-500 hover:text-primary dark:hover:text-primary-light transition-colors disabled:opacity-50"
       >
         {uploading ? (
           <span className="text-xs">Nahrávám…</span>

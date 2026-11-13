@@ -36,7 +36,7 @@ export function JenPlnaHlavicka({ children }: { children: React.ReactNode }) {
  * (děti zůstanou položkami okolního gridu), jinak běžný blok.
  */
 export function SbalitelnaCast({ desktop = 'block', className, openClassName, children }: {
-  desktop?: 'block' | 'contents'
+  desktop?: 'block' | 'contents' | 'grid'
   /** třídy vždy (mimo display) */
   className?: string
   /** display třídy pro rozbalený stav na mobilu (např. grid) */
@@ -46,7 +46,7 @@ export function SbalitelnaCast({ desktop = 'block', className, openClassName, ch
   const { open, kompakt } = useContext(RozbalenoCtx)
   const desktopSkryto = kompakt && !open
   return (
-    <div className={cn(className, open ? openClassName : 'hidden', !desktopSkryto && (desktop === 'contents' ? 'sm:contents' : 'sm:block'))}>
+    <div className={cn(className, open ? openClassName : 'hidden', !desktopSkryto && (desktop === 'contents' ? 'sm:contents' : desktop === 'grid' ? 'sm:grid' : 'sm:block'))}>
       {children}
     </div>
   )

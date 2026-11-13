@@ -151,8 +151,9 @@ export default async function ZakazkaDetailLayout({
     <div className="space-y-4 pb-16 md:pb-0">
       {/* Header — na mobilu sbalený (MobilniHlavicka), na desktopu celý */}
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 px-4 pt-4 sm:px-5 sm:py-5">
-        <div className="flex flex-col gap-4">
-          {/* Breadcrumb */}
+        <div className="flex flex-col gap-3">
+          {/* Breadcrumb + akce v jednom řádku */}
+          <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-1.5 text-sm text-gray-400 dark:text-slate-500 flex-wrap">
             <Link href={isTechnik ? '/zakazky' : '/zakazky'} className="hover:text-gray-600 dark:hover:text-slate-300 transition-colors">
               {isTechnik ? 'Moje zakázky' : 'Zakázky'}
@@ -168,9 +169,30 @@ export default async function ZakazkaDetailLayout({
             <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
             <span className="text-gray-600 dark:text-slate-300 font-medium">{zakazka.cislo}</span>
           </div>
+            {(perms.zakazkyMazani || perms.servisDispecink || abraTlacitko) && (
+              <SbalitelnaCast>
+                <div className="flex flex-wrap items-center gap-2">
+                {abraTlacitko && (
+                  <AbraZakazkaTlacitko
+                    zakazkaId={zakazka.id}
+                    odeslano={zakazka.abraOdeslano?.toISOString() ?? null}
+                    abraId={zakazka.abraZakazkaId}
+                  />
+                )}
+                <ZakazkaDetailHeader
+                  zakazkaId={zakazka.id}
+                  stav={zakazka.stav}
+                  opId={zakazka.opId ?? null}
+                  canDelete={perms.zakazkyMazani}
+                  canServis={perms.servisDispecink}
+                  hasServiceModule={getPlanLimits(session!.user.plan as string).hasServiceModule}
+                />
+                </div>
+              </SbalitelnaCast>
+            )}
+          </div>
 
-          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 min-w-0 flex-1">
+            <div className="flex flex-col gap-3 min-w-0">
               {/* Sloupec 1: foto + identifikace */}
               <div className="flex gap-4 min-w-0">
                 <JenPlnaHlavicka>
@@ -220,10 +242,10 @@ export default async function ZakazkaDetailLayout({
 
               <RychleAkce zakazkaId={zakazka.id} adresa={zakazka.mistoStavby || adresa} telefon={zakazka.klient.telefon ?? null} />
 
-              <SbalitelnaCast desktop="contents" openClassName="grid grid-cols-1 gap-4">
+              <SbalitelnaCast desktop="grid" className="sm:grid-cols-2 xl:grid-cols-4 sm:gap-x-6 sm:gap-y-3 sm:border-t sm:border-gray-100 sm:dark:border-slate-700 sm:pt-3" openClassName="grid grid-cols-1 gap-4">
 
               {/* Sloupec 2: termín + místo instalace */}
-              <div className="min-w-0 space-y-3 sm:border-l sm:border-r border-gray-100 dark:border-slate-700 sm:px-4">
+              <div className="contents">
                 <div>
                   <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase mb-1">Termín montáže</p>
                   <MontazDatePicker
@@ -273,7 +295,7 @@ export default async function ZakazkaDetailLayout({
               {/* Sloupec 3: kontakt na klienta */}
               <div className="min-w-0 space-y-1.5">
                 <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase mb-1">Kontakt</p>
-                <div className="flex flex-col items-start gap-1.5">
+                <div className="flex flex-wrap items-center gap-1.5">
                   {zakazka.klient.telefon && (
                     <a href={`tel:${zakazka.klient.telefon}`} className="inline-flex items-center gap-1.5 text-sm text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2.5 py-1 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/40 transition-colors">
                       <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" /></svg>
@@ -295,30 +317,6 @@ export default async function ZakazkaDetailLayout({
               </div>
               </SbalitelnaCast>
             </div>
-
-            {/* Right actions */}
-            {(perms.zakazkyMazani || perms.servisDispecink || abraTlacitko) && (
-              <SbalitelnaCast>
-                <div className="flex flex-wrap items-center gap-2">
-                {abraTlacitko && (
-                  <AbraZakazkaTlacitko
-                    zakazkaId={zakazka.id}
-                    odeslano={zakazka.abraOdeslano?.toISOString() ?? null}
-                    abraId={zakazka.abraZakazkaId}
-                  />
-                )}
-                <ZakazkaDetailHeader
-                  zakazkaId={zakazka.id}
-                  stav={zakazka.stav}
-                  opId={zakazka.opId ?? null}
-                  canDelete={perms.zakazkyMazani}
-                  canServis={perms.servisDispecink}
-                  hasServiceModule={getPlanLimits(session!.user.plan as string).hasServiceModule}
-                />
-                </div>
-              </SbalitelnaCast>
-            )}
-          </div>
 
           {/* Položky progress + souhrn financí */}
           {(polozkyTotal > 0 || finSouhrn.length > 0) && (
@@ -350,26 +348,29 @@ export default async function ZakazkaDetailLayout({
             </div>
             </SbalitelnaCast>
           )}
+          {/* Postup zakázky — součást hlavičky, ne samostatná karta */}
+          <SbalitelnaCast>
+          <PipelineBar
+            embedded
+            zakazkaId={zakazka.id}
+            currentStav={zakazka.stav}
+            canChange={canEdit}
+            etapy={zakazka.etapy.map(e => ({
+              id: e.id,
+              cislo: e.cislo,
+              nazev: e.nazev,
+              stav: e.stav,
+              predavaky: e.predavaky.map(p => ({ stav: p.stav })),
+              vyuctovani: e.vyuctovani.map(v => ({ stav: v.stav })),
+            }))}
+          />
+          </SbalitelnaCast>
         </div>
         <SbalitPrepinac />
       </div>
 
       {/* Pipeline, etapy a finance — na mobilu pod „Detail zakázky" */}
       <SbalitelnaCast className="space-y-4">
-      {/* Pipeline bar */}
-      <PipelineBar
-        zakazkaId={zakazka.id}
-        currentStav={zakazka.stav}
-        canChange={canEdit}
-        etapy={zakazka.etapy.map(e => ({
-          id: e.id,
-          cislo: e.cislo,
-          nazev: e.nazev,
-          stav: e.stav,
-          predavaky: e.predavaky.map(p => ({ stav: p.stav })),
-          vyuctovani: e.vyuctovani.map(v => ({ stav: v.stav })),
-        }))}
-      />
 
       {/* Etapy sekce */}
       <EtapySection

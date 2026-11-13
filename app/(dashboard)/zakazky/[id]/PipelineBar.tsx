@@ -25,6 +25,8 @@ interface Props {
   currentStav: ZakazkaStav
   canChange: boolean
   etapy?: EtapaChip[]
+  /** Uvnitř karty hlavičky — bez vlastního rámečku */
+  embedded?: boolean
 }
 
 interface EtapaNode {
@@ -69,7 +71,7 @@ function buildEtapyNodes(etapy: EtapaChip[]): EtapaNode[] {
   return nodes
 }
 
-export default function PipelineBar({ zakazkaId, currentStav, canChange, etapy = [] }: Props) {
+export default function PipelineBar({ zakazkaId, currentStav, canChange, etapy = [], embedded = false }: Props) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const currentIndex = STEPS.findIndex(s => s.stav === currentStav)
@@ -97,7 +99,7 @@ export default function PipelineBar({ zakazkaId, currentStav, canChange, etapy =
 
   return (
     <>
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 px-4 py-3">
+      <div className={embedded ? 'border-t border-gray-100 dark:border-slate-700 pt-3' : 'bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 px-4 py-3'}>
         {hasEtapy ? (
           <>
             {/* Desktop: prodlužující se lišta etap */}
