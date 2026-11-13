@@ -69,6 +69,8 @@ export const TENANT_MODELS = new Set([
   'AiCekajiciAkce',
   'OAuthKod',
   'OAuthPripojeni',
+  'VykazPrace',
+  'VykazFakturace',
 ])
 
 // where přes AND: pokud volající pošle vlastní orgId, podmínky se sečtou —

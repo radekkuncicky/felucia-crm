@@ -2,7 +2,10 @@ import { prisma } from '@/lib/prisma'
 import { formatKc } from '@/lib/format'
 import { cn } from '@/lib/cn'
 import { zakazkaFinance } from '@/lib/zakazkaFinance'
+import { orgPrisma } from '@/lib/orgPrisma'
+import { vykazZakazkyPoTechnicich } from '@/lib/vykazPrace'
 import AbraFaktury from './AbraFaktury'
+import VykazPraceTabulka from './VykazPraceTabulka'
 
 function Karta({ nadpis, hodnota, popis, hodnotaCls, popisCls }: {
   nadpis: string; hodnota: string; popis?: string; hodnotaCls?: string; popisCls?: string
@@ -25,7 +28,7 @@ export default async function FinanceTab({ zakazkaId, orgId, showProdejni, showN
   /** financeNakupky */
   showNakupky: boolean
 }) {
-  const [f, faktury] = await Promise.all([
+  const [f, faktury, vykaz] = await Promise.all([
     zakazkaFinance(zakazkaId, orgId),
     showProdejni
       ? prisma.abraFaktura.findMany({
@@ -34,8 +37,15 @@ export default async function FinanceTab({ zakazkaId, orgId, showProdejni, showN
           select: { id: true, kod: true, typ: true, typDokl: true, etapaCislo: true, vystaveno: true, splatnost: true, uhrazeno: true, celkemSDph: true, zbyvaUhradit: true },
         })
       : [],
+    orgPrisma(orgId).vykazPrace.findMany({
+      where: { zakazkaId, orgId },
+      orderBy: [{ datum: 'asc' }, { vytvoreno: 'asc' }],
+      include: { user: { select: { jmeno: true } } },
+    }),
   ])
   if (!f) return null
+  const technici = vykazZakazkyPoTechnicich(vykaz)
+  const nakladPrace = technici.reduce((s, t) => s + t.soucty.castka, 0)
 
   const zelena = 'text-green-600 dark:text-green-400'
   const oranzova = 'text-orange-600 dark:text-orange-400'
@@ -44,7 +54,7 @@ export default async function FinanceTab({ zakazkaId, orgId, showProdejni, showN
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
         {showProdejni && (
           <>
             <Karta
@@ -81,12 +91,20 @@ export default async function FinanceTab({ zakazkaId, orgId, showProdejni, showN
               hodnota={f.nakupniTotal > 0 ? formatKc(f.nakupniTotal) : '—'}
               popis="naskladněné a vydané položky"
             />
+            <Karta
+              nadpis="Práce techniků"
+              hodnota={nakladPrace > 0 ? formatKc(nakladPrace) : '—'}
+              popis={technici.length
+                ? `${String(Math.round(technici.reduce((s, t) => s + t.soucty.hodiny, 0) * 100) / 100).replace('.', ',')} h · ${technici.reduce((s, t) => s + t.soucty.km, 0)} km · náklad`
+                : 'zatím nic nezapsáno'}
+            />
           </>
         )}
       </div>
-      {(showProdejni ? nicProdejni : true) && (showNakupky ? nicNakupky : true) && (
+      {(showProdejni ? nicProdejni : true) && (showNakupky ? nicNakupky : true) && technici.length === 0 && (
         <p className="text-sm text-muted">Zatím tu nic není — čísla se objeví s aktivní nabídkou OP, naskladněním položek a prvním vyúčtováním.</p>
       )}
+      <VykazPraceTabulka technici={technici} showCastky={showNakupky} />
       {showProdejni && (
         <AbraFaktury faktury={faktury.map(x => ({ ...x, celkemSDph: Number(x.celkemSDph), zbyvaUhradit: Number(x.zbyvaUhradit) }))} />
       )}

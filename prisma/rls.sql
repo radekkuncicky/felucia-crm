@@ -277,6 +277,18 @@ DROP POLICY IF EXISTS org_rls ON "users";
 CREATE POLICY org_rls ON "users" FOR ALL TO nanto_app
   USING ("orgId" = current_setting('app.org_id', true)) WITH CHECK ("orgId" = current_setting('app.org_id', true));
 
+-- VykazFakturace
+ALTER TABLE "vykaz_fakturace" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_rls ON "vykaz_fakturace";
+CREATE POLICY org_rls ON "vykaz_fakturace" FOR ALL TO nanto_app
+  USING ("orgId" = current_setting('app.org_id', true)) WITH CHECK ("orgId" = current_setting('app.org_id', true));
+
+-- VykazPrace
+ALTER TABLE "vykaz_prace" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS org_rls ON "vykaz_prace";
+CREATE POLICY org_rls ON "vykaz_prace" FOR ALL TO nanto_app
+  USING ("orgId" = current_setting('app.org_id', true)) WITH CHECK ("orgId" = current_setting('app.org_id', true));
+
 -- Vyuctovani
 ALTER TABLE "vyuctovani" ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS org_rls ON "vyuctovani";
