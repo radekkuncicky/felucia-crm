@@ -22,14 +22,13 @@ import EtapySection from './EtapySection'
 import ZakazkaTechnici from './ZakazkaTechnici'
 import CopyLinkButton from './CopyLinkButton'
 import TitulniFotoUpload from './TitulniFotoUpload'
-import AbraFaktury from './AbraFaktury'
 import AbraZakazkaTlacitko from './AbraZakazkaTlacitko'
 import { abraKonfigurace } from '@/lib/abra/flexi'
 import { CISLO_ZAKAZKY_ABRA } from '@/lib/abra/zakazka'
 import SodStavBadge from './SodStavBadge'
 import { sodStavZakazky } from '@/lib/sodStavZakazky'
-import { SbalitelnyDetail, SbalitelnaCast, SbalitPrepinac, RychleAkce } from './MobilniHlavicka'
-import { radekBezDph } from '@/lib/quoteMath'
+import { SbalitelnyDetail, SbalitelnaCast, SbalitPrepinac, RychleAkce, JenPlnaHlavicka } from './MobilniHlavicka'
+import { zakazkaFinance } from '@/lib/zakazkaFinance'
 
 export async function generateMetadata({ params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
@@ -69,12 +68,9 @@ export default async function ZakazkaDetailLayout({
       klient: true,
       vedouci: { select: { id: true, jmeno: true, email: true } },
       op: { select: { id: true, kod: true, predmet: true } },
-      polozky: { select: { stav: true, nakupniCena: true, mnozstvi: true } },
-      vyuctovani: { select: { stav: true, etapaId: true, polozky: { select: { mnozstvi: true, prodejniCena: true, sleva: true } } } },
+      polozky: { select: { stav: true } },
+      vyuctovani: { select: { etapaId: true } },
       _count: { select: { predavaky: { where: { etapaId: null } } } },
-      abraFaktury: perms.financeProdejni
-        ? { orderBy: { vystaveno: 'asc' as const }, select: { id: true, kod: true, typ: true, typDokl: true, etapaCislo: true, vystaveno: true, splatnost: true, uhrazeno: true, celkemSDph: true, zbyvaUhradit: true } }
-        : false,
       objednavky: { where: { stav: { in: ['NAVRH', 'ODESLANA', 'CASTECNE_DORUCENA'] } }, select: { id: true } },
       techniciRel: { orderBy: { prirazeno: 'asc' }, select: { technik: { select: { id: true, jmeno: true } } } },
       etapy: {
@@ -121,47 +117,19 @@ export default async function ZakazkaDetailLayout({
   zakazka.polozky.forEach(p => { polozkyStats[p.stav as keyof typeof polozkyStats]++ })
   const polozkyReady = polozkyStats.NASKLADNENO + polozkyStats.VYDANO
 
-  // Cena dle aktivní nabídky OP + CN marže
-  let cnMarzeProc: number | null = null
-  let cenaOP: number | null = null
-  if ((perms.financeProdejni || showNakupky) && zakazka.opId) {
-    const op = await prisma.deal.findFirst({
-      where: { id: zakazka.opId, orgId },
-      include: {
-        quotes: {
-          where: { aktivni: true },
-          include: { items: { include: { product: { select: { nakladovaCena: true } } } } },
-        },
-      },
-    })
-    if (op?.quotes[0]) {
-      const q = op.quotes[0]
-      const prodej = q.items.reduce((s, i) => s + Number(i.mnozstvi) * Number(i.cenaZaKus) * (1 - Number(i.sleva ?? 0) / 100), 0)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const nakup = q.items.reduce((s, i: any) => {
-        const nakladovaCena = i.nakupniCena != null ? Number(i.nakupniCena) : (i.product?.nakladovaCena != null ? Number(i.product.nakladovaCena) : Number(i.cenaZaKus))
-        return s + Number(i.mnozstvi) * nakladovaCena * (1 - Number(i.sleva ?? 0) / 100)
-      }, 0)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const hasNakupniData = q.items.some((i: any) => i.nakupniCena != null || Number(i.product?.nakladovaCena ?? 0) > 0)
-      if (prodej > 0) cenaOP = prodej
-      if (prodej > 0 && hasNakupniData) {
-        cnMarzeProc = Math.round((prodej - nakup) / prodej * 1000) / 10
-      }
+  // Finance: v hlavičce jen jednořádkový souhrn, detail je v záložce Finance
+  const showFinanceTab = perms.financeProdejni || showNakupky
+  const fin = showFinanceTab ? await zakazkaFinance(zakazka.id, orgId) : null
+  const finSouhrn: string[] = []
+  if (fin && perms.financeProdejni) {
+    if (fin.cenaOP !== null) finSouhrn.push(`${formatKc(fin.cenaOP)} dle OP`)
+    if (fin.pocetVyuctovani > 0) {
+      finSouhrn.push(fin.cenaOP
+        ? `vyúčtováno ${Math.round(fin.vyuctovanoSchvaleno / fin.cenaOP * 100)} %`
+        : `vyúčtováno ${formatKc(fin.vyuctovanoSchvaleno)}`)
     }
   }
-
-  // Součty vyúčtování (bez DPH) pro finanční přehled
-  const sumVyuctovani = (list: { polozky: { mnozstvi: unknown; prodejniCena: unknown; sleva: unknown }[] }[]) =>
-    list.reduce((s, v) => s + v.polozky.reduce((t, p) => t + radekBezDph(p), 0), 0)
-  const vyuctovanoSchvaleno = sumVyuctovani(zakazka.vyuctovani.filter(v => v.stav === 'SCHVALENO'))
-  const vyuctovaniCelkem = sumVyuctovani(zakazka.vyuctovani)
-  const showFinance = perms.financeProdejni && (cenaOP !== null || zakazka.vyuctovani.length > 0)
-  const rozdilVsOP = cenaOP !== null ? vyuctovaniCelkem - cenaOP : null
-
-  const nakupniTotal = zakazka.polozky
-    .filter(p => p.stav === 'NASKLADNENO' || p.stav === 'VYDANO')
-    .reduce((s, p) => s + Number(p.nakupniCena ?? 0) * Number(p.mnozstvi), 0)
+  if (fin && showNakupky && fin.cnMarzeProc !== null) finSouhrn.push(`marže ${String(fin.cnMarzeProc).replace('.', ',')} %`)
 
   const adresa = [zakazka.klient.ulice, [zakazka.klient.mesto, zakazka.klient.psc].filter(Boolean).join(' ')].filter(Boolean).join(', ')
 
@@ -200,12 +168,14 @@ export default async function ZakazkaDetailLayout({
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 min-w-0 flex-1">
               {/* Sloupec 1: foto + identifikace */}
               <div className="flex gap-4 min-w-0">
-                <TitulniFotoUpload
-                  zakazkaId={zakazka.id}
-                  titulniFotoUrl={zakazka.titulniFotoUrl ?? null}
-                  canEdit={canEdit}
-                  canTechnikUpload={true}
-                />
+                <JenPlnaHlavicka>
+                  <TitulniFotoUpload
+                    zakazkaId={zakazka.id}
+                    titulniFotoUrl={zakazka.titulniFotoUrl ?? null}
+                    canEdit={canEdit}
+                    canTechnikUpload={true}
+                  />
+                </JenPlnaHlavicka>
 
                 <div className="space-y-1 min-w-0">
                   <div className="flex items-center gap-3 flex-wrap">
@@ -311,7 +281,8 @@ export default async function ZakazkaDetailLayout({
                       {zakazka.klient.email}
                     </a>
                   )}
-                  {adresa && <NavigateButton adresa={adresa} label="Adresa klienta" size="xs" />}
+                  {/* adresa klienta jen když je místo instalace jinde — jinak by byla 2× vedle sebe */}
+                  {adresa && zakazka.mistoStavby?.trim() && zakazka.mistoStavby.trim() !== adresa && <NavigateButton adresa={adresa} label="Adresa klienta" size="xs" />}
                   {!zakazka.klient.telefon && !zakazka.klient.email && (
                     <span className="text-sm text-gray-400 dark:text-slate-500 italic">neuvedeno</span>
                   )}
@@ -344,10 +315,11 @@ export default async function ZakazkaDetailLayout({
             )}
           </div>
 
-          {/* Položky progress */}
-          {polozkyTotal > 0 && (
+          {/* Položky progress + souhrn financí */}
+          {(polozkyTotal > 0 || finSouhrn.length > 0) && (
             <SbalitelnaCast>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+              {polozkyTotal > 0 && (<>
               <span className="text-xs text-gray-500 dark:text-slate-400 font-medium shrink-0">Položky</span>
               <div className="flex rounded-full overflow-hidden h-1.5 w-24 bg-gray-100 dark:bg-slate-700 shrink-0">
                 {polozkyStats.CEKA > 0 && <div style={{ width: `${polozkyStats.CEKA / polozkyTotal * 100}%` }} className="bg-gray-300 dark:bg-slate-600" title={`Čeká: ${polozkyStats.CEKA}`} />}
@@ -364,11 +336,17 @@ export default async function ZakazkaDetailLayout({
                   {zakazka.objednavky.length} {zakazka.objednavky.length === 1 ? 'otevřená objednávka' : zakazka.objednavky.length < 5 ? 'otevřené objednávky' : 'otevřených objednávek'}
                 </Link>
               )}
+              </>)}
+              {finSouhrn.length > 0 && (
+                <Link href={`/zakazky/${zakazka.id}?tab=finance`} className="sm:ml-auto text-xs text-gray-600 dark:text-slate-300 hover:text-primary dark:hover:text-primary-light whitespace-nowrap">
+                  {finSouhrn.join(' · ')} <span aria-hidden>→</span>
+                </Link>
+              )}
             </div>
             </SbalitelnaCast>
           )}
         </div>
-        <div className="-mx-4 mt-3 sm:hidden"><SbalitPrepinac /></div>
+        <SbalitPrepinac />
       </div>
 
       {/* Pipeline, etapy a finance — na mobilu pod „Detail zakázky" */}
@@ -410,66 +388,11 @@ export default async function ZakazkaDetailLayout({
         maPraciBezEtapy={zakazka._count.predavaky > 0 || zakazka.vyuctovani.some(v => !v.etapaId)}
       />
 
-      {/* Finanční přehled — cena dle OP vs. vyúčtování (bez DPH) + marže z nákupek */}
-      {(showFinance || (showNakupky && (cnMarzeProc !== null || nakupniTotal > 0))) && (
-        <div className="flex flex-wrap gap-3">
-          {showFinance && (
-            <>
-              <div className="flex-1 min-w-[160px] bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 px-4 py-3">
-                <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase mb-1">Cena dle OP</p>
-                <p className="text-lg font-bold text-gray-900 dark:text-white">{cenaOP !== null ? formatKc(cenaOP) : '—'}</p>
-                <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">
-                  {cenaOP !== null ? 'aktivní nabídka · bez DPH' : 'bez aktivní nabídky'}
-                </p>
-              </div>
-              <div className="flex-1 min-w-[160px] bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 px-4 py-3">
-                <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase mb-1">Vyúčtováno</p>
-                <p className="text-lg font-bold text-green-600 dark:text-green-400">{formatKc(vyuctovanoSchvaleno)}</p>
-                <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">
-                  {cenaOP !== null && cenaOP > 0
-                    ? `${Math.round(vyuctovanoSchvaleno / cenaOP * 100)} % ceny OP · bez DPH`
-                    : 'schválená vyúčtování · bez DPH'}
-                </p>
-              </div>
-              <div className="flex-1 min-w-[160px] bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 px-4 py-3">
-                <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase mb-1">Vyúčtování celkem</p>
-                <p className="text-lg font-bold text-gray-900 dark:text-white">{formatKc(vyuctovaniCelkem)}</p>
-                {rozdilVsOP !== null ? (
-                  <p className={`text-xs mt-0.5 font-medium ${rozdilVsOP >= 0 ? 'text-green-600 dark:text-green-400' : 'text-orange-600 dark:text-orange-400'}`}>
-                    {rozdilVsOP >= 0 ? '+' : '−'}{formatKc(Math.abs(rozdilVsOP))} vs OP · vč. návrhů
-                  </p>
-                ) : (
-                  <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">vč. návrhů · bez DPH</p>
-                )}
-              </div>
-            </>
-          )}
-          {showNakupky && (cnMarzeProc !== null || nakupniTotal > 0) && (
-            <>
-              <div className="flex-1 min-w-[160px] bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 px-4 py-3">
-                <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase mb-1">CN marže</p>
-                <p className={`text-lg font-bold ${cnMarzeProc !== null ? (cnMarzeProc >= 30 ? 'text-green-600 dark:text-green-400' : 'text-orange-600 dark:text-orange-400') : 'text-gray-400'}`}>
-                  {cnMarzeProc !== null ? `${cnMarzeProc} %` : '—'}
-                </p>
-              </div>
-              <div className="flex-1 min-w-[160px] bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 px-4 py-3">
-                <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase mb-1">Nák. cena</p>
-                <p className="text-lg font-bold text-gray-900 dark:text-white">
-                  {nakupniTotal > 0 ? formatKc(nakupniTotal) : '—'}
-                </p>
-              </div>
-            </>
-          )}
-        </div>
-      )}
-      {perms.financeProdejni && (
-        <AbraFaktury faktury={zakazka.abraFaktury.map(f => ({ ...f, celkemSDph: Number(f.celkemSDph), zbyvaUhradit: Number(f.zbyvaUhradit) }))} />
-      )}
       </SbalitelnaCast>
 
       {/* Tab bar — always visible, active tab determined from URL */}
       <Suspense fallback={<div className="border-b border-gray-200 dark:border-slate-700 h-10" />}>
-        <ZakazkyTabs zakazkaId={zakazka.id} defaultTab={vychoziZakazkaTab(isTechnik)} showHistorie={canEdit} />
+        <ZakazkyTabs zakazkaId={zakazka.id} defaultTab={vychoziZakazkaTab(isTechnik)} showHistorie={canEdit} showFinance={showFinanceTab} />
       </Suspense>
 
       {/* Page content */}

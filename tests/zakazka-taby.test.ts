@@ -2,8 +2,8 @@ import { describe, it, expect } from 'vitest'
 import { resolveZakazkaTab, vychoziZakazkaTab, zakazkaTabZCesty, ZAKAZKA_TABY } from '@/lib/zakazkaTaby'
 
 describe('taby detailu zakázky', () => {
-  it('je jich 6', () => {
-    expect(ZAKAZKA_TABY).toHaveLength(6)
+  it('je jich 7 (vč. Finance)', () => {
+    expect(ZAKAZKA_TABY).toHaveLength(7)
   })
 
   it('výchozí tab podle role', () => {

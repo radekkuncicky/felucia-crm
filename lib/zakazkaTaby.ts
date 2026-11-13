@@ -1,13 +1,14 @@
-// Taby detailu zakázky (D1): 6 tabů místo 9. Staré klíče z odkazů v e-mailech,
+// Taby detailu zakázky (D1): 6 tabů místo 9 + Finance (jen s oprávněním na ceny). Staré klíče z odkazů v e-mailech,
 // notifikacích a appce (?tab=predavaky …) se přesměrují na nový tab + kotvu sekce.
 
-export type ZakazkaTab = 'polozky' | 'ukoly' | 'kontakty' | 'protokoly' | 'podklady' | 'historie'
+export type ZakazkaTab = 'polozky' | 'ukoly' | 'kontakty' | 'protokoly' | 'finance' | 'podklady' | 'historie'
 
 export const ZAKAZKA_TABY: { key: ZakazkaTab; label: string }[] = [
   { key: 'polozky', label: 'Položky' },
   { key: 'ukoly', label: 'Úkoly' },
   { key: 'kontakty', label: 'Kontakty' },
   { key: 'protokoly', label: 'Protokoly a vyúčtování' },
+  { key: 'finance', label: 'Finance' },
   { key: 'podklady', label: 'Podklady a foto' },
   { key: 'historie', label: 'Historie' },
 ]

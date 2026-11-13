@@ -67,7 +67,7 @@ export default function KdykolivToggle({ zakazkaId, kdykoliv, canEdit }: Props) 
       }`}
     >
       <ClockIcon className="w-3.5 h-3.5" />
-      Kdykoliv
+      {value ? 'Kdykoliv' : 'Lze kdykoliv?'}
       <span className={`w-1.5 h-1.5 rounded-full ${value ? 'bg-amber-500' : 'bg-gray-300 dark:bg-slate-600'}`} aria-hidden />
     </button>
   )

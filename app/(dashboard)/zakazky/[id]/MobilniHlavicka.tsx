@@ -7,15 +7,28 @@
 
 import { createContext, useContext, useState } from 'react'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { getMapsUrl } from '@/lib/maps'
 import { buttonClasses } from '@/components/ui/Button'
 import { cn } from '@/lib/cn'
 
-const RozbalenoCtx = createContext<{ open: boolean; toggle: () => void }>({ open: false, toggle: () => {} })
+const RozbalenoCtx = createContext<{ open: boolean; kompakt: boolean; toggle: () => void }>({ open: false, kompakt: false, toggle: () => {} })
+
+/** Podstránky dokumentů (vyúčtování, protokol, objednávka): hlavička sbalená i na desktopu, ať dokument začíná nahoře */
+function jeDokument(pathname: string) {
+  return /\/zakazky\/[^/]+\/(vyuctovani|predavaky|objednavky)\//.test(pathname)
+}
 
 export function SbalitelnyDetail({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false)
-  return <RozbalenoCtx.Provider value={{ open, toggle: () => setOpen(o => !o) }}>{children}</RozbalenoCtx.Provider>
+  const kompakt = jeDokument(usePathname())
+  return <RozbalenoCtx.Provider value={{ open, kompakt, toggle: () => setOpen(o => !o) }}>{children}</RozbalenoCtx.Provider>
+}
+
+/** Část viditelná vždy, jen na desktopu ve sbalené hlavičce dokumentu skrytá (titulní foto) */
+export function JenPlnaHlavicka({ children }: { children: React.ReactNode }) {
+  const { open, kompakt } = useContext(RozbalenoCtx)
+  return <div className={cn('flex-shrink-0', kompakt && !open && 'sm:hidden')}>{children}</div>
 }
 
 /**
@@ -30,28 +43,31 @@ export function SbalitelnaCast({ desktop = 'block', className, openClassName, ch
   openClassName?: string
   children: React.ReactNode
 }) {
-  const { open } = useContext(RozbalenoCtx)
+  const { open, kompakt } = useContext(RozbalenoCtx)
+  const desktopSkryto = kompakt && !open
   return (
-    <div className={cn(className, open ? openClassName : 'hidden', desktop === 'contents' ? 'sm:contents' : 'sm:block')}>
+    <div className={cn(className, open ? openClassName : 'hidden', !desktopSkryto && (desktop === 'contents' ? 'sm:contents' : 'sm:block'))}>
       {children}
     </div>
   )
 }
 
 export function SbalitPrepinac() {
-  const { open, toggle } = useContext(RozbalenoCtx)
+  const { open, kompakt, toggle } = useContext(RozbalenoCtx)
   return (
+    <div className={cn('-mx-4 mt-3', kompakt ? 'sm:-mx-5 sm:-mb-5' : 'sm:hidden')}>
     <button
       type="button"
       onClick={toggle}
       aria-expanded={open}
-      className="sm:hidden w-full flex items-center justify-center gap-1.5 py-2 text-sm font-medium text-gray-600 dark:text-slate-300 border-t border-gray-100 dark:border-slate-700"
+      className="w-full flex items-center justify-center gap-1.5 py-2 text-sm font-medium text-gray-600 dark:text-slate-300 border-t border-gray-100 dark:border-slate-700"
     >
       {open ? 'Skrýt detail' : 'Detail zakázky'}
       <svg className={cn('w-4 h-4 transition-transform', open && 'rotate-180')} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
       </svg>
     </button>
+    </div>
   )
 }
 

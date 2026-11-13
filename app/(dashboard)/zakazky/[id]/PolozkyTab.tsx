@@ -342,6 +342,8 @@ export default function PolozkyTab({ zakazkaId, polozky: initialPolozky, canEdit
   const [naskladnitModal, setNaskladnitModal] = useState<Polozka | null>(null)
   const [stornoModal, setStornoModal] = useState<Polozka | null>(null)
   const [newRow, setNewRow] = useState<NewRow | null>(null)
+  // sloupec Kód jen když ho nějaká položka má, nebo se právě ručně přidává
+  const showKod = canEdit && (newRow !== null || polozky.some(p => p.kod))
   const [savingNew, setSavingNew] = useState(false)
   const [upravitModal, setUpravitModal] = useState<Polozka | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -630,7 +632,7 @@ export default function PolozkyTab({ zakazkaId, polozky: initialPolozky, canEdit
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-100 dark:border-slate-700 bg-gray-50 dark:bg-slate-900/30">
-                    {canEdit && <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide">Kód</th>}
+                    {showKod && <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide">Kód</th>}
                     <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide">Název</th>
                     <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide">Mn.</th>
                     <th className="text-left px-4 py-2.5 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide">Jed.</th>
@@ -648,7 +650,7 @@ export default function PolozkyTab({ zakazkaId, polozky: initialPolozky, canEdit
                 <tbody className="divide-y divide-gray-50 dark:divide-slate-700/50">
                   {polozky.map(p => (
                     <tr key={p.id} className="hover:bg-gray-50 dark:hover:bg-slate-700/30">
-                      {canEdit && <td className="px-4 py-3 font-mono text-xs text-gray-400 dark:text-slate-500">{p.kod ?? '—'}</td>}
+                      {showKod && <td className="px-4 py-3 font-mono text-xs text-gray-400 dark:text-slate-500">{p.kod ?? '—'}</td>}
                       <td className="px-4 py-3 text-gray-900 dark:text-white font-medium">{p.nazev}</td>
                       <td className="px-4 py-3 text-gray-600 dark:text-slate-400">{Number(p.mnozstvi)}</td>
                       <td className="px-4 py-3 text-gray-500 dark:text-slate-500 text-xs">{p.jednotka}</td>
@@ -738,7 +740,7 @@ export default function PolozkyTab({ zakazkaId, polozky: initialPolozky, canEdit
                   ))}
                   {newRow !== null && (
                     <tr className="bg-blue-50/50 dark:bg-blue-900/10">
-                      {canEdit && (
+                      {showKod && (
                         <td className="px-4 py-2">
                           <input
                             value={newRow.kod}

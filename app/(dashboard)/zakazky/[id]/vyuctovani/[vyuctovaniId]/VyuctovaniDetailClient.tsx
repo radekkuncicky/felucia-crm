@@ -453,10 +453,6 @@ export default function VyuctovaniDetailClient({ vyuctovani: initial, canApprove
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                     Stáhnout PDF
                   </a>
-                  <button title="Připravujeme" disabled className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-400 dark:text-slate-500 border border-gray-200 dark:border-slate-700 px-3 py-2 rounded-lg cursor-not-allowed opacity-60">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
-                    Odeslat klientovi
-                  </button>
                 </>
               )}
             </div>
@@ -514,7 +510,7 @@ export default function VyuctovaniDetailClient({ vyuctovani: initial, canApprove
           <div className="px-5 py-4 border-b border-gray-200 dark:border-slate-700 flex items-center justify-between gap-3">
             <h2 className="font-semibold text-gray-900 dark:text-white">Položky ({polozky.length})</h2>
             {canEdit && (
-              <button onClick={startNewRow} className="inline-flex items-center gap-1.5 text-sm font-semibold text-white bg-[#1B5E20] hover:bg-green-800 px-3 py-2 rounded-lg transition-colors min-h-[40px]">
+              <button onClick={startNewRow} className="inline-flex items-center gap-1.5 text-sm font-semibold text-white bg-primary hover:bg-primary-hover px-3 py-2 rounded-lg transition-colors min-h-[40px]">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
                 <span className="hidden sm:inline">Přidat položku</span>
                 <span className="sm:hidden">Přidat</span>
@@ -623,7 +619,7 @@ export default function VyuctovaniDetailClient({ vyuctovani: initial, canApprove
                     <td className="px-4 py-2 text-right text-gray-400 dark:text-slate-600 text-xs">—</td>
                     <td className="px-4 py-2">
                       <div className="flex gap-1">
-                        <button onClick={handleSaveNewRow} disabled={savingNew || !newRow.nazev.trim()} className="text-xs px-2 py-1 text-white bg-[#1B5E20] hover:bg-green-800 rounded disabled:opacity-50">{savingNew ? '…' : 'Uložit'}</button>
+                        <button onClick={handleSaveNewRow} disabled={savingNew || !newRow.nazev.trim()} className="text-xs px-2 py-1 text-white bg-primary hover:bg-primary-hover rounded disabled:opacity-50">{savingNew ? '…' : 'Uložit'}</button>
                         <button onClick={() => setNewRow(null)} className="text-xs px-2 py-1 text-gray-600 dark:text-slate-400 border border-gray-300 dark:border-slate-600 rounded">Zrušit</button>
                       </div>
                     </td>
@@ -669,7 +665,7 @@ export default function VyuctovaniDetailClient({ vyuctovani: initial, canApprove
                   </div>
                 </div>
                 <div className="flex gap-3">
-                  <button onClick={handleSaveNewRow} disabled={savingNew || !newRow.nazev.trim()} className="flex-1 bg-[#1B5E20] text-white rounded-xl py-3 font-medium text-sm disabled:opacity-50 min-h-[48px]">
+                  <button onClick={handleSaveNewRow} disabled={savingNew || !newRow.nazev.trim()} className="flex-1 bg-primary text-white rounded-xl py-3 font-medium text-sm disabled:opacity-50 min-h-[48px]">
                     {savingNew ? 'Ukládám…' : 'Uložit'}
                   </button>
                   <button onClick={() => setNewRow(null)} className="flex-1 border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-300 rounded-xl py-3 font-medium text-sm min-h-[48px]">Zrušit</button>
@@ -703,7 +699,7 @@ export default function VyuctovaniDetailClient({ vyuctovani: initial, canApprove
         </div>
 
         {/* Celková částka — prominent on mobile */}
-        <div className="bg-[#1B5E20] rounded-xl px-5 py-4">
+        <div className="bg-primary rounded-xl px-5 py-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-green-200 text-sm font-medium">Celkem s DPH</p>

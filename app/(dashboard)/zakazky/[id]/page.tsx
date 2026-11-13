@@ -14,6 +14,7 @@ import PodkladyTab from './PodkladyTab'
 import KontaktyTab from './KontaktyTab'
 import UkolyTab from './UkolyTab'
 import TlakovaZkouska from './TlakovaZkouska'
+import FinanceTab from './FinanceTab'
 import { UKOL_ORDER_BY, UKOL_SELECT } from '@/lib/zakazkaUkol'
 import { radekBezDph } from '@/lib/quoteMath'
 
@@ -188,6 +189,9 @@ export default async function ZakazkaDetailPage({
       )}
 
 
+      {tab === 'finance' && (perms.financeProdejni || perms.financeNakupky) && (
+        <FinanceTab zakazkaId={zakazka.id} orgId={orgId} showProdejni={perms.financeProdejni} showNakupky={perms.financeNakupky} />
+      )}
 
       {tab === 'podklady' && (
         <div className="space-y-4">

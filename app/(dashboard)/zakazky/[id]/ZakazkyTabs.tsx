@@ -11,6 +11,7 @@ const ICONS: Record<string, string> = {
   podklady:   'M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z',
   historie:   'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
   kontakty:   'M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z',
+  finance:    'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
   ukoly:      'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4',
 }
 
@@ -20,6 +21,8 @@ interface Props {
   defaultTab: ZakazkaTab
   /** zakazkyEdit */
   showHistorie: boolean
+  /** financeProdejni nebo financeNakupky */
+  showFinance: boolean
 }
 
 function Icon({ path }: { path: string }) {
@@ -30,8 +33,8 @@ function Icon({ path }: { path: string }) {
   )
 }
 
-export default function ZakazkyTabs({ zakazkaId, defaultTab, showHistorie }: Props) {
-  const tabs = ZAKAZKA_TABY.filter(t => t.key !== 'historie' || showHistorie)
+export default function ZakazkyTabs({ zakazkaId, defaultTab, showHistorie, showFinance }: Props) {
+  const tabs = ZAKAZKA_TABY.filter(t => (t.key !== 'historie' || showHistorie) && (t.key !== 'finance' || showFinance))
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
@@ -51,7 +54,7 @@ export default function ZakazkyTabs({ zakazkaId, defaultTab, showHistorie }: Pro
               href={`/zakazky/${zakazkaId}?tab=${tab.key}`}
               className={`inline-flex items-center gap-1.5 whitespace-nowrap px-3 py-2 text-sm font-medium rounded-full transition-colors flex-shrink-0 ${
                 isActive
-                  ? 'bg-[#1B5E20] text-white'
+                  ? 'bg-primary-dark text-white'
                   : 'text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 hover:text-gray-700 dark:hover:text-slate-200'
               }`}
             >

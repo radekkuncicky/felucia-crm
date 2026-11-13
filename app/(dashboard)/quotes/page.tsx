@@ -8,18 +8,18 @@ import Link from 'next/link'
 import EmptyState from '@/components/ui/EmptyState'
 import QuoteStavBadge from '@/components/QuoteStavBadge'
 import { cn } from '@/lib/cn'
-import { formatDate, formatCislo } from '@/lib/format'
+import { formatDate, formatKc } from '@/lib/format'
 import { NABIDKA_VISI_PO_DNECH, visiOdeslanaHranice } from '@/lib/quoteStav'
 import NabidkaStavAkce from './NabidkaStavAkce'
 
 const FILTRY = [
   { id: 'vse', label: 'Vše' },
-  { id: 'visi', label: 'Visí odeslané' },
+  { id: 'visi', label: 'Visí odeslané', title: `Odeslané déle než ${NABIDKA_VISI_PO_DNECH} dní, klient zatím nereagoval` },
   { id: 'rozpracovane', label: 'Rozpracované', stav: 'ROZPRACOVANA' },
   { id: 'odeslane', label: 'Odeslané', stav: 'ODESLANA' },
   { id: 'akceptovane', label: 'Akceptované', stav: 'AKCEPTOVANA' },
   { id: 'odmitnute', label: 'Odmítnuté', stav: 'ODMITNUTA' },
-] as const satisfies readonly { id: string; label: string; stav?: QuoteStav }[]
+] as const satisfies readonly { id: string; label: string; title?: string; stav?: QuoteStav }[]
 type FiltrId = (typeof FILTRY)[number]['id']
 
 export default async function QuotesPage({ searchParams }: { searchParams: { filtr?: string } }) {
@@ -75,7 +75,7 @@ export default async function QuotesPage({ searchParams }: { searchParams: { fil
             href="/cenovka"
             className="border border-green-400 dark:border-green-700 text-green-700 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 font-medium px-4 py-2 rounded-lg text-sm transition-colors"
           >
-            ⚡ Rychlá cenovka
+            Rychlá cenovka
           </Link>
         </div>
       </div>
@@ -86,6 +86,7 @@ export default async function QuotesPage({ searchParams }: { searchParams: { fil
             key={f.id}
             href={f.id === 'vse' ? '/quotes' : `/quotes?filtr=${f.id}`}
             aria-current={filtr === f.id ? 'page' : undefined}
+            title={'title' in f ? f.title : undefined}
             className={cn(
               'flex items-center gap-1.5 whitespace-nowrap px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors',
               filtr === f.id
@@ -129,13 +130,13 @@ export default async function QuotesPage({ searchParams }: { searchParams: { fil
         {/* Mobil: karty */}
         <ul className="md:hidden divide-y divide-gray-100 dark:divide-slate-700">
           {quotes.map(q => {
-            const celkem = q.items.reduce((s, i) => s + Number(i.mnozstvi) * Number(i.cenaZaKus), 0)
+            const celkem = q.items.reduce((s, i) => s + Number(i.mnozstvi) * Number(i.cenaZaKus) * (1 - Number(i.sleva ?? 0) / 100), 0)
             return (
               <li key={q.id} className="px-4 py-3">
                 <Link href={`/deals/${q.dealId}?tab=nabidky`} className="block">
                   <div className="flex items-start justify-between gap-3">
                     <p className="font-medium text-gray-900 dark:text-white min-w-0 truncate">{q.nazev}</p>
-                    <p className="text-sm font-semibold text-gray-900 dark:text-white whitespace-nowrap">{celkem > 0 ? formatCislo(celkem) + ' Kč' : '—'}</p>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white whitespace-nowrap">{celkem > 0 ? formatKc(celkem) : '—'}</p>
                   </div>
                   <p className="text-sm text-gray-600 dark:text-slate-300 truncate">
                     {q.deal.kod && <span className="font-mono text-xs mr-1.5">{q.deal.kod}</span>}
@@ -163,8 +164,7 @@ export default async function QuotesPage({ searchParams }: { searchParams: { fil
         <table className="w-full hidden md:table">
           <thead className="bg-gray-50 dark:bg-slate-900 border-b border-gray-200 dark:border-slate-700">
             <tr>
-              <th className="text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase px-6 py-3">Název nabídky</th>
-              <th className="text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase px-6 py-3">Obchodní případ</th>
+              <th className="text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase px-6 py-3">Obchodní případ / nabídka</th>
               <th className="text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase px-6 py-3">Klient</th>
               {visi && <th className="text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase px-6 py-3">Vlastník</th>}
               <th className="text-right text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase px-6 py-3">Celková cena</th>
@@ -175,24 +175,21 @@ export default async function QuotesPage({ searchParams }: { searchParams: { fil
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-slate-700">
             {quotes.map((q) => {
-              const celkem = q.items.reduce((s, i) => s + Number(i.mnozstvi) * Number(i.cenaZaKus), 0)
+              const celkem = q.items.reduce((s, i) => s + Number(i.mnozstvi) * Number(i.cenaZaKus) * (1 - Number(i.sleva ?? 0) / 100), 0)
               const posledni = q.deal.activities[0]?.datum
               return (
                 <tr key={q.id} className="hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
                   <td className="px-6 py-4">
-                    <p className="font-medium text-gray-900 dark:text-white flex items-center gap-1.5">
-                      {q.aktivni && <span className="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0" title="Aktivní nabídka OP" />}
-                      {q.nazev}
-                    </p>
-                    <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">{q.kod ? `${q.kod} · ` : ''}{q.items.length} položek</p>
-                  </td>
-                  <td className="px-6 py-4">
                     <Link href={`/deals/${q.dealId}?tab=nabidky`} className="text-sm text-blue-600 hover:underline font-medium">
                       {q.deal.kod ? (
-                        <span className="font-mono bg-gray-100 dark:bg-slate-700 px-1.5 py-0.5 rounded text-xs mr-2">{q.deal.kod}</span>
+                        <span className="font-mono bg-gray-100 dark:bg-slate-700 px-1.5 py-0.5 rounded text-xs mr-2 whitespace-nowrap">{q.deal.kod}</span>
                       ) : null}
                       {q.deal.predmet ?? 'Bez předmětu'}
                     </Link>
+                    <p className="text-xs text-gray-500 dark:text-slate-400 mt-1 flex items-center gap-1.5">
+                      {q.aktivni && <span className="w-1.5 h-1.5 rounded-full bg-green-500 flex-shrink-0" title="Aktivní nabídka OP" />}
+                      {[q.nazev, q.kod, `${q.items.length} položek`].filter(Boolean).join(' · ')}
+                    </p>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600 dark:text-slate-400">
                     {q.deal.client.jmeno} {q.deal.client.prijmeni}
@@ -201,13 +198,13 @@ export default async function QuotesPage({ searchParams }: { searchParams: { fil
                     )}
                   </td>
                   {visi && <td className="px-6 py-4 text-sm text-gray-600 dark:text-slate-400">{q.deal.user?.jmeno ?? '—'}</td>}
-                  <td className="px-6 py-4 text-right text-sm font-semibold text-gray-900 dark:text-white">
-                    {celkem > 0 ? formatCislo(celkem) + ' Kč' : '—'}
+                  <td className="px-6 py-4 text-right text-sm font-semibold text-gray-900 dark:text-white whitespace-nowrap">
+                    {celkem > 0 ? formatKc(celkem) : '—'}
                   </td>
                   <td className="px-6 py-4">
                     <QuoteStavBadge stav={q.stav} odeslanoAt={q.odeslanoAt} />
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-500 dark:text-slate-400">
+                  <td className="px-6 py-4 text-sm text-gray-500 dark:text-slate-400 whitespace-nowrap">
                     {visi ? (posledni ? formatDate(posledni) : '—') : formatDate(q.vytvoreno)}
                   </td>
                   <td className="px-6 py-4 text-right">
@@ -216,7 +213,7 @@ export default async function QuotesPage({ searchParams }: { searchParams: { fil
                     ) : (
                       <Link
                         href={`/deals/${q.dealId}?tab=nabidky`}
-                        className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                        className="text-sm text-blue-600 hover:text-blue-800 font-medium whitespace-nowrap"
                       >
                         Detail →
                       </Link>
