@@ -6,6 +6,7 @@ import { Dialog } from '@/components/ui/Dialog'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Select, Textarea } from '@/components/ui/Field'
 import { toast } from 'sonner'
+import { EtapaVyber, UlozeneProtokoly, vychoziEtapaId, type EtapaVolba, type UlozenyProtokol } from './UlozeneProtokoly'
 import { pokles } from '@/lib/tlakovaZkouskaData'
 import { formatCislo } from '@/lib/format'
 
@@ -15,6 +16,10 @@ interface Props {
   technologie: string | null
   /** předvyplněné jméno zkoušejícího (přihlášený uživatel) */
   zkousel: string
+  etapy: EtapaVolba[]
+  /** už uložené PDF tohoto protokolu */
+  ulozene: UlozenyProtokol[]
+  canDelete: boolean
 }
 
 type Pole = Record<string, string>
@@ -30,12 +35,13 @@ function Num({ label, value, onChange, jednotka }: { label: string; value: strin
   )
 }
 
-/** Volitelný Protokol o tlakové zkoušce — formulář → PDF do Podkladů + stažení. */
-export default function TlakovaZkouska({ zakazkaId, technologie, zkousel: vychoziZkousel }: Props) {
+/** Volitelný Protokol o tlakové zkoušce — formulář → PDF uložené u zakázky / etapy + stažení. */
+export default function TlakovaZkouska({ zakazkaId, technologie, zkousel: vychoziZkousel, etapy, ulozene, canDelete }: Props) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [chyba, setChyba] = useState<string | null>(null)
+  const [etapaId, setEtapaId] = useState(() => vychoziEtapaId(etapy))
 
   const [datum, setDatum] = useState(dnes())
   const [zkousel, setZkousel] = useState(vychoziZkousel)
@@ -64,6 +70,7 @@ export default function TlakovaZkouska({ zakazkaId, technologie, zkousel: vychoz
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          etapaId: etapaId || null,
           datum, zkousel, vysledek, poznamka,
           podlahovka: sPodlahovka ? { ...p, podTlakemPriBetonazi: betonaz } : null,
           tc: sTc ? { ...t, dusik: sDusik ? d : null } : null,
@@ -81,7 +88,7 @@ export default function TlakovaZkouska({ zakazkaId, technologie, zkousel: vychoz
       a.download = nazev
       a.click()
       setTimeout(() => URL.revokeObjectURL(a.href), 10_000)
-      toast.success('Protokol uložen do Podkladů zakázky')
+      toast.success(etapaId ? 'Protokol uložen k etapě' : 'Protokol uložen u zakázky')
       setOpen(false)
       router.refresh()
     } finally {
@@ -98,12 +105,15 @@ export default function TlakovaZkouska({ zakazkaId, technologie, zkousel: vychoz
 
   return (
     <>
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 px-4 py-3 space-y-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
           <p className="text-sm font-semibold text-fg">Protokol o tlakové zkoušce</p>
-          <p className="text-xs text-muted">Volitelný — podlahové vytápění (ČSN EN 1264-4) a tepelné čerpadlo. PDF se uloží do Podkladů.</p>
+          <p className="text-xs text-muted">Volitelný — podlahové vytápění (ČSN EN 1264-4) a tepelné čerpadlo. Uložené PDF najdete tady.</p>
         </div>
         <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>Vytvořit protokol</Button>
+        </div>
+        <UlozeneProtokoly zakazkaId={zakazkaId} protokoly={ulozene} etapy={etapy} canDelete={canDelete} />
       </div>
 
       <Dialog open={open} onClose={() => setOpen(false)} title="Protokol o tlakové zkoušce" size="xl"
@@ -114,6 +124,7 @@ export default function TlakovaZkouska({ zakazkaId, technologie, zkousel: vychoz
           </div>
         }>
         <div className="space-y-5">
+          <EtapaVyber etapy={etapy} value={etapaId} onChange={setEtapaId} />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="Datum zkoušky" required><Input type="date" value={datum} onChange={(e) => setDatum(e.target.value)} /></Field>
             <Field label="Zkoušku provedl"><Input value={zkousel} onChange={(e) => setZkousel(e.target.value)} /></Field>

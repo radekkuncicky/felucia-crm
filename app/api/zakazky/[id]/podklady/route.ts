@@ -23,7 +23,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   if (!zakazka) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const dokumenty = await db.zakázkaDokument.findMany({
-    where: { zakazkaId: params.id },
+    where: { zakazkaId: params.id, protokolTyp: null },
     include: { nahral: { select: { id: true, jmeno: true } } },
     orderBy: { vytvoreno: 'desc' },
   })

@@ -93,6 +93,11 @@ export default async function ZakazkaDetailPage({
 
   if (!zakazka) notFound()
 
+  // Uložené protokoly (tlaková zkouška, zaregulování VZT) — u karty protokolu, ne v Podkladech
+  const ulozeneProtokoly = (typ: string) => zakazka.dokumenty
+    .filter(d => d.protokolTyp === typ)
+    .map(d => ({ id: d.id, nazev: d.nazev, url: d.url, vytvoreno: d.vytvoreno.toISOString(), nahral: d.nahral?.jmeno ?? null, etapaId: d.etapaId }))
+
   // Fotky z obchodní fáze (OP) — zobrazí se technikům v Podkladech
   const opFotky = zakazka.opId
     ? await prisma.photo.findMany({
@@ -165,10 +170,12 @@ export default async function ZakazkaDetailPage({
             />
           </section>
           <section id="tlakova-zkouska" className="scroll-mt-24">
-            <TlakovaZkouska zakazkaId={zakazka.id} technologie={zakazka.technologie ?? null} zkousel={session.user.jmeno ?? ''} />
+            <TlakovaZkouska zakazkaId={zakazka.id} technologie={zakazka.technologie ?? null} zkousel={session.user.jmeno ?? ''}
+              etapy={zakazka.etapy ?? []} ulozene={ulozeneProtokoly('TLAKOVA_ZKOUSKA')} canDelete={canEdit} />
           </section>
           <section id="zaregulovani-vzt" className="scroll-mt-24">
-            <ZaregulovaniVzt zakazkaId={zakazka.id} provedl={session.user.jmeno ?? ''} />
+            <ZaregulovaniVzt zakazkaId={zakazka.id} provedl={session.user.jmeno ?? ''}
+              etapy={zakazka.etapy ?? []} ulozene={ulozeneProtokoly('ZAREGULOVANI_VZT')} canDelete={canEdit} />
           </section>
           {perms.financeProdejni && (
             <section id="vyuctovani" className="scroll-mt-24">
@@ -202,7 +209,7 @@ export default async function ZakazkaDetailPage({
           <PodkladyTab
             zakazkaId={zakazka.id}
             pokyny={zakazka.pokyny ?? null}
-            dokumenty={zakazka.dokumenty.map(d => ({
+            dokumenty={zakazka.dokumenty.filter(d => !d.protokolTyp).map(d => ({
               id: d.id,
               nazev: d.nazev,
               mime: d.mime,

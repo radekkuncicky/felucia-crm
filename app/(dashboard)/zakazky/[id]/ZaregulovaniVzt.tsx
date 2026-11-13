@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button'
 import { IconButton } from '@/components/ui/IconButton'
 import { Field, Input, Select, Textarea } from '@/components/ui/Field'
 import { toast } from 'sonner'
+import { EtapaVyber, UlozeneProtokoly, vychoziEtapaId, type EtapaVolba, type UlozenyProtokol } from './UlozeneProtokoly'
 import { cn } from '@/lib/cn'
 import { formatCislo } from '@/lib/format'
 import {
@@ -18,6 +19,10 @@ interface Props {
   zakazkaId: string
   /** předvyplněné jméno měřícího (přihlášený uživatel) */
   provedl: string
+  etapy: EtapaVolba[]
+  /** už uložené PDF tohoto protokolu */
+  ulozene: UlozenyProtokol[]
+  canDelete: boolean
 }
 
 type Pole = Record<string, string>
@@ -47,12 +52,13 @@ function Odchylka({ navrh, namereno, tolerance }: { navrh: string; namereno: str
   return <span className={cn('font-semibold tabular-nums', ok ? 'text-green-700 dark:text-green-400' : 'text-red-600 dark:text-red-400')}>{o > 0 ? '+' : ''}{formatCislo(o)} %</span>
 }
 
-/** Volitelný Protokol o zaregulování VZT (ČSN EN 12599 / 14134) — formulář → PDF do Podkladů + stažení. */
-export default function ZaregulovaniVzt({ zakazkaId, provedl: vychoziProvedl }: Props) {
+/** Volitelný Protokol o zaregulování VZT (ČSN EN 12599 / 14134) — formulář → PDF uložené u zakázky / etapy + stažení. */
+export default function ZaregulovaniVzt({ zakazkaId, provedl: vychoziProvedl, etapy, ulozene, canDelete }: Props) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [chyba, setChyba] = useState<string | null>(null)
+  const [etapaId, setEtapaId] = useState(() => vychoziEtapaId(etapy))
 
   const [datum, setDatum] = useState(dnes())
   const [provedl, setProvedl] = useState(vychoziProvedl)
@@ -82,6 +88,7 @@ export default function ZaregulovaniVzt({ zakazkaId, provedl: vychoziProvedl }: 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          etapaId: etapaId || null,
           datum, provedl, jednotka: j, pristroj: p, metoda, celkem: c, teploty: t,
           tolerance, kontroly, vysledek, poznamka,
           vyustky: radky.map((r) => ({ mistnost: r.mistnost, typ: r.typ, prvek: r.prvek, navrh: r.navrh, namereno: r.namereno, nastaveni: r.nastaveni })),
@@ -99,7 +106,7 @@ export default function ZaregulovaniVzt({ zakazkaId, provedl: vychoziProvedl }: 
       a.download = nazev
       a.click()
       setTimeout(() => URL.revokeObjectURL(a.href), 10_000)
-      toast.success('Protokol uložen do Podkladů zakázky')
+      toast.success(etapaId ? 'Protokol uložen k etapě' : 'Protokol uložen u zakázky')
       setOpen(false)
       router.refresh()
     } finally {
@@ -109,12 +116,15 @@ export default function ZaregulovaniVzt({ zakazkaId, provedl: vychoziProvedl }: 
 
   return (
     <>
-      <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 px-4 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 px-4 py-3 space-y-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div>
           <p className="text-sm font-semibold text-fg">Protokol o zaregulování VZT</p>
-          <p className="text-xs text-muted">Volitelný — rekuperace / vzduchotechnika, průtoky dle ČSN EN 12599 a ČSN EN 14134. PDF se uloží do Podkladů.</p>
+          <p className="text-xs text-muted">Volitelný — rekuperace / vzduchotechnika, průtoky dle ČSN EN 12599 a ČSN EN 14134. Uložené PDF najdete tady.</p>
         </div>
         <Button variant="secondary" size="sm" onClick={() => setOpen(true)}>Vytvořit protokol</Button>
+        </div>
+        <UlozeneProtokoly zakazkaId={zakazkaId} protokoly={ulozene} etapy={etapy} canDelete={canDelete} />
       </div>
 
       <Dialog open={open} onClose={() => setOpen(false)} title="Protokol o zaregulování VZT" size="2xl"
@@ -125,6 +135,7 @@ export default function ZaregulovaniVzt({ zakazkaId, provedl: vychoziProvedl }: 
           </div>
         }>
         <div className="space-y-5">
+          <EtapaVyber etapy={etapy} value={etapaId} onChange={setEtapaId} />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="Datum měření" required><Input type="date" value={datum} onChange={(e) => setDatum(e.target.value)} /></Field>
             <Field label="Měření provedl"><Input value={provedl} onChange={(e) => setProvedl(e.target.value)} /></Field>

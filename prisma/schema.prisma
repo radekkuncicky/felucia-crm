@@ -1225,12 +1225,13 @@ model ZakazkaEtapa {
   vytvoreno       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  organization  Organization   @relation(fields: [orgId], references: [id])
-  zakazka       Zakazka        @relation(fields: [zakazkaId], references: [id], onDelete: Cascade)
-  hlavniTechnik User?          @relation("EtapaHlavniTechnik", fields: [hlavniTechnikId], references: [id], onDelete: SetNull)
+  organization  Organization       @relation(fields: [orgId], references: [id])
+  zakazka       Zakazka            @relation(fields: [zakazkaId], references: [id], onDelete: Cascade)
+  hlavniTechnik User?              @relation("EtapaHlavniTechnik", fields: [hlavniTechnikId], references: [id], onDelete: SetNull)
   predavaky     Predavak[]
   vyuctovani    Vyuctovani[]
   technici      EtapaTechnik[]
+  dokumenty     ZakázkaDokument[]
 
   @@unique([zakazkaId, cislo])
   @@index([zakazkaId])
@@ -1256,19 +1257,25 @@ model EtapaTechnik {
 }
 
 model ZakázkaDokument {
-  id        String   @id @default(cuid())
-  orgId     String
-  zakazkaId String
-  nazev     String
-  url       String   @db.Text
-  mime      String   @default("application/octet-stream")
-  nahralId  String
-  vytvoreno DateTime @default(now())
+  id          String   @id @default(cuid())
+  orgId       String
+  zakazkaId   String
+  nazev       String
+  url         String   @db.Text
+  mime        String   @default("application/octet-stream")
+  nahralId    String
+  vytvoreno   DateTime @default(now())
+  /// Protokol ze zakázky (TLAKOVA_ZKOUSKA | ZAREGULOVANI_VZT) — null = běžný podklad.
+  /// Protokoly se nezobrazují v Podkladech, ale u karty protokolu (případně u etapy).
+  protokolTyp String?
+  etapaId     String?
 
-  zakazka Zakazka @relation(fields: [zakazkaId], references: [id], onDelete: Cascade)
-  nahral  User    @relation(fields: [nahralId], references: [id])
+  zakazka Zakazka       @relation(fields: [zakazkaId], references: [id], onDelete: Cascade)
+  nahral  User          @relation(fields: [nahralId], references: [id])
+  etapa   ZakazkaEtapa? @relation(fields: [etapaId], references: [id], onDelete: SetNull)
 
   @@index([zakazkaId])
+  @@index([etapaId])
   @@map("zakazka_dokumenty")
 }
 

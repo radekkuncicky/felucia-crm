@@ -30,6 +30,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await prisma.zakázkaDokument.deleteMany({ where: { orgId } })
+  await prisma.zakazkaEtapa.deleteMany({ where: { orgId: { in: [orgId, ciziOrgId] } } })
   await prisma.zakazka.deleteMany({ where: { orgId: { in: [orgId, ciziOrgId] } } })
   await prisma.client.deleteMany({ where: { orgId: { in: [orgId, ciziOrgId] } } })
   await prisma.user.deleteMany({ where: { orgId } })
@@ -78,12 +79,12 @@ describe('Protokol o zaregulování VZT', () => {
     expect('nesmysl' in ok.kontroly).toBe(false)
   })
 
-  it('vytvoří PDF, uloží do Podkladů, escapuje, označí odchylky a dopočte součty', async () => {
+  it('vytvoří PDF, uloží jako protokol (ne podklad), escapuje, označí odchylky a dopočte součty', async () => {
     const res = await post(zakazkaId, vstup)
     expect(res.status).toBe(200)
     expect(res.headers.get('content-type')).toBe('application/pdf')
     const dok = await prisma.zakázkaDokument.findFirst({ where: { zakazkaId } })
-    expect(dok).toMatchObject({ mime: 'application/pdf', nazev: expect.stringContaining('Protokol o zaregulování VZT') })
+    expect(dok).toMatchObject({ mime: 'application/pdf', protokolTyp: 'ZAREGULOVANI_VZT', etapaId: null, nazev: expect.stringContaining('Protokol o zaregulování VZT') })
     const h = html.at(-1)!
     expect(h).toContain('&lt;b&gt;Novák&lt;/b&gt;')
     expect(h).toContain('ČSN EN 12599')
@@ -91,6 +92,22 @@ describe('Protokol o zaregulování VZT', () => {
     expect(h).toMatch(/ok-cell">-3,3 %/) // obývák v toleranci
     expect(h).toContain('108 m³/h') // celkový přívod = součet vyústek
     expect(h).toContain('75 %') // účinnost
+  })
+
+  it('uloží k etapě; cizí/neplatná etapa se odmítne; v Podkladech protokoly nejsou', async () => {
+    const etapa = await prisma.zakazkaEtapa.create({ data: { orgId, zakazkaId, cislo: 1 } })
+    const res = await post(zakazkaId, { ...vstup, etapaId: etapa.id })
+    expect(res.status).toBe(200)
+    const dok = await prisma.zakázkaDokument.findUnique({ where: { id: res.headers.get('X-Dokument-Id')! } })
+    expect(dok?.etapaId).toBe(etapa.id)
+
+    const ciziEtapa = await prisma.zakazkaEtapa.create({ data: { orgId: ciziOrgId, zakazkaId: ciziZakazkaId, cislo: 1 } })
+    expect((await post(zakazkaId, { ...vstup, etapaId: ciziEtapa.id })).status).toBe(404)
+    expect((await post(zakazkaId, { ...vstup, etapaId: 123 })).status).toBe(400)
+
+    const { GET } = await import('@/app/api/zakazky/[id]/podklady/route')
+    const r = await GET(new Request(`http://localhost/api/zakazky/${zakazkaId}/podklady`), { params: { id: zakazkaId } })
+    expect((await r.json()).dokumenty).toHaveLength(0)
   })
 
   it('cizí zakázka = 403', async () => {

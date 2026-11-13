@@ -21,7 +21,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   if (!zakazka) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const dokumenty = await orgPrisma(session!.user.orgId).zakázkaDokument.findMany({
-    where: { zakazkaId: params.id },
+    where: { zakazkaId: params.id, protokolTyp: null },
     select: { id: true, nazev: true, mime: true, url: true, vytvoreno: true, nahral: { select: { jmeno: true } } },
     orderBy: { vytvoreno: 'desc' },
   })
