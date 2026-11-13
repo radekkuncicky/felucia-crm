@@ -134,7 +134,7 @@ export default async function ZakazkaDetailLayout({
   const adresa = [zakazka.klient.ulice, [zakazka.klient.mesto, zakazka.klient.psc].filter(Boolean).join(' ')].filter(Boolean).join(', ')
 
   // „Sadová 14, 702 00 Ostrava“ = „Sadová 14, Ostrava 702 00“ — porovnání bez ohledu na pořadí a interpunkci
-  const slovaAdresy = (a: string) => a.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim().split(' ').sort().join(' ')
+  const slovaAdresy = (a: string) => a.toLowerCase().replace(/[\s,.;]+/g, ' ').trim().split(' ').sort().join(' ')
   const stejnaAdresa = (a: string, b: string) => slovaAdresy(a) === slovaAdresy(b)
 
   // Souhrn termínu pro sbalenou mobilní hlavičku
