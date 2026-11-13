@@ -14,6 +14,7 @@ import PodkladyTab from './PodkladyTab'
 import KontaktyTab from './KontaktyTab'
 import UkolyTab from './UkolyTab'
 import TlakovaZkouska from './TlakovaZkouska'
+import ZaregulovaniVzt from './ZaregulovaniVzt'
 import FinanceTab from './FinanceTab'
 import { UKOL_ORDER_BY, UKOL_SELECT } from '@/lib/zakazkaUkol'
 import { radekBezDph } from '@/lib/quoteMath'
@@ -165,6 +166,9 @@ export default async function ZakazkaDetailPage({
           </section>
           <section id="tlakova-zkouska" className="scroll-mt-24">
             <TlakovaZkouska zakazkaId={zakazka.id} technologie={zakazka.technologie ?? null} zkousel={session.user.jmeno ?? ''} />
+          </section>
+          <section id="zaregulovani-vzt" className="scroll-mt-24">
+            <ZaregulovaniVzt zakazkaId={zakazka.id} provedl={session.user.jmeno ?? ''} />
           </section>
           {perms.financeProdejni && (
             <section id="vyuctovani" className="scroll-mt-24">
