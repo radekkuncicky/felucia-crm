@@ -25,7 +25,7 @@ import { NavigateButton } from '@/components/NavigateButton'
 import { CollapsibleEdit } from './CollapsibleEdit'
 import { DealNotesCard } from './DealNotesCard'
 import { DalsiKrokCard } from './DalsiKrokCard'
-import { formatCislo } from '@/lib/format'
+import { formatKc } from '@/lib/format'
 import { getDefiniceProZamereni, vyplneneSekce } from '@/lib/zamereniDefinice'
 import { klientAdresa } from '@/lib/mobile-helpers'
 import { podkladOp } from '@/lib/quoteZamek'
@@ -259,14 +259,14 @@ export default async function DealDetailPage({
               />
             )}
           </div>
-          <div className="flex flex-row sm:flex-col items-start sm:items-end justify-between sm:justify-start gap-3 sm:flex-shrink-0">
+          <div className="flex flex-col items-start sm:items-end gap-3 sm:flex-shrink-0">
             {konecnaCena > 0 ? (
-              <div className="text-right">
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{formatCislo(konecnaCena)} Kč</p>
-                <p className="text-sm text-primary dark:text-primary-light">{formatCislo(cenaSDph)} Kč s DPH</p>
+              <div className="sm:text-right whitespace-nowrap">
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{formatKc(konecnaCena)}</p>
+                <p className="text-sm text-primary dark:text-primary-light">{formatKc(cenaSDph)} s DPH</p>
               </div>
             ) : (
-              <div className="text-right">
+              <div className="sm:text-right">
                 <p className="text-sm text-gray-400 dark:text-slate-500 italic">Bez nabídky</p>
               </div>
             )}

@@ -54,13 +54,13 @@ interface Props {
 const fmtKc = formatKc
 
 const inputCls = 'w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary'
-const inputEmptyCls = 'w-full border border-red-300 dark:border-red-700 rounded-lg px-3 py-2 text-sm bg-red-50 dark:bg-red-900/10 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-400/40'
+const inputEmptyCls = 'w-full border border-amber-300 dark:border-amber-700 rounded-lg px-3 py-2 text-sm bg-amber-50 dark:bg-amber-900/10 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400/40'
 
 function Label({ children, empty }: { children: React.ReactNode; empty?: boolean }) {
   return (
     <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
       {children}
-      {empty && <span className="ml-1.5 text-xs font-normal text-red-500">prázdné v šabloně</span>}
+      {empty && <span className="ml-1.5 text-xs font-normal text-amber-600 dark:text-amber-400">prázdné v šabloně</span>}
     </label>
   )
 }
@@ -104,6 +104,8 @@ export default function GenerateSodModal({ dealId, templates, onClose }: Props) 
   const [ico, setIco] = useState('')
   const [dic, setDic] = useState('')
   const [mistoShodne, setMistoShodne] = useState<boolean | null>(null)
+  // chybu u nevybrané volby ukázat až po pokusu o vygenerování
+  const [pokus, setPokus] = useState(false)
   const [adresaDila, setAdresaDila] = useState('')
   const [aresLoading, setAresLoading] = useState(false)
   const [aresInfo, setAresInfo] = useState('')
@@ -186,6 +188,7 @@ export default function GenerateSodModal({ dealId, templates, onClose }: Props) 
 
   async function handleGenerate() {
     setError('')
+    setPokus(true)
     if (!sidlo.trim()) { setError('Vyplňte sídlo / trvalé bydliště objednatele.'); return }
     if (mistoShodne === null) { setError('Potvrďte, zda je místo instalace shodné se sídlem / bydlištěm.'); return }
     if (mistoShodne === false && !adresaDila.trim()) { setError('Vyplňte místo instalace.'); return }
@@ -290,8 +293,10 @@ export default function GenerateSodModal({ dealId, templates, onClose }: Props) 
               </svg>
               <span>
                 {empty.length === 1
-                  ? '1 pole zůstane v smlouvě prázdné'
-                  : `${empty.length} pole${empty.length < 5 ? 'a' : ''} zůstanou v smlouvě prázdná`}
+                  ? '1 pole zůstane ve smlouvě prázdné'
+                  : empty.length < 5
+                    ? `${empty.length} pole zůstanou ve smlouvě prázdná`
+                    : `${empty.length} polí zůstane ve smlouvě prázdných`}
                 {' '}— vyplňte je níže.
               </span>
             </div>
@@ -352,7 +357,7 @@ export default function GenerateSodModal({ dealId, templates, onClose }: Props) 
                     className={sidlo.trim() ? inputCls : inputEmptyCls}
                   />
                 </div>
-                <div role="radiogroup" aria-label="Místo instalace" className={`rounded-lg border px-3 py-2.5 space-y-2 text-sm ${mistoShodne === null ? 'border-red-300 dark:border-red-700 bg-red-50/50 dark:bg-red-900/10' : 'border-gray-200 dark:border-slate-600'}`}>
+                <div role="radiogroup" aria-label="Místo instalace" className={`rounded-lg border px-3 py-2.5 space-y-2 text-sm ${pokus && mistoShodne === null ? 'border-red-300 dark:border-red-700 bg-red-50/50 dark:bg-red-900/10' : 'border-gray-200 dark:border-slate-600'}`}>
                   <label className="flex items-start gap-2 cursor-pointer">
                     <input type="radio" name="mistoShodne" checked={mistoShodne === true} onChange={() => setMistoShodne(true)} disabled={generating} className="accent-primary mt-0.5" />
                     <span className="text-gray-700 dark:text-slate-300">Místo instalace je <strong>shodné</strong> se {jeFirma ? 'sídlem' : 'bydlištěm'}</span>
@@ -361,7 +366,7 @@ export default function GenerateSodModal({ dealId, templates, onClose }: Props) 
                     <input type="radio" name="mistoShodne" checked={mistoShodne === false} onChange={() => setMistoShodne(false)} disabled={generating} className="accent-primary mt-0.5" />
                     <span className="text-gray-700 dark:text-slate-300">Místo instalace je <strong>jinde</strong></span>
                   </label>
-                  {mistoShodne === null && <p className="text-xs text-red-600 dark:text-red-400">Vyberte jednu možnost.</p>}
+                  {pokus && mistoShodne === null && <p className="text-xs text-red-600 dark:text-red-400" role="alert">Vyberte jednu možnost.</p>}
                 </div>
                 {mistoShodne === false && (
                   <div>
@@ -427,7 +432,7 @@ export default function GenerateSodModal({ dealId, templates, onClose }: Props) 
                     min="1"
                     placeholder="14"
                     disabled={generating}
-                    className={empty.includes('pocet_dni_realizace') ? inputEmptyCls : inputCls}
+                    className={empty.includes('pocet_dni_realizace') && !pocetDniRealizace ? inputEmptyCls : inputCls}
                   />
                 </div>
                 {showZmenaTerm && (
