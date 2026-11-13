@@ -320,9 +320,10 @@ export default function AIAssistant() {
           className="dasha-btn dasha-fab hidden md:flex"
           onClick={() => setIsOpen(p => !p)}
           title="Dáša — AI asistentka (nedostupné v demo)"
+          aria-label="Dáša — AI asistentka"
           style={{ width: 56, height: 56, borderRadius: '50%', background: '#4CAF50', border: 'none', cursor: 'pointer', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 16px rgba(76,175,80,0.4)', transition: 'transform 0.15s' }}
         >
-          <span style={{ fontSize: 24 }}>✦</span>
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="#fff" aria-hidden><path d="M12 2l1.9 5.6L19.5 9.5l-5.6 1.9L12 17l-1.9-5.6L4.5 9.5l5.6-1.9L12 2zm7 11l.9 2.6 2.6.9-2.6.9L19 20l-.9-2.6-2.6-.9 2.6-.9L19 13z" /></svg>
         </button>
         {isOpen && (
           <div style={{ position: 'fixed', bottom: 90, right: 24, width: 360, zIndex: 1000, background: '#1e293b', border: '1px solid #334155', borderRadius: 16, padding: '28px 24px', boxShadow: '0 12px 48px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
@@ -388,9 +389,10 @@ export default function AIAssistant() {
         className="dasha-btn dasha-fab hidden md:flex"
         onClick={() => setIsOpen(p => !p)}
         title="Dáša — AI asistentka"
+        aria-label="Dáša — AI asistentka"
         style={{ width: '56px', height: '56px', borderRadius: '50%', background: '#4CAF50', border: 'none', cursor: 'pointer', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 16px rgba(76,175,80,0.45)', fontSize: '22px', transition: 'transform 0.2s' }}
       >
-        ✦
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="#fff" aria-hidden><path d="M12 2l1.9 5.6L19.5 9.5l-5.6 1.9L12 17l-1.9-5.6L4.5 9.5l5.6-1.9L12 2zm7 11l.9 2.6 2.6.9-2.6.9L19 20l-.9-2.6-2.6-.9 2.6-.9L19 13z" /></svg>
       </button>
 
       {isOpen && (

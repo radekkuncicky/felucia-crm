@@ -143,7 +143,8 @@ export default async function ZakazkaDetailLayout({
 
   return (
     <SbalitelnyDetail>
-    <div className="space-y-4">
+    {/* pb na mobilu: plovoucí tlačítko poznámky nesmí zakrýt poslední řádky */}
+    <div className="space-y-4 pb-16 md:pb-0">
       {/* Header — na mobilu sbalený (MobilniHlavicka), na desktopu celý */}
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 px-4 pt-4 sm:px-5 sm:py-5">
         <div className="flex flex-col gap-4">

@@ -13,7 +13,7 @@ import {
   IconClipboard, IconUsers, IconCoins, IconTrophy, IconTarget,
   IconSnowflake, IconFlame, IconWind, IconHeat, IconFan, IconCog,
   IconPhone, IconMail, IconHandshake, IconNote, IconCheck,
-  IconHammer, IconCreditCard, IconSparkles,
+  IconHammer, IconCreditCard,
 } from '@/components/ui/Icons'
 import { formatKcCompact } from '@/lib/format'
 import { getPerms, isTechnikView, dealScopeWhere, type Permissions } from '@/lib/permissions'
@@ -84,7 +84,6 @@ export default async function DashboardPage() {
   const dealScope = dealScopeWhere(perms, session!.user.id)
   const showObchod = dealScope !== null
   const ds = dealScope ?? {}
-  const activityScope = perms.obchodCiziOP ? {} : { userId: session!.user.id }
   const showKpi = await kpiPristup(orgId, perms)
 
   const [
@@ -113,10 +112,11 @@ export default async function DashboardPage() {
         },
       },
     }),
-    !showObchod ? [] : prisma.activity.findMany({
+    // Vlastní aktivity ukazuje „Co mám dělat“ — tady jen kolegové (pro toho, kdo vidí cizí OP)
+    !showObchod || !perms.obchodCiziOP ? [] : prisma.activity.findMany({
       where: {
         orgId,
-        ...activityScope,
+        NOT: { OR: [{ resitelId: session!.user.id }, { resitelId: null, userId: session!.user.id }] },
         stav: 'PLANOVANA',
         datum: { gte: today, lte: in7Days },
       },
@@ -177,22 +177,15 @@ export default async function DashboardPage() {
   return (
     <div className="max-w-6xl mx-auto w-full">
     <div className="space-y-6">
-      {showKpi && (
-        <Suspense fallback={<KpiRadaSkeleton />}>
-          <KpiRada orgId={orgId} />
-        </Suspense>
-      )}
-      <CoMamDelatPanel />
-
       {/* Header */}
-      <div className="flex items-end justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{greeting}, {firstName}</h1>
           <p className="text-sm text-gray-500 dark:text-slate-400 mt-0.5">
             {new Date().toLocaleDateString('cs-CZ', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
           </p>
         </div>
-        {showObchod && <div className="flex items-center gap-2">
+        {showObchod && <div className="flex items-center gap-2 [&>*]:flex-1 sm:[&>*]:flex-none [&_button]:w-full [&_button]:whitespace-nowrap">
           <DiktatButton />
           <ZapsatHovorButton />
           <Link href="/deals/new" className="hidden sm:flex items-center gap-2 bg-primary hover:bg-primary-hover text-white text-sm font-medium px-4 py-2 rounded-xl transition-colors">
@@ -204,10 +197,18 @@ export default async function DashboardPage() {
         </div>}
       </div>
 
+      {/* Co mám dělat je první; KPI vedení jen s přístupem */}
+      <CoMamDelatPanel />
+      {showKpi && (
+        <Suspense fallback={<KpiRadaSkeleton />}>
+          <KpiRada orgId={orgId} />
+        </Suspense>
+      )}
+
       {showObchod && (<>
 
       {/* KPI cards */}
-      <div className={`grid grid-cols-2 sm:grid-cols-3 ${perms.financeProdejni ? "lg:grid-cols-5" : "lg:grid-cols-4"} gap-3`}>
+      <div className={`flex overflow-x-auto scrollbar-none -mx-4 px-4 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-3 ${perms.financeProdejni ? "lg:grid-cols-5" : "lg:grid-cols-4"} gap-3`}>
         {[
           {
             label: 'Aktivní OP',
@@ -237,7 +238,7 @@ export default async function DashboardPage() {
             href: '/deals?filtr=aktivni',
           }]),
           {
-            label: 'Vyhráno (měsíc)',
+            label: 'Vyhráno tento měsíc',
             value: winsThisMonth,
             icon: <IconTrophy className="w-[18px] h-[18px]" />,
             iconBg: 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400',
@@ -245,7 +246,7 @@ export default async function DashboardPage() {
             href: '/deals?filtr=vyhraMesic',
           },
           {
-            label: 'Win rate',
+            label: 'Úspěšnost (celkem)',
             value: winRate !== null ? `${winRate} %` : '—',
             icon: <IconTarget className="w-[18px] h-[18px]" />,
             iconBg: winRate !== null && winRate >= 50 ? 'bg-green-50 dark:bg-green-950/40 text-green-600 dark:text-green-400' : 'bg-orange-50 dark:bg-orange-950/40 text-orange-600 dark:text-orange-400',
@@ -257,7 +258,7 @@ export default async function DashboardPage() {
           <Link
             key={stat.label}
             href={stat.href}
-            className="group bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4 hover:border-primary-light dark:hover:border-primary-dark hover:shadow-sm transition-all"
+            className="group min-w-[9.5rem] flex-shrink-0 sm:min-w-0 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-4 hover:border-primary-light dark:hover:border-primary-dark hover:shadow-sm transition-all"
           >
             <div className="flex items-center justify-between mb-2">
               <span className={`w-8 h-8 rounded-lg flex items-center justify-center ${stat.iconBg}`}>{stat.icon}</span>
@@ -265,7 +266,7 @@ export default async function DashboardPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
             </div>
-            <p className={`font-bold ${stat.color} ${stat.small ? 'text-xl' : 'text-3xl'} leading-tight`}>{stat.value}</p>
+            <p className={`font-bold ${stat.color} ${stat.small ? 'text-xl' : 'text-3xl'} leading-tight whitespace-nowrap`}>{stat.value}</p>
             <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">{stat.label}</p>
             {'delta' in stat && stat.delta && (
               <p className="text-xs font-medium text-primary dark:text-primary-light mt-1 flex items-center gap-0.5">
@@ -312,28 +313,22 @@ export default async function DashboardPage() {
       {/* Two column section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-        {/* Upcoming activities */}
+        {/* Aktivity kolegů (vlastní jsou v „Co mám dělat“) */}
+        {upcomingActivities.length > 0 && (
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-5">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-semibold text-gray-900 dark:text-white">Plánované aktivity</h2>
+            <h2 className="font-semibold text-gray-900 dark:text-white">Aktivity kolegů</h2>
             <div className="flex items-center gap-3">
               <Link href="/calendar" className="text-xs text-gray-500 dark:text-slate-400 hover:text-primary dark:hover:text-primary-light">Kalendář →</Link>
               <Link href="/activities" className="text-xs text-primary dark:text-primary-light hover:underline">Vše →</Link>
             </div>
           </div>
-          {upcomingActivities.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-6 text-center">
-              <IconSparkles className="w-8 h-8 mb-2 text-primary-light" />
-              <p className="text-sm text-gray-400 dark:text-slate-500">Žádné plánované aktivity</p>
-              <Link href="/deals" className="mt-2 text-xs text-primary dark:text-primary-light hover:underline">Otevřít obchodní případ →</Link>
-            </div>
-          ) : (
-            <UpcomingActivitiesGroups activities={upcomingActivities} today={today} tomorrow={tomorrow} dayAfterTomorrow={dayAfterTomorrow} />
-          )}
+          <UpcomingActivitiesGroups activities={upcomingActivities} today={today} tomorrow={tomorrow} dayAfterTomorrow={dayAfterTomorrow} />
         </div>
+        )}
 
-        {/* Right column: deadlines + recent wins */}
-        <div className="space-y-5">
+        {/* Termíny + výhry: vedle aktivit kolegů ve sloupci, jinak vedle sebe */}
+        <div className={upcomingActivities.length > 0 ? 'space-y-5' : 'contents'}>
           {/* Upcoming deadlines */}
           <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-5">
             <div className="flex items-center justify-between mb-4">

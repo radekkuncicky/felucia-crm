@@ -94,7 +94,10 @@ export default function Sidebar({ user, orgNazev }: Props) {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-2 py-2 overflow-y-auto overflow-x-hidden scrollbar-none">
+      {/* Nav — tenký posuvník + přechod dole napoví, že menu pokračuje */}
+      <div className="relative flex-1 min-h-0 flex flex-col">
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-gradient-to-t from-[#1A2E1B] dark:from-slate-950 to-transparent z-10" aria-hidden />
+      <nav className="flex-1 px-2 pt-2 pb-5 overflow-y-auto overflow-x-hidden sidebar-scroll">
         {sections.map((sec, i) => (
           <div key={sec.id} className={i > 0 ? (collapsed || !sec.title ? 'mt-2 pt-2 border-t border-green-900/40 dark:border-slate-800' : 'mt-3') : ''}>
             {sec.title && !collapsed && (
@@ -106,6 +109,7 @@ export default function Sidebar({ user, orgNazev }: Props) {
           </div>
         ))}
       </nav>
+      </div>
 
       {/* Collapse toggle - desktop only */}
       <button

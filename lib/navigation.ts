@@ -8,7 +8,7 @@ import { getPlanLimits } from './planLimits'
 
 export type NavIconKey =
   | 'home' | 'calendar' | 'users' | 'bell' | 'briefcase' | 'document' | 'clipboard' | 'warehouse'
-  | 'wrench' | 'chart' | 'box' | 'activity' | 'contract' | 'cog' | 'folder' | 'key' | 'plus' | 'mapPin'
+  | 'wrench' | 'chart' | 'target' | 'box' | 'activity' | 'contract' | 'cog' | 'folder' | 'key' | 'plus' | 'mapPin'
 
 export interface NavItem {
   id: string
@@ -98,7 +98,7 @@ const I = {
   quoteTemplates: { id: 'quote-templates', href: '/quote-templates', label: 'Vzorové nabídky', icon: 'document' },
   documents: { id: 'documents', href: '/documents', label: 'Dokumenty', icon: 'folder' },
   analytics: { id: 'analytics', href: '/analytics', label: 'Analýzy', icon: 'chart' },
-  kpi: { id: 'kpi', href: '/kpi', label: 'KPI vedení', icon: 'chart' },
+  kpi: { id: 'kpi', href: '/kpi', label: 'KPI vedení', icon: 'target' },
   settings: { id: 'settings', href: '/settings', label: 'Nastavení', icon: 'cog' },
   superadmin: { id: 'superadmin', href: '/superadmin', label: 'Superadmin', icon: 'key' },
 } satisfies Record<string, NavItem>
@@ -136,7 +136,9 @@ export function sidebarSections(ctx: NavCtx): NavSection[] {
     ])),
     ...section('aktivity', undefined, pick([[f.obchod, I.activities]])),
     ...section('katalog', 'Katalog', pick([[f.obchod, I.products], [f.obchod, I.quoteTemplates]])),
-    ...section('vice', undefined, pick([[f.kpi, I.kpi], [f.dokumenty, I.documents], [f.analytiky, I.analytics]])),
+    // čísla pohromadě (Analýzy = obchod, KPI = cíle vedení), dokumenty zvlášť
+    ...section('prehledy', 'Přehledy', pick([[f.analytiky, I.analytics], [f.kpi, I.kpi]])),
+    ...section('vice', undefined, pick([[f.dokumenty, I.documents]])),
   ]
 }
 

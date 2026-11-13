@@ -9,9 +9,9 @@ const menu = (c: NavCtx) => sidebarSections(c).flatMap(s => s.items.map(i => i.h
 const paleta = (c: NavCtx) => { const p = paletteItems(c); return [...p.navigace, ...p.akce].map(i => i.href) }
 
 describe('navigace podle role', () => {
-  it('admin má sekce Obchod / Realizace / Servis / Katalog a nastavení', () => {
+  it('admin má sekce Obchod / Realizace / Servis / Katalog / Přehledy a nastavení', () => {
     const s = sidebarSections(ctx('ADMIN'))
-    expect(s.map(x => x.title).filter(Boolean)).toEqual(['Obchod', 'Realizace', 'Servis', 'Katalog'])
+    expect(s.map(x => x.title).filter(Boolean)).toEqual(['Obchod', 'Realizace', 'Servis', 'Katalog', 'Přehledy'])
     expect(menu(ctx('ADMIN'))).toEqual(expect.arrayContaining(['/quotes', '/predavaky', '/servis/portfolio', '/activities']))
     expect(footerItems(ctx('ADMIN')).map(i => i.href)).toContain('/settings')
   })
