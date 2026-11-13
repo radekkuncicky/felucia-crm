@@ -31,6 +31,12 @@ describe('navigace podle role', () => {
     expect(sidebarSections(ctx('HLAVNI_TECHNIK'))[0].items.find(i => i.id === 'zakazky')?.label).toBe('Zakázky')
   })
 
+  it('Práce techniků (/vykazy) jen s přístupem k nákladům', () => {
+    expect(menu(ctx('ADMIN'))).toContain('/vykazy')
+    expect(menu(ctx('MANAZER'))).toContain('/vykazy')
+    for (const role of ['OBCHODNIK', 'TECHNIK', 'HLAVNI_TECHNIK'] as const) expect(paleta(ctx(role))).not.toContain('/vykazy')
+  })
+
   it('servis jen s plánem PROFESSIONAL+ a zapnutým modulem', () => {
     expect(menu(ctx('ADMIN', 'STANDARD'))).not.toContain('/servis')
     expect(menu(ctx('ADMIN', 'PROFESSIONAL', { ...org, modulServis: false }))).not.toContain('/servis')

@@ -1,7 +1,7 @@
 import type { NavIconKey } from '@/lib/navigation'
 import {
   IconHome, IconCalendar, IconUsers, IconBell, IconBriefcase, IconDocument, IconClipboard, IconWarehouse,
-  IconWrench, IconChart, IconTarget, IconBox, IconActivity, IconContract, IconCog, IconKey, IconMapPin,
+  IconWrench, IconChart, IconTarget, IconBox, IconActivity, IconContract, IconCog, IconKey, IconMapPin, IconClock,
 } from '@/components/ui/Icons'
 
 function IconPlus(props: React.SVGProps<SVGSVGElement>) {
@@ -16,7 +16,7 @@ const ICONS: Record<NavIconKey, React.ComponentType<React.SVGProps<SVGSVGElement
   home: IconHome, calendar: IconCalendar, users: IconUsers, bell: IconBell, briefcase: IconBriefcase,
   document: IconDocument, clipboard: IconClipboard, warehouse: IconWarehouse, wrench: IconWrench,
   chart: IconChart, target: IconTarget, box: IconBox, activity: IconActivity, contract: IconContract, cog: IconCog,
-  folder: IconDocument, key: IconKey, plus: IconPlus, mapPin: IconMapPin,
+  folder: IconDocument, key: IconKey, plus: IconPlus, mapPin: IconMapPin, clock: IconClock,
 }
 
 /** Ikona položky navigace podle klíče z lib/navigation.ts */

@@ -4,6 +4,7 @@ import { prisma } from '../lib/prisma'
 import { findDueReminders, processReminder } from './reminders'
 import { sweepWebhookOutbox, deliverWebhook } from './webhooks'
 import { sweepExpirovanePodpisy, sweepPripominkyPodpisu } from './podpisy'
+import { sweepVykazPripominky } from '../lib/vykazPripominka'
 import { sweepNabidkyFollowUp } from './followupy'
 import { sweepKpiTydenniSouhrn } from './kpiSouhrn'
 import { abraKonfigurace } from '../lib/abra/flexi'
@@ -103,6 +104,16 @@ async function main() {
   await boss.work(QUEUE_KPI_SOUHRN, async () => {
     const n = await sweepKpiTydenniSouhrn(prisma)
     if (n > 0) console.log(`[kpi-souhrn] odesláno ${n} týdenních souhrnů KPI`)
+  })
+
+  const QUEUE_VYKAZ_PRIPOMINKA = 'vykaz-pripominka'
+  await boss.createQueue(QUEUE_VYKAZ_PRIPOMINKA)
+  // 18:00 místního času po–so: technik byl dnes na zakázce a nic nezapsal → push
+  await boss.schedule(QUEUE_VYKAZ_PRIPOMINKA, '0 18 * * 1-6', {}, { tz: 'Europe/Prague' })
+
+  await boss.work(QUEUE_VYKAZ_PRIPOMINKA, async () => {
+    const n = await sweepVykazPripominky()
+    if (n > 0) console.log(`[vykaz-pripominka] odesláno ${n} připomínek zápisu práce`)
   })
 
   const QUEUE_ABRA_SYNC = 'abra-sync'

@@ -16,7 +16,8 @@ export type PushMessage = {
   title: string
   body: string
   // 'zakazka' otevírá felucia-tech, 'pripad' felucia-sales (obě appky sdílejí User.pushToken)
-  data?: { type: 'zakazka'; zakazkaId: string } | { type: 'pripad'; pripadId: string }
+  // 'vykaz' otevře ve felucia-tech obrazovku Výkaz práce (blok „Dnes nezapsáno“)
+  data?: { type: 'zakazka'; zakazkaId: string } | { type: 'pripad'; pripadId: string } | { type: 'vykaz' }
 }
 
 function isExpoPushToken(token: string) {

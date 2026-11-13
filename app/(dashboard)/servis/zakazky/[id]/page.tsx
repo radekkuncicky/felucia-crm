@@ -3,7 +3,10 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { notFound } from 'next/navigation'
 import PlatinumGuard from '@/components/PlatinumGuard'
-import { getPerms, servisScopeWhere } from '@/lib/permissions'
+import { getPerms, isTechnikView, servisScopeWhere } from '@/lib/permissions'
+import { orgPrisma } from '@/lib/orgPrisma'
+import { vykazZakazkyPoTechnicich } from '@/lib/vykazPrace'
+import VykazPraceTabulka from '@/app/(dashboard)/zakazky/[id]/VykazPraceTabulka'
 import { getPlanLimits } from '@/lib/planLimits'
 import ZakazkaDetailClient from './ZakazkaDetailClient'
 
@@ -50,11 +53,21 @@ export default async function ServisZakazkaDetailPage({ params }: { params: { id
 
   if (!z) notFound()
 
-  const orgUsers = await prisma.user.findMany({
-    where: { orgId, aktivni: true },
-    select: { id: true, jmeno: true },
-    orderBy: { jmeno: 'asc' },
-  })
+  const ukazVykaz = !isTechnikView(perms)
+  const [orgUsers, vykaz] = await Promise.all([
+    prisma.user.findMany({
+      where: { orgId, aktivni: true },
+      select: { id: true, jmeno: true },
+      orderBy: { jmeno: 'asc' },
+    }),
+    ukazVykaz
+      ? orgPrisma(orgId).vykazPrace.findMany({
+          where: { servisniZakazkaId: z.id, orgId },
+          orderBy: [{ datum: 'asc' }, { vytvoreno: 'asc' }],
+          include: { user: { select: { jmeno: true } } },
+        })
+      : [],
+  ])
 
   const klient = z.kontrakt?.klient ?? z.klient ?? null
 
@@ -104,5 +117,12 @@ export default async function ServisZakazkaDetailPage({ params }: { params: { id
   }
 
   // Ruční přepis stavu, přiřazení technika a termín = dispečink
-  return <ZakazkaDetailClient zakazka={data} orgUsers={orgUsers} canEdit={true} isAdmin={perms.servisDispecink} />
+  return (
+    <div className="space-y-4">
+      <ZakazkaDetailClient zakazka={data} orgUsers={orgUsers} canEdit={true} isAdmin={perms.servisDispecink} />
+      {ukazVykaz && (
+        <VykazPraceTabulka technici={vykazZakazkyPoTechnicich(vykaz)} showCastky={perms.financeNakupky} coZakazka="k servisu" />
+      )}
+    </div>
+  )
 }

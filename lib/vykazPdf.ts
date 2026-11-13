@@ -1,4 +1,7 @@
 import { formatDate } from '@/lib/format'
+import { prisma } from '@/lib/prisma'
+import { orgPrisma } from '@/lib/orgPrisma'
+import { VYKAZ_INCLUDE, castkaZaznamu, num, souctyVykazu, zakazkaZaznamu } from '@/lib/vykazPrace'
 
 /** HTML výkazu práce technika pro PDF (podklad k faktuře technika firmě). Vše escapované. */
 
@@ -120,4 +123,41 @@ export function generateVykazHtml(p: VykazPdfData): string {
   </div>
   <p style="color:#6b7280;font-size:9.5px;margin-top:16px;">Částky bez DPH. Vystaveno ${esc(formatDate(p.vytvoreno))} z aplikace Felucia Technik.</p>
 </body></html>`
+}
+
+/**
+ * HTML uzavřeného výkazu (fakturace) v rámci org. `userId` = omezit na výkaz daného technika
+ * (appka); web s financeNakupky ho nepředává. `null` = nenalezeno.
+ */
+export async function nactiVykazHtml(orgId: string, fakturaceId: string, userId?: string): Promise<{ html: string; nazevSouboru: string } | null> {
+  const db = orgPrisma(orgId)
+  const fakturace = await db.vykazFakturace.findFirst({
+    where: { id: fakturaceId, orgId, ...(userId ? { userId } : {}) },
+    include: {
+      user: { select: { jmeno: true, email: true, telefon: true } },
+      zaznamy: { include: VYKAZ_INCLUDE, orderBy: [{ datum: 'asc' }, { vytvoreno: 'asc' }] },
+    },
+  })
+  if (!fakturace) return null
+  // organizations nejsou tenant tabulka s RLS kontextem → owner klient jen na název
+  const org = await prisma.organization.findUnique({ where: { id: orgId }, select: { nazev: true } })
+
+  const html = generateVykazHtml({
+    orgNazev: org?.nazev ?? '',
+    technik: { jmeno: fakturace.user.jmeno, email: fakturace.user.email, telefon: fakturace.user.telefon },
+    cislo: fakturace.cislo,
+    obdobiOd: fakturace.obdobiOd,
+    obdobiDo: fakturace.obdobiDo,
+    vytvoreno: fakturace.vytvoreno,
+    radky: fakturace.zaznamy.map(z => {
+      const zak = zakazkaZaznamu(z)
+      return {
+        typ: z.typ, datum: z.datum, cislo: zak.cislo, nazev: zak.nazev,
+        hodiny: num(z.hodiny), km: z.km, popis: z.popis, poznamka: z.poznamka, castka: castkaZaznamu(z),
+      }
+    }),
+    soucty: souctyVykazu(fakturace.zaznamy),
+  })
+  const jmeno = fakturace.user.jmeno.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^A-Za-z0-9]+/g, '-')
+  return { html, nazevSouboru: `vykaz-prace-${fakturace.cislo}-${jmeno}.pdf` }
 }

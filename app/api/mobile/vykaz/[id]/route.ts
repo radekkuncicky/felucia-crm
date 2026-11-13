@@ -35,14 +35,11 @@ export async function PATCH(req: Request, { params }: Ctx) {
 
   let sazbaHodina = zaznam.sazbaHodina == null ? null : Number(zaznam.sazbaHodina)
   let sazbaKm = zaznam.sazbaKm == null ? null : Number(zaznam.sazbaKm)
-  if (vstup.typ === 'VYJEZD' && ((vstup.hodiny > 0 && sazbaHodina == null) || (vstup.km > 0 && sazbaKm == null))) {
-    // záznam vznikl bez dané sazby (např. jen km) → doplnit aktuální sazbu technika
+  if (vstup.typ === 'VYJEZD' && (sazbaHodina == null || sazbaKm == null)) {
+    // záznam vznikl bez dané sazby → doplnit aktuální sazbu technika (pokud ji firma už nastavila)
     const user = await db.user.findFirst({ where: { id: userId, orgId }, select: { sazbaHodina: true, sazbaKm: true } })
     sazbaHodina ??= user?.sazbaHodina == null ? null : Number(user.sazbaHodina)
     sazbaKm ??= user?.sazbaKm == null ? null : Number(user.sazbaKm)
-    if ((vstup.hodiny > 0 && sazbaHodina == null) || (vstup.km > 0 && sazbaKm == null)) {
-      return NextResponse.json({ error: 'Nejdřív si v Nastavení (Já) vyplň svoje sazby', kod: 'CHYBI_SAZBY' }, { status: 400 })
-    }
   }
 
   // updateMany s podmínkou fakturaceId: null — souběh s „Vyfakturováno“ nesmí změnit uzavřený záznam

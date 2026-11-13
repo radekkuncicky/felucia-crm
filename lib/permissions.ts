@@ -331,6 +331,11 @@ export function canEditKatalog(perms: Permissions): boolean {
   return perms.nastaveniOrg || perms.financeNakupkyEdit
 }
 
+/** Nastavuje sazby technikům pro výkaz práce (náklad firmy) — vedení se správou nákupek nebo uživatelů */
+export function canEditSazbyVykazu(perms: Permissions): boolean {
+  return perms.financeNakupky && (perms.financeNakupkyEdit || perms.spravaUzivatelu)
+}
+
 /** 403 pro API routy (plain Response, aby šel modul importovat i z klientských komponent) */
 export function forbidden(message = 'Forbidden') {
   return Response.json({ error: message }, { status: 403 })

@@ -1,11 +1,14 @@
 import { createHmac, timingSafeEqual } from 'crypto'
 import type { Prisma } from '@prisma/client'
+import { resolvePermissions } from '@/lib/permissions'
 
 /**
  * Výkaz práce techniků — hodiny + km (VYJEZD) a vlastní položky (POLOZKA: materiál, odměna…)
  * k zakázce nebo servisnímu výjezdu. Technik (OSVČ) si z nevyfakturovaných záznamů dělá
  * podklad k faktuře firmě; „Vyfakturováno“ je uzavře do VykazFakturace.
- * Sazby jsou technikova odměna = náklad firmy (ne prodejní cena).
+ * Sazby jsou technikova odměna = náklad firmy (ne prodejní cena). Nastavuje je firma na webu
+ * (Nastavení → Uživatelé); technik je v appce jen vidí. Zápis bez sazby projde („čeká na sazbu“),
+ * sazba se do otevřených záznamů doplní, až ji firma nastaví — uzavřít výkaz jde až pak.
  */
 
 export const VYKAZ_LIMITY = {
@@ -31,7 +34,13 @@ export type VykazRadekDb = {
   castka: Num
 }
 
-/** Částka jednoho záznamu v Kč */
+/** Výjezd s hodinami/km, ke kterým zatím není sazba (firma ji ještě nenastavila) */
+export function chybiSazbaZaznamu(z: VykazRadekDb): boolean {
+  if (z.typ === 'POLOZKA') return false
+  return (num(z.hodiny) > 0 && z.sazbaHodina == null) || (z.km > 0 && z.sazbaKm == null)
+}
+
+/** Částka jednoho záznamu v Kč (chybějící sazba = ta část se zatím nepočítá) */
 export function castkaZaznamu(z: VykazRadekDb): number {
   if (z.typ === 'POLOZKA') return round2(num(z.castka))
   return round2(num(z.hodiny) * num(z.sazbaHodina) + z.km * num(z.sazbaKm))
@@ -45,11 +54,14 @@ export type VykazSoucty = {
   castkaPolozky: number
   castka: number
   pocet: number
+  /** počet výjezdů, kterým chybí sazba (částka je pak neúplná) */
+  chybiSazba: number
 }
 
 export function souctyVykazu(zaznamy: VykazRadekDb[]): VykazSoucty {
-  const s: VykazSoucty = { hodiny: 0, km: 0, castkaHodiny: 0, castkaKm: 0, castkaPolozky: 0, castka: 0, pocet: zaznamy.length }
+  const s: VykazSoucty = { hodiny: 0, km: 0, castkaHodiny: 0, castkaKm: 0, castkaPolozky: 0, castka: 0, pocet: zaznamy.length, chybiSazba: 0 }
   for (const z of zaznamy) {
+    if (chybiSazbaZaznamu(z)) s.chybiSazba++
     if (z.typ === 'POLOZKA') {
       s.castkaPolozky += num(z.castka)
     } else {
@@ -104,6 +116,7 @@ export function serializeZaznam(z: VykazSInclude) {
     popis: z.popis,
     poznamka: z.poznamka,
     castka: castkaZaznamu(z),
+    chybiSazba: chybiSazbaZaznamu(z),
     vyfakturovano: !!z.fakturaceId,
     fakturaceId: z.fakturaceId,
     zakazka: zakazkaZaznamu(z),
@@ -164,6 +177,30 @@ export function parseSazba(v: unknown): number | null | 'chyba' {
   return round2(n)
 }
 
+// ── Sazby technika (nastavuje firma) ─────────────────────────────────────────
+
+type SazbyDb = {
+  vykazPrace: { updateMany: (a: { where: Prisma.VykazPraceWhereInput; data: Prisma.VykazPraceUpdateManyMutationInput }) => Promise<{ count: number }> }
+}
+
+/**
+ * Po nastavení sazby firmou doplní sazbu do OTEVŘENÝCH výjezdů technika, které ji zatím nemají.
+ * Už nasnapshotovaná sazba ani uzavřené záznamy se nemění.
+ */
+export async function doplnSazbyOtevrenym(
+  db: SazbyDb, orgId: string, userId: string, sazby: { sazbaHodina?: number | null; sazbaKm?: number | null },
+): Promise<number> {
+  let n = 0
+  const base = { orgId, userId, typ: 'VYJEZD' as const, fakturaceId: null }
+  if (sazby.sazbaHodina != null) {
+    n += (await db.vykazPrace.updateMany({ where: { ...base, sazbaHodina: null }, data: { sazbaHodina: sazby.sazbaHodina } })).count
+  }
+  if (sazby.sazbaKm != null) {
+    n += (await db.vykazPrace.updateMany({ where: { ...base, sazbaKm: null }, data: { sazbaKm: sazby.sazbaKm } })).count
+  }
+  return n
+}
+
 // ── Podepsaný odkaz na PDF (appka ho otevře v prohlížeči bez Bearer tokenu) ────
 
 export const VYKAZ_PDF_TTL_SEC = 10 * 60
@@ -204,7 +241,7 @@ export type VykazZakazkyTechnik = {
   soucty: VykazSoucty
   vyfakturovano: number
   pocetVyfakturovano: number
-  zaznamy: { id: string; typ: 'VYJEZD' | 'POLOZKA'; datum: Date; hodiny: number; km: number; popis: string | null; poznamka: string | null; castka: number; vyfakturovano: boolean }[]
+  zaznamy: { id: string; typ: 'VYJEZD' | 'POLOZKA'; datum: Date; hodiny: number; km: number; popis: string | null; poznamka: string | null; castka: number; chybiSazba: boolean; vyfakturovano: boolean }[]
 }
 
 type VykazZakazkyDb = VykazRadekDb & {
@@ -227,9 +264,99 @@ export function vykazZakazkyPoTechnicich(zaznamy: VykazZakazkyDb[]): VykazZakazk
         pocetVyfakturovano: fakt.length,
         zaznamy: zz.map(z => ({
           id: z.id, typ: z.typ, datum: z.datum, hodiny: num(z.hodiny), km: z.km,
-          popis: z.popis, poznamka: z.poznamka, castka: castkaZaznamu(z), vyfakturovano: !!z.fakturaceId,
+          popis: z.popis, poznamka: z.poznamka, castka: castkaZaznamu(z), chybiSazba: chybiSazbaZaznamu(z), vyfakturovano: !!z.fakturaceId,
         })),
       }
     })
     .sort((a, b) => b.soucty.castka - a.soucty.castka || b.soucty.hodiny - a.soucty.hodiny)
+}
+
+// ── Kdo ve firmě vidí výkazy (náklady) ───────────────────────────────────────
+
+type UserPermsDb = { id: string; role: string; permissions: unknown }
+
+/** Aktivní uživatelé s přístupem k nákladům (financeNakupky) — dostávají info o uzavřených výkazech */
+export function prijemciVykazu(users: UserPermsDb[], plan: string, krome?: string): string[] {
+  return users
+    .filter(u => u.id !== krome && resolvePermissions(u.role, u.permissions, plan).financeNakupky)
+    .map(u => u.id)
+}
+
+const fmtCislo = (n: number, d = 2) => new Intl.NumberFormat('cs-CZ', { maximumFractionDigits: d }).format(n)
+
+/** Text bell notifikace o uzavření výkazu */
+export function zpravaUzavreni(jmeno: string, cislo: number, s: { hodiny: number; km: number; castka: number }): string {
+  return `${jmeno} uzavřel(a) výkaz práce č. ${cislo} · ${fmtCislo(s.hodiny)} h · ${fmtCislo(s.km, 0)} km · ${fmtCislo(s.castka, 0)} Kč`
+}
+
+// ── Přehled pro vedení (/vykazy) ─────────────────────────────────────────────
+
+export type PrehledZaznam = {
+  id: string; typ: 'VYJEZD' | 'POLOZKA'; datum: string; hodiny: number; km: number
+  popis: string | null; poznamka: string | null; castka: number; chybiSazba: boolean
+  zakazka: { druh: 'ZAKAZKA' | 'SERVIS'; id: string; cislo: string; nazev: string }
+}
+
+export type PrehledTechnik = {
+  userId: string
+  jmeno: string
+  aktivni: boolean
+  sazbaHodina: number | null
+  sazbaKm: number | null
+  otevreno: VykazSoucty
+  otevrenoOd: string | null
+  zaznamy: PrehledZaznam[]
+  posledni: { cislo: number; obdobiDo: string; vytvoreno: string; castka: number } | null
+}
+
+type PrehledUserDb = { id: string; jmeno: string; aktivni: boolean; sazbaHodina: Num; sazbaKm: Num }
+type PrehledFakturaceDb = { userId: string; cislo: number; obdobiDo: Date; vytvoreno: Date; castkaCelkem: Num }
+
+/**
+ * Technici s otevřenými (nevyfakturovanými) záznamy a sazbami. `users` = technici, které chceme vidět
+ * i bez záznamů (kvůli nastavení sazeb); autor otevřeného záznamu se přidá vždy.
+ * Řazení: kdo má otevřeno víc Kč nahoře, pak podle jména.
+ */
+export function prehledTechniku(
+  users: PrehledUserDb[],
+  otevrene: (VykazSInclude & { user: PrehledUserDb })[],
+  fakturace: PrehledFakturaceDb[],
+): PrehledTechnik[] {
+  const map = new Map<string, { user: PrehledUserDb; zz: (VykazSInclude & { user: PrehledUserDb })[] }>()
+  for (const u of users) map.set(u.id, { user: u, zz: [] })
+  for (const z of otevrene) {
+    const e = map.get(z.userId) ?? { user: z.user, zz: [] }
+    e.zz.push(z)
+    map.set(z.userId, e)
+  }
+  const posledni = new Map<string, PrehledFakturaceDb>()
+  for (const f of fakturace) {
+    const p = posledni.get(f.userId)
+    if (!p || f.cislo > p.cislo) posledni.set(f.userId, f)
+  }
+  return Array.from(map.values())
+    .map(({ user, zz }) => {
+      const serazene = [...zz].sort((a, b) => a.datum.getTime() - b.datum.getTime())
+      const p = posledni.get(user.id)
+      return {
+        userId: user.id,
+        jmeno: user.jmeno,
+        aktivni: user.aktivni,
+        sazbaHodina: user.sazbaHodina == null ? null : num(user.sazbaHodina),
+        sazbaKm: user.sazbaKm == null ? null : num(user.sazbaKm),
+        otevreno: souctyVykazu(serazene),
+        otevrenoOd: serazene[0] ? serazene[0].datum.toISOString().slice(0, 10) : null,
+        zaznamy: serazene.map(z => ({
+          id: z.id, typ: z.typ, datum: z.datum.toISOString().slice(0, 10), hodiny: num(z.hodiny), km: z.km,
+          popis: z.popis, poznamka: z.poznamka, castka: castkaZaznamu(z), chybiSazba: chybiSazbaZaznamu(z),
+          zakazka: zakazkaZaznamu(z),
+        })),
+        posledni: p ? {
+          cislo: p.cislo, obdobiDo: p.obdobiDo.toISOString().slice(0, 10),
+          vytvoreno: p.vytvoreno.toISOString(), castka: num(p.castkaCelkem),
+        } : null,
+      }
+    })
+    .filter(t => t.aktivni || t.zaznamy.length > 0)
+    .sort((a, b) => b.otevreno.castka - a.otevreno.castka || b.otevreno.hodiny - a.otevreno.hodiny || a.jmeno.localeCompare(b.jmeno, 'cs'))
 }

@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { getMobileOrWebSession, requireTechnikOrAdmin } from '@/lib/mobile-helpers'
-import { signVykazPdfUrl, souctyVykazu } from '@/lib/vykazPrace'
+import { prijemciVykazu, signVykazPdfUrl, souctyVykazu, zpravaUzavreni } from '@/lib/vykazPrace'
+import { createNotification } from '@/lib/createNotification'
 
 // POST /api/mobile/vykaz/vyfakturovat { ids: string[] }
 // Uzavře PŘEDANÉ nevyfakturované záznamy (to, co technik viděl v náhledu) do nové VykazFakturace.
@@ -27,6 +28,7 @@ export async function POST(req: Request) {
     })
     if (zaznamy.length === 0) return null
     const s = souctyVykazu(zaznamy)
+    if (s.chybiSazba > 0) return 'sazby' as const
     const posledni = await tx.vykazFakturace.findFirst({ where: { orgId, userId }, orderBy: { cislo: 'desc' }, select: { cislo: true } })
     const fakturace = await tx.vykazFakturace.create({
       data: {
@@ -53,10 +55,23 @@ export async function POST(req: Request) {
     throw e
   })
 
+  if (result === 'sazby') {
+    return NextResponse.json({ error: 'Některým výjezdům chybí sazba — firma ti ji ještě nenastavila. Ozvi se, pak jde výkaz uzavřít.', kod: 'CHYBI_SAZBY' }, { status: 409 })
+  }
   if (result === 'soubeh') return NextResponse.json({ error: 'Záznamy se mezitím změnily — obnov přehled a zkus to znovu' }, { status: 409 })
   if (!result) return NextResponse.json({ error: 'Záznamy už jsou vyfakturované' }, { status: 409 })
 
   const f = result.fakturace
+
+  // info vedení (bez schvalování — pravidla fakturace si firma řeší mimo appku)
+  const [ja, users] = await Promise.all([
+    db.user.findFirst({ where: { id: userId, orgId }, select: { jmeno: true } }),
+    db.user.findMany({ where: { orgId, aktivni: true }, select: { id: true, role: true, permissions: true } }),
+  ])
+  const zprava = zpravaUzavreni(ja?.jmeno ?? 'Technik', f.cislo, result.soucty)
+  for (const prijemce of prijemciVykazu(users, session!.user.plan, userId)) {
+    await createNotification({ orgId, userId: prijemce, typ: 'VYKAZ', zprava, url: '/vykazy' })
+  }
   return NextResponse.json({
     id: f.id,
     cislo: f.cislo,

@@ -216,3 +216,7 @@ export const IconEye = (p: SVGProps<SVGSVGElement>) => (
 export const IconDots = (p: SVGProps<SVGSVGElement>) => (
   <svg {...base(p)} fill="currentColor" stroke="none"><circle cx="5" cy="12" r="1.8" /><circle cx="12" cy="12" r="1.8" /><circle cx="19" cy="12" r="1.8" /></svg>
 )
+
+export const IconClock = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+)

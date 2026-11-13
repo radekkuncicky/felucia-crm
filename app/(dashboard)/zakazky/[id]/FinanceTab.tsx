@@ -51,10 +51,13 @@ export default async function FinanceTab({ zakazkaId, orgId, showProdejni, showN
   const oranzova = 'text-orange-600 dark:text-orange-400'
   const nicProdejni = f.cenaOP === null && f.pocetVyuctovani === 0
   const nicNakupky = f.cnMarzeProc === null && f.nakupniTotal === 0
+  // hrubý výsledek: vyúčtování (vč. návrhů), jinak cena OP − materiál − práce techniků
+  const zaklad = f.vyuctovaniCelkem > 0 ? f.vyuctovaniCelkem : f.cenaOP
+  const zbyva = zaklad !== null && zaklad > 0 ? zaklad - f.nakupniTotal - nakladPrace : null
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {showProdejni && (
           <>
             <Karta
@@ -99,6 +102,14 @@ export default async function FinanceTab({ zakazkaId, orgId, showProdejni, showN
                 : 'zatím nic nezapsáno'}
             />
           </>
+        )}
+        {showProdejni && showNakupky && zbyva !== null && (
+          <Karta
+            nadpis="Zbývá po nákladech"
+            hodnota={formatKc(zbyva)}
+            hodnotaCls={zbyva >= 0 ? zelena : 'text-red-600 dark:text-red-400'}
+            popis={`${f.vyuctovaniCelkem > 0 ? 'vyúčtování' : 'cena OP'} − materiál − práce techniků · ${Math.round(zbyva / zaklad! * 100)} %`}
+          />
         )}
       </div>
       {(showProdejni ? nicProdejni : true) && (showNakupky ? nicNakupky : true) && technici.length === 0 && (

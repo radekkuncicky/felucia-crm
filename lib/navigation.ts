@@ -8,7 +8,7 @@ import { getPlanLimits } from './planLimits'
 
 export type NavIconKey =
   | 'home' | 'calendar' | 'users' | 'bell' | 'briefcase' | 'document' | 'clipboard' | 'warehouse'
-  | 'wrench' | 'chart' | 'target' | 'box' | 'activity' | 'contract' | 'cog' | 'folder' | 'key' | 'plus' | 'mapPin'
+  | 'wrench' | 'chart' | 'target' | 'box' | 'activity' | 'contract' | 'cog' | 'folder' | 'key' | 'plus' | 'mapPin' | 'clock'
 
 export interface NavItem {
   id: string
@@ -50,6 +50,8 @@ export interface NavFlags {
   zakazky: boolean
   protokoly: boolean
   sklad: boolean
+  /** Práce techniků (výkazy hodin/km) — náklady, tedy jen s financeNakupky */
+  vykazy: boolean
   dokumenty: boolean
   analytiky: boolean
   kpi: boolean
@@ -70,6 +72,7 @@ export function navFlags({ perms, plan, orgSettings, isSuperAdmin }: NavCtx): Na
     zakazky: perms.zakazky !== 'ZADNE',
     protokoly: technik || perms.zakazkySchvalovani,
     sklad: perms.sklad !== 'ZADNY',
+    vykazy: !technik && perms.financeNakupky,
     // Dokumenty a analýzy jsou v middleware obchodní prefixy — technik je nevidí
     dokumenty: !technik && !!org.modulDokumenty,
     analytiky: !technik && !!org.modulAnalytiky && perms.analytiky,
@@ -88,6 +91,7 @@ const I = {
   quotes: { id: 'quotes', href: '/quotes', label: 'Nabídky', icon: 'document' },
   zakazky: { id: 'zakazky', href: '/zakazky', label: 'Zakázky', icon: 'clipboard' },
   predavaky: { id: 'predavaky', href: '/predavaky', label: 'Předávací protokoly', shortLabel: 'Protokoly', icon: 'contract' },
+  vykazy: { id: 'vykazy', href: '/vykazy', label: 'Práce techniků', icon: 'clock' },
   sklad: { id: 'sklad', href: '/sklad', label: 'Sklad', icon: 'warehouse' },
   servis: { id: 'servis', href: '/servis', label: 'Přehled', shortLabel: 'Servis', icon: 'wrench', exact: true },
   servisZakazky: { id: 'servis-zakazky', href: '/servis/zakazky', label: 'Servisní akce', icon: 'wrench' },
@@ -130,7 +134,7 @@ export function sidebarSections(ctx: NavCtx): NavSection[] {
   return [
     ...section('zaklad', undefined, pick([[true, I.dashboard], [true, I.calendar], [f.obchod, I.clients]])),
     ...section('obchod', 'Obchod', pick([[f.leady, I.leady], [f.obchod, I.deals], [f.obchod, I.quotes]])),
-    ...section('realizace', 'Realizace', pick([[f.zakazky, I.zakazky], [f.protokoly, I.predavaky], [f.sklad, I.sklad]])),
+    ...section('realizace', 'Realizace', pick([[f.zakazky, I.zakazky], [f.protokoly, I.predavaky], [f.vykazy, I.vykazy], [f.sklad, I.sklad]])),
     ...section('servis', 'Servis', pick([
       [f.servis, I.servis], [f.servis, I.servisZakazky], [f.servis, I.servisPlan], [f.servis, I.servisPortfolio],
     ])),

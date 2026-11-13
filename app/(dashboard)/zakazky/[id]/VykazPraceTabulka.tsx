@@ -3,13 +3,13 @@ import type { VykazZakazkyTechnik } from '@/lib/vykazPrace'
 
 const h = (n: number) => `${String(Math.round(n * 100) / 100).replace('.', ',')} h`
 
-/** Manažerský přehled výkazů techniků na zakázce (Finance) — po technicích, rozbalitelné záznamy. */
-export default function VykazPraceTabulka({ technici, showCastky }: { technici: VykazZakazkyTechnik[]; showCastky: boolean }) {
+/** Manažerský přehled výkazů techniků na zakázce / servisu — po technicích, rozbalitelné záznamy. */
+export default function VykazPraceTabulka({ technici, showCastky, coZakazka = 'k zakázce' }: { technici: VykazZakazkyTechnik[]; showCastky: boolean; coZakazka?: string }) {
   if (technici.length === 0) {
     return (
       <div className="bg-surface rounded-xl border border-line px-4 py-3">
         <h3 className="text-sm font-semibold text-fg">Práce techniků</h3>
-        <p className="text-sm text-muted mt-1">Technici zatím k zakázce nezapsali hodiny, km ani položky (zapisují v appce Felucia Technik).</p>
+        <p className="text-sm text-muted mt-1">Technici zatím {coZakazka} nezapsali hodiny, km ani položky (zapisují v appce Felucia Technik).</p>
       </div>
     )
   }
@@ -66,7 +66,7 @@ export default function VykazPraceTabulka({ technici, showCastky }: { technici: 
                       </td>
                       <td className="py-1.5 pr-3 text-right text-fg">{z.typ === 'VYJEZD' ? h(z.hodiny) : '—'}</td>
                       <td className="py-1.5 pr-3 text-right text-fg">{z.typ === 'VYJEZD' ? z.km : '—'}</td>
-                      {showCastky && <td className="py-1.5 pr-3 text-right whitespace-nowrap text-fg">{formatKc(z.castka)}</td>}
+                      {showCastky && <td className="py-1.5 pr-3 text-right whitespace-nowrap text-fg">{z.chybiSazba ? <span className="text-amber-700 dark:text-amber-400">čeká na sazbu</span> : formatKc(z.castka)}</td>}
                       <td className="py-1.5 text-xs text-muted whitespace-nowrap">{z.vyfakturovano ? 'vyfakturováno' : 'otevřené'}</td>
                     </tr>
                   ))}

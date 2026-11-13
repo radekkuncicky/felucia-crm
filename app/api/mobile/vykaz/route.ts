@@ -66,15 +66,11 @@ export async function POST(req: Request) {
   const { orgId, id: userId } = session!.user
   const db = orgPrisma(orgId)
 
+  // snapshot sazby z doby zápisu; bez sazby záznam projde („čeká na sazbu“) a doplní se, až ji firma nastaví
   let sazbaHodina: number | null = null
   let sazbaKm: number | null = null
   if (vstup.typ === 'VYJEZD') {
     const user = await db.user.findFirst({ where: { id: userId, orgId }, select: { sazbaHodina: true, sazbaKm: true } })
-    const needH = vstup.hodiny > 0 && user?.sazbaHodina == null
-    const needKm = vstup.km > 0 && user?.sazbaKm == null
-    if (needH || needKm) {
-      return NextResponse.json({ error: 'Nejdřív si v Nastavení (Já) vyplň svoje sazby', kod: 'CHYBI_SAZBY' }, { status: 400 })
-    }
     sazbaHodina = user?.sazbaHodina == null ? null : Number(user.sazbaHodina)
     sazbaKm = user?.sazbaKm == null ? null : Number(user.sazbaKm)
   }

@@ -367,6 +367,8 @@ model User {
   /// Výkaz práce: vlastní sazby technika (OSVČ fakturuje firmě) — Kč/hod a Kč/km
   sazbaHodina          Decimal?  @db.Decimal(10, 2)
   sazbaKm              Decimal?  @db.Decimal(10, 2)
+  /// Večerní push „zapiš si dnešní práci“ (vypíná technik v appce)
+  vykazPripominka      Boolean   @default(true)
   vytvoreno            DateTime  @default(now())
   lastLoginAt          DateTime?
 

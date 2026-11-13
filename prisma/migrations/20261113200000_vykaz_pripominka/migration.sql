@@ -1,0 +1,1 @@
+ALTER TABLE "users" ADD COLUMN "vykazPripominka" BOOLEAN NOT NULL DEFAULT true;
