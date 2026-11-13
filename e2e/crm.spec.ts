@@ -211,6 +211,8 @@ test('zakázka: objednávky pod položkami, starý odkaz ?tab=objednavky přesm�
 
 test('kalendář: dva měsíce, chip s klientem a přetažení montáže posune termín', async ({ page }) => {
   const errors = trackErrors(page)
+  // cookie lišta dole jinak v některých měsících překryje cílový den (pustilo by se to na ni)
+  await page.addInitScript(() => { try { localStorage.setItem('cookie_consent', 'accepted') } catch {} })
   await page.goto('/zakazky')
   const detail = page.getByRole('row', { name: /E2E Zakázka/ }).getByRole('link', { name: /Detail/ })
   const zakazkaId = (await detail.getAttribute('href'))!.split('/').pop()!

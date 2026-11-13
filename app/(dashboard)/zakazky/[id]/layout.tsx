@@ -133,6 +133,10 @@ export default async function ZakazkaDetailLayout({
 
   const adresa = [zakazka.klient.ulice, [zakazka.klient.mesto, zakazka.klient.psc].filter(Boolean).join(' ')].filter(Boolean).join(', ')
 
+  // „Sadová 14, 702 00 Ostrava“ = „Sadová 14, Ostrava 702 00“ — porovnání bez ohledu na pořadí a interpunkci
+  const slovaAdresy = (a: string) => a.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim().split(' ').sort().join(' ')
+  const stejnaAdresa = (a: string, b: string) => slovaAdresy(a) === slovaAdresy(b)
+
   // Souhrn termínu pro sbalenou mobilní hlavičku
   const dm = (d: Date) => `${d.getUTCDate()}. ${d.getUTCMonth() + 1}.`
   const terminText = zakazka.montazOd
@@ -283,7 +287,7 @@ export default async function ZakazkaDetailLayout({
                     </a>
                   )}
                   {/* adresa klienta jen když je místo instalace jinde — jinak by byla 2× vedle sebe */}
-                  {adresa && zakazka.mistoStavby?.trim() && zakazka.mistoStavby.trim() !== adresa && <NavigateButton adresa={adresa} label="Adresa klienta" size="xs" />}
+                  {adresa && zakazka.mistoStavby?.trim() && !stejnaAdresa(zakazka.mistoStavby, adresa) && <NavigateButton adresa={adresa} label="Adresa klienta" size="xs" />}
                   {!zakazka.klient.telefon && !zakazka.klient.email && (
                     <span className="text-sm text-gray-400 dark:text-slate-500 italic">neuvedeno</span>
                   )}
