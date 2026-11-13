@@ -11,7 +11,7 @@ const d = (s: string) => new Date(`${s}T00:00:00Z`)
 
 let orgId: string, technikId: string, jinyId: string, klientId: string
 const ids: Record<string, string> = {}
-// technik se servisem (vlastní zásahy) — preset TECHNIK servis nemá
+// technik se servisem (vlastní zásahy) — od 2026-11-13 výchozí v presetu TECHNIK
 const TECHNIK_SERVIS = { ...ROLE_PRESETS.TECHNIK, servis: 'VLASTNI' as const }
 
 beforeAll(async () => {

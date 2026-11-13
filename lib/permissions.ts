@@ -78,7 +78,7 @@ export const ROLE_DESCRIPTIONS: Record<RoleName, string> = {
   MANAZER: 'Obchod, zakázky, sklad, servis a schvalování. Bez nastavení organizace, uživatelů a fakturace.',
   OBCHODNIK: 'Klienti, leady, obchodní případy a nabídky. Zakázky ze svých OP jen ke čtení, bez nákupních cen.',
   HLAVNI_TECHNIK: 'Mistr: vidí všechny zakázky, přiřazuje techniky, zakládá předávací protokoly, sklad ke čtení, servis.',
-  TECHNIK: 'Jen přiřazené zakázky, předávací protokoly a fotky. Servis podle oprávnění.',
+  TECHNIK: 'Jen přiřazené zakázky, předávací protokoly a fotky. Své servisní zakázky.',
 }
 
 const ALL: Permissions = {
@@ -165,7 +165,7 @@ export const ROLE_PRESETS: Record<RoleName, Permissions> = {
     zakazkySchvalovani: false,
     zakazkyMazani: false,
     sklad: 'ZADNY',
-    servis: 'ZADNY',
+    servis: 'VLASTNI', // výkaz práce i na servisních výjezdech (2026-11-13)
     servisDispecink: false,
     spravaUzivatelu: false,
     nastaveniOrg: false,
