@@ -3,6 +3,8 @@ import { orgPrisma } from '@/lib/orgPrisma'
 import { mobileDealScope, getMobileOrWebSession, requireObchodnikOrAdmin, klientAdresa, toAbsoluteUrl } from '@/lib/mobile-helpers'
 import { originZ } from '@/lib/fotkyOp'
 import { TITULNI_STITEK } from '@/lib/fotoStitky'
+import { parseMobileId, idempotentne, MobileIdKolize } from '@/lib/mobileIdempotence'
+import { najdiDuplicitnihoKlienta } from '@/lib/clientDuplicate'
 import { checkDealLimit } from '@/lib/checkPlanLimit'
 import { createWithUniqueKod } from '@/lib/uniqueKod'
 import { generateDealKod } from '@/lib/dealKod'
@@ -112,6 +114,12 @@ export async function POST(req: Request) {
     predmet?: string
     adresaDila?: string
     poznamky?: string
+    gpsLat?: number
+    gpsLng?: number
+    /** idempotence offline fronty — opakované odeslání vrátí už založený OP */
+    mobileId?: string
+    /** založeno bez signálu: ARES ani duplicity se v appce neověřily → ověří server */
+    offline?: boolean
   }
   try { body = await req.json() } catch {
     return NextResponse.json({ error: 'Neplatný požadavek' }, { status: 400 })
@@ -124,6 +132,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Chybí klient (clientId nebo klient.jmeno)' }, { status: 400 })
   }
 
+  const mobileId = parseMobileId(body.mobileId)
+  if (mobileId) {
+    const uz = await db.deal.findFirst({ where: { mobileId }, select: { id: true, kod: true, clientId: true } })
+    if (uz) return NextResponse.json({ id: uz.id, kod: uz.kod, clientId: uz.clientId, pripojenoKlient: null }, { status: 200 })
+  }
+
   if (!(await checkDealLimit(orgId))) {
     return NextResponse.json({
       error: 'PLAN_LIMIT_REACHED',
@@ -132,10 +146,42 @@ export async function POST(req: Request) {
   }
 
   let clientId = body.clientId ?? null
+  let pripojenoKlient: { id: string; jmeno: string } | null = null
+
+  // opakování po pádu mezi založením klienta a OP — klient už existuje
+  if (!clientId && mobileId) {
+    const k = await db.client.findFirst({ where: { mobileId }, select: { id: true } })
+    if (k) clientId = k.id
+  }
+
+  // offline založení: duplicity se v appce nekontrolovaly → shoda IČO / telefon / e-mail
+  // připojí OP k existujícímu klientovi (jméno samo nestačí — dva různí lidé)
+  if (!clientId && body.offline) {
+    const k = body.klient!
+    const ico = k.ico?.trim()
+    const podleIco = ico ? await db.client.findFirst({ where: { ico, anonymizedAt: null }, select: { id: true, jmeno: true, prijmeni: true } }) : null
+    let shoda = podleIco
+    if (!shoda && (k.telefon?.trim() || k.email?.trim())) {
+      const kandidati = await db.client.findMany({
+        where: { anonymizedAt: null },
+        select: { id: true, jmeno: true, prijmeni: true, telefon: true, email: true },
+      })
+      shoda = najdiDuplicitnihoKlienta(kandidati, { telefon: k.telefon ?? null, email: k.email ?? null })
+    }
+    if (shoda) {
+      clientId = shoda.id
+      pripojenoKlient = { id: shoda.id, jmeno: `${shoda.jmeno} ${shoda.prijmeni}`.trim() }
+    }
+  }
+
   if (!clientId) {
     const k = body.klient!
     const typKlienta = k.typKlienta === 'FIRMA' ? TypKlienta.FIRMA : TypKlienta.FYZICKA_OSOBA
-    const client = await db.client.create({
+    // souběh dvou stejných požadavků z fronty — klient podle mobileId jen jednou
+    const { zaznam: client } = await idempotentne(
+      mobileId,
+      m => db.client.findFirst({ where: { mobileId: m } }),
+      () => db.client.create({
       data: {
         orgId,
         typKlienta,
@@ -148,18 +194,32 @@ export async function POST(req: Request) {
         psc: k.psc?.trim() || null,
         ico: k.ico?.trim() || null,
         dic: k.dic?.trim() || null,
+        mobileId,
       },
-    })
+    }),
+    )
     clientId = client.id
-  } else {
+  } else if (body.clientId) {
     const existing = await db.client.findFirst({ where: { id: clientId } })
     if (!existing) return NextResponse.json({ error: 'Klient nenalezen' }, { status: 404 })
   }
 
-  const deal = await createWithUniqueKod(
+  const gps = Number.isFinite(body.gpsLat) && Number.isFinite(body.gpsLng)
+    && Math.abs(body.gpsLat!) <= 90 && Math.abs(body.gpsLng!) <= 180
+    ? { gpsLat: body.gpsLat!, gpsLng: body.gpsLng! }
+    : {}
+
+  let deal
+  try {
+    const r = await idempotentne(
+      mobileId,
+      m => db.deal.findFirst({ where: { mobileId: m } }),
+      () => createWithUniqueKod(
     () => generateDealKod(orgId),
     kod => db.deal.create({
       data: {
+        mobileId,
+        ...gps,
         orgId,
         clientId: clientId!,
         userId,
@@ -171,7 +231,14 @@ export async function POST(req: Request) {
         poznamky: body.poznamky?.trim() || null,
       },
     }),
-  )
+      ),
+    )
+    deal = r.zaznam
+    if (!r.novy) return NextResponse.json({ id: deal.id, kod: deal.kod, clientId: deal.clientId, pripojenoKlient: null }, { status: 200 })
+  } catch (e) {
+    if (e instanceof MobileIdKolize) return NextResponse.json({ error: 'Neplatné mobileId' }, { status: 422 })
+    throw e
+  }
 
   await logAction({
     orgId,
@@ -180,10 +247,10 @@ export async function POST(req: Request) {
     typZaznamu: 'Deal',
     zaznamId: deal.id,
     zaznamNazev: `${deal.kod ?? ''} ${deal.predmet ?? 'Nový případ'}`.trim(),
-    zmeny: { kod: deal.kod, technologie: deal.technologie, zdroj: 'mobile-obchod' },
+    zmeny: { kod: deal.kod, technologie: deal.technologie, zdroj: body.offline ? 'mobile-obchod-offline' : 'mobile-obchod' },
   })
 
-  return NextResponse.json({ id: deal.id, kod: deal.kod, clientId }, { status: 201 })
+  return NextResponse.json({ id: deal.id, kod: deal.kod, clientId, pripojenoKlient }, { status: 201 })
 }
 
 export async function OPTIONS() {

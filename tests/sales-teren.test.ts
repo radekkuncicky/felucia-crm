@@ -181,3 +181,45 @@ describe('místo stavby', () => {
     expect((await prisma.deal.findUnique({ where: { id: dealId } }))!.gpsLat).toBeNull()
   })
 })
+
+describe('nový OP bez signálu', () => {
+  it('offline OP se shodným telefonem se připojí k existujícímu klientovi', async () => {
+    const pred = await prisma.client.count({ where: { orgId } })
+    const r = await pripadyPost(jsonReq('POST', {
+      klient: { jmeno: 'Karel', prijmeni: 'Jinak Napsaný', telefon: '777 100 200' },
+      technologie: 'KLIMA',
+      offline: true,
+      mobileId: `op-${RUN}-1`,
+    }))
+    expect(r.status).toBe(201)
+    const data = await r.json()
+    expect(data.pripojenoKlient).toMatchObject({ jmeno: 'Karel Terénní' })
+    expect(await prisma.client.count({ where: { orgId } })).toBe(pred)
+  })
+
+  it('opakovaný mobileId nezaloží druhý OP ani klienta (i souběžně)', async () => {
+    const body = {
+      klient: { jmeno: 'Nový', prijmeni: 'Klient', telefon: '603999888' },
+      technologie: 'TEPELNE_CERPADLO',
+      offline: true,
+      mobileId: `op-${RUN}-2`,
+      gpsLat: 49.5, gpsLng: 18.1,
+    }
+    const [a, b] = await Promise.all([pripadyPost(jsonReq('POST', body)), pripadyPost(jsonReq('POST', body))])
+    const [ja, jb] = await Promise.all([a.json(), b.json()])
+    expect(ja.id).toBe(jb.id)
+    const r3 = await pripadyPost(jsonReq('POST', body))
+    expect(r3.status).toBe(200)
+    expect(await prisma.deal.count({ where: { orgId, mobileId: body.mobileId } })).toBe(1)
+    expect(await prisma.client.count({ where: { orgId, telefon: '603999888' } })).toBe(1)
+    expect(await prisma.deal.findFirst({ where: { mobileId: body.mobileId }, select: { gpsLat: true } })).toEqual({ gpsLat: 49.5 })
+  })
+
+  it('online (bez offline) duplicitu nepřipojuje — rozhodl obchodník v appce', async () => {
+    const r = await pripadyPost(jsonReq('POST', {
+      klient: { jmeno: 'Karel', prijmeni: 'Terénní', telefon: '+420777100200' },
+      technologie: 'KLIMA',
+    }))
+    expect((await r.json()).pripojenoKlient).toBeNull()
+  })
+})

@@ -4,7 +4,11 @@ import { mobileDealScope, getMobileOrWebSession, requireObchodnikOrAdmin } from 
 import { parseStitek } from '@/lib/fotoStitky'
 import { smazSouborFotky } from '@/lib/fotoUloziste'
 
-async function najdiFotku(req: Request, params: { id: string; fotoId: string }) {
+type Nalez =
+  | { err: NextResponse }
+  | { db: ReturnType<typeof orgPrisma>; foto: { id: string; cesta: string } }
+
+async function najdiFotku(req: Request, params: { id: string; fotoId: string }): Promise<Nalez> {
   const session = await getMobileOrWebSession(req)
   const authErr = requireObchodnikOrAdmin(session)
   if (authErr) return { err: authErr }
