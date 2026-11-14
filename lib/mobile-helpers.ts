@@ -140,3 +140,17 @@ export function toAbsoluteUrl(url: string | null | undefined, origin: string): s
   // /uploads/* vyžaduje autorizaci (app/api/uploads) — RN Image cookie nemá, proto podepsaný odkaz
   return `${origin}${signUploadUrl(url)}`
 }
+
+/**
+ * Kdo volá: appka posílá hlavičky X-App-Name / X-App-Platform / X-App-Version (felucia-tech od 2026-11).
+ * Ukládá se do auditu u přihlášení a registrace push tokenu (audit APP_TECHNIK 0.1). Krátké, bez PII.
+ */
+export function klientAppky(req: Request): { app: string | null; platform: string | null; verze: string | null } {
+  const h = (k: string) => {
+    const v = req.headers.get(k)?.trim()
+    return v ? v.slice(0, 40) : null
+  }
+  const ua = req.headers.get('user-agent') ?? ''
+  const platform = h('x-app-platform') ?? (/okhttp|Android/i.test(ua) ? 'android' : /Darwin|CFNetwork|iPhone|iOS/i.test(ua) ? 'ios' : null)
+  return { app: h('x-app-name'), platform, verze: h('x-app-version') }
+}

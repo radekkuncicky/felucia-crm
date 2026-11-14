@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { getMobileOrWebSession, requireTechnikOrAdmin, canAccessZakazka } from '@/lib/mobile-helpers'
+import { oznamPoznamkuTechnika } from '@/lib/poznamkaTechnika'
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const session = await getMobileOrWebSession(req)
@@ -21,6 +22,10 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const komentar = await orgPrisma(session!.user.orgId).zakazkaKomentar.create({
     data: { zakazkaId: params.id, userId: session!.user.id, text },
     include: { user: { select: { id: true, jmeno: true, role: true } } },
+  })
+
+  await oznamPoznamkuTechnika({
+    orgId: session!.user.orgId, zakazkaId: params.id, autorId: komentar.user.id, autorJmeno: komentar.user.jmeno, text,
   })
 
   return NextResponse.json({

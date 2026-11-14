@@ -5,7 +5,8 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { Suspense } from 'react'
 import { techLabels, zakazkaStavLabels } from '@/lib/constants'
-import { formatKc } from '@/lib/format'
+import { formatKc, formatDateTime } from '@/lib/format'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { canAccessZakazka } from '@/lib/zakazkyHelpers'
 import { getPerms, isTechnikView } from '@/lib/permissions'
 import { getPlanLimits } from '@/lib/planLimits'
@@ -101,6 +102,18 @@ export default async function ZakazkaDetailLayout({
       })
     : []
   const techniciZakazky = zakazka.techniciRel.map(t => t.technik)
+
+  // Poslední poznámka technika z appky (audit APP_TECHNIK D1) — v hlavičce, ať ji kancelář nepřehlédne
+  // (dřív byla jen v Historii smíchaná s auditním logem)
+  const posledniPoznamka = isTechnik ? null : await orgPrisma(orgId).zakazkaKomentar.findFirst({
+    where: {
+      zakazkaId: zakazka.id,
+      user: { role: { in: ['TECHNIK', 'HLAVNI_TECHNIK'] } },
+      vytvoreno: { gte: new Date(Date.now() - 30 * 86_400_000) },
+    },
+    orderBy: { vytvoreno: 'desc' },
+    select: { text: true, vytvoreno: true, user: { select: { jmeno: true } } },
+  })
 
   // Stav SOD (přes OP) + ruční papírový podpis
   const sody = zakazka.opId
@@ -395,6 +408,21 @@ export default async function ZakazkaDetailLayout({
       />
 
       </SbalitelnaCast>
+
+      {posledniPoznamka && (
+        <div className="rounded-xl border border-line bg-surface-2 px-4 py-3 text-sm">
+          <div className="flex flex-wrap items-baseline gap-x-2 text-xs text-muted">
+            <span className="font-semibold uppercase tracking-wide">Poznámka z terénu</span>
+            <span>{posledniPoznamka.user.jmeno} · {formatDateTime(posledniPoznamka.vytvoreno)}</span>
+            {canEdit && (
+              <Link href={`/zakazky/${zakazka.id}?tab=historie`} className="ml-auto text-primary hover:underline">
+                Všechny poznámky <span aria-hidden>→</span>
+              </Link>
+            )}
+          </div>
+          <p className="mt-1 whitespace-pre-line text-fg line-clamp-3">{posledniPoznamka.text}</p>
+        </div>
+      )}
 
       {/* Tab bar — always visible, active tab determined from URL */}
       <Suspense fallback={<div className="border-b border-gray-200 dark:border-slate-700 h-10" />}>

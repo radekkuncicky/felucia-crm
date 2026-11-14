@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { servisScopeWhere } from '@/lib/permissions'
 import { getPlanLimits } from '@/lib/planLimits'
-import { getMobileOrWebSession, requireTechnikOrAdmin } from '@/lib/mobile-helpers'
+import { getMobileOrWebSession, requireTechnikOrAdmin, klientAdresa } from '@/lib/mobile-helpers'
 
 const AKTIVNI_STAVY = ['NOVA', 'NAPLANOVANA', 'PROBIHA', 'CEKA'] as const
 
@@ -28,8 +28,8 @@ export async function GET(req: Request) {
       ...(vse ? {} : { stav: { in: [...AKTIVNI_STAVY] as never } }),
     },
     include: {
-      kontrakt: { select: { nazev: true, klient: { select: { jmeno: true, prijmeni: true } } } },
-      klient: { select: { jmeno: true, prijmeni: true } },
+      kontrakt: { select: { nazev: true, klient: { select: { jmeno: true, prijmeni: true, telefon: true, ulice: true, mesto: true, psc: true } } } },
+      klient: { select: { jmeno: true, prijmeni: true, telefon: true, ulice: true, mesto: true, psc: true } },
       zarizeni: { select: { nazev: true, typ: true } },
       technik: { select: { id: true, jmeno: true } },
     },
@@ -51,6 +51,10 @@ export async function GET(req: Request) {
         zarizeni: z.zarizeni?.nazev ?? null,
         technik: z.technik ? { id: z.technik.id, jmeno: z.technik.jmeno } : null,
         protokolDokoncen: z.protokolDokoncen,
+        // kam jet a komu volat (adresa zásahu / kontakt na místě mají přednost před klientem)
+        adresaZasahu: z.adresaZasahu ?? (klient ? klientAdresa(klient) : null),
+        kontaktJmeno: z.kontaktJmeno ?? null,
+        kontaktTelefon: z.kontaktTelefon ?? klient?.telefon ?? null,
       }
     }),
   )

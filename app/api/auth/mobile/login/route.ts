@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server'
 import { SignJWT } from 'jose'
 import { secret } from '@/lib/mobile-auth'
 import { logAction } from '@/lib/auditLog'
+import { klientAppky } from '@/lib/mobile-helpers'
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit'
 import bcrypt from 'bcryptjs'
 
@@ -82,6 +83,8 @@ export async function POST(req: Request) {
     typZaznamu: 'MobileLogin',
     zaznamId: user.id,
     zaznamNazev: `Mobilní přihlášení: ${user.email}`,
+    // platforma a verze appky — ať jde z dat zjistit, kdo má jakou verzi (audit APP_TECHNIK 0.1)
+    zmeny: klientAppky(req),
   })
 
   return NextResponse.json({

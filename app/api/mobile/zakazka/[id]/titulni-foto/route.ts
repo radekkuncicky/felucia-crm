@@ -51,7 +51,14 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
   // JSON base64 (web)
   if (contentType.includes('application/json')) {
-    const { url } = await req.json()
+    const { url, fotoId } = await req.json()
+    // appka: „Nastavit jako titulní“ u už nahrané fotky zakázky (audit APP_TECHNIK C)
+    if (typeof fotoId === 'string' && fotoId) {
+      const foto = await db.zakazkaFoto.findFirst({ where: { id: fotoId, zakazkaId: params.id }, select: { url: true } })
+      if (!foto) return NextResponse.json({ error: 'Fotka nenalezena' }, { status: 404 })
+      await db.zakazka.update({ where: { id: params.id }, data: { titulniFotoUrl: foto.url } })
+      return NextResponse.json({ titulniFotoUrl: foto.url.startsWith('/uploads/') ? signUploadUrl(foto.url) : foto.url })
+    }
     if (!url) return NextResponse.json({ error: 'Chybí URL' }, { status: 400 })
     if (!isImageDataUri(url)) return NextResponse.json({ error: 'Neplatný formát obrázku' }, { status: 400 })
     await db.zakazka.update({ where: { id: params.id }, data: { titulniFotoUrl: url } })

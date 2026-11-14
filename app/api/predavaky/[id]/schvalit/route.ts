@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
+import { sendPushToUsers } from '@/lib/push'
 import { generateVyuctovaniCislo } from '@/lib/zakazkyHelpers'
 import { getPerms, forbidden } from '@/lib/permissions'
 import { zkontrolujMinimum } from '@/lib/sklad'
@@ -170,6 +171,12 @@ export async function POST(req: Request, { params }: { params: { id: string } })
           zprava: `Protokol ${predavak.cislo} byl schválen`,
           url: `/zakazky/${predavak.zakazkaId}/predavaky/${predavak.id}`,
         },
+      })
+      // push do appky — technik vidí, že jeho práci někdo převzal (audit APP_TECHNIK J)
+      await sendPushToUsers(orgId, [predavak.technikId], {
+        title: 'Předávák schválen ✓',
+        body: `${predavak.cislo} převzal manažer — díky za práci.`,
+        data: { type: 'zakazka', zakazkaId: predavak.zakazkaId },
       })
     }
     // Sklad v2: výdej mohl srazit zásobu pod minimum produktu

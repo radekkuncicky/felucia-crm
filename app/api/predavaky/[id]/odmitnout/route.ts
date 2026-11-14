@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server'
 import { vratZakazkuZPredane } from '@/lib/zakazkaStavFlow'
 import { ZakazkaStav } from '@prisma/client'
 import { getPerms, forbidden } from '@/lib/permissions'
+import { sendPushToUsers } from '@/lib/push'
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
@@ -55,6 +56,13 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         zmeny: { stavPred: 'PODPISAN', stavPo: 'ODMITNUTO', duvod, zakazkaNovyStav },
       },
     })
+  })
+
+  // Technik je v terénu s appkou — bell na webu by neviděl (audit APP_TECHNIK J)
+  void sendPushToUsers(orgId, [predavak.technikId], {
+    title: 'Předávák vrácen k opravě',
+    body: `${predavak.cislo}: ${String(duvod).trim().slice(0, 140)}`,
+    data: { type: 'zakazka', zakazkaId: predavak.zakazkaId },
   })
 
   return NextResponse.json({ ok: true, zakazkaNovyStav })

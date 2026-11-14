@@ -39,24 +39,33 @@ function pragueOffsetMs(at: Date): number {
   return praha.getTime() - utc.getTime()
 }
 
-export async function dnesniVyjezdy(
-  db: OrgPrismaClient,
-  opts: { orgId: string; userId: string; perms: Permissions; plan?: string | null; modulServis?: boolean; now?: Date },
-): Promise<Vyjezd[]> {
-  const now = opts.now ?? new Date()
-  const den = dnesPraha(now)
-  // Termíny montáží se ukládají jako UTC půlnoc daného dne (lib/calendarEvents.ts)
-  const denOd = new Date(`${den}T00:00:00Z`)
+/**
+ * Okno dneška: montáže mají termín jako UTC půlnoc dne (lib/calendarEvents.ts) → denOd/denDo,
+ * servis má skutečný čas → pražský den servisOd/servisDo. `vRozsahu` = dnešek padá do montazOd–montazDo
+ * (bez „do“ jen den začátku). Sdílí nástěnka, mobilní Dnes i Konec dne.
+ */
+export function denniOkno(now = new Date()) {
+  const denOd = new Date(`${dnesPraha(now)}T00:00:00Z`)
   const denDo = new Date(denOd.getTime() + 86_400_000)
-  // Servis má skutečný čas → pražský den
   const servisOd = new Date(denOd.getTime() - pragueOffsetMs(now))
   const servisDo = new Date(servisOd.getTime() + 86_400_000)
-
-  // Dnešek v rozsahu od–do; bez „do" jen den začátku
   const vRozsahu = {
     montazOd: { lt: denDo },
     OR: [{ montazDo: { gte: denOd } }, { montazDo: null, montazOd: { gte: denOd } }],
   }
+  return { denOd, denDo, servisOd, servisDo, vRozsahu }
+}
+
+export async function dnesniVyjezdy(
+  db: OrgPrismaClient,
+  opts: {
+    orgId: string; userId: string; perms: Permissions; plan?: string | null; modulServis?: boolean; now?: Date
+    /** I dnes dokončené (zakázka HOTOVO, servis CEKA/DOKONCENA) — pro zápis výkazu na konci dne */
+    vcetneDokoncenych?: boolean
+  },
+): Promise<Vyjezd[]> {
+  const now = opts.now ?? new Date()
+  const { servisOd, servisDo, vRozsahu } = denniOkno(now)
 
   const zakazkyScope = zakazkyScopeWhere(opts.perms, opts.userId)
   const servisScope = getPlanLimits(opts.plan ?? 'STARTER').hasServiceModule && opts.modulServis
@@ -68,7 +77,7 @@ export async function dnesniVyjezdy(
       where: {
         orgId: opts.orgId,
         AND: [zakazkyScope, { OR: [vRozsahu, { etapy: { some: vRozsahu } }] }],
-        stav: { notIn: ['HOTOVO'] },
+        ...(opts.vcetneDokoncenych ? {} : { stav: { notIn: ['HOTOVO'] } }),
       },
       select: {
         id: true, cislo: true, nazev: true, mistoStavby: true,
@@ -81,7 +90,7 @@ export async function dnesniVyjezdy(
       where: {
         orgId: opts.orgId,
         AND: [servisScope],
-        stav: { in: ['NAPLANOVANA', 'PROBIHA'] },
+        stav: { in: opts.vcetneDokoncenych ? ['NAPLANOVANA', 'PROBIHA', 'CEKA', 'DOKONCENA'] : ['NAPLANOVANA', 'PROBIHA'] },
         planovanyTermin: { gte: servisOd, lt: servisDo },
       },
       select: {

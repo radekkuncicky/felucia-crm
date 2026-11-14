@@ -3,8 +3,9 @@
  * (stejná logika jako „Dnes“ na nástěnce — lib/dnesniVyjezdy.ts) a k té zakázce
  * dnes nic nezapsal → push v 18:00 (worker) a blok „Dnes nezapsáno“ v appce.
  *
- * Připomínka chodí jen technikům, kterým firma nastavila sazbu (= výkaz u nich používá),
- * a kteří si ji v appce nevypnuli (User.vykazPripominka).
+ * Připomínka chodí všem technikům s výkazem (User.vykazPouzivat — Konec dne je výchozí pro všechny,
+ * hodiny na zakázku jsou podklad i pro kalkulaci, ne jen pro fakturaci technika), kteří si ji
+ * v appce nevypnuli (User.vykazPripominka). Bez sazby se zápis uloží „čeká na sazbu“.
  */
 import { orgPrisma, type OrgPrismaClient } from './orgPrisma'
 import { prisma } from './prisma'
@@ -21,7 +22,7 @@ export async function nezapsaneDnes(
   opts: { orgId: string; userId: string; perms: Permissions; plan?: string | null; modulServis?: boolean; now?: Date },
 ): Promise<Nezapsany[]> {
   const now = opts.now ?? new Date()
-  const vyjezdy = await dnesniVyjezdy(db, { ...opts, now })
+  const vyjezdy = await dnesniVyjezdy(db, { ...opts, now, vcetneDokoncenych: true })
   if (vyjezdy.length === 0) return []
   const dnes = new Date(`${dnesPraha(now)}T00:00:00.000Z`) // VykazPrace.datum je @db.Date
   const zapsane = await db.vykazPrace.findMany({
@@ -40,7 +41,7 @@ export function textPripominky(n: Nezapsany[]): string {
     ? `servis ${v.klient || v.cislo}`.trim()
     : [v.cislo, v.klient.split(' ').pop()].filter(Boolean).join(' ')
   const prvni = n.slice(0, 3).map(popis).join(', ')
-  return `${prvni}${n.length > 3 ? ` a další (${n.length - 3})` : ''} — zapiš hodiny a km, dokud to máš v hlavě.`
+  return `${prvni}${n.length > 3 ? ` a další (${n.length - 3})` : ''} — zapiš hodiny a km na Konci dne.`
 }
 
 /** Worker 18:00 Praha: rozešle připomínky. Vrací počet technik, kterým šel push. */
@@ -53,7 +54,6 @@ export async function sweepVykazPripominky(now = new Date()): Promise<number> {
       vykazPouzivat: true,
       pushToken: { not: null },
       role: { in: ['TECHNIK', 'HLAVNI_TECHNIK'] },
-      OR: [{ sazbaHodina: { not: null } }, { sazbaKm: { not: null } }],
     },
     select: { id: true, orgId: true, role: true, permissions: true, organization: { select: { plan: true } } },
   })
