@@ -32,7 +32,7 @@ const req = (method: string, body?: unknown, url = 'http://localhost/api/test') 
     ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
   })
 const p = (id: string) => ({ params: { id } })
-const flush = () => new Promise(r => setTimeout(r, 30))
+const flush = () => new Promise(r => setTimeout(r, 300))
 const pushCalls = () => vi.mocked(sendPushToUsers).mock.calls
 
 beforeAll(async () => {
@@ -77,9 +77,11 @@ describe('vytvorLead — komu jde upozornění', () => {
       orgId, jmeno: 'Jana Webová', zdroj: 'WEB_FORMULAR', status: 'NOVY', sluzba: 'Tepelné čerpadlo',
     }, { autorUserId: null })
     oznam()
-    await flush()
-    const call = pushCalls().find(c => (c[2].data as { leadId?: string })?.leadId === lead.id)
-    expect(call).toBeTruthy()
+    const call = await vi.waitFor(() => {
+      const c = pushCalls().find(c => (c[2].data as { leadId?: string })?.leadId === lead.id)
+      if (!c) throw new Error('push zatím neodešel')
+      return c
+    }, { timeout: 3000 })
     expect(call![1].sort()).toEqual([olgaId, petrId].sort())
     expect(call![2]).toMatchObject({ title: 'Nový lead z webu', body: 'Jana Webová · Tepelné čerpadlo', data: { type: 'lead', leadId: lead.id } })
     expect(await prisma.notification.count({ where: { orgId, url: `/leady/${lead.id}` } })).toBe(2)
@@ -99,8 +101,7 @@ describe('vytvorLead — komu jde upozornění', () => {
     vi.mocked(sendPushToUsers).mockClear()
     const res = await leadyWebPost(req('POST', { jmeno: 'Pro Petra', assignedToId: petrId }))
     expect(res.status).toBe(201)
-    await flush()
-    expect(pushCalls()).toHaveLength(1)
+    await vi.waitFor(() => expect(pushCalls()).toHaveLength(1), { timeout: 3000 })
     expect(pushCalls()[0][1]).toEqual([petrId])
     expect(pushCalls()[0][2].title).toBe('Přiřazen nový lead')
   })
