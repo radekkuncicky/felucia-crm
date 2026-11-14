@@ -4,7 +4,7 @@ import { mobileDealScope, getMobileOrWebSession, requireObchodnikOrAdmin } from 
 import { generateToken, sha256, logSodUdalost } from '@/lib/sodPodpis'
 import { buildSodContentHtml } from '@/lib/sodHtml'
 import { buildSodPdf } from '@/lib/sodPdf'
-import { prevedDealNaUspechPoPodpisu } from '@/lib/dealUspech'
+import { prevedDealNaUspech } from '@/lib/dealUspech'
 import { sendOrgEmail, emailSmlouvaPodepsana } from '@/lib/email'
 import { getOrgSettings } from '@/lib/orgSettings'
 import { createNotification } from '@/lib/createNotification'
@@ -118,7 +118,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   })
 
   // OP → USPECH + zakázka (podepsaná smlouva = vyhráno)
-  const uspech = await prevedDealNaUspechPoPodpisu({ orgId, dealId: sod.dealId, userId })
+  const uspech = await prevedDealNaUspech({ orgId, dealId: sod.dealId, userId })
 
   // Vlastník OP dostane zvonek, když podepsal někdo jiný
   const deal = await db.deal.findFirst({ where: { id: sod.dealId }, select: { userId: true } })

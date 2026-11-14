@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { getMobileOrWebSession, requireObchodnikOrAdmin } from '@/lib/mobile-helpers'
 import { logAction } from '@/lib/auditLog'
-import { vyhranoPriZmene } from '@/lib/dealUspech'
+import { vyhranoPriZmene, prevedDealNaUspech } from '@/lib/dealUspech'
+import { getOrgSettings } from '@/lib/orgSettings'
 import { createNotification } from '@/lib/createNotification'
 import { DuvodProhry, StavDealu } from '@prisma/client'
 
@@ -34,6 +35,26 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const novyStav = body.stav as StavDealu
   if (!novyStav || !POVOLENE_STAVY.includes(novyStav)) {
     return NextResponse.json({ error: 'Neplatný stav' }, { status: 400 })
+  }
+
+  // Ruční výhra: stejná pravidla a vedlejší efekty jako na webu — povinná aktivita
+  // (nastavení org), pak zakázka, auto-zařízení, zvonky a audit přes sdílený helper.
+  if (novyStav === 'USPECH' && deal.stav !== 'USPECH') {
+    const settings = await getOrgSettings(orgId)
+    if (settings.povinnaAktivitaUOP) {
+      const aktivita = await db.activity.findFirst({
+        where: { dealId: deal.id, typ: { in: ['HOVOR', 'SCHUZKA'] } },
+        select: { id: true },
+      })
+      if (!aktivita) {
+        return NextResponse.json(
+          { error: 'Před označením jako Úspěch zapiš u případu hovor nebo schůzku.', code: 'POVINNA_AKTIVITA' },
+          { status: 400 },
+        )
+      }
+    }
+    const { zakazkaId } = await prevedDealNaUspech({ orgId, dealId: deal.id, userId, zdroj: 'mobile-obchod' })
+    return NextResponse.json({ id: deal.id, stav: novyStav, zakazkaId })
   }
 
   const data: Record<string, unknown> = { stav: novyStav }

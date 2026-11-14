@@ -146,6 +146,38 @@ describe('případy', () => {
     const res = await stavPost(jsonReq('POST', { stav: 'ZNEPLATNENO' }), { params: { id: dealId } })
     expect(res.status).toBe(400)
   })
+
+  it('ruční Úspěch z appky založí zakázku (a hlídá povinnou aktivitu)', async () => {
+    const created = await pripadyPost(jsonReq('POST', {
+      technologie: 'KLIMA',
+      predmet: 'Klima ložnice',
+      adresaDila: 'Výherní 1, Ostrava',
+      klient: { jmeno: 'Vilém', prijmeni: 'Výhra', telefon: '601999888', typKlienta: 'FYZICKA_OSOBA' },
+    }))
+    const { id } = await created.json()
+
+    await prisma.orgSettings.upsert({
+      where: { orgId },
+      create: { orgId, povinnaAktivitaUOP: true },
+      update: { povinnaAktivitaUOP: true },
+    })
+    const bez = await stavPost(jsonReq('POST', { stav: 'USPECH' }), { params: { id } })
+    expect(bez.status).toBe(400)
+    expect((await bez.json()).code).toBe('POVINNA_AKTIVITA')
+    await prisma.orgSettings.update({ where: { orgId }, data: { povinnaAktivitaUOP: false } })
+
+    const res = await stavPost(jsonReq('POST', { stav: 'USPECH' }), { params: { id } })
+    expect(res.status).toBe(200)
+    const data = await res.json()
+    expect(data.zakazkaId).toBeTruthy()
+    const deal = await prisma.deal.findUnique({ where: { id } })
+    expect(deal?.stav).toBe('USPECH')
+    expect(deal?.vyhrano).toBeTruthy()
+    const zak = await prisma.zakazka.findFirst({ where: { opId: id } })
+    expect(zak?.id).toBe(data.zakazkaId)
+    const audit = await prisma.auditLog.findFirst({ where: { zaznamId: id, typZaznamu: 'Deal' }, orderBy: { vytvoreno: 'desc' } })
+    expect((audit!.zmeny as { zdroj: string }).zdroj).toBe('mobile-obchod')
+  })
 })
 
 describe('aktivity', () => {

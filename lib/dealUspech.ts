@@ -25,13 +25,16 @@ export function vyhranoPriZmene(stary: string, novy: string | undefined): { vyhr
  * aktivity se záměrně přeskakuje — podepsaná smlouva je silnější důkaz
  * než zalogovaný hovor.
  */
-export async function prevedDealNaUspechPoPodpisu(params: {
+export async function prevedDealNaUspech(params: {
   orgId: string
   dealId: string
   /** kdo přechod spustil (obchodník na místě / odesílatel u podpisu na dálku) */
   userId: string | null
+  /** odkud přechod přišel — podpis smlouvy (výchozí) nebo ruční změna stavu v appce */
+  zdroj?: 'podpis-smlouvy' | 'mobile-obchod'
 }): Promise<{ zmeneno: boolean; zakazkaId: string | null }> {
   const { orgId, dealId, userId } = params
+  const zdroj = params.zdroj ?? 'podpis-smlouvy'
   const db = orgPrisma(orgId)
 
   const deal = await db.deal.findFirst({
@@ -88,7 +91,7 @@ export async function prevedDealNaUspechPoPodpisu(params: {
       orgId,
       userId: uid,
       typ: 'OP_USPECH',
-      zprava: `OP ${deal.kod ?? ''} vyhrán — smlouva podepsána`.replace('  ', ' '),
+      zprava: `OP ${deal.kod ?? ''} vyhrán${zdroj === 'podpis-smlouvy' ? ' — smlouva podepsána' : ''}`.replace('  ', ' '),
       dealId: deal.id,
     }),
   ))
@@ -100,7 +103,7 @@ export async function prevedDealNaUspechPoPodpisu(params: {
     typZaznamu: 'Deal',
     zaznamId: deal.id,
     zaznamNazev: `${deal.kod ?? ''} ${deal.predmet ?? ''}`.trim(),
-    zmeny: { stav: { z: deal.stav, na: 'USPECH' }, zdroj: 'podpis-smlouvy' },
+    zmeny: { stav: { z: deal.stav, na: 'USPECH' }, zdroj },
   })
 
   return { zmeneno: true, zakazkaId: zakazka?.id ?? null }
