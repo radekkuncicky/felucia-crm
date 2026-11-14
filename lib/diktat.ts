@@ -24,13 +24,7 @@ export function parseDiktatDatum(v: unknown): Date | null {
   return isNaN(d.getTime()) ? null : d
 }
 
-/** Zítřek v Praze jako „YYYY-MM-DD“ */
-export function zitraPraha(now = new Date()): string {
-  const dnes = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Prague' }).format(now)
-  const d = new Date(`${dnes}T00:00:00.000Z`)
-  d.setUTCDate(d.getUTCDate() + 1)
-  return d.toISOString().slice(0, 10)
-}
+export { zitraPraha } from './datumPraha'
 
 export function parseDiktatText(v: unknown): string | null {
   if (typeof v !== 'string') return null

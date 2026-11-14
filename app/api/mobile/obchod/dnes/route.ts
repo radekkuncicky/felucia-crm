@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { hasDeal } from '@/lib/activities'
 import { orgPrisma } from '@/lib/orgPrisma'
+import { dnesPrahaRozsah } from '@/lib/datumPraha'
 import { getMobileOrWebSession, requireObchodnikOrAdmin, klientAdresa } from '@/lib/mobile-helpers'
 
 // GET /api/mobile/obchod/dnes — plán dne obchodníka:
@@ -13,9 +14,8 @@ export async function GET(req: Request) {
   const { orgId, id: userId } = session!.user
   const db = orgPrisma(orgId)
 
-  const now = new Date()
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0)
-  const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59)
+  // pražský den, ne UTC (server běží v UTC — po půlnoci by ukazoval včerejšek)
+  const { od: todayStart, do: zitraStart } = dnesPrahaRozsah()
 
   const dealInclude = {
     deal: {
@@ -38,7 +38,7 @@ export async function GET(req: Request) {
       where: {
         deal: { orgId },
         ...mojeAktivity,
-        datum: { gte: todayStart, lte: todayEnd },
+        datum: { gte: todayStart, lt: zitraStart },
         stav: 'PLANOVANA',
       },
       include: dealInclude,

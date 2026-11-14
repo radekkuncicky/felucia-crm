@@ -27,7 +27,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       activities: {
         include: { user: { select: { id: true, jmeno: true } } },
         orderBy: { datum: 'desc' },
-        take: 30,
+        take: 200,
       },
       sod: {
         select: { id: true, cislo: true, stav: true, vytvoreno: true },
