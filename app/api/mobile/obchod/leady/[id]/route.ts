@@ -11,20 +11,20 @@ const LEAD_INCLUDE = {
 async function nactiLead(req: Request, id: string) {
   const session = await getMobileOrWebSession(req)
   const authErr = requireObchodnikOrAdmin(session)
-  if (authErr) return { err: authErr } as const
-  if (session!.user.plan === 'STARTER') return { err: NextResponse.json({ error: 'Leady nejsou v tomto plánu.' }, { status: 403 }) } as const
+  if (authErr) return { err: authErr, ok: null }
+  if (session!.user.plan === 'STARTER') return { err: NextResponse.json({ error: 'Leady nejsou v tomto plánu.' }, { status: 403 }), ok: null }
   const { orgId, id: userId } = session!.user
   const db = orgPrisma(orgId)
   const lead = await db.lead.findFirst({ where: { id, orgId }, include: LEAD_INCLUDE })
-  if (!lead) return { err: NextResponse.json({ error: 'Lead nenalezen' }, { status: 404 }) } as const
-  return { db, orgId, userId, lead } as const
+  if (!lead) return { err: NextResponse.json({ error: 'Lead nenalezen' }, { status: 404 }), ok: null }
+  return { err: null, ok: { db, userId, lead } }
 }
 
 // GET /api/mobile/obchod/leady/[id] — detail: lead + poznámky + aktivity (hovory/e-maily)
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   const r = await nactiLead(req, params.id)
-  if ('err' in r) return r.err
-  const { db, lead } = r
+  if (!r.ok) return r.err!
+  const { db, lead } = r.ok
 
   const [poznamky, aktivity, op] = await Promise.all([
     db.leadNote.findMany({
@@ -74,8 +74,8 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 // poznamka přidá LeadNote; prevzit přiřadí lead volajícímu.
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const r = await nactiLead(req, params.id)
-  if ('err' in r) return r.err
-  const { db, userId, lead } = r
+  if (!r.ok) return r.err!
+  const { db, userId, lead } = r.ok
 
   let body: { status?: string; duvodZruseni?: string; poznamka?: string; prevzit?: boolean }
   try { body = await req.json() } catch {
