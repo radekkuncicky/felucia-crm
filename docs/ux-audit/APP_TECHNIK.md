@@ -314,3 +314,26 @@ a `servisni_zakazky`. Při dalším auditu je pustím znovu. Když bude objem ma
 - [Capterra – ServiceTitan reviews](https://www.capterra.com/p/150053/ServiceTitan/reviews/) · [SplitMetrics – ServiceTitan Mobile](https://splitmetrics.com/apps/servicetitan-mobile/id1037989976)
 - [Housecall Pro review](https://hvac-software-hub.pages.dev/hvac/crm/housecall-pro-review)
 - Většina zdrojů jsou blogy dodavatelů FSM softwaru. Ber je jako směr, ne jako tvrdá data.
+
+---
+
+## 9. Stav implementace (2026-11-14)
+
+**CRM — nasazeno (ad92e09):** `GET /api/mobile/vykaz/den` (Konec dne), `GET /api/mobile/dnes` + pole `servisy`
+a vícedenní montáž v Dnes každý den rozsahu, seznam servisů s adresou zásahu a kontaktem, notifikace poznámky
+technika (vedoucí → jinak manažer → vedení) + „Poznámka z terénu“ v hlavičce zakázky, push při schválení
+i vrácení předáváku, titulní fotka z nahrané fotky, `GET /api/mobile/mesic`, připomínka 18:00 všem s výkazem
+(i bez sazby, i za dnes dokončené výjezdy), platforma a verze appky do auditu (přihlášení, změna push tokenu).
+Testy: `tests/app-technik-audit.test.ts`.
+
+**Appka — pushnuto (felucia-tech 4ff361a, v1.1.0), čeká EAS build z Macu:**
+H, A, K, C, F, D (štítky), B, E, G, I, J, L hotové podle sekce 3. Navíc: push token se posílá při každém
+startu (Tomáš ho v DB neměl), hlavičky X-App-*, toasty místo chybových Alertů, podpis tmavým inkoustem.
+
+**Nedělá se / čeká:**
+- D4 přepis řeči v zařízení — až po testu češtiny v hluku (sekce 3 D).
+- Vlna 0,5 je na Radkovi: účet pro Večiho, instalace + notifikace u všech, rozhovory, 2týdenní dohoda.
+- Před buildem na Macu: `git pull && npm install`, `npx expo start` (přegeneruje typované routy), pak EAS build
+  iOS + Android. Po instalaci ověřit: Dnes (servisy, postup), detail (segmenty), Konec dne,
+  předávák → obrazovka Hotovo, Já → Můj měsíc.
+- Měření (sekce 6) pustit 2 týdny po rozdání buildu.
