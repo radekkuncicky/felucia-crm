@@ -36,7 +36,7 @@ export default function PrivacyPage() {
             EFIKU SOLUTIONS s.r.o. | Služba Felucia CRM | felucia.io
           </p>
           <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, color: '#6B8F6B', marginTop: 4 }}>
-            Platné od: 15. 7. 2026
+            Platné od: 15. 7. 2026 · aktualizováno 14. 11. 2026 (bod 5.3)
           </p>
         </div>
 
@@ -70,7 +70,7 @@ export default function PrivacyPage() {
           <Section title="5. Třetí strany">
             <p>5.1 <strong>Webhooky nastavené Uživatelem</strong> — v nastavení (/settings/api) si může Uživatel sám nakonfigurovat vlastní webhook endpoint. Pokud tak učiní, data z jeho organizace (včetně osobních údajů klientů — jméno, kontakt, adresa apod.) se při každé události odešlou na URL, kterou si Uživatel zadal. Volbu, zabezpečení a další nakládání s daty na cílovém endpointu má plně v rukou a plně za ně odpovídá Uživatel jako správce — my doručení pouze technicky zprostředkujeme (podepsaný HTTP požadavek) a neukládáme, co cílový server s daty dále dělá.</p>
             <p>5.2 <strong>Platby</strong> — zpracování plateb předplatného zajišťuje Stripe, Inc. Platební údaje (číslo karty apod.) neprocházejí přes naši infrastrukturu, zpracovává je přímo Stripe.</p>
-            <p>5.3 <strong>AI asistent</strong> — pokud má organizace na svém plánu aktivovaný AI asistent a Uživatel jej použije, mohou být v rámci konverzace odeslány relevantní údaje z evidence (např. jméno klienta, předmět obchodního případu) do API poskytovatele Anthropic za účelem generování odpovědi. Funkce je volitelná a AI asistent se spouští jen na výslovnou akci uživatele.</p>
+            <p>5.3 <strong>AI asistent</strong> — pokud má organizace na svém plánu aktivovaný AI asistent a Uživatel jej použije, mohou být v rámci konverzace odeslány relevantní údaje z evidence (např. jméno klienta, předmět obchodního případu) do API poskytovatele Anthropic za účelem generování odpovědi. Funkce je volitelná a AI asistent se spouští jen na výslovnou akci uživatele. Totéž platí pro <strong>učesání zápisu z jednání</strong> v mobilní aplikaci Felucia Sales: na pokyn uživatele (tlačítko „Učesat“) se nadiktovaný text zápisu, tak jak byl nadiktován, spolu se základními údaji obchodního případu (jméno klienta, předmět, technologie, místo stavby) odešle do API poskytovatele Anthropic, který z něj vytvoří strukturovaný návrh. Návrh se uloží až po kontrole uživatelem; původní diktát zůstává v evidenci.</p>
           </Section>
 
           <Section title="6. Zabezpečení">

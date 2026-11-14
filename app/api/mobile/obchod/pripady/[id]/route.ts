@@ -108,6 +108,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       cas: a.cas,
       trvaniMin: a.trvaniMin,
       misto: a.misto,
+      cil: a.cil,
       vysledek: a.vysledek,
       splneno: a.splneno,
       stav: a.stav,

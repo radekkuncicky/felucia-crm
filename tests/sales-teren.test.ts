@@ -10,6 +10,8 @@ import { POST as pripadyPost } from '@/app/api/mobile/obchod/pripady/route'
 import { POST as aktivityPost } from '@/app/api/mobile/obchod/aktivity/route'
 import { GET as dnesGet } from '@/app/api/mobile/obchod/dnes/route'
 import { dnesPraha } from '@/lib/datumPraha'
+import { GET as diktatGet, POST as diktatPost } from '@/app/api/mobile/obchod/diktat/route'
+import { POST as diktatPripojit } from '@/app/api/mobile/obchod/diktat/[id]/pripojit/route'
 import { parseCas } from '@/lib/casAktivity'
 import { parseMobileId } from '@/lib/mobileIdempotence'
 import { GET as fotkyGet, POST as fotkyPost } from '@/app/api/mobile/obchod/pripady/[id]/fotky/route'
@@ -246,5 +248,24 @@ describe('schůzky s časem', () => {
     const casy = d.dnesni.map((x: { cas: string | null }) => x.cas)
     expect(casy.slice(0, 2)).toEqual(['08:15', '14:30'])
     expect(casy.slice(2).every((c: string | null) => c === null)).toBe(true)
+  })
+})
+
+describe('diktát bez OP', () => {
+  it('uloží diktát idempotentně, ukáže ho v seznamu a připojí k OP jako zápis', async () => {
+    const body = { text: 'Novákovi chtějí klimu do ložnice', mobileId: `dikt-${RUN}-1` }
+    const r1 = await diktatPost(jsonReq('POST', body))
+    expect(r1.status).toBe(201)
+    const { id } = await r1.json()
+    expect((await diktatPost(jsonReq('POST', body))).status).toBe(200)
+
+    const seznam = await (await diktatGet(jsonReq('GET'))).json()
+    expect(seznam.map((d: { id: string }) => d.id)).toContain(id)
+
+    const r = await diktatPripojit(jsonReq('POST', { dealId }), { params: { id } })
+    expect(r.status).toBe(200)
+    const a = await prisma.activity.findUniqueOrThrow({ where: { id } })
+    expect(a).toMatchObject({ dealId, typ: 'SCHUZKA', stav: 'DOKONCENA', cil: 'Zápis z jednání' })
+    expect((await diktatPripojit(jsonReq('POST', { dealId }), { params: { id } })).status).toBe(404)
   })
 })
