@@ -364,6 +364,8 @@ model User {
   telefon              String?
   avatar               String?
   pushToken            String?
+  /// Push token appky Felucia Sales (pushToken = Felucia Tech) — appky si ho dřív přepisovaly
+  pushTokenSales       String?
   /// Výkaz práce: vlastní sazby technika (OSVČ fakturuje firmě) — Kč/hod a Kč/km
   sazbaHodina          Decimal?  @db.Decimal(10, 2)
   sazbaKm              Decimal?  @db.Decimal(10, 2)
@@ -457,6 +459,8 @@ model Client {
   poznamka     String?
   vytvoreno    DateTime   @default(now())
   anonymizedAt DateTime?
+  /// Idempotence offline založení z mobilu (UUID z telefonu)
+  mobileId     String?    @unique
 
   organization      Organization       @relation(fields: [orgId], references: [id])
   deals             Deal[]
@@ -498,6 +502,11 @@ model Deal {
   terminRealizace   DateTime?
   cisloSmlouvy      String?
   adresaDila        String?
+  /// Poloha místa stavby (z appky „Jsem na místě“) — navigace má přednost před adresou
+  gpsLat            Float?
+  gpsLng            Float?
+  /// Idempotence offline založení z mobilu (UUID z telefonu)
+  mobileId          String?      @unique
   kontaktniOsoba    String?
   kontaktniTelefon  String?
   poznamky          String?
@@ -676,6 +685,8 @@ model Activity {
   reminderAt     DateTime?
   reminderSentAt DateTime?
   vytvoreno      DateTime     @default(now())
+  /// Idempotence offline zápisu z mobilu (UUID z telefonu)
+  mobileId       String?      @unique
 
   organization Organization @relation(fields: [orgId], references: [id])
   deal         Deal?        @relation(fields: [dealId], references: [id], onDelete: Cascade)
@@ -778,10 +789,19 @@ model Photo {
   nazev     String
   cesta     String
   vytvoreno DateTime @default(now())
+  /// Klíč štítku (DUM_ZVENKU, MISTO_VJ… viz lib/fotoStitky.ts), ne text — přejmenování štítku nerozbije staré fotky
+  tag       String?
+  popis     String?
+  gpsLat    Float?
+  gpsLng    Float?
+  autorId   String?
+  /// Idempotence offline nahrání z mobilu (UUID z telefonu)
+  mobileId  String?  @unique
 
   organization Organization @relation(fields: [orgId], references: [id])
   deal         Deal         @relation(fields: [dealId], references: [id], onDelete: Cascade)
 
+  @@index([dealId])
   @@map("photos")
 }
 
@@ -959,6 +979,9 @@ model OrgSettings {
   dokumentyCislovani  Boolean @default(true)
   dokumentyHeaderHtml String? // vlastní HTML záhlaví (jen hasWhiteLabel plány)
   dokumentyFooterHtml String?
+
+  // Štítky fotek k OP v appce Sales ([{klic, nazev}]); null = výchozí sada z lib/fotoStitky.ts
+  fotoStitky Json?
 
   organization Organization @relation(fields: [orgId], references: [id])
 

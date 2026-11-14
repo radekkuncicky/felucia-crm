@@ -105,3 +105,36 @@ describe('sendPushToUsers', () => {
     ).resolves.toBeUndefined()
   })
 })
+
+describe('oddělené tokeny Tech × Sales', () => {
+  let oba: { id: string }
+  const TECH = 'ExponentPushToken[oba-tech]'
+  const SALES = 'ExponentPushToken[oba-sales]'
+
+  beforeAll(async () => {
+    oba = await prisma.user.create({
+      data: { orgId: org.id, jmeno: 'Radek Obě', email: `${RUN}-oba@test.cz`, hesloHash: 'x', pushToken: TECH, pushTokenSales: SALES },
+    })
+  })
+
+  it('pripad a lead jdou do Sales, zakazka do Tech', async () => {
+    fetchMock.mockResolvedValue(okTickets(1))
+    await sendPushToUsers(org.id, [oba.id], { title: 'a', body: 'b', data: { type: 'pripad', pripadId: 'p1' } })
+    await sendPushToUsers(org.id, [oba.id], { title: 'a', body: 'b', data: { type: 'lead', leadId: 'l1' } })
+    await sendPushToUsers(org.id, [oba.id], { title: 'a', body: 'b', data: { type: 'zakazka', zakazkaId: 'z1' } })
+    const to = fetchMock.mock.calls.map(c => JSON.parse(c[1].body)[0].to)
+    expect(to).toEqual([SALES, SALES, TECH])
+  })
+
+  it('Sales push uživateli jen s Tech tokenem se nepošle', async () => {
+    await sendPushToUsers(org.id, [userOk.id], { title: 'a', body: 'b', data: { type: 'lead', leadId: 'l1' } })
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('mrtvý Sales token smaže jen pushTokenSales', async () => {
+    fetchMock.mockResolvedValue({ ok: true, json: async () => ({ data: [{ status: 'error', details: { error: 'DeviceNotRegistered' } }] }) })
+    await sendPushToUsers(org.id, [oba.id], { title: 'a', body: 'b', data: { type: 'pripad', pripadId: 'p1' } })
+    const u = await prisma.user.findUnique({ where: { id: oba.id }, select: { pushToken: true, pushTokenSales: true } })
+    expect(u).toEqual({ pushToken: TECH, pushTokenSales: null })
+  })
+})

@@ -2,8 +2,10 @@ import { prisma } from '@/lib/prisma'
 
 /**
  * Expo push notifikace. Token registruje mobilní appka přes
- * POST /api/mobile/push-token (User.pushToken). Payload `data` musí odpovídat
- * typu NotificationData v appce (felucia-tech/lib/notifications.ts).
+ * POST /api/mobile/push-token — Felucia Tech do User.pushToken, Felucia Sales
+ * do User.pushTokenSales (dřív sdílely jeden sloupec a přepisovaly si ho).
+ * Do které appky push jde, určuje typ `data` (pushAppka). Payload musí odpovídat
+ * typu NotificationData v dané appce (felucia-tech|felucia-sales/lib/notifications.ts).
  *
  * Volá se fire-and-forget z API routes — nikdy nevyhazuje, jen loguje.
  * Mrtvé tokeny (DeviceNotRegistered) se z DB mažou.
@@ -15,9 +17,26 @@ const TIMEOUT_MS = 5000
 export type PushMessage = {
   title: string
   body: string
-  // 'zakazka' otevírá felucia-tech, 'pripad' felucia-sales (obě appky sdílejí User.pushToken)
-  // 'vykaz' otevře ve felucia-tech obrazovku Výkaz práce (blok „Dnes nezapsáno“)
-  data?: { type: 'zakazka'; zakazkaId: string } | { type: 'pripad'; pripadId: string } | { type: 'vykaz' }
+  // 'zakazka' a 'vykaz' (obrazovka Výkaz práce) otevírá felucia-tech,
+  // 'pripad' a 'lead' felucia-sales
+  data?:
+    | { type: 'zakazka'; zakazkaId: string }
+    | { type: 'vykaz' }
+    | { type: 'pripad'; pripadId: string }
+    | { type: 'lead'; leadId: string }
+}
+
+export type PushAppka = 'TECH' | 'SALES'
+
+/** Do které appky zpráva patří — podle typu dat (bez dat = Tech, historické chování). */
+export function pushAppka(message: PushMessage): PushAppka {
+  const t = message.data?.type
+  return t === 'pripad' || t === 'lead' ? 'SALES' : 'TECH'
+}
+
+/** Sloupec User s tokenem dané appky. */
+export function pushTokenSloupec(app: PushAppka): 'pushToken' | 'pushTokenSales' {
+  return app === 'SALES' ? 'pushTokenSales' : 'pushToken'
 }
 
 function isExpoPushToken(token: string) {
@@ -28,13 +47,14 @@ export async function sendPushToUsers(orgId: string, userIds: string[], message:
   if (userIds.length === 0) return
 
   try {
+    const sloupec = pushTokenSloupec(pushAppka(message))
     const users = await prisma.user.findMany({
-      where: { id: { in: userIds }, orgId, pushToken: { not: null } },
-      select: { id: true, pushToken: true },
+      where: { id: { in: userIds }, orgId, [sloupec]: { not: null } },
+      select: { id: true, pushToken: true, pushTokenSales: true },
     })
-    const targets = users.filter((u): u is { id: string; pushToken: string } =>
-      !!u.pushToken && isExpoPushToken(u.pushToken)
-    )
+    const targets = users
+      .map(u => ({ id: u.id, pushToken: u[sloupec] }))
+      .filter((u): u is { id: string; pushToken: string } => !!u.pushToken && isExpoPushToken(u.pushToken))
     if (targets.length === 0) return
 
     const controller = new AbortController()
@@ -69,7 +89,7 @@ export async function sendPushToUsers(orgId: string, userIds: string[], message:
     if (deadUserIds.length > 0) {
       await prisma.user.updateMany({
         where: { id: { in: deadUserIds } },
-        data: { pushToken: null },
+        data: { [sloupec]: null },
       })
       console.log(`[push] smazány mrtvé tokeny: ${deadUserIds.length}`)
     }
