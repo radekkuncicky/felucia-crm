@@ -5,7 +5,8 @@ import { orgPrisma } from '@/lib/orgPrisma'
 import { canEditSazbyVykazu, getPerms } from '@/lib/permissions'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { formatKc } from '@/lib/format'
-import { VYKAZ_INCLUDE, num, prehledTechniku } from '@/lib/vykazPrace'
+import { VYKAZ_INCLUDE, num, prehledPrace, prehledTechniku } from '@/lib/vykazPrace'
+import PrehledPrace from './PrehledPrace'
 import VykazyTechnici from './VykazyTechnici'
 import UzavreneVykazy from './UzavreneVykazy'
 
@@ -14,7 +15,7 @@ export const metadata = { title: 'Práce techniků' }
 const h = (n: number) => `${String(Math.round(n * 100) / 100).replace('.', ',')} h`
 
 /** Přehled výkazů práce techniků pro vedení: otevřeno k fakturaci, sazby, uzavřené výkazy s PDF. */
-export default async function VykazyPage({ searchParams }: { searchParams: { mesic?: string; technik?: string } }) {
+export default async function VykazyPage({ searchParams }: { searchParams: { mesic?: string; technik?: string; obdobi?: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) redirect('/auth/signin')
   const perms = getPerms(session.user)
@@ -30,8 +31,15 @@ export default async function VykazyPage({ searchParams }: { searchParams: { mes
   const mesicOd = mesic ? new Date(`${mesic}-01T00:00:00.000Z`) : null
   const mesicDo = mesicOd ? new Date(Date.UTC(mesicOd.getUTCFullYear(), mesicOd.getUTCMonth() + 1, 1)) : null
 
+  // Přehled práce: období podle data práce (YYYY-MM nebo YYYY), výchozí aktuální měsíc
+  const aktualni = now.toISOString().slice(0, 7)
+  const obdobi = /^\d{4}(-(0[1-9]|1[0-2]))?$/.test(searchParams.obdobi ?? '') ? searchParams.obdobi! : aktualni
+  const [oy, om] = obdobi.split('-').map(Number)
+  const obdobiOd = new Date(Date.UTC(oy, om ? om - 1 : 0, 1))
+  const obdobiDo = new Date(Date.UTC(om ? oy : oy + 1, om ? om : 0, 1))
+
   const userSelect = { id: true, jmeno: true, aktivni: true, sazbaHodina: true, sazbaKm: true } as const
-  const [technici, otevrene, vsechnyFakturace, fakturace] = await Promise.all([
+  const [technici, otevrene, vsechnyFakturace, fakturace, praceZaznamy, prvniZaznam] = await Promise.all([
     db.user.findMany({ where: { orgId, aktivni: true, role: { in: ['TECHNIK', 'HLAVNI_TECHNIK'] } }, select: userSelect }),
     db.vykazPrace.findMany({
       where: { orgId, fakturaceId: null },
@@ -48,7 +56,22 @@ export default async function VykazyPage({ searchParams }: { searchParams: { mes
       orderBy: { vytvoreno: 'desc' },
       take: 100,
     }),
+    db.vykazPrace.findMany({
+      where: { orgId, datum: { gte: obdobiOd, lt: obdobiDo } },
+      include: { ...VYKAZ_INCLUDE, user: { select: { jmeno: true } } },
+    }),
+    db.vykazPrace.findFirst({ where: { orgId }, orderBy: { datum: 'asc' }, select: { datum: true } }),
   ])
+
+  // volby období: měsíce od prvního zápisu po dnešek (max 24) + celé roky
+  const moznostiObdobi: string[] = []
+  const odPrvniho = prvniZaznam?.datum ?? now
+  for (let d = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1)); moznostiObdobi.length < 24; d = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 1, 1))) {
+    moznostiObdobi.push(d.toISOString().slice(0, 7))
+    if (d <= odPrvniho) break
+  }
+  for (let y = now.getFullYear(); y >= odPrvniho.getUTCFullYear(); y--) moznostiObdobi.push(String(y))
+  if (!moznostiObdobi.includes(obdobi)) moznostiObdobi.unshift(obdobi)
 
   const prehled = prehledTechniku(technici, otevrene, vsechnyFakturace)
   const otevrenoCelkem = prehled.reduce(
@@ -96,6 +119,8 @@ export default async function VykazyPage({ searchParams }: { searchParams: { mes
           )}
         </div>
       </div>
+
+      <PrehledPrace technici={prehledPrace(praceZaznamy)} obdobi={obdobi} moznosti={moznostiObdobi} />
 
       <VykazyTechnici technici={prehled} canEditSazby={canEditSazbyVykazu(perms)} />
 

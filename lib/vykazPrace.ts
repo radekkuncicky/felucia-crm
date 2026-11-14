@@ -360,3 +360,62 @@ export function prehledTechniku(
     .filter(t => t.aktivni || t.zaznamy.length > 0)
     .sort((a, b) => b.otevreno.castka - a.otevreno.castka || b.otevreno.hodiny - a.otevreno.hodiny || a.jmeno.localeCompare(b.jmeno, 'cs'))
 }
+
+// ── Přehled práce za období (/vykazy, tabulka „Kdo kolik fakturoval“) ─────────
+
+export type PraceZakazka = {
+  zakazka: { druh: 'ZAKAZKA' | 'SERVIS'; id: string; cislo: string; nazev: string }
+  soucty: VykazSoucty
+  zaznamy: (PrehledZaznam & { vyfakturovano: boolean })[]
+}
+
+export type PraceTechnik = {
+  userId: string
+  jmeno: string
+  soucty: VykazSoucty
+  /** část, kterou technik už uzavřel do výkazu (= fakturoval firmě) */
+  uzavreno: number
+  zakazky: PraceZakazka[]
+}
+
+type PraceDb = VykazSInclude & { user: { jmeno: string } }
+
+/**
+ * Záznamy za období (otevřené i uzavřené) → technik → zakázka → záznamy.
+ * Řazení: technici i zakázky podle částky (pak hodin), záznamy podle data.
+ */
+export function prehledPrace(zaznamy: PraceDb[]): PraceTechnik[] {
+  const technici = new Map<string, { jmeno: string; zakazky: Map<string, PraceDb[]> }>()
+  for (const z of zaznamy) {
+    const t = technici.get(z.userId) ?? { jmeno: z.user.jmeno, zakazky: new Map() }
+    technici.set(z.userId, t)
+    const key = z.zakazkaId ?? `s:${z.servisniZakazkaId}`
+    t.zakazky.set(key, [...(t.zakazky.get(key) ?? []), z])
+  }
+  const podleCastky = (a: { soucty: VykazSoucty }, b: { soucty: VykazSoucty }) =>
+    b.soucty.castka - a.soucty.castka || b.soucty.hodiny - a.soucty.hodiny
+  return Array.from(technici.entries())
+    .map(([userId, t]) => {
+      const vse = Array.from(t.zakazky.values()).flat()
+      return {
+        userId,
+        jmeno: t.jmeno,
+        soucty: souctyVykazu(vse),
+        uzavreno: souctyVykazu(vse.filter(z => z.fakturaceId)).castka,
+        zakazky: Array.from(t.zakazky.values())
+          .map(zz => ({
+            zakazka: zakazkaZaznamu(zz[0]),
+            soucty: souctyVykazu(zz),
+            zaznamy: [...zz]
+              .sort((a, b) => a.datum.getTime() - b.datum.getTime())
+              .map(z => ({
+                id: z.id, typ: z.typ, datum: z.datum.toISOString().slice(0, 10), hodiny: num(z.hodiny), km: z.km,
+                popis: z.popis, poznamka: z.poznamka, castka: castkaZaznamu(z), chybiSazba: chybiSazbaZaznamu(z),
+                zakazka: zakazkaZaznamu(z), vyfakturovano: !!z.fakturaceId,
+              })),
+          }))
+          .sort(podleCastky),
+      }
+    })
+    .sort((a, b) => podleCastky(a, b) || a.jmeno.localeCompare(b.jmeno, 'cs'))
+}
