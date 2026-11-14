@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server'
+import { parseCas, parseTrvani } from '@/lib/casAktivity'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { mobileDealScope, getMobileOrWebSession, requireObchodnikOrAdmin } from '@/lib/mobile-helpers'
 
 // PATCH /api/mobile/obchod/aktivity/[id] — splnění / úprava aktivity.
-// { splneno?, vysledek?, popis?, datum?, cas?, reminderAt?, zrusit? }
+// { splneno?, vysledek?, popis?, datum?, cas?, trvaniMin?, misto?, reminderAt?, zrusit? }
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const session = await getMobileOrWebSession(req)
   const authErr = requireObchodnikOrAdmin(session)
@@ -21,6 +22,8 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     popis?: string
     datum?: string
     cas?: string | null
+    trvaniMin?: number | null
+    misto?: string | null
     reminderAt?: string | null
     zrusit?: boolean
   }
@@ -40,7 +43,9 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   if (typeof body.vysledek === 'string') data.vysledek = body.vysledek.trim() || null
   if (typeof body.popis === 'string') data.popis = body.popis.trim() || null
   if (body.datum) data.datum = new Date(body.datum)
-  if (body.cas !== undefined) data.cas = body.cas?.trim() || null
+  if (body.cas !== undefined) data.cas = parseCas(body.cas)
+  if (body.trvaniMin !== undefined) data.trvaniMin = parseTrvani(body.trvaniMin)
+  if (body.misto !== undefined) data.misto = typeof body.misto === 'string' ? body.misto.trim() || null : null
   if (body.reminderAt !== undefined) {
     data.reminderAt = body.reminderAt ? new Date(body.reminderAt) : null
   }

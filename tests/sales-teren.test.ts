@@ -8,6 +8,9 @@ vi.mock('next-auth', () => ({ getServerSession: vi.fn() }))
 import { getServerSession } from 'next-auth'
 import { POST as pripadyPost } from '@/app/api/mobile/obchod/pripady/route'
 import { POST as aktivityPost } from '@/app/api/mobile/obchod/aktivity/route'
+import { GET as dnesGet } from '@/app/api/mobile/obchod/dnes/route'
+import { dnesPraha } from '@/lib/datumPraha'
+import { parseCas } from '@/lib/casAktivity'
 import { parseMobileId } from '@/lib/mobileIdempotence'
 import { GET as fotkyGet, POST as fotkyPost } from '@/app/api/mobile/obchod/pripady/[id]/fotky/route'
 import { PATCH as fotkaPatch, DELETE as fotkaDelete } from '@/app/api/mobile/obchod/pripady/[id]/fotky/[fotoId]/route'
@@ -221,5 +224,27 @@ describe('nový OP bez signálu', () => {
       technologie: 'KLIMA',
     }))
     expect((await r.json()).pripojenoKlient).toBeNull()
+  })
+})
+
+describe('schůzky s časem', () => {
+  it('parseCas normalizuje a odmítá nesmysl', () => {
+    expect(parseCas('9:05')).toBe('09:05')
+    expect(parseCas('24:00')).toBeNull()
+    expect(parseCas('ráno')).toBeNull()
+  })
+
+  it('schůzka 14:30 / 60 min s místem; Dnes řadí podle času, bez času na konec', async () => {
+    const dnes = dnesPraha()
+    await aktivityPost(jsonReq('POST', { dealId, typ: 'UKOL', datum: dnes, popis: 'bez času' }))
+    const r = await aktivityPost(jsonReq('POST', { dealId, typ: 'SCHUZKA', datum: dnes, cas: '14:30', trvaniMin: 60, misto: 'Hlavní 1' }))
+    await aktivityPost(jsonReq('POST', { dealId, typ: 'HOVOR', datum: dnes, cas: '8:15' }))
+    const a = await prisma.activity.findUniqueOrThrow({ where: { id: (await r.json()).id } })
+    expect(a).toMatchObject({ cas: '14:30', trvaniMin: 60, misto: 'Hlavní 1' })
+
+    const d = await (await dnesGet(jsonReq('GET'))).json()
+    const casy = d.dnesni.map((x: { cas: string | null }) => x.cas)
+    expect(casy.slice(0, 2)).toEqual(['08:15', '14:30'])
+    expect(casy.slice(2).every((c: string | null) => c === null)).toBe(true)
   })
 })

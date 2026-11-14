@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { mobileDealScope, getMobileOrWebSession, requireObchodnikOrAdmin } from '@/lib/mobile-helpers'
 import { TypAktivity } from '@prisma/client'
+import { parseCas, parseTrvani } from '@/lib/casAktivity'
 import { idempotentne, parseMobileId, MobileIdKolize } from '@/lib/mobileIdempotence'
 
 const TYPY = Object.values(TypAktivity)
@@ -35,6 +36,8 @@ export async function GET(req: Request) {
       vysledek: a.vysledek,
       datum: a.datum,
       cas: a.cas,
+      trvaniMin: a.trvaniMin,
+      misto: a.misto,
       splneno: a.splneno,
       stav: a.stav,
       reminderAt: a.reminderAt,
@@ -60,6 +63,7 @@ export async function POST(req: Request) {
     typ?: string
     datum?: string
     cas?: string
+    trvaniMin?: number
     popis?: string
     cil?: string
     misto?: string
@@ -93,7 +97,8 @@ export async function POST(req: Request) {
       userId,
       typ: body.typ as TypAktivity,
       datum,
-      cas: body.cas?.trim() || null,
+      cas: parseCas(body.cas),
+      ...(parseTrvani(body.trvaniMin) ? { trvaniMin: parseTrvani(body.trvaniMin)! } : {}),
       popis: body.popis?.trim() || null,
       cil: body.cil?.trim() || null,
       misto: body.misto?.trim() || null,

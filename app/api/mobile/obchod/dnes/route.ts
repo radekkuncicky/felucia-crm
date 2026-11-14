@@ -66,6 +66,7 @@ export async function GET(req: Request) {
     cil: a.cil,
     datum: a.datum,
     cas: a.cas,
+    trvaniMin: a.trvaniMin,
     misto: a.misto,
     pripad: {
       id: a.deal.id,
@@ -81,7 +82,9 @@ export async function GET(req: Request) {
   })
 
   return NextResponse.json({
-    dnesni: dnesni.filter(hasDeal).map(mapAktivita),
+    // s časem podle času, bez času na konec (celodenní úkoly)
+    dnesni: dnesni.filter(hasDeal).map(mapAktivita)
+      .sort((a, b) => (a.cas ? 0 : 1) - (b.cas ? 0 : 1) || (a.cas ?? '').localeCompare(b.cas ?? '')),
     followUpy: followUpy.filter(hasDeal).map(mapAktivita),
   })
 }
