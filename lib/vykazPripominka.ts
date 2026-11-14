@@ -50,6 +50,7 @@ export async function sweepVykazPripominky(now = new Date()): Promise<number> {
     where: {
       aktivni: true,
       vykazPripominka: true,
+      vykazPouzivat: true,
       pushToken: { not: null },
       role: { in: ['TECHNIK', 'HLAVNI_TECHNIK'] },
       OR: [{ sazbaHodina: { not: null } }, { sazbaKm: { not: null } }],

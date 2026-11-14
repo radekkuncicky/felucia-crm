@@ -369,6 +369,8 @@ model User {
   sazbaKm              Decimal?  @db.Decimal(10, 2)
   /// Večerní push „zapiš si dnešní práci“ (vypíná technik v appce)
   vykazPripominka      Boolean   @default(true)
+  /// Výkaz práce v appce vůbec používat (technik si vypne, když hodiny nefakturuje)
+  vykazPouzivat        Boolean   @default(true)
   vytvoreno            DateTime  @default(now())
   lastLoginAt          DateTime?
 

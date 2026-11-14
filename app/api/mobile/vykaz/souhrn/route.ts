@@ -28,7 +28,7 @@ export async function GET(req: Request) {
       orderBy: { cislo: 'desc' },
       take: 50,
     }),
-    db.user.findFirst({ where: { id: userId, orgId }, select: { sazbaHodina: true, sazbaKm: true, vykazPripominka: true } }),
+    db.user.findFirst({ where: { id: userId, orgId }, select: { sazbaHodina: true, sazbaKm: true, vykazPripominka: true, vykazPouzivat: true } }),
     db.vykazPrace.findMany({
       where: { orgId, userId, datum: { gte: mesicOd } },
       select: { typ: true, hodiny: true, km: true, sazbaHodina: true, sazbaKm: true, castka: true },
@@ -50,6 +50,7 @@ export async function GET(req: Request) {
     dnesNezapsano,
     mesic: { mesic: dnes.slice(0, 7), ...souctyVykazu(mesicZaznamy) },
     pripominka: user?.vykazPripominka ?? true,
+    pouzivat: user?.vykazPouzivat ?? true,
     fakturace: fakturace.map(f => ({
       id: f.id,
       cislo: f.cislo,

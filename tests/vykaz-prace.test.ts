@@ -10,7 +10,7 @@ import { PATCH as zaznamPatch, DELETE as zaznamDelete } from '@/app/api/mobile/v
 import { GET as sazbyGet, PATCH as sazbyPatch } from '@/app/api/mobile/vykaz/sazby/route'
 import { PATCH as webSazbyPatch } from '@/app/api/vykazy/sazby/route'
 import { GET as webPdfGet } from '@/app/api/vykazy/[id]/pdf/route'
-import { PATCH as nastaveniPatch } from '@/app/api/mobile/vykaz/nastaveni/route'
+import { PATCH as nastaveniPatch, GET as nastaveniGet } from '@/app/api/mobile/vykaz/nastaveni/route'
 import { GET as souhrnGet } from '@/app/api/mobile/vykaz/souhrn/route'
 import { POST as vyfakturovatPost } from '@/app/api/mobile/vykaz/vyfakturovat/route'
 import { POST as pdfOdkazPost } from '@/app/api/mobile/vykaz/pdf-odkaz/route'
@@ -299,8 +299,18 @@ describe('API výkazu', () => {
   it('večerní připomínka jde vypnout', async () => {
     login(technikId)
     expect((await nastaveniPatch(req('PATCH', { pripominka: 'ne' }))).status).toBe(400)
-    expect(await (await nastaveniPatch(req('PATCH', { pripominka: false }))).json()).toEqual({ pripominka: false })
+    expect(await (await nastaveniPatch(req('PATCH', { pripominka: false }))).json()).toEqual({ pouzivat: true, pripominka: false })
     expect((await (await souhrnGet(req('GET'))).json()).pripominka).toBe(false)
+  })
+
+  it('výkaz práce si technik může v appce vypnout a zase zapnout', async () => {
+    login(technikId)
+    expect((await nastaveniPatch(req('PATCH', {}))).status).toBe(400)
+    expect((await nastaveniPatch(req('PATCH', { pouzivat: 'ne' }))).status).toBe(400)
+    expect(await (await nastaveniPatch(req('PATCH', { pouzivat: false }))).json()).toMatchObject({ pouzivat: false })
+    expect(await (await nastaveniGet(req('GET'))).json()).toMatchObject({ pouzivat: false })
+    expect((await (await souhrnGet(req('GET'))).json()).pouzivat).toBe(false)
+    expect(await (await nastaveniPatch(req('PATCH', { pouzivat: true }))).json()).toMatchObject({ pouzivat: true })
   })
 
   it('přehled pro vedení: technik se sazbami a otevřenými záznamy', async () => {
@@ -343,5 +353,12 @@ describe('API výkazu', () => {
     vi.mocked(sendPushToUsers).mockClear()
     await sweepVykazPripominky()
     expect(pushNaMe()).toHaveLength(0)
+
+    // výkaz v appce vypnutý → nic, i se zapnutou připomínkou
+    await prisma.user.update({ where: { id: technikId }, data: { vykazPripominka: true, vykazPouzivat: false } })
+    vi.mocked(sendPushToUsers).mockClear()
+    await sweepVykazPripominky()
+    expect(pushNaMe()).toHaveLength(0)
+    await prisma.user.update({ where: { id: technikId }, data: { vykazPouzivat: true } })
   })
 })
