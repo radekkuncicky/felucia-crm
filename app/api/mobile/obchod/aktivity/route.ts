@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { mobileDealScope, getMobileOrWebSession, requireObchodnikOrAdmin } from '@/lib/mobile-helpers'
 import { TypAktivity } from '@prisma/client'
+import { idempotentne, parseMobileId, MobileIdKolize } from '@/lib/mobileIdempotence'
 
 const TYPY = Object.values(TypAktivity)
 
@@ -65,6 +66,7 @@ export async function POST(req: Request) {
     reminderAt?: string
     splneno?: boolean
     vysledek?: string
+    mobileId?: string
   }
   try { body = await req.json() } catch {
     return NextResponse.json({ error: 'Neplatný požadavek' }, { status: 400 })
@@ -81,13 +83,16 @@ export async function POST(req: Request) {
   if (!deal) return NextResponse.json({ error: 'Případ nenalezen' }, { status: 404 })
 
   const splneno = body.splneno === true
-  const aktivita = await db.activity.create({
+  const mobileId = parseMobileId(body.mobileId)
+  const datum = new Date(body.datum)
+  const vytvor = () => db.activity.create({
     data: {
+      mobileId,
       orgId,
       dealId: deal.id,
       userId,
       typ: body.typ as TypAktivity,
-      datum: new Date(body.datum),
+      datum,
       cas: body.cas?.trim() || null,
       popis: body.popis?.trim() || null,
       cil: body.cil?.trim() || null,
@@ -99,7 +104,18 @@ export async function POST(req: Request) {
     },
   })
 
-  return NextResponse.json({ id: aktivita.id }, { status: 201 })
+  try {
+    // opakované odeslání z offline fronty → 200 s už uloženou aktivitou
+    const { zaznam, novy } = await idempotentne(
+      mobileId,
+      m => db.activity.findFirst({ where: { mobileId: m }, select: { id: true } }),
+      vytvor,
+    )
+    return NextResponse.json({ id: zaznam.id }, { status: novy ? 201 : 200 })
+  } catch (e) {
+    if (e instanceof MobileIdKolize) return NextResponse.json({ error: 'Neplatné mobileId' }, { status: 422 })
+    throw e
+  }
 }
 
 export async function OPTIONS() {
