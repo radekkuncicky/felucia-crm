@@ -3,6 +3,7 @@ import { orgPrisma } from '@/lib/orgPrisma'
 import { mobileDealScope, getMobileOrWebSession, requireObchodnikOrAdmin, klientAdresa } from '@/lib/mobile-helpers'
 import { quoteCelkemBezDph } from '@/lib/quoteMath'
 import { logAction } from '@/lib/auditLog'
+import { Technologie } from '@prisma/client'
 import { nactiFotkyOp, vyberTitulniFoto, fotkaProAppku, originZ } from '@/lib/fotkyOp'
 import { fotoStitkyOrg } from '@/lib/fotoStitky'
 import { getOrgSettings } from '@/lib/orgSettings'
@@ -155,6 +156,12 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     }
     data.gpsLat = lat
     data.gpsLng = lng
+  }
+  if (body.technologie !== undefined) {
+    if (!Object.values(Technologie).includes(body.technologie as Technologie)) {
+      return NextResponse.json({ error: 'Neplatná technologie' }, { status: 400 })
+    }
+    data.technologie = body.technologie
   }
   if (body.terminRealizace !== undefined) {
     data.terminRealizace = body.terminRealizace ? new Date(String(body.terminRealizace)) : null
