@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { orgPrisma } from '@/lib/orgPrisma'
-import { mobileDealScope, getMobileOrWebSession, requireObchodnikOrAdmin, klientAdresa } from '@/lib/mobile-helpers'
+import { mobileDealScope, getMobileOrWebSession, requireObchodnikOrAdmin, klientAdresa, toAbsoluteUrl } from '@/lib/mobile-helpers'
+import { originZ } from '@/lib/fotkyOp'
+import { TITULNI_STITEK } from '@/lib/fotoStitky'
 import { checkDealLimit } from '@/lib/checkPlanLimit'
 import { createWithUniqueKod } from '@/lib/uniqueKod'
 import { generateDealKod } from '@/lib/dealKod'
@@ -46,11 +48,14 @@ export async function GET(req: Request) {
       user: { select: { id: true, jmeno: true } },
       quotes: { where: { aktivni: true }, select: { items: { select: { mnozstvi: true, cenaZaKus: true, sleva: true } } } },
       zamereni: { select: { id: true, stav: true } },
+      // náhled do seznamu: „Dům zvenku“, jinak nejnovější fotka k OP
+      photos: { select: { cesta: true, tag: true }, orderBy: { vytvoreno: 'desc' }, take: 10 },
     },
     orderBy: { vytvoreno: 'desc' },
     take: 200,
   })
 
+  const origin = originZ(req)
   return NextResponse.json(
     deals.map(d => ({
       id: d.id,
@@ -67,6 +72,10 @@ export async function GET(req: Request) {
       },
       obchodnik: d.user ? { id: d.user.id, jmeno: d.user.jmeno } : null,
       hodnota: d.quotes[0] ? Math.round(quoteCelkemBezDph(d.quotes[0].items)) : null,
+      titulniFoto: (() => {
+        const f = d.photos.find(p => p.tag === TITULNI_STITEK) ?? d.photos[0]
+        return f ? toAbsoluteUrl(f.cesta, origin) : null
+      })(),
       zamereni: {
         celkem: d.zamereni.length,
         uzavrena: d.zamereni.filter(z => z.stav === 'UZAVRENE').length,

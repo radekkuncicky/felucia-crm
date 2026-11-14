@@ -37,6 +37,8 @@ export type OrgSettingsData = {
   dokumentyCislovani: boolean
   dokumentyHeaderHtml: string | null
   dokumentyFooterHtml: string | null
+  /** štítky fotek k OP v appce Sales — viz lib/fotoStitky.ts (null = výchozí) */
+  fotoStitky?: unknown
 }
 
 export async function getOrgSettings(orgId: string): Promise<OrgSettingsData> {

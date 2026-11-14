@@ -3,6 +3,9 @@ import { orgPrisma } from '@/lib/orgPrisma'
 import { mobileDealScope, getMobileOrWebSession, requireObchodnikOrAdmin, klientAdresa } from '@/lib/mobile-helpers'
 import { quoteCelkemBezDph } from '@/lib/quoteMath'
 import { logAction } from '@/lib/auditLog'
+import { nactiFotkyOp, vyberTitulniFoto, fotkaProAppku, originZ } from '@/lib/fotkyOp'
+import { fotoStitkyOrg } from '@/lib/fotoStitky'
+import { getOrgSettings } from '@/lib/orgSettings'
 
 // GET /api/mobile/obchod/pripady/[id] — detail případu pro appku
 export async function GET(req: Request, { params }: { params: { id: string } }) {
@@ -38,6 +41,10 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   })
   if (!deal) return NextResponse.json({ error: 'Případ nenalezen' }, { status: 404 })
 
+  const [fotky, settings] = await Promise.all([nactiFotkyOp(db, deal.id), getOrgSettings(session!.user.orgId)])
+  const origin = originZ(req)
+  const titulni = vyberTitulniFoto(fotky)
+
   return NextResponse.json({
     id: deal.id,
     kod: deal.kod,
@@ -49,6 +56,11 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     duvodProhryKod: deal.duvodProhryKod,
     adresaDila: deal.adresaDila,
     adresa: deal.adresaDila || klientAdresa(deal.client) || null,
+    gpsLat: deal.gpsLat,
+    gpsLng: deal.gpsLng,
+    fotky: fotky.map(f => fotkaProAppku(f, origin)),
+    titulniFoto: titulni ? fotkaProAppku(titulni, origin) : null,
+    fotoStitky: fotoStitkyOrg(settings.fotoStitky),
     kontaktniOsoba: deal.kontaktniOsoba,
     kontaktniTelefon: deal.kontaktniTelefon,
     terminRealizace: deal.terminRealizace,
@@ -94,6 +106,9 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
       popis: a.popis,
       datum: a.datum,
       cas: a.cas,
+      trvaniMin: a.trvaniMin,
+      misto: a.misto,
+      vysledek: a.vysledek,
       splneno: a.splneno,
       stav: a.stav,
       autor: a.user ? { id: a.user.id, jmeno: a.user.jmeno } : null,
@@ -126,6 +141,19 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   for (const pole of PATCH_POLA) {
     if (typeof body[pole] === 'string') data[pole] = (body[pole] as string).trim() || null
     else if (body[pole] === null) data[pole] = null
+  }
+  // místo stavby: GPS z „Jsem na místě“ (obojí, nebo null = smazat)
+  if (body.gpsLat === null && body.gpsLng === null) {
+    data.gpsLat = null
+    data.gpsLng = null
+  } else if (body.gpsLat !== undefined || body.gpsLng !== undefined) {
+    const lat = Number(body.gpsLat)
+    const lng = Number(body.gpsLng)
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+      return NextResponse.json({ error: 'Neplatné souřadnice' }, { status: 400 })
+    }
+    data.gpsLat = lat
+    data.gpsLng = lng
   }
   if (body.terminRealizace !== undefined) {
     data.terminRealizace = body.terminRealizace ? new Date(String(body.terminRealizace)) : null

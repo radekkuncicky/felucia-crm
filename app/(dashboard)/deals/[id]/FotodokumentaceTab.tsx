@@ -2,12 +2,29 @@
 
 import { useState, useEffect, useRef } from 'react'
 import ConfirmModal from '@/components/ConfirmModal'
+import { Dialog } from '@/components/ui/Dialog'
+import { formatDate } from '@/lib/format'
 
 interface Photo {
   id: string
   nazev: string
   cesta: string
   vytvoreno: string
+  /** PRIPAD = fotka k OP (web/appka Sales), ZAMERENI = ze zaměření (upravuje se tam) */
+  zdroj?: 'PRIPAD' | 'ZAMERENI'
+  tagNazev?: string | null
+  popis?: string | null
+  autor?: string | null
+  gpsLat?: number | null
+  gpsLng?: number | null
+}
+
+function mapaUrl(p: Photo): string | null {
+  return p.gpsLat != null && p.gpsLng != null ? `https://mapy.cz/zakladni?q=${p.gpsLat},${p.gpsLng}` : null
+}
+
+function popisek(p: Photo): string {
+  return [p.autor, formatDate(p.vytvoreno)].filter(Boolean).join(' · ')
 }
 
 interface Props {
@@ -112,17 +129,26 @@ export default function FotodokumentaceTab({ dealId }: Props) {
                 className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
                 onClick={() => setLightbox(photo)}
               />
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors" />
-              <button
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors pointer-events-none" />
+              <div className="absolute top-2 left-2 flex flex-wrap gap-1 pointer-events-none">
+                {photo.tagNazev && (
+                  <span className="px-1.5 py-0.5 rounded bg-black/60 text-white text-[11px] font-medium">{photo.tagNazev}</span>
+                )}
+                {photo.zdroj === 'ZAMERENI' && (
+                  <span className="px-1.5 py-0.5 rounded bg-primary/90 text-white text-[11px] font-medium">Zaměření</span>
+                )}
+              </div>
+              {photo.zdroj !== 'ZAMERENI' && <button
                 onClick={(e) => { e.stopPropagation(); setDeletePhoto(photo) }}
+                aria-label="Smazat fotku"
                 className="absolute top-2 right-2 w-7 h-7 bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-700"
               >
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
-              </button>
-              <div className="absolute bottom-0 left-0 right-0 px-2 py-1 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity">
-                <p className="text-white text-xs truncate">{photo.nazev}</p>
+              </button>}
+              <div className="absolute bottom-0 left-0 right-0 px-2 py-1 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                <p className="text-white text-xs truncate">{popisek(photo) || photo.nazev}</p>
               </div>
             </div>
           ))}
@@ -130,25 +156,30 @@ export default function FotodokumentaceTab({ dealId }: Props) {
       )}
 
       {/* Lightbox */}
-      {lightbox && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
-          onClick={() => setLightbox(null)}
-        >
-          <div className="relative max-w-4xl max-h-[90vh] mx-4" onClick={e => e.stopPropagation()}>
+      <Dialog
+        open={lightbox !== null}
+        onClose={() => setLightbox(null)}
+        title={lightbox?.tagNazev ?? lightbox?.nazev ?? 'Fotka'}
+        size="2xl"
+        sheet={false}
+      >
+        {lightbox && (
+          <div className="space-y-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={lightbox.cesta} alt={lightbox.nazev} className="max-w-full max-h-[85vh] object-contain rounded-lg" />
-            <div className="absolute bottom-0 left-0 right-0 px-4 py-2 bg-black/50 rounded-b-lg flex items-center justify-between">
-              <p className="text-white text-sm">{lightbox.nazev}</p>
-              <button onClick={() => setLightbox(null)} className="text-white hover:text-gray-300">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+            <img src={lightbox.cesta} alt={lightbox.tagNazev ?? lightbox.nazev} className="w-full max-h-[70vh] object-contain rounded-lg bg-black/5" />
+            {lightbox.popis && <p className="text-sm text-fg">{lightbox.popis}</p>}
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted">
+              <span>{popisek(lightbox)}</span>
+              {lightbox.zdroj === 'ZAMERENI' && <span>Ze zaměření</span>}
+              {mapaUrl(lightbox) && (
+                <a href={mapaUrl(lightbox)!} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                  Ukázat na mapě
+                </a>
+              )}
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </Dialog>
     </div>
   )
 }
