@@ -12,7 +12,14 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
   const db = orgPrisma(session!.user.orgId)
   const aktivita = await db.activity.findFirst({
-    where: { id: params.id, deal: { orgId: session!.user.orgId, ...mobileDealScope(session!) } },
+    where: {
+      id: params.id,
+      OR: [
+        { deal: { orgId: session!.user.orgId, ...mobileDealScope(session!) } },
+        // aktivity u otevřených leadů (leady vidí každý s oprávněním obchod)
+        { lead: { orgId: session!.user.orgId, status: { notIn: ['PREVEDEN', 'ZRUSEN'] } } },
+      ],
+    },
   })
   if (!aktivita) return NextResponse.json({ error: 'Aktivita nenalezena' }, { status: 404 })
 
@@ -54,6 +61,9 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   }
 
   await db.activity.update({ where: { id: params.id }, data })
+  if (aktivita.leadId && body.splneno === true && aktivita.typ === 'HOVOR') {
+    await db.lead.updateMany({ where: { id: aktivita.leadId, status: 'NOVY' }, data: { status: 'KONTAKTOVAN' } })
+  }
   return NextResponse.json({ id: params.id, ok: true })
 }
 

@@ -6,6 +6,7 @@ import { NextResponse } from 'next/server'
 import { getPerms, forbidden } from '@/lib/permissions'
 import { parseZdroj } from '@/lib/zdrojPoptavky'
 import { getOrgSettings } from '@/lib/orgSettings'
+import { vytvorLead } from '@/lib/leadCreate'
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
@@ -62,22 +63,21 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Vyberte, odkud o nás zákazník ví' }, { status: 400 })
   }
 
-  const lead = await db.lead.create({
-    data: {
-      orgId,
-      jmeno: body.jmeno,
-      email: body.email || null,
-      telefon: body.telefon || null,
-      firma: body.firma || null,
-      zprava: body.zprava || null,
-      zdroj: 'RUCNE',
-      status: 'NOVY',
-      assignedToId: body.assignedToId || null,
-      odhadovanaHodnota: body.odhadovanaHodnota ? parseFloat(body.odhadovanaHodnota) : null,
-      tagy: body.tagy || [],
-      ...zdroj,
-    },
-  })
+  const { lead, oznam } = await vytvorLead(db, {
+    orgId,
+    jmeno: body.jmeno,
+    email: body.email || null,
+    telefon: body.telefon || null,
+    firma: body.firma || null,
+    zprava: body.zprava || null,
+    zdroj: 'RUCNE',
+    status: 'NOVY',
+    assignedToId: body.assignedToId || null,
+    odhadovanaHodnota: body.odhadovanaHodnota ? parseFloat(body.odhadovanaHodnota) : null,
+    tagy: body.tagy || [],
+    ...zdroj,
+  }, { autorUserId: session.user.id })
+  oznam()
 
   return NextResponse.json(lead, { status: 201 })
 }

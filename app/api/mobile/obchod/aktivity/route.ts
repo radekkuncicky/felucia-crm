@@ -4,24 +4,32 @@ import { mobileDealScope, getMobileOrWebSession, requireObchodnikOrAdmin } from 
 import { TypAktivity } from '@prisma/client'
 import { parseCas, parseTrvani } from '@/lib/casAktivity'
 import { idempotentne, parseMobileId, MobileIdKolize } from '@/lib/mobileIdempotence'
+import { leadUzavren, typPovolen } from '@/lib/activities'
 
 const TYPY = Object.values(TypAktivity)
 
-// GET /api/mobile/obchod/aktivity?dealId= — feed aktivit případu
+// GET /api/mobile/obchod/aktivity?dealId= | ?leadId= — feed aktivit případu / leadu
 export async function GET(req: Request) {
   const session = await getMobileOrWebSession(req)
   const authErr = requireObchodnikOrAdmin(session)
   if (authErr) return authErr
 
   const db = orgPrisma(session!.user.orgId)
-  const dealId = new URL(req.url).searchParams.get('dealId')
-  if (!dealId) return NextResponse.json({ error: 'Chybí dealId' }, { status: 400 })
+  const sp = new URL(req.url).searchParams
+  const dealId = sp.get('dealId')
+  const leadId = sp.get('leadId')
+  if (!dealId && !leadId) return NextResponse.json({ error: 'Chybí dealId' }, { status: 400 })
 
-  const deal = await db.deal.findFirst({ where: { id: dealId, ...mobileDealScope(session!) }, select: { id: true } })
-  if (!deal) return NextResponse.json({ error: 'Případ nenalezen' }, { status: 404 })
+  if (dealId) {
+    const deal = await db.deal.findFirst({ where: { id: dealId, ...mobileDealScope(session!) }, select: { id: true } })
+    if (!deal) return NextResponse.json({ error: 'Případ nenalezen' }, { status: 404 })
+  } else {
+    const lead = await db.lead.findFirst({ where: { id: leadId!, orgId: session!.user.orgId }, select: { id: true } })
+    if (!lead) return NextResponse.json({ error: 'Lead nenalezen' }, { status: 404 })
+  }
 
   const aktivity = await db.activity.findMany({
-    where: { dealId },
+    where: dealId ? { dealId } : { leadId: leadId! },
     include: { user: { select: { id: true, jmeno: true } } },
     orderBy: { datum: 'desc' },
     take: 100,
@@ -47,7 +55,8 @@ export async function GET(req: Request) {
 }
 
 // POST /api/mobile/obchod/aktivity — nová aktivita / follow-up.
-// { dealId, typ, datum, cas?, popis?, cil?, misto?, reminderAt?, splneno?, vysledek? }
+// { dealId | leadId, typ, datum, cas?, popis?, cil?, misto?, reminderAt?, splneno?, vysledek? }
+// U leadu jen HOVOR/EMAIL; uskutečněný hovor posune NOVY lead na KONTAKTOVAN.
 // splneno: true = aktivita vzniká rovnou jako DOKONCENA (zápis hovoru po zavolání
 // z appky) — jeden požadavek, aby to fungovalo i z offline fronty.
 export async function POST(req: Request) {
@@ -60,6 +69,7 @@ export async function POST(req: Request) {
 
   let body: {
     dealId?: string
+    leadId?: string
     typ?: string
     datum?: string
     cas?: string
@@ -76,24 +86,42 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Neplatný požadavek' }, { status: 400 })
   }
 
-  if (!body.dealId || !body.typ || !body.datum) {
-    return NextResponse.json({ error: 'Chybí povinná pole (dealId, typ, datum)' }, { status: 400 })
+  if (!body.dealId === !body.leadId || !body.typ || !body.datum) {
+    return NextResponse.json({ error: 'Chybí povinná pole (dealId nebo leadId, typ, datum)' }, { status: 400 })
   }
   if (!TYPY.includes(body.typ as TypAktivity)) {
     return NextResponse.json({ error: 'Neplatný typ aktivity' }, { status: 400 })
   }
 
-  const deal = await db.deal.findFirst({ where: { id: body.dealId, ...mobileDealScope(session!) }, select: { id: true } })
-  if (!deal) return NextResponse.json({ error: 'Případ nenalezen' }, { status: 404 })
+  let rodic: { dealId: string; leadId: null } | { dealId: null; leadId: string }
+  if (body.dealId) {
+    const deal = await db.deal.findFirst({ where: { id: body.dealId, ...mobileDealScope(session!) }, select: { id: true } })
+    if (!deal) return NextResponse.json({ error: 'Případ nenalezen' }, { status: 404 })
+    rodic = { dealId: deal.id, leadId: null }
+  } else {
+    const lead = await db.lead.findFirst({ where: { id: body.leadId!, orgId }, select: { id: true, status: true } })
+    if (!lead) return NextResponse.json({ error: 'Lead nenalezen' }, { status: 404 })
+    if (!typPovolen(body.typ as TypAktivity, { leadId: lead.id })) {
+      return NextResponse.json({ error: 'U leadu jde zapsat jen hovor nebo e-mail' }, { status: 400 })
+    }
+    rodic = { dealId: null, leadId: lead.id }
+  }
 
   const splneno = body.splneno === true
   const mobileId = parseMobileId(body.mobileId)
   const datum = new Date(body.datum)
-  const vytvor = () => db.activity.create({
-    data: {
+  const vytvor = async () => {
+    // lead převedený mezitím (offline fronta) → zápis patří k jeho OP
+    if (rodic.leadId) {
+      const l = await db.lead.findFirst({ where: { id: rodic.leadId }, select: { status: true, prevedenNaOpId: true } })
+      if (l?.status === 'PREVEDEN' && l.prevedenNaOpId) rodic = { dealId: l.prevedenNaOpId, leadId: null }
+      else if (l && leadUzavren(l.status)) throw new LeadUzavren()
+    }
+    const a = await db.activity.create({ data: {
       mobileId,
       orgId,
-      dealId: deal.id,
+      dealId: rodic.dealId,
+      leadId: rodic.leadId,
       userId,
       typ: body.typ as TypAktivity,
       datum,
@@ -106,8 +134,12 @@ export async function POST(req: Request) {
       splneno,
       vysledek: splneno ? body.vysledek?.trim() || null : null,
       stav: splneno ? 'DOKONCENA' : 'PLANOVANA',
-    },
-  })
+    } })
+    if (rodic.leadId && splneno && body.typ === 'HOVOR') {
+      await db.lead.updateMany({ where: { id: rodic.leadId, status: 'NOVY' }, data: { status: 'KONTAKTOVAN' } })
+    }
+    return a
+  }
 
   try {
     // opakované odeslání z offline fronty → 200 s už uloženou aktivitou
@@ -119,6 +151,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ id: zaznam.id }, { status: novy ? 201 : 200 })
   } catch (e) {
     if (e instanceof MobileIdKolize) return NextResponse.json({ error: 'Neplatné mobileId' }, { status: 422 })
+    if (e instanceof LeadUzavren) return NextResponse.json({ error: 'Lead je uzavřený' }, { status: 400 })
     throw e
   }
 }
@@ -126,3 +159,5 @@ export async function POST(req: Request) {
 export async function OPTIONS() {
   return new NextResponse(null, { status: 204 })
 }
+
+class LeadUzavren extends Error {}

@@ -32,7 +32,7 @@ export async function GET(req: Request) {
 
   const mojeAktivity = { OR: [{ userId }, { resitelId: userId }] }
 
-  const [dnesni, followUpy] = await Promise.all([
+  const [dnesni, followUpy, leadAktivity] = await Promise.all([
     // Dnešní plánované aktivity (schůzky, hovory, úkoly…)
     db.activity.findMany({
       where: {
@@ -55,6 +55,18 @@ export async function GET(req: Request) {
       },
       include: dealInclude,
       orderBy: { datum: 'asc' },
+      take: 50,
+    }),
+    // Naplánované hovory/e-maily u otevřených leadů do konce dneška (i prošlé)
+    db.activity.findMany({
+      where: {
+        lead: { orgId, status: { notIn: ['PREVEDEN', 'ZRUSEN'] } },
+        ...mojeAktivity,
+        datum: { lt: zitraStart },
+        stav: 'PLANOVANA',
+      },
+      include: { lead: { select: { id: true, jmeno: true, firma: true, telefon: true, status: true } } },
+      orderBy: [{ datum: 'asc' }, { cas: 'asc' }],
       take: 50,
     }),
   ])
@@ -86,6 +98,16 @@ export async function GET(req: Request) {
     dnesni: dnesni.filter(hasDeal).map(mapAktivita)
       .sort((a, b) => (a.cas ? 0 : 1) - (b.cas ? 0 : 1) || (a.cas ?? '').localeCompare(b.cas ?? '')),
     followUpy: followUpy.filter(hasDeal).map(mapAktivita),
+    // samostatný klíč — starší verze appky (bez leadů) ho ignorují
+    leadAktivity: leadAktivity.flatMap(a => a.lead ? [{
+      id: a.id,
+      typ: a.typ,
+      popis: a.popis,
+      datum: a.datum,
+      cas: a.cas,
+      prosla: a.datum < todayStart,
+      lead: { id: a.lead.id, jmeno: a.lead.jmeno, firma: a.lead.firma, telefon: a.lead.telefon, status: a.lead.status },
+    }] : []),
   })
 }
 

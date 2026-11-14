@@ -11,6 +11,7 @@ import { createWithUniqueKod } from '@/lib/uniqueKod'
 import { generateDealKod } from '@/lib/dealKod'
 import { logAction } from '@/lib/auditLog'
 import { parseZdroj, type ZdrojVstup } from '@/lib/zdrojPoptavky'
+import { vytvorLead } from '@/lib/leadCreate'
 
 const TECHNOLOGIE = new Set<string>(Object.values(Technologie))
 const CILE = ['OP', 'LEAD', 'NOVY_OP'] as const
@@ -96,23 +97,22 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Vyplňte jméno volajícího' }, { status: 400 })
     }
 
+    let oznam: (() => void) | null = null
     const vysledek = await db.$transaction(async tx => {
       const lead = leadId
         ? await tx.lead.findUniqueOrThrow({ where: { id: leadId }, select: { id: true, status: true } })
-        : await tx.lead.create({
-            data: {
-              orgId, jmeno: jmeno ?? firma!, firma, telefon, email,
-              zdroj: 'RUCNE', status: 'KONTAKTOVAN', assignedToId: userId,
-              zprava: hovor.vysledek, ...zdroj,
-            },
-            select: { id: true, status: true },
-          })
+        : await vytvorLead(tx, {
+            orgId, jmeno: jmeno ?? firma!, firma, telefon, email,
+            zdroj: 'RUCNE', status: 'KONTAKTOVAN', assignedToId: userId,
+            zprava: hovor.vysledek, ...zdroj,
+          }, { autorUserId: userId }).then(r => { oznam = r.oznam; return r.lead })
       // Po hovoru je lead kontaktovaný (kvalifikovaný zůstává)
       if (lead.status === 'NOVY') await tx.lead.update({ where: { id: lead.id }, data: { status: 'KONTAKTOVAN' } })
       const a = await tx.activity.create({ data: { orgId, leadId: lead.id, userId, resitelId: userId, ...hovor } })
       if (dalsi) await tx.activity.create({ data: followUpData({ orgId, dealId: null, leadId: lead.id, resitelId: userId }, dalsi, userId) })
       return { leadId: lead.id, aktivitaId: a.id }
     })
+    ;(oznam as (() => void) | null)?.()
     return NextResponse.json({ cil, ...vysledek }, { status: 201 })
   }
 

@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { jeZGoogleAds, zdrojIdPodleKodu, ZDROJ_GOOGLE_ADS } from '@/lib/zdrojPoptavky'
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit'
-import { notifyNewLead } from '@/lib/leadNotify'
+import { vytvorLead } from '@/lib/leadCreate'
 
 function corsHeaders(origin: string | null, allowedOrigins: string | null) {
   const allowed = resolveAllowedOrigin(origin, allowedOrigins)
@@ -97,23 +97,21 @@ export async function POST(req: NextRequest) {
     ? await zdrojIdPodleKodu(orgPrisma(apiKey.orgId), apiKey.orgId, ZDROJ_GOOGLE_ADS)
     : null
 
-  const lead = await prisma.lead.create({
-    data: {
-      orgId: apiKey.orgId,
-      jmeno: fullName,
-      zdrojPoptavkyId,
-      email: email || null,
-      telefon: telefon || null,
-      firma: firma || null,
-      zprava: zprava || null,
-      zdroj: 'WEB_FORMULAR',
-      status: 'NOVY',
-      apiKeyId: apiKey.id,
-    },
-  })
+  const { lead, oznam } = await vytvorLead(prisma, {
+    orgId: apiKey.orgId,
+    jmeno: fullName,
+    zdrojPoptavkyId,
+    email: email || null,
+    telefon: telefon || null,
+    firma: firma || null,
+    zprava: zprava || null,
+    zdroj: 'WEB_FORMULAR',
+    status: 'NOVY',
+    apiKeyId: apiKey.id,
+  }, { autorUserId: null })
 
   prisma.apiKey.update({ where: { id: apiKey.id }, data: { lastUsedAt: new Date() } }).catch(() => {})
-  notifyNewLead(apiKey.orgId, lead.id, fullName).catch(() => {})
+  oznam()
 
   const hdrs = corsHeaders(origin, apiKey.allowedOrigins)
   return NextResponse.json({ ok: true, leadId: lead.id }, { status: 201, headers: hdrs })

@@ -1,19 +1,13 @@
 import { getServerSession } from 'next-auth'
-import { Prisma, Technologie } from '@prisma/client'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
-import { leadPredmet, sluzbaToTechnologie } from '@/lib/leadService'
-import { generateDealKod } from '@/lib/dealKod'
-import { createWithUniqueKod } from '@/lib/uniqueKod'
 import { NextResponse } from 'next/server'
 import { getPerms, forbidden } from '@/lib/permissions'
-import { najdiDuplicitnihoKlienta, normalizeEmail, normalizePhone } from '@/lib/clientDuplicate'
-
-const TECHNOLOGIE_VALUES = new Set<string>(Object.values(Technologie))
+import { kandidatKlientaLeadu, prevedLead } from '@/lib/leadPrevod'
 
 // GET — kandidát na existujícího klienta (shoda telefonu/e-mailu, bez kontaktu podle jména/firmy),
 // aby převod nezakládal duplicitu. -> { kandidat: { id, nazev, telefon, email, duvod } | null }
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(_req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!getPerms(session.user).obchod) return forbidden()
@@ -22,149 +16,22 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   const db = orgPrisma(orgId)
   const lead = await db.lead.findFirst({ where: { id: params.id, orgId } })
   if (!lead) return NextResponse.json({ error: 'Lead nenalezen.' }, { status: 404 })
-
-  const klienti = await db.client.findMany({
-    where: { orgId },
-    select: { id: true, jmeno: true, prijmeni: true, telefon: true, email: true, typKlienta: true },
-  })
-  const firma = lead.firma?.trim()
-  // U firem porovnávat jen název (prijmeni = kontaktní osoba)
-  const match = najdiDuplicitnihoKlienta(klienti.map(k => k.typKlienta === 'FIRMA' ? { ...k, prijmeni: '' } : k), {
-    // Firma je v klientech uložená v `jmeno` (název), osoba jako „jméno příjmení"
-    jmeno: firma || lead.jmeno,
-    prijmeni: null,
-    telefon: lead.telefon,
-    email: lead.email,
-  })
-  if (!match) return NextResponse.json({ kandidat: null })
-
-  const duvod = lead.telefon && normalizePhone(lead.telefon) === normalizePhone(match.telefon)
-    ? 'telefon'
-    : lead.email && normalizeEmail(lead.email) === normalizeEmail(match.email)
-      ? 'email'
-      : 'jmeno'
-  const k = klienti.find(x => x.id === match.id)!
-  return NextResponse.json({
-    kandidat: {
-      id: k.id,
-      nazev: k.typKlienta === 'FIRMA' ? k.jmeno : `${k.jmeno} ${k.prijmeni}`.trim(),
-      telefon: k.telefon,
-      email: k.email,
-      duvod,
-    },
-  })
+  return NextResponse.json({ kandidat: await kandidatKlientaLeadu(db, orgId, lead) })
 }
 
+// POST { technologie?, predmet?, typKlienta?, existingClientId? } → { dealId, clientId, kod }
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!getPerms(session.user).obchod) return forbidden()
 
-  const orgId = session.user.orgId
-  const db = orgPrisma(orgId)
-
-  const lead = await db.lead.findFirst({ where: { id: params.id, orgId } })
-  if (!lead) return NextResponse.json({ error: 'Lead nenalezen.' }, { status: 404 })
-  if (lead.status === 'PREVEDEN') return NextResponse.json({ error: 'Lead je již převeden.' }, { status: 400 })
-
   const body = await req.json().catch(() => null)
   if (!body || typeof body !== 'object') {
     return NextResponse.json({ error: 'Neplatná data požadavku.' }, { status: 400 })
   }
-  // body: { technologie?, predmet?, typKlienta?, existingClientId? }
 
-  if (body.technologie !== undefined && !TECHNOLOGIE_VALUES.has(body.technologie)) {
-    return NextResponse.json({ error: `Neplatná technologie: ${body.technologie}` }, { status: 400 })
-  }
-  const technologie: Technologie = body.technologie || sluzbaToTechnologie(lead.sluzba)
-  const predmet = typeof body.predmet === 'string' && body.predmet.trim()
-    ? body.predmet.trim()
-    : leadPredmet(lead)
-
-  let clientId: string
-  let createdNewClient = false
-
-  if (body.existingClientId) {
-    const existing = await db.client.findFirst({ where: { id: body.existingClientId, orgId }, select: { id: true } })
-    if (!existing) return NextResponse.json({ error: 'Klient nenalezen.' }, { status: 404 })
-    clientId = existing.id
-  } else {
-    if (!lead.jmeno?.trim()) {
-      return NextResponse.json({ error: 'Lead nemá vyplněné jméno, klienta nelze založit.' }, { status: 400 })
-    }
-    // Firma: jmeno = název firmy, prijmeni = kontaktní osoba (jako clients/new).
-    // Osoba: rozděl jméno na jmeno + prijmeni.
-    const firma = lead.firma?.trim()
-    const nameParts = lead.jmeno.trim().split(' ')
-    const jmeno = firma || nameParts[0] || lead.jmeno
-    const prijmeni = firma ? lead.jmeno.trim() : (nameParts.slice(1).join(' ') || '')
-
-    const klient = await db.client.create({
-      data: {
-        orgId,
-        typKlienta: firma ? 'FIRMA' : (body.typKlienta || 'FYZICKA_OSOBA'),
-        jmeno,
-        prijmeni,
-        email: lead.email || null,
-        telefon: lead.telefon || null,
-        poznamka: lead.zprava
-          ? `Původní zpráva z leadu:\n${lead.zprava}`
-          : null,
-      },
-    })
-    clientId = klient.id
-    createdNewClient = true
-  }
-
-  // OP + přepnutí leadu jedním zápisem per pokus. Číslo OP (kod) může kolidovat
-  // se souběžně vznikajícím OP jinde v appce (unique orgId+kod) — createWithUniqueKod
-  // číslo přegeneruje a zkusí znovu v čerstvé transakci (dřívější kolize tu způsobovala
-  // nespolehlivý převod, viz [[project-batch-tasks-2026-08-22]] úkol 4).
-  try {
-    const deal = await createWithUniqueKod(
-      () => generateDealKod(orgId),
-      (kod) => db.$transaction(async (tx) => {
-        const deal = await tx.deal.create({
-          data: {
-            orgId,
-            clientId,
-            userId: session.user.id,
-            kod,
-            technologie,
-            stav: 'NOVY',
-            predmet,
-            zdrojPoptavkyId: lead.zdrojPoptavkyId,
-            doporucilKlientId: lead.doporucilKlientId,
-            doporucilText: lead.doporucilText,
-          },
-        })
-        await tx.lead.update({
-          where: { id: params.id },
-          data: {
-            status: 'PREVEDEN',
-            prevedenNaOpId: deal.id,
-            prevedenNaKlientId: clientId,
-          },
-        })
-        // Hovory/e-maily z leadu pokračují na OP (historie i naplánované)
-        await tx.activity.updateMany({
-          where: { leadId: params.id },
-          data: { leadId: null, dealId: deal.id },
-        })
-        return deal
-      }),
-    )
-
-    return NextResponse.json({ dealId: deal.id, clientId, kod: deal.kod }, { status: 201 })
-  } catch (e) {
-    console.error(`[leady/convert] selhal převod leadu ${params.id} (org ${orgId}):`, e)
-    // Nový klient bez vazby na OP by zůstal osiřelý — při definitivním selhání ho smažeme.
-    if (createdNewClient) {
-      await db.client.delete({ where: { id: clientId } }).catch(() => {})
-    }
-    const message = e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002'
-      ? 'Převod se nezdařil kvůli kolizi čísla OP, zkuste to prosím znovu.'
-      : 'Převod se nezdařil kvůli neočekávané chybě, zkuste to prosím znovu nebo kontaktujte podporu.'
-    return NextResponse.json({ error: message }, { status: 500 })
-  }
+  const orgId = session.user.orgId
+  const r = await prevedLead(orgPrisma(orgId), orgId, session.user.id, params.id, body)
+  if (!r.ok) return NextResponse.json({ error: r.error, ...(r.upgradeUrl ? { upgradeUrl: r.upgradeUrl } : {}) }, { status: r.status })
+  return NextResponse.json({ dealId: r.dealId, clientId: r.clientId, kod: r.kod }, { status: 201 })
 }

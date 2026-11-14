@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit'
-import { notifyNewLead } from '@/lib/leadNotify'
+import { vytvorLead } from '@/lib/leadCreate'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { jeZGoogleAds, zdrojIdPodleKodu, ZDROJ_GOOGLE_ADS } from '@/lib/zdrojPoptavky'
 
@@ -175,33 +175,31 @@ export async function POST(req: NextRequest) {
     ? await zdrojIdPodleKodu(orgPrisma(apiKey.orgId), apiKey.orgId, ZDROJ_GOOGLE_ADS)
     : null
 
-  const lead = await prisma.lead.create({
-    data: {
-      orgId: apiKey.orgId,
-      jmeno: name,
-      email,
-      telefon: phone,
-      zdroj: 'WEB_FORMULAR',
-      status: 'NOVY',
-      // Zpráva = jen text od klienta; metadata formuláře jdou do vlastních sloupců,
-      // aby se z nich daly rozumně skládat předmět OP a UI.
-      zprava: message,
-      sluzba: service,
-      zdrojFormulare: source,
-      strankaUrl: pageUrl,
-      zdrojPoptavkyId,
-      prilohy: attachmentsCount
-        ? `${attachmentsCount}${attachmentsNote ? ` — ${attachmentsNote}` : ''}`
-        : null,
-      objednavka: orderSlug,
-      odhadovanaHodnota: orderPrice,
-      apiKeyId: apiKey.id,
-      submittedAt,
-    },
-  })
+  const { lead, oznam } = await vytvorLead(prisma, {
+    orgId: apiKey.orgId,
+    jmeno: name,
+    email,
+    telefon: phone,
+    zdroj: 'WEB_FORMULAR',
+    status: 'NOVY',
+    // Zpráva = jen text od klienta; metadata formuláře jdou do vlastních sloupců,
+    // aby se z nich daly rozumně skládat předmět OP a UI.
+    zprava: message,
+    sluzba: service,
+    zdrojFormulare: source,
+    strankaUrl: pageUrl,
+    zdrojPoptavkyId,
+    prilohy: attachmentsCount
+      ? `${attachmentsCount}${attachmentsNote ? ` — ${attachmentsNote}` : ''}`
+      : null,
+    objednavka: orderSlug,
+    odhadovanaHodnota: orderPrice,
+    apiKeyId: apiKey.id,
+    submittedAt,
+  }, { autorUserId: null })
 
   prisma.apiKey.update({ where: { id: apiKey.id }, data: { lastUsedAt: new Date() } }).catch(() => {})
-  notifyNewLead(apiKey.orgId, lead.id, name).catch(() => {})
+  oznam()
 
   log(ip, 200)
   return NextResponse.json({ ok: true, id: lead.id }, { headers: hdrs })

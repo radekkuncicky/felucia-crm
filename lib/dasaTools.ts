@@ -16,6 +16,7 @@ import { getOrgSettings } from '@/lib/orgSettings'
 import { slozAdresu } from '@/lib/klientAdresa'
 import { najdiDuplicitnihoKlienta } from '@/lib/clientDuplicate'
 import { najdiKlientIds } from '@/lib/clientSearch'
+import { vytvorLead } from '@/lib/leadCreate'
 
 // ─── Tool definitions ────────────────────────────────────────────────────────
 
@@ -750,15 +751,14 @@ export async function executeDasaTool(
           return { result: JSON.stringify({ chyba: 'Chybí zdroj poptávky — zeptej se uživatele, odkud o nás zákazník ví (list_zdroje_poptavky).' }) }
         }
         const text = (v: unknown, max: number) => (typeof v === 'string' && v.trim() ? v.trim().slice(0, max) : null)
-        const lead = await db.lead.create({
-          data: {
-            orgId, jmeno: jmeno.slice(0, 200),
-            firma: text(input.firma, 200), telefon: text(input.telefon, 50), email: text(input.email, 200),
-            zprava: text(input.zprava, 2000),
-            zdroj: 'RUCNE', status: 'NOVY', assignedToId: userId,
-            ...zdroj,
-          },
-        })
+        const { lead, oznam } = await vytvorLead(db, {
+          orgId, jmeno: jmeno.slice(0, 200),
+          firma: text(input.firma, 200), telefon: text(input.telefon, 50), email: text(input.email, 200),
+          zprava: text(input.zprava, 2000),
+          zdroj: 'RUCNE', status: 'NOVY', assignedToId: userId,
+          ...zdroj,
+        }, { autorUserId: userId })
+        oznam()
         return { result: JSON.stringify({ ok: true, leadId: lead.id }), navigateTo: `/leady/${lead.id}` }
       }
 
