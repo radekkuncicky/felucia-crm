@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { redirect } from 'next/navigation'
 import ProfileClient from './ProfileClient'
 import CalendarSubscribeCard from './CalendarSubscribeCard'
-import { getCalendarToken } from '@/lib/calendarToken'
+import { calendarOdkazy } from '@/lib/calendarToken'
 
 export default async function ProfilePage() {
   const session = await getServerSession(authOptions)
@@ -18,13 +18,7 @@ export default async function ProfilePage() {
   if (!user) redirect('/auth/signin')
 
   const userId = session.user.id
-  const sig = getCalendarToken(userId, user.calendarTokenVersion)
-  const host = process.env.NEXTAUTH_URL
-    ? new URL(process.env.NEXTAUTH_URL).host
-    : 'app.felucia.io'
-  const proto = host.includes('localhost') ? 'http' : 'https'
-  const subscribeUrl = `${proto}://${host}/api/calendar/ics?uid=${userId}&sig=${sig}`
-  const webcalUrl = `webcal://${host}/api/calendar/ics?uid=${userId}&sig=${sig}`
+  const { https: subscribeUrl, webcal: webcalUrl } = calendarOdkazy(userId, user.calendarTokenVersion)
 
   return (
     <div className="space-y-6 max-w-2xl">

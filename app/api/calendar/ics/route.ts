@@ -7,56 +7,8 @@ import { verifyCalendarToken } from '@/lib/calendarToken'
 import {
   AKTIVITA_DOPLNEK, DOPLNEK, SERVIS_DOPLNEK, calendarTitle, dateRange, klientJmeno, servisTechnologie, technologieLabel, utcDateStr,
 } from '@/lib/calendarEvents'
+import { vevent as icsEvent, vcalendar, icsStamp, type IcsEvent } from '@/lib/ics'
 
-function escapeIcal(text: string): string {
-  return text
-    .replace(/\\/g, '\\\\')
-    .replace(/;/g, '\\;')
-    .replace(/,/g, '\\,')
-    .replace(/\r?\n/g, '\\n')
-}
-
-function foldLine(line: string): string {
-  if (line.length <= 75) return line
-  let result = ''
-  while (line.length > 75) {
-    result += line.slice(0, 75) + '\r\n '
-    line = line.slice(75)
-  }
-  return result + line
-}
-
-function formatIcalDate(d: Date): string {
-  const y = d.getUTCFullYear()
-  const m = String(d.getUTCMonth() + 1).padStart(2, '0')
-  const day = String(d.getUTCDate()).padStart(2, '0')
-  return `${y}${m}${day}`
-}
-
-function addDay(dateStr: string): string {
-  const d = new Date(dateStr + 'T00:00:00Z')
-  d.setUTCDate(d.getUTCDate() + 1)
-  return formatIcalDate(d)
-}
-
-/**
- * Celodenní událost; `dateTo` (včetně) u vícedenních akcí → DTEND je den po konci
- * (v iCal je DTEND exkluzivní).
- */
-function vevent(uid: string, dateStr: string, summary: string, description: string, url: string, location?: string, dateTo?: string): string {
-  const lines = [
-    'BEGIN:VEVENT',
-    foldLine(`UID:${uid}@felucia`),
-    `DTSTART;VALUE=DATE:${dateStr.replace(/-/g, '')}`,
-    `DTEND;VALUE=DATE:${addDay(dateTo && dateTo > dateStr ? dateTo : dateStr)}`,
-    foldLine(`SUMMARY:${escapeIcal(summary)}`),
-    foldLine(`DESCRIPTION:${escapeIcal(description)}`),
-    foldLine(`URL:${url}`),
-  ]
-  if (location) lines.push(foldLine(`LOCATION:${escapeIcal(location)}`))
-  lines.push('END:VEVENT')
-  return lines.join('\r\n')
-}
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url)
@@ -157,7 +109,10 @@ export async function GET(req: Request) {
     }),
   ])
 
+  const stamp = icsStamp(new Date())
   const vevents: string[] = []
+  const vevent = (uid: string, date: string, summary: string, description: string, url: string, location?: string, dateTo?: string, cas?: Pick<IcsEvent, 'cas' | 'trvaniMin'>) =>
+    icsEvent({ uid, date, dateTo, summary, description, url, location, ...cas }, stamp)
 
   for (const a of activities) {
     const dateStr = utcDateStr(a.datum)
@@ -187,7 +142,9 @@ export async function GET(req: Request) {
     const location = a.typ === 'SCHUZKA' ? (a.misto ?? undefined) : undefined
     const href = a.deal ? `${base}/deals/${a.deal.id}?tab=aktivity` : a.lead ? `${base}/leady/${a.lead.id}` : `${base}${diktatHref(a.id)}`
 
-    vevents.push(vevent(`act-${a.id}`, dateStr, summary, description, href, location))
+    // s časem → událost v pražském čase (výchozí délka: schůzka 60 min, ostatní dle trvaniMin)
+    const trvaniMin = a.trvaniMin ?? (a.typ === 'SCHUZKA' ? 60 : 15)
+    vevents.push(vevent(`act-${a.id}`, dateStr, summary, description, href, location, undefined, { cas: a.cas, trvaniMin }))
   }
 
   // OP se zakázkou s naplánovanou montáží v tomto feedu: realizaci a předání díla ukazuje montáž
@@ -258,17 +215,7 @@ export async function GET(req: Request) {
     vevents.push(vevent(`montaz-${z.id}`, r.date, calendarTitle(klient, tech, DOPLNEK.MONTAZ), desc, url, undefined, r.dateTo))
   }
 
-  const calendar = [
-    'BEGIN:VCALENDAR',
-    'VERSION:2.0',
-    `PRODID:-//Felucia CRM//CS`,
-    'CALSCALE:GREGORIAN',
-    'METHOD:PUBLISH',
-    `X-WR-CALNAME:Felucia — ${user.jmeno} (${user.organization.nazev})`,
-    'X-WR-TIMEZONE:Europe/Prague',
-    ...vevents,
-    'END:VCALENDAR',
-  ].join('\r\n')
+  const calendar = vcalendar(`Felucia — ${user.jmeno} (${user.organization.nazev})`, vevents)
 
   return new Response(calendar, {
     headers: {

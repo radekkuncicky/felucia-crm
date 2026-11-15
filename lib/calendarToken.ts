@@ -19,3 +19,14 @@ export function verifyCalendarToken(userId: string, version: number, token: stri
   const given = Buffer.from(token)
   return expected.length === given.length && crypto.timingSafeEqual(expected, given)
 }
+
+/**
+ * Odkazy na odběr ICS (https pro Google, webcal pro iPhone/Outlook).
+ * Host z NEXTAUTH_URL — stejný jako v profilu na webu.
+ */
+export function calendarOdkazy(userId: string, version: number): { https: string; webcal: string } {
+  const host = process.env.NEXTAUTH_URL ? new URL(process.env.NEXTAUTH_URL).host : 'app.felucia.io'
+  const proto = host.includes('localhost') ? 'http' : 'https'
+  const path = `${host}/api/calendar/ics?uid=${userId}&sig=${getCalendarToken(userId, version)}`
+  return { https: `${proto}://${path}`, webcal: `webcal://${path}` }
+}
