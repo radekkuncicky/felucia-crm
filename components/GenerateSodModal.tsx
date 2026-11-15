@@ -11,6 +11,7 @@ import { countWorkingDays, formatIsoCz } from '@/lib/workingDays'
 import { ZalohaUpozorneni } from '@/components/ZalohaUpozorneni'
 import { Dialog } from '@/components/ui/Dialog'
 import { Button } from '@/components/ui/Button'
+import { Field, Input, Select } from '@/components/ui/Field'
 import type { AresFirma } from '@/lib/ares'
 import { adresaKlientaText } from '@/lib/klientAdresa'
 
@@ -56,13 +57,9 @@ const fmtKc = formatKc
 const inputCls = 'w-full border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary'
 const inputEmptyCls = 'w-full border border-amber-300 dark:border-amber-700 rounded-lg px-3 py-2 text-sm bg-amber-50 dark:bg-amber-900/10 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-400/40'
 
-function Label({ children, empty }: { children: React.ReactNode; empty?: boolean }) {
-  return (
-    <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
-      {children}
-      {empty && <span className="ml-1.5 text-xs font-normal text-amber-600 dark:text-amber-400">prázdné v šabloně</span>}
-    </label>
-  )
+/** Štítek u pole, které by ve smlouvě zůstalo prázdné */
+function PrazdneVSablone() {
+  return <span className="ml-1.5 text-xs font-normal text-amber-600 dark:text-amber-400">prázdné v šabloně</span>
 }
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
@@ -266,19 +263,17 @@ export default function GenerateSodModal({ dealId, templates, onClose }: Props) 
     >
       <div className="space-y-5">
           {/* Výběr šablony */}
-          <div>
-            <Label>Šablona smlouvy</Label>
-            <select
+          <Field label="Šablona smlouvy">
+            <Select
               value={templateId}
               onChange={e => setTemplateId(e.target.value)}
               disabled={generating}
-              className={inputCls}
             >
               {templates.map(t => (
                 <option key={t.id} value={t.id}>{t.nazev}</option>
               ))}
-            </select>
-          </div>
+            </Select>
+          </Field>
 
           {checkLoading && (
             <div className="text-sm text-gray-400 dark:text-slate-500 text-center py-3">
@@ -329,34 +324,30 @@ export default function GenerateSodModal({ dealId, templates, onClose }: Props) 
                 <SectionHeading>Objednatel a místo instalace</SectionHeading>
                 {jeFirma && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <Label>IČO</Label>
+                    <Field label="IČO">
                       <div className="flex gap-2">
-                        <input type="text" inputMode="numeric" maxLength={8} value={ico} onChange={e => setIco(e.target.value)} disabled={generating} className={inputCls} placeholder="12345678" />
+                        <Input kind="ico" value={ico} onChange={e => setIco(e.target.value)} disabled={generating} placeholder="12345678" />
                         <Button type="button" variant="secondary" size="sm" loading={aresLoading} onClick={nactiZAres} disabled={generating}>ARES</Button>
                       </div>
-                    </div>
-                    <div>
-                      <Label>DIČ</Label>
-                      <input type="text" value={dic} onChange={e => setDic(e.target.value)} disabled={generating} className={inputCls} placeholder="CZ12345678" />
-                    </div>
+                    </Field>
+                    <Field label="DIČ">
+                      <Input value={dic} onChange={e => setDic(e.target.value)} disabled={generating} placeholder="CZ12345678" />
+                    </Field>
                     {!ico.trim() && (
                       <p className="sm:col-span-2 text-xs text-amber-700 dark:text-amber-300">U firmy doplňte IČO a sídlo načtěte z ARES — sídlo musí odpovídat obchodnímu rejstříku.</p>
                     )}
                     {aresInfo && <p className="sm:col-span-2 text-xs text-gray-500 dark:text-slate-400">{aresInfo}</p>}
                   </div>
                 )}
-                <div>
-                  <Label>{jeFirma ? 'Sídlo objednatele (dle obchodního rejstříku)' : 'Trvalé bydliště objednatele'}</Label>
-                  <input
+                <Field label={jeFirma ? 'Sídlo objednatele (dle obchodního rejstříku)' : 'Trvalé bydliště objednatele'} warn={!sidlo.trim()}>
+                  <Input
                     type="text"
                     value={sidlo}
                     onChange={e => setSidlo(e.target.value)}
                     placeholder="Ulice 1, 700 00 Ostrava"
                     disabled={generating}
-                    className={sidlo.trim() ? inputCls : inputEmptyCls}
                   />
-                </div>
+                </Field>
                 <div role="radiogroup" aria-label="Místo instalace" className={`rounded-lg border px-3 py-2.5 space-y-2 text-sm ${pokus && mistoShodne === null ? 'border-red-300 dark:border-red-700 bg-red-50/50 dark:bg-red-900/10' : 'border-gray-200 dark:border-slate-600'}`}>
                   <label className="flex items-start gap-2 cursor-pointer">
                     <input type="radio" name="mistoShodne" checked={mistoShodne === true} onChange={() => setMistoShodne(true)} disabled={generating} className="accent-primary mt-0.5" />
@@ -369,17 +360,15 @@ export default function GenerateSodModal({ dealId, templates, onClose }: Props) 
                   {pokus && mistoShodne === null && <p className="text-xs text-red-600 dark:text-red-400" role="alert">Vyberte jednu možnost.</p>}
                 </div>
                 {mistoShodne === false && (
-                  <div>
-                    <Label>Místo instalace (adresa díla)</Label>
-                    <input
+                  <Field label="Místo instalace (adresa díla)" warn={!adresaDila.trim()}>
+                    <Input
                       type="text"
                       value={adresaDila}
                       onChange={e => setAdresaDila(e.target.value)}
                       placeholder="Ulice 1, 700 00 Ostrava"
                       disabled={generating}
-                      className={adresaDila.trim() ? inputCls : inputEmptyCls}
                     />
-                  </div>
+                  </Field>
                 )}
               </div>
 
@@ -387,8 +376,7 @@ export default function GenerateSodModal({ dealId, templates, onClose }: Props) 
               <div className="space-y-3">
                 <SectionHeading>Termíny</SectionHeading>
                 {terminMode === 'kalendar' ? (
-                  <div>
-                    <Label empty={empty.includes('termin_prevzeti') && !realizaceOd}>Termín realizace (od – do)</Label>
+                  <Field label={<>Termín realizace (od – do){(empty.includes('termin_prevzeti') && !realizaceOd) && <PrazdneVSablone />}</>} warn={empty.includes('termin_prevzeti') && !realizaceOd}>
                     <DateRangePickerInput
                       from={realizaceOd}
                       to={realizaceDo}
@@ -403,17 +391,15 @@ export default function GenerateSodModal({ dealId, templates, onClose }: Props) 
                         Zadat volným textem
                       </button>
                     </p>
-                  </div>
+                  </Field>
                 ) : (
-                  <div>
-                    <Label empty={empty.includes('termin_prevzeti')}>Termín předání staveniště</Label>
-                    <input
+                  <Field label={<>Termín předání staveniště{(empty.includes('termin_prevzeti')) && <PrazdneVSablone />}</>} warn={empty.includes('termin_prevzeti')}>
+                    <Input
                       type="text"
                       value={terminPrevzeti}
                       onChange={e => setTerminPrevzeti(e.target.value)}
                       placeholder="Q3/2026 nebo 30. 9. 2026"
                       disabled={generating}
-                      className={empty.includes('termin_prevzeti') ? inputEmptyCls : inputCls}
                     />
                     <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">
                       Volný text.{' '}
@@ -421,35 +407,29 @@ export default function GenerateSodModal({ dealId, templates, onClose }: Props) 
                         Vybrat dny v kalendáři
                       </button>
                     </p>
-                  </div>
+                  </Field>
                 )}
-                <div>
-                  <Label empty={empty.includes('pocet_dni_realizace') && !pocetDniRealizace}>Počet pracovních dní realizace</Label>
-                  <input
+                <Field label={<>Počet pracovních dní realizace{(empty.includes('pocet_dni_realizace') && !pocetDniRealizace) && <PrazdneVSablone />}</>} warn={empty.includes('pocet_dni_realizace') && !pocetDniRealizace}>
+                  <Input
                     type="number"
                     value={pocetDniRealizace}
                     onChange={e => setPocetDniRealizace(e.target.value)}
                     min="1"
                     placeholder="14"
                     disabled={generating}
-                    className={empty.includes('pocet_dni_realizace') && !pocetDniRealizace ? inputEmptyCls : inputCls}
                   />
-                </div>
+                </Field>
                 {showZmenaTerm && (
-                  <div>
-                    <Label empty={empty.includes('zmena_term')}>
-                      Podmínka změny termínu
-                      <span className="text-gray-400 dark:text-slate-500 font-normal ml-1">(nepovinné)</span>
-                    </Label>
-                    <input
+                  <Field label={<>Podmínka změny termínu
+                      <span className="text-gray-400 dark:text-slate-500 font-normal ml-1">(nepovinné)</span>{(empty.includes('zmena_term')) && <PrazdneVSablone />}</>} warn={empty.includes('zmena_term')}>
+                    <Input
                       type="text"
                       value={zmenaTerm}
                       onChange={e => setZmenaTerm(e.target.value)}
                       placeholder="při prodlení dodávky"
                       disabled={generating}
-                      className={empty.includes('zmena_term') ? inputEmptyCls : inputCls}
                     />
-                  </div>
+                  </Field>
                 )}
               </div>
 
@@ -489,29 +469,25 @@ export default function GenerateSodModal({ dealId, templates, onClose }: Props) 
                       )}
                     </div>
                   ) : (
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <Label>Jméno</Label>
-                        <input
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <Field label="Jméno">
+                        <Input
                           type="text"
                           value={kontaktOsobaJina}
                           onChange={e => setKontaktOsobaJina(e.target.value)}
                           placeholder="Jan Novák"
                           disabled={generating}
-                          className={inputCls}
                         />
-                      </div>
-                      <div>
-                        <Label>Telefon</Label>
-                        <input
-                          type="text"
+                      </Field>
+                      <Field label="Telefon">
+                        <Input
+                          kind="tel"
                           value={kontaktTelefonJina}
                           onChange={e => setKontaktTelefonJina(e.target.value)}
                           placeholder="+420…"
                           disabled={generating}
-                          className={inputCls}
                         />
-                      </div>
+                      </Field>
                     </div>
                   )}
                 </div>
@@ -521,32 +497,29 @@ export default function GenerateSodModal({ dealId, templates, onClose }: Props) 
               {checkData.seZalohou && (
                 <div className="space-y-3">
                   <SectionHeading>Záloha</SectionHeading>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label empty={empty.includes('hodnota_zalohy')}>Výše zálohy (Kč)</Label>
-                      <input
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <Field label={<>Výše zálohy (Kč){(empty.includes('hodnota_zalohy')) && <PrazdneVSablone />}</>} warn={empty.includes('hodnota_zalohy')}>
+                      <Input
                         type="number"
+                        kind="castka"
                         value={zalohaKc}
                         onChange={e => setZalohaKc(e.target.value)}
                         min="0"
                         step="1"
                         placeholder="50000"
                         disabled={generating}
-                        className={empty.includes('hodnota_zalohy') ? inputEmptyCls : inputCls}
                       />
                       <ZalohaUpozorneni zaloha={Number(zalohaKc) || 0} cenaSDph={checkData.prefill.cenaSDph} onNastavit={c => setZalohaKc(String(c))} />
-                    </div>
-                    <div>
-                      <Label empty={empty.includes('zaloha_splatnost')}>Splatnost (dní)</Label>
-                      <input
+                    </Field>
+                    <Field label={<>Splatnost (dní){(empty.includes('zaloha_splatnost')) && <PrazdneVSablone />}</>} warn={empty.includes('zaloha_splatnost')}>
+                      <Input
                         type="number"
                         value={zalohaSplatnost}
                         onChange={e => setZalohaSplatnost(e.target.value)}
                         min="1"
                         disabled={generating}
-                        className={empty.includes('zaloha_splatnost') ? inputEmptyCls : inputCls}
                       />
-                    </div>
+                    </Field>
                   </div>
                 </div>
               )}
@@ -570,16 +543,14 @@ export default function GenerateSodModal({ dealId, templates, onClose }: Props) 
                 <div className="space-y-3">
                   <SectionHeading>Doplnit do smlouvy</SectionHeading>
                   {extraKeys.map(k => (
-                    <div key={k}>
-                      <Label empty>{SOD_PLACEHOLDER_LABELS[k] ?? k}</Label>
-                      <input
+                    <Field key={k} label={<>{SOD_PLACEHOLDER_LABELS[k] ?? k}<PrazdneVSablone /></>} warn={!extra[k]?.trim()}>
+                      <Input
                         type="text"
                         value={extra[k]}
                         onChange={e => setExtra(prev => ({ ...prev, [k]: e.target.value }))}
                         disabled={generating}
-                        className={extra[k]?.trim() ? inputCls : inputEmptyCls}
                       />
-                    </div>
+                    </Field>
                   ))}
                 </div>
               )}
