@@ -4,7 +4,7 @@ import { zakazkyScopeWhere, servisScopeWhere } from '@/lib/permissions'
 import { getPlanLimits } from '@/lib/planLimits'
 import { getOrgSettings } from '@/lib/orgSettings'
 import { denniOkno } from '@/lib/dnesniVyjezdy'
-import { getMobileOrWebSession, requireTechnikOrAdmin, klientAdresa, toAbsoluteUrl } from '@/lib/mobile-helpers'
+import { getMobileOrWebSession, requireTechnikOrAdmin, klientAdresa, toAbsoluteUrl, gpsStavby } from '@/lib/mobile-helpers'
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function mapZakazka(z: any, origin: string) {
@@ -19,6 +19,7 @@ function mapZakazka(z: any, origin: string) {
     kdykoliv: z.kdykoliv,
     adresa: klientAdresa(z.klient),
     mistoStavby: z.mistoStavby ?? null,
+    gps: gpsStavby(z.op),
     titulniFotoUrl,
     klient: {
       jmeno: z.klient.jmeno,
@@ -74,6 +75,7 @@ export async function GET(req: Request) {
   const technikFilter = scope
   const include = {
     klient: { select: { jmeno: true, prijmeni: true, telefon: true, ulice: true, mesto: true, psc: true } },
+    op: { select: { gpsLat: true, gpsLng: true } },
     polozky: { select: { id: true, hotovo: true } },
     techniciRel: { include: { technik: { select: { id: true, jmeno: true } } } },
   }

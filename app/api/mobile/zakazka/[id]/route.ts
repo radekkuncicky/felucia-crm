@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { orgPrisma } from '@/lib/orgPrisma'
-import { getMobileOrWebSession, requireTechnikOrAdmin, canAccessZakazka, klientAdresa, toAbsoluteUrl } from '@/lib/mobile-helpers'
+import { getMobileOrWebSession, requireTechnikOrAdmin, canAccessZakazka, klientAdresa, toAbsoluteUrl, gpsStavby } from '@/lib/mobile-helpers'
 import { UKOL_ORDER_BY, UKOL_SELECT } from '@/lib/zakazkaUkol'
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
@@ -19,6 +19,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     where: { id: params.id, orgId: session!.user.orgId },
     include: {
       klient: true,
+      op: { select: { gpsLat: true, gpsLng: true } },
       vedouci: { select: { id: true, jmeno: true, telefon: true } },
       techniciRel: { include: { technik: { select: { id: true, jmeno: true, telefon: true } } } },
       polozky: {
@@ -64,6 +65,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     typ: zakazka.typ,
     technologie: zakazka.technologie,
     mistoStavby: zakazka.mistoStavby ?? null,
+    gps: gpsStavby(zakazka.op),
     titulniFotoUrl: toAbsoluteUrl(zakazka.titulniFotoUrl, origin),
     montazOd: zakazka.montazOd,
     montazDo: zakazka.montazDo,

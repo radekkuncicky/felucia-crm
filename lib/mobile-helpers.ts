@@ -154,3 +154,11 @@ export function klientAppky(req: Request): { app: string | null; platform: strin
   const platform = h('x-app-platform') ?? (/okhttp|Android/i.test(ua) ? 'android' : /Darwin|CFNetwork|iPhone|iOS/i.test(ua) ? 'ios' : null)
   return { app: h('x-app-name'), platform, verze: h('x-app-version') }
 }
+
+/**
+ * Poloha stavby z obchodního případu („Jsem na místě“ v appce Sales) pro navigaci
+ * techniků — přesnější než adresa (parcela, novostavba bez čísla popisného).
+ */
+export function gpsStavby(op: { gpsLat: number | null; gpsLng: number | null } | null | undefined): { lat: number; lng: number } | null {
+  return op && op.gpsLat != null && op.gpsLng != null ? { lat: op.gpsLat, lng: op.gpsLng } : null
+}

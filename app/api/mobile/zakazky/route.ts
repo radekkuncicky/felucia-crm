@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { zakazkyScopeWhere } from '@/lib/permissions'
-import { getMobileOrWebSession, requireTechnikOrAdmin, klientAdresa, toAbsoluteUrl } from '@/lib/mobile-helpers'
+import { getMobileOrWebSession, requireTechnikOrAdmin, klientAdresa, toAbsoluteUrl, gpsStavby } from '@/lib/mobile-helpers'
 import type { ZakazkaStav } from '@prisma/client'
 import { najdiKlientIds, najdiIdsBezDiakritiky } from '@/lib/clientSearch'
 
@@ -54,6 +54,7 @@ export async function GET(req: Request) {
       where,
       include: {
         klient: { select: { jmeno: true, prijmeni: true, telefon: true, ulice: true, mesto: true, psc: true } },
+        op: { select: { gpsLat: true, gpsLng: true } },
         polozky: { select: { id: true, hotovo: true } },
         techniciRel: { include: { technik: { select: { id: true, jmeno: true } } } },
       },
@@ -75,6 +76,7 @@ export async function GET(req: Request) {
     kdykoliv: z.kdykoliv,
     adresa: klientAdresa(z.klient),
     mistoStavby: z.mistoStavby ?? null,
+    gps: gpsStavby(z.op),
     titulniFotoUrl: toAbsoluteUrl(z.titulniFotoUrl, origin),
     klient: {
       jmeno: z.klient.jmeno,
