@@ -8,7 +8,7 @@
 import { createContext, useContext, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { getMapsUrl } from '@/lib/maps'
+import { getMapsUrl, getMapsUrlGps } from '@/lib/maps'
 import { buttonClasses } from '@/components/ui/Button'
 import { cn } from '@/lib/cn'
 
@@ -96,10 +96,10 @@ function Akce({ ikona, label, href, external }: { ikona: keyof typeof IKONY; lab
 }
 
 /** Řádek rychlých akcí technika v terénu — jen na mobilu */
-export function RychleAkce({ zakazkaId, adresa, telefon }: { zakazkaId: string; adresa: string; telefon: string | null }) {
+export function RychleAkce({ zakazkaId, adresa, telefon, gps }: { zakazkaId: string; adresa: string; telefon: string | null; gps?: { lat: number; lng: number } | null }) {
   return (
     <div className="sm:hidden flex gap-2">
-      {adresa && <Akce ikona="navigovat" label="Navigovat" href={getMapsUrl(adresa, false)} external />}
+      {(adresa || gps) && <Akce ikona="navigovat" label="Navigovat" href={gps ? getMapsUrlGps(gps.lat, gps.lng) : getMapsUrl(adresa, false)} external />}
       {telefon && <Akce ikona="volat" label="Volat" href={`tel:${telefon}`} />}
       <Akce ikona="foto" label="Foto" href={`/zakazky/${zakazkaId}?tab=podklady#foto`} />
       <Akce ikona="protokol" label="Protokol" href={`/zakazky/${zakazkaId}?tab=protokoly#predavaky`} />

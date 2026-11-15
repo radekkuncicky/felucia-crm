@@ -29,6 +29,8 @@ import { formatKc } from '@/lib/format'
 import { getDefiniceProZamereni, vyplneneSekce } from '@/lib/zamereniDefinice'
 import { klientAdresa } from '@/lib/mobile-helpers'
 import { podkladOp } from '@/lib/quoteZamek'
+import { orgPrisma } from '@/lib/orgPrisma'
+import { nactiFotkyOp, vyberTitulniFoto } from '@/lib/fotkyOp'
 
 function fmt(d: Date | null) {
   if (!d) return ''
@@ -117,7 +119,7 @@ export default async function DealDetailPage({
   if (deal.stav === 'ZNEPLATNENO' && !perms.obchodMazani) notFound()
 
   // Zakázka vzniklá z tohoto OP (auto-create při Úspěchu)
-  const [linkedZakazka, posledniSmlouva, podklad] = await Promise.all([
+  const [linkedZakazka, posledniSmlouva, podklad, fotkyOp] = await Promise.all([
     prisma.zakazka.findFirst({
       where: { opId: deal.id, orgId },
       select: { id: true, cislo: true, stav: true },
@@ -129,7 +131,14 @@ export default async function DealDetailPage({
     }),
     // co zamyká aktivní nabídku (smlouva u podpisu / zakázka) — editor ji pak ukáže jen ke čtení
     podkladOp(prisma as unknown as import('@/lib/orgPrisma').OrgPrismaClient, orgId, deal.id),
+    // titulní fotka do hlavičky (Dům zvenku z appky Sales, jinak nejnovější)
+    nactiFotkyOp(orgPrisma(orgId), deal.id),
   ])
+  const titulniFoto = vyberTitulniFoto(fotkyOp)
+  // /uploads jde přes autorizovaný route handler (session cookie), podpis netřeba
+  const titulniUrl = titulniFoto?.url ?? null
+  // Místo stavby: GPS z „Jsem na místě“ (Sales) > adresa díla > adresa klienta
+  const gpsStavby = deal.gpsLat != null && deal.gpsLng != null ? { lat: deal.gpsLat, lng: deal.gpsLng } : null
 
   const klientAdresaText = klientAdresa(deal.client)
   const zamereniItems = await Promise.all(
@@ -199,6 +208,13 @@ export default async function DealDetailPage({
       {/* Header */}
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 px-6 py-5">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div className="flex gap-4 min-w-0">
+          {titulniUrl && (
+            <Link href={`/deals/${deal.id}?tab=fotodokumentace`} className="hidden sm:block flex-shrink-0" title="Fotky případu">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={titulniUrl} alt="Titulní fotka" className="w-24 h-24 rounded-lg object-cover border border-gray-200 dark:border-slate-700" />
+            </Link>
+          )}
           <div className="space-y-2 min-w-0">
             <div className="flex items-center gap-1.5 text-sm text-gray-400 dark:text-slate-500">
               <Link href="/deals" className="hover:text-gray-600 dark:hover:text-slate-300 transition-colors">Obchodní případy</Link>
@@ -252,12 +268,17 @@ export default async function DealDetailPage({
                 </Link>
               )}
             </div>
-            {(deal.client.ulice || deal.client.mesto) && (
-              <NavigateButton
-                adresa={[deal.client.ulice, [deal.client.mesto, deal.client.psc].filter(Boolean).join(' ')].filter(Boolean).join(', ')}
-                size="xs"
-              />
+            {(deal.adresaDila?.trim() || klientAdresaText || gpsStavby) && (
+              <div className="flex items-center gap-2 flex-wrap text-xs text-gray-500 dark:text-slate-400">
+                <span>
+                  <span className="font-medium text-gray-600 dark:text-slate-300">Místo stavby:</span>{' '}
+                  {deal.adresaDila?.trim() || (klientAdresaText ? `${klientAdresaText} (adresa klienta)` : 'jen poloha')}
+                  {gpsStavby && <span className="ml-1 text-primary dark:text-primary-light" title="Poloha uložená na místě z appky Felucia Sales">· GPS</span>}
+                </span>
+                <NavigateButton adresa={deal.adresaDila?.trim() || klientAdresaText || ''} gps={gpsStavby} size="xs" />
+              </div>
             )}
+          </div>
           </div>
           <div className="flex flex-col items-start sm:items-end gap-3 sm:flex-shrink-0">
             {konecnaCena > 0 ? (

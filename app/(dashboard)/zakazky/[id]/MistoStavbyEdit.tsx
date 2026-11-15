@@ -9,9 +9,11 @@ interface Props {
   mistoStavby: string | null
   klientAdresa: string
   canEdit: boolean
+  /** poloha stavby z obchodního případu („Jsem na místě“ v appce Sales) — navigace jde přesně sem */
+  gps?: { lat: number; lng: number } | null
 }
 
-export default function MistoStavbyEdit({ zakazkaId, mistoStavby, klientAdresa, canEdit }: Props) {
+export default function MistoStavbyEdit({ zakazkaId, mistoStavby, klientAdresa, canEdit, gps }: Props) {
   const router = useRouter()
   const [editing, setEditing] = useState(false)
   const [value, setValue] = useState(mistoStavby ?? '')
@@ -83,10 +85,13 @@ export default function MistoStavbyEdit({ zakazkaId, mistoStavby, klientAdresa, 
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {mistoStavby ? (
+      {mistoStavby || gps ? (
         <>
-          <span className="text-sm text-gray-700 dark:text-slate-300">{mistoStavby}</span>
-          <NavigateButton adresa={mistoStavby} size="xs" />
+          <span className="text-sm text-gray-700 dark:text-slate-300">
+            {mistoStavby || 'poloha z obchodu'}
+            {gps && <span className="ml-1 text-xs text-primary dark:text-primary-light" title="Poloha uložená obchodníkem přímo na místě (appka Felucia Sales)">· GPS</span>}
+          </span>
+          <NavigateButton adresa={mistoStavby ?? ''} gps={gps} size="xs" />
         </>
       ) : (
         <span className="text-sm text-gray-400 dark:text-slate-500 italic">neuvedeno</span>

@@ -68,7 +68,7 @@ export default async function ZakazkaDetailLayout({
     include: {
       klient: true,
       vedouci: { select: { id: true, jmeno: true, email: true } },
-      op: { select: { id: true, kod: true, predmet: true } },
+      op: { select: { id: true, kod: true, predmet: true, gpsLat: true, gpsLng: true } },
       polozky: { select: { stav: true } },
       vyuctovani: { select: { etapaId: true } },
       _count: { select: { predavaky: { where: { etapaId: null } } } },
@@ -253,7 +253,7 @@ export default async function ZakazkaDetailLayout({
                 </div>
               </div>
 
-              <RychleAkce zakazkaId={zakazka.id} adresa={zakazka.mistoStavby || adresa} telefon={zakazka.klient.telefon ?? null} />
+              <RychleAkce zakazkaId={zakazka.id} adresa={zakazka.mistoStavby || adresa} telefon={zakazka.klient.telefon ?? null} gps={zakazka.op?.gpsLat != null && zakazka.op?.gpsLng != null ? { lat: zakazka.op.gpsLat, lng: zakazka.op.gpsLng } : null} />
 
               <SbalitelnaCast desktop="grid" className="sm:grid-cols-2 xl:grid-cols-4 sm:gap-x-6 sm:gap-y-3 sm:border-t sm:border-gray-100 sm:dark:border-slate-700 sm:pt-3" openClassName="grid grid-cols-1 gap-4">
 
@@ -301,6 +301,7 @@ export default async function ZakazkaDetailLayout({
                     mistoStavby={zakazka.mistoStavby ?? null}
                     klientAdresa={adresa}
                     canEdit={true}
+                    gps={zakazka.op?.gpsLat != null && zakazka.op?.gpsLng != null ? { lat: zakazka.op.gpsLat, lng: zakazka.op.gpsLng } : null}
                   />
                 </div>
               </div>
