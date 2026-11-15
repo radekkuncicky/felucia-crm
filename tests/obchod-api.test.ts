@@ -395,6 +395,7 @@ describe('nabídky', () => {
     const a = await prisma.quote.findUnique({ where: { id: nabidkaAId } })
     expect(a?.aktivni).toBe(true)
   })
+
 })
 
 describe('podpis smlouvy na místě', () => {
@@ -496,5 +497,22 @@ describe('follow-up odeslaných nabídek (worker)', () => {
 
     // Druhý průchod už nic neposílá (followUpAt značka)
     expect(await sweepNabidkyFollowUp(prisma)).toBe(0)
+  })
+})
+
+describe('SOD z appky — objednatel', () => {
+  it('SOD z appky se sídlem: bez potvrzení místa instalace 400, s jiným místem uloží obojí', async () => {
+    const nabidkaAId = (await prisma.quote.findFirst({ where: { dealId, aktivni: true }, select: { id: true } }))!.id
+    const bez = await sodPost(jsonReq('POST', { quoteId: nabidkaAId, typ: 'DPH_12_SE_ZALOHOU', klientAdresa: 'Sídelní 1, 602 00 Brno' }), { params: { id: dealId } })
+    expect(bez.status).toBe(400)
+    expect((await bez.json()).error).toMatch(/místo instalace/)
+
+    const res = await sodPost(jsonReq('POST', {
+      quoteId: nabidkaAId, typ: 'DPH_12_SE_ZALOHOU',
+      klientAdresa: 'Sídelní 1, 602 00 Brno', mistoShodne: false, adresaDila: 'Lesní 12, Hustopeče',
+    }), { params: { id: dealId } })
+    expect(res.status).toBe(201)
+    const sod = await prisma.sod.findUnique({ where: { id: (await res.json()).id }, select: { klientAdresa: true, adresaDila: true } })
+    expect(sod).toEqual({ klientAdresa: 'Sídelní 1, 602 00 Brno', adresaDila: 'Lesní 12, Hustopeče' })
   })
 })
