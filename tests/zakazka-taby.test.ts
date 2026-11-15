@@ -3,7 +3,7 @@ import { resolveZakazkaTab, vychoziZakazkaTab, zakazkaTabZCesty, ZAKAZKA_TABY } 
 
 describe('taby detailu zakázky', () => {
   it('je jich 7 (vč. Finance)', () => {
-    expect(ZAKAZKA_TABY).toHaveLength(7)
+    expect(ZAKAZKA_TABY).toHaveLength(8)
   })
 
   it('výchozí tab podle role', () => {

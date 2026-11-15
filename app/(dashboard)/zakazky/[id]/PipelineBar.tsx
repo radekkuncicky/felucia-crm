@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ZakazkaStav } from '@prisma/client'
 import { api } from '@/lib/api'
@@ -127,6 +128,9 @@ export default function PipelineBar({ zakazkaId, currentStav, canChange, etapy =
                   )}
                 </div>
               ))}
+              <Link href={`/zakazky/${zakazkaId}?tab=etapy`} className="ml-3 text-xs text-primary dark:text-primary-light hover:underline whitespace-nowrap">
+                Etapy <span aria-hidden>→</span>
+              </Link>
             </div>
 
             {/* Mobile: horizontálně scrollovatelné */}
@@ -158,6 +162,9 @@ export default function PipelineBar({ zakazkaId, currentStav, canChange, etapy =
                     )}
                   </div>
                 ))}
+                <Link href={`/zakazky/${zakazkaId}?tab=etapy`} className="ml-2 px-2 py-1.5 text-xs text-primary dark:text-primary-light whitespace-nowrap">
+                  Etapy →
+                </Link>
               </div>
             </div>
 

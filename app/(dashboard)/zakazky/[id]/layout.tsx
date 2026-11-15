@@ -14,6 +14,7 @@ import { NavigateButton } from '@/components/NavigateButton'
 import ZakazkyTabs from './ZakazkyTabs'
 import { vychoziZakazkaTab } from '@/lib/zakazkaTaby'
 import PipelineBar from './PipelineBar'
+import EtapyZalozka from './EtapyZalozka'
 import ZakazkaDetailHeader from './ZakazkaDetailHeader'
 import MontazDatePicker from './MontazDatePicker'
 import MistoStavbyEdit from './MistoStavbyEdit'
@@ -383,32 +384,6 @@ export default async function ZakazkaDetailLayout({
         <SbalitPrepinac />
       </div>
 
-      {/* Pipeline, etapy a finance — na mobilu pod „Detail zakázky" */}
-      <SbalitelnaCast className="space-y-4">
-
-      {/* Etapy sekce */}
-      <EtapySection
-        zakazkaId={zakazka.id}
-        etapy={zakazka.etapy.map(e => ({
-          id: e.id,
-          cislo: e.cislo,
-          nazev: e.nazev,
-          montazOd: e.montazOd?.toISOString() ?? null,
-          montazDo: e.montazDo?.toISOString() ?? null,
-          stav: e.stav,
-          poznamka: e.poznamka,
-          hlavniTechnikId: e.hlavniTechnikId,
-          predavaky: e.predavaky,
-          vyuctovani: e.vyuctovani,
-          technici: e.technici.map(t => t.technik),
-        }))}
-        vsichniTechnici={vsichniTechnici}
-        canEdit={canEdit}
-        canDelete={perms.zakazkyMazani}
-        maPraciBezEtapy={zakazka._count.predavaky > 0 || zakazka.vyuctovani.some(v => !v.etapaId)}
-      />
-
-      </SbalitelnaCast>
 
       {posledniPoznamka && (
         <div className="rounded-xl border border-line bg-surface-2 px-4 py-3 text-sm">
@@ -428,6 +403,32 @@ export default async function ZakazkaDetailLayout({
       {/* Tab bar — always visible, active tab determined from URL */}
       <Suspense fallback={<div className="border-b border-gray-200 dark:border-slate-700 h-10" />}>
         <ZakazkyTabs zakazkaId={zakazka.id} defaultTab={vychoziZakazkaTab(isTechnik)} showHistorie={canEdit} showFinance={showFinanceTab} />
+      </Suspense>
+
+      {/* Záložka Etapy — data z layoutu (viz EtapyZalozka) */}
+      <Suspense fallback={null}>
+        <EtapyZalozka zakazkaId={zakazka.id}>
+          <EtapySection
+            zakazkaId={zakazka.id}
+            etapy={zakazka.etapy.map(e => ({
+              id: e.id,
+              cislo: e.cislo,
+              nazev: e.nazev,
+              montazOd: e.montazOd?.toISOString() ?? null,
+              montazDo: e.montazDo?.toISOString() ?? null,
+              stav: e.stav,
+              poznamka: e.poznamka,
+              hlavniTechnikId: e.hlavniTechnikId,
+              predavaky: e.predavaky,
+              vyuctovani: e.vyuctovani,
+              technici: e.technici.map(t => t.technik),
+            }))}
+            vsichniTechnici={vsichniTechnici}
+            canEdit={canEdit}
+            canDelete={perms.zakazkyMazani}
+            maPraciBezEtapy={zakazka._count.predavaky > 0 || zakazka.vyuctovani.some(v => !v.etapaId)}
+          />
+        </EtapyZalozka>
       </Suspense>
 
       {/* Page content */}
