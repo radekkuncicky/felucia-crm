@@ -1,7 +1,7 @@
 import { getServerSession } from 'next-auth'
-import { redirect } from 'next/navigation'
 import { authOptions } from '@/lib/auth'
 import { getPerms } from '@/lib/permissions'
+import { KpiBezPristupu } from '@/components/kpi/KpiBezPristupu'
 import { kpiPristup, kpiPrehled } from '@/lib/kpi'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { ButtonLink } from '@/components/ui/Button'
@@ -12,7 +12,8 @@ export const metadata = { title: 'KPI vedení' }
 export default async function KpiPage() {
   const session = await getServerSession(authOptions)
   const orgId = session!.user.orgId
-  if (!(await kpiPristup(orgId, getPerms(session!.user)))) redirect('/dashboard')
+  const perms = getPerms(session!.user)
+  if (!(await kpiPristup(orgId, perms))) return <KpiBezPristupu bezOpravneni={!perms.kpi} spravaUzivatelu={perms.spravaUzivatelu} />
 
   const kpi = await kpiPrehled(orgId)
   const aktivni = kpi.filter(k => k.nastaveni.aktivni)

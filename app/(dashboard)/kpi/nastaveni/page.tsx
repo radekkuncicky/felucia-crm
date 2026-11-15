@@ -1,8 +1,8 @@
 import { getServerSession } from 'next-auth'
-import { redirect } from 'next/navigation'
 import { authOptions } from '@/lib/auth'
 import { getPerms } from '@/lib/permissions'
 import { orgPrisma } from '@/lib/orgPrisma'
+import { KpiBezPristupu } from '@/components/kpi/KpiBezPristupu'
 import { kpiPristup, nactiNastaveni } from '@/lib/kpi'
 import { kpiDef } from '@/lib/kpi/registry'
 import { PageHeader } from '@/components/ui/PageHeader'
@@ -13,7 +13,8 @@ export const metadata = { title: 'Nastavení KPI' }
 export default async function KpiNastaveniPage() {
   const session = await getServerSession(authOptions)
   const orgId = session!.user.orgId
-  if (!(await kpiPristup(orgId, getPerms(session!.user)))) redirect('/dashboard')
+  const perms = getPerms(session!.user)
+  if (!(await kpiPristup(orgId, perms))) return <KpiBezPristupu bezOpravneni={!perms.kpi} spravaUzivatelu={perms.spravaUzivatelu} />
 
   const nastaveni = await nactiNastaveni(orgPrisma(orgId), orgId)
   const polozky = nastaveni.map(n => {

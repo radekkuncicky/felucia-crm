@@ -1,9 +1,10 @@
 import { getServerSession } from 'next-auth'
-import { notFound, redirect } from 'next/navigation'
+import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { authOptions } from '@/lib/auth'
 import { getPerms } from '@/lib/permissions'
 import { cn } from '@/lib/cn'
+import { KpiBezPristupu } from '@/components/kpi/KpiBezPristupu'
 import { kpiPristup, kpiDetail, formatKpi, formatCil, mesicLabel } from '@/lib/kpi'
 import { isKpiKod } from '@/lib/kpi/registry'
 import { isMesicKlic, HISTORIE_OD } from '@/lib/kpi/obdobi'
@@ -18,7 +19,8 @@ export default async function KpiDetailPage({ params, searchParams }: {
 }) {
   const session = await getServerSession(authOptions)
   const orgId = session!.user.orgId
-  if (!(await kpiPristup(orgId, getPerms(session!.user)))) redirect('/dashboard')
+  const perms = getPerms(session!.user)
+  if (!(await kpiPristup(orgId, perms))) return <KpiBezPristupu bezOpravneni={!perms.kpi} spravaUzivatelu={perms.spravaUzivatelu} />
   if (!isKpiKod(params.kod)) notFound()
 
   const mesic = isMesicKlic(searchParams.mesic) && searchParams.mesic >= HISTORIE_OD ? searchParams.mesic : undefined
