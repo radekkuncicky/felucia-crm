@@ -8,7 +8,7 @@ import { getPlanLimits } from './planLimits'
 
 export type NavIconKey =
   | 'home' | 'calendar' | 'users' | 'bell' | 'briefcase' | 'document' | 'clipboard' | 'warehouse'
-  | 'wrench' | 'chart' | 'target' | 'box' | 'activity' | 'contract' | 'cog' | 'folder' | 'key' | 'plus' | 'mapPin' | 'clock' | 'mic'
+  | 'wrench' | 'chart' | 'target' | 'box' | 'activity' | 'contract' | 'cog' | 'folder' | 'key' | 'plus' | 'mapPin' | 'clock'
 
 export interface NavItem {
   id: string
@@ -87,7 +87,6 @@ const I = {
   calendar: { id: 'calendar', href: '/calendar', label: 'Kalendář', icon: 'calendar' },
   clients: { id: 'clients', href: '/clients', label: 'Klienti', icon: 'users' },
   leady: { id: 'leady', href: '/leady', label: 'Leady', icon: 'bell' },
-  diktaty: { id: 'diktaty', href: '/diktaty', label: 'Diktáty', icon: 'mic' },
   deals: { id: 'deals', href: '/deals', label: 'Obchodní případy', shortLabel: 'OP', icon: 'briefcase' },
   quotes: { id: 'quotes', href: '/quotes', label: 'Nabídky', icon: 'document' },
   zakazky: { id: 'zakazky', href: '/zakazky', label: 'Zakázky', icon: 'clipboard' },
@@ -134,7 +133,7 @@ export function sidebarSections(ctx: NavCtx): NavSection[] {
 
   return [
     ...section('zaklad', undefined, pick([[true, I.dashboard], [true, I.calendar], [f.obchod, I.clients]])),
-    ...section('obchod', 'Obchod', pick([[f.leady, I.leady], [f.obchod, I.diktaty], [f.obchod, I.deals], [f.obchod, I.quotes]])),
+    ...section('obchod', 'Obchod', pick([[f.leady, I.leady], [f.obchod, I.deals], [f.obchod, I.quotes]])),
     ...section('realizace', 'Realizace', pick([[f.zakazky, I.zakazky], [f.protokoly, I.predavaky], [f.vykazy, I.vykazy], [f.sklad, I.sklad]])),
     ...section('servis', 'Servis', pick([
       [f.servis, I.servis], [f.servis, I.servisZakazky], [f.servis, I.servisPlan], [f.servis, I.servisPortfolio],

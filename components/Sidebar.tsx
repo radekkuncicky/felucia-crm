@@ -28,11 +28,9 @@ interface ItemProps {
   item: NavItemDef
   collapsed: boolean
   pathname: string
-  /** odznak s počtem (např. nezpracované diktáty) */
-  pocet?: number
 }
 
-function NavLink({ item, collapsed, pathname, pocet }: ItemProps) {
+function NavLink({ item, collapsed, pathname }: ItemProps) {
   const isActive = item.exact ? pathname === item.href : pathname === item.href || pathname.startsWith(item.href + '/')
   return (
     <Link
@@ -45,16 +43,8 @@ function NavLink({ item, collapsed, pathname, pocet }: ItemProps) {
           : 'text-green-200/70 hover:bg-green-900/30 hover:text-green-100 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white'
       }`}
     >
-      <span className="relative flex">
-        <NavIcon name={item.icon} />
-        {collapsed && !!pocet && <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-amber-400" aria-hidden />}
-      </span>
+      <NavIcon name={item.icon} />
       {!collapsed && <span className="truncate">{item.label}</span>}
-      {!collapsed && !!pocet && (
-        <span className="ml-auto rounded-full bg-amber-400/90 px-1.5 text-[11px] font-semibold leading-5 text-slate-900" aria-label={`${pocet} ke zpracování`}>
-          {pocet}
-        </span>
-      )}
     </Link>
   )
 }
@@ -67,18 +57,6 @@ export default function Sidebar({ user, orgNazev }: Props) {
   const ctx = { perms: user.perms, plan: user.plan, orgSettings, isSuperAdmin: user.isSuperAdmin }
   const sections = sidebarSections(ctx)
   const footer = footerItems(ctx)
-  const maDiktaty = sections.some(s => s.items.some(i => i.id === 'diktaty'))
-  const [diktatu, setDiktatu] = useState(0)
-
-  // Počet nezpracovaných diktátů — při změně stránky (po zpracování klesne)
-  useEffect(() => {
-    if (!maDiktaty) return
-    let zruseno = false
-    fetch('/api/diktat/pocet').then(r => (r.ok ? r.json() : null)).then(d => {
-      if (!zruseno && d && typeof d.pocet === 'number') setDiktatu(d.pocet)
-    }).catch(() => {})
-    return () => { zruseno = true }
-  }, [maDiktaty, pathname])
 
   useEffect(() => {
     try {
@@ -126,7 +104,7 @@ export default function Sidebar({ user, orgNazev }: Props) {
               <p className="px-3 pb-1 text-xs font-semibold uppercase tracking-wider text-green-400/45 dark:text-slate-500">{sec.title}</p>
             )}
             <div className="space-y-0.5">
-              {sec.items.map(item => <NavLink key={item.id} item={item} collapsed={collapsed} pathname={pathname} pocet={item.id === 'diktaty' ? diktatu : undefined} />)}
+              {sec.items.map(item => <NavLink key={item.id} item={item} collapsed={collapsed} pathname={pathname} />)}
             </div>
           </div>
         ))}

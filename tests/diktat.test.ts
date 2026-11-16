@@ -10,7 +10,6 @@ import { PATCH as diktatPatch } from '@/app/api/diktat/[id]/route'
 import { GET as ukolyGet } from '@/app/api/dashboard/ukoly/route'
 import { executeDasaTool, type DasaUser } from '@/lib/dasaTools'
 import { zitraPraha } from '@/lib/diktat'
-import { GET as pocetGet } from '@/app/api/diktat/pocet/route'
 import { navrhniCil, telefonyVTextu, kmenJmena, textZminuje } from '@/lib/diktatNavrh'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { bezDiakritiky } from '@/lib/hledani'
@@ -161,7 +160,7 @@ describe('inbox diktátů (/diktaty)', () => {
     expect(await navrhniCil(db, orgId, 'Zavolat 777 111 222', { userId: obchodnikId }, true)).toEqual([])
   })
 
-  it('bez obchodCiziOP jen svoje diktáty, jinak všechny; počet v menu', async () => {
+  it('bez obchodCiziOP jen svoje diktáty, jinak všechny', async () => {
     const adminuv = await novyDiktat('Adminův diktát')
     vi.mocked(getServerSession).mockResolvedValue({
       user: { id: obchodnikId, orgId, role: 'OBCHODNIK', plan: 'STANDARD', perms: { ...ROLE_PRESETS.OBCHODNIK, obchodCiziOP: false } },
@@ -172,14 +171,10 @@ describe('inbox diktátů (/diktaty)', () => {
     expect((await patch(adminuv, { hotovo: true })).status).toBe(404)
     // cizí OP (admina) obchodník připojit nesmí
     expect((await patch(muj, { dealId })).status).toBe(404)
-    const mojePocet = (await (await pocetGet()).json()).pocet
-    expect(mojePocet).toBe(1)
+    expect((await patch(muj, { hotovo: true })).status).toBe(200)
 
     loginAs(adminId)
-    const vsePocet = (await (await pocetGet()).json()).pocet
-    expect(vsePocet).toBeGreaterThanOrEqual(2)
-    expect((await patch(muj, { hotovo: true })).status).toBe(200)
-    expect((await (await pocetGet()).json()).pocet).toBe(vsePocet - 1)
+    expect((await patch(muj, { hotovo: false })).status).toBe(200)
   })
 
   it('diktát z appky Sales se k OP připojí jako zápis z jednání a vrátí odkaz', async () => {
