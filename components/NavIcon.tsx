@@ -12,11 +12,19 @@ function IconPlus(props: React.SVGProps<SVGSVGElement>) {
   )
 }
 
+function IconMic(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" {...props}>
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-14 0m7 7v4m-4 0h8m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+    </svg>
+  )
+}
+
 const ICONS: Record<NavIconKey, React.ComponentType<React.SVGProps<SVGSVGElement>>> = {
   home: IconHome, calendar: IconCalendar, users: IconUsers, bell: IconBell, briefcase: IconBriefcase,
   document: IconDocument, clipboard: IconClipboard, warehouse: IconWarehouse, wrench: IconWrench,
   chart: IconChart, target: IconTarget, box: IconBox, activity: IconActivity, contract: IconContract, cog: IconCog,
-  folder: IconDocument, key: IconKey, plus: IconPlus, mapPin: IconMapPin, clock: IconClock,
+  folder: IconDocument, key: IconKey, plus: IconPlus, mapPin: IconMapPin, clock: IconClock, mic: IconMic,
 }
 
 /** Ikona položky navigace podle klíče z lib/navigation.ts */

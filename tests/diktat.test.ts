@@ -10,6 +10,10 @@ import { PATCH as diktatPatch } from '@/app/api/diktat/[id]/route'
 import { GET as ukolyGet } from '@/app/api/dashboard/ukoly/route'
 import { executeDasaTool, type DasaUser } from '@/lib/dasaTools'
 import { zitraPraha } from '@/lib/diktat'
+import { GET as pocetGet } from '@/app/api/diktat/pocet/route'
+import { navrhniCil, telefonyVTextu, kmenJmena, textZminuje } from '@/lib/diktatNavrh'
+import { orgPrisma } from '@/lib/orgPrisma'
+import { bezDiakritiky } from '@/lib/hledani'
 
 /** Diktát → úkol na zítřek → Dáša založí lead / připojí k OP (procesní mapa C2) */
 
@@ -19,6 +23,7 @@ let orgId: string
 let ciziOrgId: string
 let adminId: string
 let technikId: string
+let obchodnikId: string
 let dealId: string
 let dasa: DasaUser
 
@@ -42,6 +47,7 @@ beforeAll(async () => {
   await prisma.orgSettings.create({ data: { orgId, modulKpi: true } })
   adminId = (await prisma.user.create({ data: { orgId, jmeno: 'Admin', email: `${RUN}-a@example.com`, hesloHash: 'x', role: 'ADMIN' } })).id
   technikId = (await prisma.user.create({ data: { orgId, jmeno: 'Technik', email: `${RUN}-t@example.com`, hesloHash: 'x', role: 'TECHNIK' } })).id
+  obchodnikId = (await prisma.user.create({ data: { orgId, jmeno: 'Obchodník', email: `${RUN}-o@example.com`, hesloHash: 'x', role: 'OBCHODNIK' } })).id
   const klient = await prisma.client.create({ data: { orgId, jmeno: 'Karel', prijmeni: 'Stávající', telefon: '777 111 222' } })
   dealId = (await prisma.deal.create({ data: { orgId, clientId: klient.id, userId: adminId, kod: `${RUN}-OP`, predmet: 'TČ', technologie: 'TEPELNE_CERPADLO' } })).id
   dasa = { id: adminId, orgId, role: 'ADMIN', jmeno: 'Admin', perms: ROLE_PRESETS.ADMIN }
@@ -136,5 +142,54 @@ describe('Dáša zpracuje diktát', () => {
     const technik = { ...dasa, id: technikId, role: 'TECHNIK', perms: ROLE_PRESETS.TECHNIK }
     expect((await tool('get_diktat', { diktatId: id }, technik)).chyba).toBeTruthy()
     expect((await tool('pripojit_diktat', { diktatId: id, dealId }, technik)).chyba).toBeTruthy()
+  })
+})
+
+describe('inbox diktátů (/diktaty)', () => {
+  it('návrh: telefon i skloňované příjmení najdou otevřený OP', async () => {
+    expect(telefonyVTextu('volat na +420 777 111 222 nebo 603123456, ne 2026')).toEqual(['420777111222', '603123456'])
+    expect(kmenJmena('Svoboda')).toBe('svobod')
+    expect(textZminuje(bezDiakritiky('byl jsem u pana Stávajícího v Opavě'), kmenJmena('Stávající')!)).toBe(true)
+    expect(textZminuje(bezDiakritiky('stavební povolení'), kmenJmena('Stávající')!)).toBe(false)
+
+    const db = orgPrisma(orgId)
+    const telefonem = await navrhniCil(db, orgId, 'Zavolat 777 111 222 kvůli termínu', {}, true)
+    expect(telefonem[0]).toMatchObject({ druh: 'OP', id: dealId, duvod: 'telefon' })
+    const jmenem = await navrhniCil(db, orgId, 'U Stávajících chtějí posunout montáž', {}, true)
+    expect(jmenem[0]).toMatchObject({ druh: 'OP', id: dealId, duvod: 'jméno' })
+    // OP mimo rozsah obchodníka se nenavrhuje
+    expect(await navrhniCil(db, orgId, 'Zavolat 777 111 222', { userId: obchodnikId }, true)).toEqual([])
+  })
+
+  it('bez obchodCiziOP jen svoje diktáty, jinak všechny; počet v menu', async () => {
+    const adminuv = await novyDiktat('Adminův diktát')
+    vi.mocked(getServerSession).mockResolvedValue({
+      user: { id: obchodnikId, orgId, role: 'OBCHODNIK', plan: 'STANDARD', perms: { ...ROLE_PRESETS.OBCHODNIK, obchodCiziOP: false } },
+    } as never)
+    const mujRes = await post({ text: 'Můj diktát' })
+    const muj = (await mujRes.json()).id as string
+
+    expect((await patch(adminuv, { hotovo: true })).status).toBe(404)
+    // cizí OP (admina) obchodník připojit nesmí
+    expect((await patch(muj, { dealId })).status).toBe(404)
+    const mojePocet = (await (await pocetGet()).json()).pocet
+    expect(mojePocet).toBe(1)
+
+    loginAs(adminId)
+    const vsePocet = (await (await pocetGet()).json()).pocet
+    expect(vsePocet).toBeGreaterThanOrEqual(2)
+    expect((await patch(muj, { hotovo: true })).status).toBe(200)
+    expect((await (await pocetGet()).json()).pocet).toBe(vsePocet - 1)
+  })
+
+  it('diktát z appky Sales se k OP připojí jako zápis z jednání a vrátí odkaz', async () => {
+    const a = await prisma.activity.create({
+      data: { orgId, userId: adminId, resitelId: adminId, typ: 'UKOL', stav: 'PLANOVANA', popis: 'Ze Sales', cil: 'Zpracovat diktát', datum: new Date(), mobileId: crypto.randomUUID() },
+    })
+    loginAs(adminId)
+    const res = await patch(a.id, { dealId })
+    expect(res.status).toBe(200)
+    expect(await res.json()).toMatchObject({ href: `/deals/${dealId}` })
+    expect(await prisma.activity.findUniqueOrThrow({ where: { id: a.id } })).toMatchObject({ dealId, typ: 'SCHUZKA', cil: 'Zápis z jednání', stav: 'DOKONCENA' })
   })
 })

@@ -87,3 +87,14 @@ export async function pripojDiktat(
   })
   return r.count ? null : 'Diktát už je zpracovaný'
 }
+
+/**
+ * Kdo diktát vidí a zpracovává (inbox /diktaty, PATCH): autor vždy,
+ * cizí jen s obchodCiziOP (vedení) — stejně jako cizí OP.
+ */
+export function diktatScope(perms: { obchodCiziOP: boolean }, userId: string): Record<string, unknown> {
+  return perms.obchodCiziOP ? {} : { userId }
+}
+
+/** Nezpracované diktáty (inbox, počet v menu) */
+export const NEZPRACOVANY_WHERE = { ...DIKTAT_WHERE, stav: 'PLANOVANA' } as const

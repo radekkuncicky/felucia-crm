@@ -4,6 +4,7 @@ import { getPerms } from '@/lib/permissions'
 import { getPlanLimits } from '@/lib/planLimits'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { activityParent } from '@/lib/activities'
+import { diktatScope } from '@/lib/diktat'
 import { notFound, redirect } from 'next/navigation'
 import { getOrgSettings } from '@/lib/orgSettings'
 import DiktatDetailClient from './DiktatDetailClient'
@@ -12,9 +13,10 @@ export default async function DiktatPage({ params }: { params: { id: string } })
   const session = await getServerSession(authOptions)
   if (!session || !getPerms(session.user).obchod) notFound()
   const orgId = session.user.orgId
+  const perms = getPerms(session.user)
 
   const a = await orgPrisma(orgId).activity.findFirst({
-    where: { id: params.id, orgId },
+    where: { id: params.id, orgId, ...diktatScope(perms, session.user.id) },
     select: {
       id: true, popis: true, datum: true, stav: true, vytvoreno: true,
       user: { select: { jmeno: true } },
@@ -37,6 +39,7 @@ export default async function DiktatPage({ params }: { params: { id: string } })
         vytvoreno: a.vytvoreno.toISOString(),
         autor: a.user?.jmeno ?? null,
       }}
+      maLeady={session.user.plan !== 'STARTER'}
       maDasu={getPlanLimits(session.user.plan ?? 'STARTER').canUseAI && (await getOrgSettings(orgId)).modulDasa}
     />
   )

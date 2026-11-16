@@ -17,7 +17,8 @@ import NabidkyTab from './NabidkyTab'
 import DokumentyTab from './DokumentyTab'
 import SmlouvyTab from './SmlouvyTab'
 import FotodokumentaceTab from './FotodokumentaceTab'
-import ZamereniTab from './ZamereniTab'
+import ZamereniPrehled from '@/components/ZamereniPrehled'
+import { nactiZamereniPrehled } from '@/lib/zamereniPrehled'
 import TabActivator from './TabActivator'
 import ServisTab from './ServisTab'
 import { getPlanLimits } from '@/lib/planLimits'
@@ -26,7 +27,6 @@ import { CollapsibleEdit } from './CollapsibleEdit'
 import { DealNotesCard } from './DealNotesCard'
 import { DalsiKrokCard } from './DalsiKrokCard'
 import { formatKc } from '@/lib/format'
-import { getDefiniceProZamereni, vyplneneSekce } from '@/lib/zamereniDefinice'
 import { klientAdresa } from '@/lib/mobile-helpers'
 import { podkladOp } from '@/lib/quoteZamek'
 import { orgPrisma } from '@/lib/orgPrisma'
@@ -70,13 +70,6 @@ export default async function DealDetailPage({
           orderBy: { vytvoreno: 'asc' },
         },
         activities: { include: { user: true, resitel: true }, orderBy: { datum: 'desc' } },
-        zamereni: {
-          include: {
-            autor: { select: { jmeno: true } },
-            fotky: { orderBy: { poradi: 'asc' } },
-          },
-          orderBy: { vytvoreno: 'desc' },
-        },
       },
     }),
     prisma.product.findMany({
@@ -141,23 +134,7 @@ export default async function DealDetailPage({
   const gpsStavby = deal.gpsLat != null && deal.gpsLng != null ? { lat: deal.gpsLat, lng: deal.gpsLng } : null
 
   const klientAdresaText = klientAdresa(deal.client)
-  const zamereniItems = await Promise.all(
-    deal.zamereni.map(async z => {
-      // getDefiniceProZamereni čeká OrgPrismaClient jen kvůli typům z orgPrisma's $extends —
-      // runtime na tom nezávisí, bare prisma má stejné delegáty (zamereniDefinice.find*)
-      const definice = await getDefiniceProZamereni(prisma as unknown as import('@/lib/orgPrisma').OrgPrismaClient, z)
-      return {
-        id: z.id,
-        typ: z.typ,
-        stav: z.stav,
-        datum: z.datum.toISOString(),
-        autor: z.autor?.jmeno ?? null,
-        adresa: deal.adresaDila || klientAdresaText || null,
-        sekce: vyplneneSekce(definice.schemaJson, z.odpovedi as Record<string, unknown>),
-        fotky: z.fotky.map(f => ({ id: f.id, url: f.url, tag: f.tag, popis: f.popis })),
-      }
-    }),
-  )
+  const zamereniItems = await nactiZamereniPrehled(orgPrisma(orgId), orgId, deal.id, deal.adresaDila || klientAdresaText || null)
 
   // Calculate active quote price for header
   const activeQuote = deal.quotes.find(q => q.aktivni)
@@ -513,7 +490,7 @@ export default async function DealDetailPage({
       )}
 
       {tab === 'zamereni' && (
-        <ZamereniTab zamereni={zamereniItems} />
+        <ZamereniPrehled zamereni={zamereniItems} />
       )}
 
       {tab === 'fotodokumentace' && (

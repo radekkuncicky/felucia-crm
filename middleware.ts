@@ -5,7 +5,7 @@ import { isRoleName, isTechnikView, ROLE_PRESETS } from '@/lib/permissions'
 import { isKnownRoute } from '@/lib/knownRoutes'
 
 // Stránky obchodní části — technický pohled je nevidí (menu je nenabízí, tohle chytá přímé URL)
-const OBCHOD_PREFIXES = ['/deals', '/clients', '/leady', '/products', '/quote-templates', '/quotes', '/activities', '/sod', '/cenovka', '/analytics', '/documents']
+const OBCHOD_PREFIXES = ['/deals', '/clients', '/leady', '/products', '/quote-templates', '/quotes', '/activities', '/sod', '/diktat', '/diktaty', '/cenovka', '/analytics', '/documents']
 
 const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'felucia.io'
 

@@ -12,6 +12,7 @@ import { confirmDialog } from '@/components/ui/confirm'
 import { MikrofonButton, useDiktovani } from '@/components/DiktatDialog'
 import { zpracujDiktatSDasou } from '@/lib/diktatDasa'
 import { DIKTAT_MAX } from '@/lib/diktat'
+import PripojitDiktatDialog from '@/components/PripojitDiktatDialog'
 
 interface Diktat {
   id: string
@@ -23,11 +24,12 @@ interface Diktat {
 }
 
 /** Nezpracovaný diktát: úprava textu a termínu, zpracování s Dášou, hotovo / smazat */
-export default function DiktatDetailClient({ diktat, maDasu }: { diktat: Diktat; maDasu: boolean }) {
+export default function DiktatDetailClient({ diktat, maDasu, maLeady }: { diktat: Diktat; maDasu: boolean; maLeady: boolean }) {
   const router = useRouter()
   const [text, setText] = useState(diktat.text)
   const [datum, setDatum] = useState(diktat.datum)
   const [ukladam, setUkladam] = useState(false)
+  const [pripojit, setPripojit] = useState(false)
   const mic = useDiktovani(t => setText(prev => (prev ? `${prev} ${t}` : t).slice(0, DIKTAT_MAX)))
   const zmeneno = text !== diktat.text || datum !== diktat.datum
 
@@ -51,14 +53,14 @@ export default function DiktatDetailClient({ diktat, maDasu }: { diktat: Diktat;
     const res = await api.delete(`/api/activities/${diktat.id}`, { errorMessage: 'Diktát se nepodařilo smazat.' })
     if (res.ok) {
       toast.success('Diktát smazán')
-      router.push('/dashboard')
+      router.push('/diktaty')
     }
   }
 
   return (
     <div className="max-w-2xl space-y-6">
       <PageHeader
-        back={{ href: '/dashboard', label: 'Nástěnka' }}
+        back={{ href: '/diktaty', label: 'Diktáty' }}
         title="Diktát"
         description={`Nadiktováno ${formatDateTime(diktat.vytvoreno)}${diktat.autor ? ` · ${diktat.autor}` : ''}${diktat.hotovo ? ' · vyřízeno' : ''}`}
       />
@@ -77,12 +79,22 @@ export default function DiktatDetailClient({ diktat, maDasu }: { diktat: Diktat;
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {maDasu && !diktat.hotovo && <Button onClick={sDasou}>Zpracovat s Dášou</Button>}
+        {!diktat.hotovo && (
+          <Button onClick={async () => { if (!zmeneno || (await ulozit())) setPripojit(true) }}>Připojit k OP{maLeady ? ' / leadu' : ''}…</Button>
+        )}
+        {maDasu && !diktat.hotovo && <Button variant="secondary" onClick={sDasou}>Založit s Dášou</Button>}
         {diktat.hotovo
           ? <Button variant="secondary" onClick={() => ulozit({ hotovo: false })} loading={ukladam}>Vrátit mezi úkoly</Button>
           : <Button variant="secondary" onClick={async () => { if (await ulozit({ hotovo: true })) toast.success('Diktát vyřízen') }} loading={ukladam}>Vyřízeno bez dalšího</Button>}
         <Button variant="danger" onClick={smazat}>Smazat</Button>
       </div>
+      <PripojitDiktatDialog
+        diktatId={diktat.id}
+        open={pripojit}
+        onClose={() => setPripojit(false)}
+        onHotovo={href => { toast.success('Diktát připojen'); router.push(href) }}
+        maLeady={maLeady}
+      />
       {maDasu && !diktat.hotovo && (
         <p className="text-sm text-muted">
           Dáša z textu pozná, jestli jde o stávajícího klienta, lead nebo OP, navrhne co založit a po potvrzení diktát připojí — v historii pak zůstane jako hovor.

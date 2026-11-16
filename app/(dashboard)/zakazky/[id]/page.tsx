@@ -16,6 +16,9 @@ import UkolyTab from './UkolyTab'
 import TlakovaZkouska from './TlakovaZkouska'
 import ZaregulovaniVzt from './ZaregulovaniVzt'
 import FinanceTab from './FinanceTab'
+import ZamereniPrehled from '@/components/ZamereniPrehled'
+import { nactiZamereniPrehled } from '@/lib/zamereniPrehled'
+import { orgPrisma } from '@/lib/orgPrisma'
 import { UKOL_ORDER_BY, UKOL_SELECT } from '@/lib/zakazkaUkol'
 import { radekBezDph } from '@/lib/quoteMath'
 
@@ -105,6 +108,10 @@ export default async function ZakazkaDetailPage({
         select: { id: true, nazev: true, cesta: true },
         orderBy: { vytvoreno: 'desc' },
       })
+    : []
+  // Zaměření z appky Sales (OP) — technik ví, kam jednotky, trasy, jištění… (navigace je v hlavičce)
+  const opZamereni = zakazka.opId && tab === 'podklady'
+    ? await nactiZamereniPrehled(orgPrisma(orgId), orgId, zakazka.opId, null)
     : []
 
   return (
@@ -222,6 +229,15 @@ export default async function ZakazkaDetailPage({
             opId={zakazka.op?.id ?? null}
             opKod={zakazka.op?.kod ?? null}
           />
+          {opZamereni.length > 0 && (
+            <section id="zamereni" className="scroll-mt-24">
+              <ZamereniPrehled
+                zamereni={opZamereni}
+                skrytPrazdne
+                opOdkaz={zakazka.op && perms.obchod ? { href: `/deals/${zakazka.op.id}?tab=zamereni`, label: zakazka.op.kod ? `OP ${zakazka.op.kod}` : 'Otevřít OP' } : undefined}
+              />
+            </section>
+          )}
           <section id="foto" className="scroll-mt-24">
             <FotoTab
               zakazkaId={zakazka.id}
