@@ -2,6 +2,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { getPerms } from '@/lib/permissions'
 import { redirect } from 'next/navigation'
+import { headers } from 'next/headers'
 import DashboardShell from '@/components/DashboardShell'
 import AIAssistant from '@/components/AIAssistant'
 import { Suspense } from 'react'
@@ -24,7 +25,11 @@ export default async function DashboardLayout({
 }) {
   const session = await getServerSession(authOptions)
 
-  if (!session) redirect('/auth/signin')
+  if (!session) {
+    // Návrat na původní stránku po přihlášení (x-url nastavuje middleware)
+    const zpet = headers().get('x-url')
+    redirect(zpet && zpet.startsWith('/') && !zpet.startsWith('//') ? `/auth/signin?callbackUrl=${encodeURIComponent(zpet)}` : '/auth/signin')
+  }
 
   const orgSettings = await getOrgSettings(session.user.orgId)
 
@@ -82,7 +87,8 @@ export default async function DashboardLayout({
         </div>
       )}
       <div style={totalFixedBanners > 0 ? { paddingTop: `${totalFixedBanners * 40}px` } : undefined}>
-        {!isDemo && !org?.onboardingDone && (
+        {/* Nastavení firmy dokončí jen ten, kdo ho smí měnit — pozvaný obchodník/technik by narazil na 403 */}
+        {!isDemo && !org?.onboardingDone && getPerms(session.user).nastaveniOrg && (
           <OnboardingBanner
             onboardingDone={org?.onboardingDone ?? true}
             onboardingStep={org?.onboardingStep ?? 0}

@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
+import { passwordError } from '@/lib/authInput'
 
 export async function PATCH(req: Request) {
   const session = await getServerSession(authOptions)
@@ -14,9 +15,8 @@ export async function PATCH(req: Request) {
   if (!current || !newPassword) {
     return NextResponse.json({ error: 'Vyplňte všechna pole' }, { status: 400 })
   }
-  if (typeof newPassword !== 'string' || newPassword.length < 10) {
-    return NextResponse.json({ error: 'Heslo musí mít alespoň 10 znaků' }, { status: 400 })
-  }
+  const chyba = passwordError(newPassword)
+  if (chyba) return NextResponse.json({ error: chyba }, { status: 400 })
 
   const user = await orgPrisma(session.user.orgId).user.findUnique({ where: { id: session.user.id } })
   if (!user) return NextResponse.json({ error: 'Not found' }, { status: 404 })

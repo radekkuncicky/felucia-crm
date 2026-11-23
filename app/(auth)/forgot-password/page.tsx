@@ -1,84 +1,92 @@
 'use client'
 
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
+import { AuthShell, AuthAlert } from '@/components/auth/AuthShell'
+import { Field, Input } from '@/components/ui/Field'
+import { Button } from '@/components/ui/Button'
 
-export default function ForgotPasswordPage() {
-  const [email, setEmail] = useState('')
+function ForgotForm() {
+  const params = useSearchParams()
+  const [email, setEmail] = useState(params.get('email') ?? '')
   const [sent, setSent] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
-    await fetch('/api/auth/forgot-password', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
-    })
-    setSent(true)
-    setLoading(false)
+    setError('')
+    try {
+      const res = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setError(data.error || 'Odkaz se nepodařilo odeslat. Zkuste to prosím znovu.')
+        return
+      }
+      setSent(true)
+    } catch {
+      setError('Nepodařilo se spojit se serverem. Zkontrolujte připojení k internetu.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (sent) {
+    return (
+      <div className="space-y-4 text-center">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
+          <svg className="h-7 w-7 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+        <h2 className="font-semibold text-gray-900 dark:text-white">Zkontrolujte e-mail</h2>
+        <p className="text-sm text-gray-600 dark:text-slate-300">
+          Pokud k adrese <strong>{email.trim()}</strong> existuje účet, poslali jsme na ni odkaz pro nastavení nového hesla. Platí 1 hodinu.
+        </p>
+        <p className="text-xs text-gray-500 dark:text-slate-400">
+          Nic nepřišlo do pár minut? Podívejte se do spamu, zkontrolujte adresu, nebo požádejte správce vaší firmy — v Nastavení → Uživatelé vám pošle odkaz sám.
+        </p>
+        <div className="flex flex-col gap-2 pt-2">
+          <Link href="/auth/signin" className="block w-full rounded-lg bg-primary py-2.5 text-center font-semibold text-white hover:bg-primary-hover">
+            Zpět na přihlášení
+          </Link>
+          <button type="button" onClick={() => setSent(false)} className="text-sm text-gray-500 hover:text-gray-800 dark:text-slate-400 dark:hover:text-slate-200">
+            Zadat jiný e-mail
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="max-w-md w-full space-y-8 p-8">
-        <div className="text-center">
-          <div className="flex justify-center mb-4">
-            <div className="bg-primary text-white rounded-xl p-3">
-              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-              </svg>
-            </div>
-          </div>
-          <h1 className="text-3xl font-bold text-gray-900">FELUCIA CRM</h1>
-          <p className="mt-2 text-sm text-gray-600">Obnova hesla</p>
-        </div>
+    <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+      <p className="text-sm text-gray-600 dark:text-slate-300">Zadejte e-mail, kterým se přihlašujete. Pošleme vám odkaz pro nastavení nového hesla.</p>
+      <Field label="E-mail" required>
+        <Input kind="email" autoComplete="username" autoCapitalize="none" value={email} onChange={e => setEmail(e.target.value)} placeholder="vas@email.cz" autoFocus />
+      </Field>
+      {error && <AuthAlert>{error}</AuthAlert>}
+      <Button type="submit" block loading={loading} disabled={!email.trim()}>
+        {loading ? 'Odesílám…' : 'Poslat odkaz'}
+      </Button>
+      <Link href="/auth/signin" className="block text-center text-sm text-gray-500 hover:text-gray-800 dark:text-slate-400 dark:hover:text-slate-200">
+        Zpět na přihlášení
+      </Link>
+    </form>
+  )
+}
 
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
-          {sent ? (
-            <div className="text-center space-y-4">
-              <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-                <svg className="w-7 h-7 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <h3 className="font-semibold text-gray-900">Email odeslán</h3>
-              <p className="text-sm text-gray-600">
-                Pokud zadaný email existuje v systému, obdržíte odkaz pro obnovu hesla. Odkaz je platný 1 hodinu.
-              </p>
-              <Link href="/auth/signin" className="block w-full text-center bg-primary hover:bg-primary-hover text-white font-semibold py-2.5 px-4 rounded-lg transition-colors mt-4">
-                Zpět na přihlášení
-              </Link>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <p className="text-sm text-gray-600">Zadejte svůj email a my vám pošleme odkaz pro obnovu hesla.</p>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  required
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="vas@email.cz"
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-primary hover:bg-primary-hover disabled:bg-blue-400 text-white font-semibold py-2.5 px-4 rounded-lg transition-colors"
-              >
-                {loading ? 'Odesílám...' : 'Odeslat odkaz'}
-              </button>
-              <Link href="/auth/signin" className="block text-center text-sm text-gray-500 hover:text-gray-700">
-                Zpět na přihlášení
-              </Link>
-            </form>
-          )}
-        </div>
-      </div>
-    </div>
+export default function ForgotPasswordPage() {
+  return (
+    <AuthShell podtitul="Obnova hesla">
+      <Suspense fallback={null}>
+        <ForgotForm />
+      </Suspense>
+    </AuthShell>
   )
 }

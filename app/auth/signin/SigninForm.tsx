@@ -8,6 +8,10 @@ import Link from 'next/link'
 interface Props {
   /** Kam po přihlášení (ověřená relativní cesta ze stránky) */
   callbackUrl?: string | null
+  /** Předvyplněný e-mail (?email= z odkazu po nastavení hesla) */
+  initialEmail?: string | null
+  /** Proč je uživatel na přihlášení (?reason=expired) */
+  reason?: string | null
   org: { id: string; nazev: string; logo: string | null; slug: string } | null
 }
 
@@ -23,10 +27,17 @@ function LogoLeaf({ dark = false }: { dark?: boolean }) {
   )
 }
 
-export default function SigninForm({ org, callbackUrl = null }: Props) {
+const CHYBY: Record<string, string> = {
+  RATE_LIMITED: 'Příliš mnoho pokusů o přihlášení. Zkuste to za 15 minut, nebo si nastavte nové heslo přes „Zapomněli jste heslo?“.',
+  ACCOUNT_DISABLED: 'Váš účet je deaktivovaný. Pokud jde o omyl, kontaktujte správce své firmy.',
+  ORG_DISABLED: 'Účet firmy ve Felucii je pozastavený. Kontaktujte vedení firmy nebo podporu na info@felucia.io.',
+}
+
+export default function SigninForm({ org, callbackUrl = null, initialEmail = null, reason = null }: Props) {
   const router = useRouter()
-  const [email, setEmail] = useState('')
+  const [email, setEmail] = useState(initialEmail ?? '')
   const [password, setPassword] = useState('')
+  const [showPwd, setShowPwd] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [isDark, setIsDark] = useState(false)
@@ -43,12 +54,18 @@ export default function SigninForm({ org, callbackUrl = null }: Props) {
     e.preventDefault()
     setLoading(true)
     setError('')
-    const result = await signIn('credentials', { email, password, redirect: false })
-    if (result?.error) {
-      setError(result.error === 'RATE_LIMITED' ? 'Příliš mnoho pokusů o přihlášení. Zkuste to za 15 minut.' : 'Nesprávný email nebo heslo.')
+    try {
+      const result = await signIn('credentials', { email: email.trim(), password, orgSlug: org?.slug ?? '', redirect: false })
+      if (result?.error) {
+        setError(CHYBY[result.error] ?? 'Nesprávný e-mail nebo heslo. Zkontrolujte, zda nemáte zapnutý Caps Lock.')
+        setLoading(false)
+      } else {
+        router.push(callbackUrl ?? '/dashboard')
+        router.refresh()
+      }
+    } catch {
+      setError('Nepodařilo se spojit se serverem. Zkontrolujte připojení k internetu a zkuste to znovu.')
       setLoading(false)
-    } else {
-      router.push(callbackUrl ?? '/dashboard')
     }
   }
 
@@ -109,29 +126,44 @@ export default function SigninForm({ org, callbackUrl = null }: Props) {
         <div style={{ background: cardBg, borderRadius: 20, border: `0.5px solid ${border}`, padding: '32px 28px' }}>
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
             <div>
-              <label style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 500, color: isDark ? '#A5C8A5' : '#4A6B4A', marginBottom: 6 }}>
-                Email
+              <label htmlFor="signin-email" style={{ display: 'block', fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 500, color: isDark ? '#A5C8A5' : '#4A6B4A', marginBottom: 6 }}>
+                E-mail
               </label>
-              <input type="email" value={email} onChange={e => setEmail(e.target.value)} required autoComplete="email"
+              <input id="signin-email" name="username" type="email" inputMode="email" value={email} onChange={e => setEmail(e.target.value)} required autoComplete="username"
+                autoCapitalize="none" autoCorrect="off" spellCheck={false} autoFocus={!initialEmail}
                 placeholder="vas@email.cz" style={inputStyle} />
             </div>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                <label style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 500, color: isDark ? '#A5C8A5' : '#4A6B4A' }}>
+                <label htmlFor="signin-password" style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, fontWeight: 500, color: isDark ? '#A5C8A5' : '#4A6B4A' }}>
                   Heslo
                 </label>
-                <Link href="/forgot-password" style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: textMuted, textDecoration: 'none' }}
+                <Link href={email.trim() ? `/forgot-password?email=${encodeURIComponent(email.trim())}` : '/forgot-password'} style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: textMuted, textDecoration: 'none' }}
                   onMouseEnter={e => (e.currentTarget.style.color = '#4CAF50')}
                   onMouseLeave={e => (e.currentTarget.style.color = textMuted)}>
                   Zapomněli jste heslo?
                 </Link>
               </div>
-              <input type="password" value={password} onChange={e => setPassword(e.target.value)} required autoComplete="current-password"
-                placeholder="••••••••" style={inputStyle} />
+              <div style={{ position: 'relative' }}>
+                <input id="signin-password" name="password" type={showPwd ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} required autoComplete="current-password"
+                  autoCapitalize="none" autoCorrect="off" spellCheck={false} autoFocus={!!initialEmail}
+                  placeholder="••••••••" style={{ ...inputStyle, paddingRight: 84 }} />
+                <button type="button" onClick={() => setShowPwd(v => !v)} data-compact="" className="hit-area"
+                  aria-label={showPwd ? 'Skrýt heslo' : 'Zobrazit heslo'} aria-pressed={showPwd}
+                  style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'Inter, sans-serif', fontSize: 12, fontWeight: 500, color: textMuted, padding: '4px 8px' }}>
+                  {showPwd ? 'Skrýt' : 'Zobrazit'}
+                </button>
+              </div>
             </div>
 
+            {reason === 'expired' && !error && (
+              <div role="status" style={{ background: isDark ? 'rgba(76,175,80,0.08)' : '#F4FAF4', border: `1px solid ${inputBorder}`, borderRadius: 10, padding: '10px 14px', fontFamily: 'Inter, sans-serif', fontSize: 13, color: textMain }}>
+                Byli jste odhlášeni (vypršelo přihlášení nebo se změnilo heslo). Přihlaste se prosím znovu.
+              </div>
+            )}
+
             {error && (
-              <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, padding: '10px 14px', fontFamily: 'Inter, sans-serif', fontSize: 13, color: '#ef4444' }}>
+              <div role="alert" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 10, padding: '10px 14px', fontFamily: 'Inter, sans-serif', fontSize: 13, color: '#ef4444' }}>
                 {error}
               </div>
             )}
@@ -144,12 +176,19 @@ export default function SigninForm({ org, callbackUrl = null }: Props) {
         </div>
 
         {/* Footer links */}
-        <p style={{ textAlign: 'center', marginTop: 20, fontFamily: 'Inter, sans-serif', fontSize: 13, color: textMuted }}>
-          Nemáte účet?{' '}
-          <Link href="/auth/register" style={{ color: '#4CAF50', fontWeight: 600, textDecoration: 'none' }}>
-            Zaregistrujte se →
-          </Link>
-        </p>
+        {org ? (
+          // Firemní přihlášení: zaměstnanec bez účtu nemá zakládat novou firmu
+          <p style={{ textAlign: 'center', marginTop: 20, fontFamily: 'Inter, sans-serif', fontSize: 13, color: textMuted }}>
+            Nemáte přístup? Požádejte správce firmy {org.nazev} o pozvánku.
+          </p>
+        ) : (
+          <p style={{ textAlign: 'center', marginTop: 20, fontFamily: 'Inter, sans-serif', fontSize: 13, color: textMuted }}>
+            Nemáte účet?{' '}
+            <Link href="/auth/register" style={{ color: '#4CAF50', fontWeight: 600, textDecoration: 'none' }}>
+              Zaregistrujte firmu →
+            </Link>
+          </p>
+        )}
         {!org && (
           <p style={{ textAlign: 'center', marginTop: 8, fontFamily: 'Inter, sans-serif', fontSize: 12, color: isDark ? '#4A6B4A' : '#6B8F6B' }}>
             <Link href="/" style={{ color: 'inherit', textDecoration: 'none' }}

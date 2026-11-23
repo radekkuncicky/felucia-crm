@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server'
+import { normalizeEmail, isValidEmail, emailWhere, passwordError } from '@/lib/authInput'
+import { orgBaseUrl } from '@/lib/authCookie'
 import { FORBIDDEN_SLUGS } from '@/lib/slug'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
@@ -29,7 +31,8 @@ export async function POST(req: Request) {
 
   try {
     const body = await req.json()
-    const { nazevFirmy, ico, jmeno, prijmeni, email, heslo, slug: rawSlug } = body
+    const { nazevFirmy, ico, jmeno, prijmeni, heslo, slug: rawSlug } = body
+    const email = normalizeEmail(body.email)
 
     // ── Validace vstupů ────────────────────────────────────────────────────
     if (!nazevFirmy || !jmeno || !prijmeni || !email || !heslo) {
@@ -38,12 +41,11 @@ export async function POST(req: Request) {
     if ([nazevFirmy, jmeno, prijmeni, email, heslo].some(v => typeof v !== 'string')) {
       return NextResponse.json({ error: 'Neplatný formát údajů.' }, { status: 400 })
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (!isValidEmail(email)) {
       return NextResponse.json({ error: 'Neplatný e-mail.' }, { status: 400 })
     }
-    if (heslo.length < 10) {
-      return NextResponse.json({ error: 'Heslo musí mít alespoň 10 znaků.' }, { status: 400 })
-    }
+    const chybaHesla = passwordError(heslo)
+    if (chybaHesla) return NextResponse.json({ error: chybaHesla }, { status: 400 })
 
     // Slug z klienta prochází stejnou normalizací jako v check-slug — jde do hostname
     const slug = generateSlug(typeof rawSlug === 'string' && rawSlug ? rawSlug : nazevFirmy)
@@ -58,14 +60,14 @@ export async function POST(req: Request) {
     // ── Kontrola unikátnosti ───────────────────────────────────────────────
     const [existingSlug, existingEmail] = await Promise.all([
       prisma.organization.findUnique({ where: { slug } }),
-      prisma.user.findFirst({ where: { email } }),
+      prisma.user.findFirst({ where: { email: emailWhere(email) } }),
     ])
 
     if (existingSlug) {
       return NextResponse.json({ error: 'Tato subdoména je již obsazena.' }, { status: 409 })
     }
     if (existingEmail) {
-      return NextResponse.json({ error: 'Tento email je již registrován.' }, { status: 409 })
+      return NextResponse.json({ error: 'S tímto e-mailem už účet ve Felucii existuje. Přihlaste se, nebo si nechte poslat nové heslo.', code: 'EMAIL_EXISTS' }, { status: 409 })
     }
 
     // ── Transakce: org + user + kategorie ─────────────────────────────────
@@ -116,8 +118,7 @@ export async function POST(req: Request) {
     // ── Uvítací email (volitelně) ──────────────────────────────────────────
     if (process.env.SMTP_HOST) {
       try {
-        const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'felucia.io'
-        const loginUrl = `https://${slug}.${rootDomain}/auth/signin`
+        const loginUrl = `${orgBaseUrl(slug)}/auth/signin`
         await sendEmail(
           email,
           `Vítejte v FELUCIA CRM — ${jmeno}`,

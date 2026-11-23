@@ -6,6 +6,8 @@ import UsersManager from './UsersManager'
 import { getPlanLimits } from '@/lib/planLimits'
 import { getPerms } from '@/lib/permissions'
 
+const PLAN_NAZVY: Record<string, string> = { STARTER: 'Starter', STANDARD: 'Standard', PROFESSIONAL: 'Professional', ENTERPRISE: 'Enterprise' }
+
 export default async function UsersPage() {
   const session = await getServerSession(authOptions)
   if (!session) redirect('/auth/signin')
@@ -16,7 +18,7 @@ export default async function UsersPage() {
   const [users, org] = await Promise.all([
     prisma.user.findMany({
       where: { orgId },
-      select: { id: true, jmeno: true, email: true, role: true, aktivni: true, vytvoreno: true, podepisujeSmlouvy: true, permissions: true },
+      select: { id: true, jmeno: true, email: true, role: true, aktivni: true, vytvoreno: true, podepisujeSmlouvy: true, permissions: true, lastLoginAt: true },
       orderBy: { vytvoreno: 'asc' },
     }),
     prisma.organization.findUnique({ where: { id: orgId }, select: { plan: true } }),
@@ -32,11 +34,12 @@ export default async function UsersPage() {
         <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">Přidávejte a spravujte uživatele vaší organizace.</p>
       </div>
       <UsersManager
-        users={users.map(u => ({ ...u, vytvoreno: u.vytvoreno.toISOString() }))}
+        users={users.map(u => ({ ...u, vytvoreno: u.vytvoreno.toISOString(), lastLoginAt: u.lastLoginAt?.toISOString() ?? null }))}
         maxUsers={planLimits.maxUsers}
         activeUserCount={activeUserCount}
         canCustomize={planLimits.hasCustomPermissions}
         currentUserId={session.user.id}
+        planLabel={PLAN_NAZVY[org?.plan ?? 'STARTER'] ?? org?.plan}
       />
     </div>
   )

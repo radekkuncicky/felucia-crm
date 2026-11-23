@@ -5,6 +5,7 @@ import { ThemeProvider, useTheme } from 'next-themes'
 import { Toaster } from 'sonner'
 import { ConfirmHost } from '@/components/ui/confirm'
 import { DuvodProhryHost } from '@/components/DuvodProhryDialog'
+import SessionWatch from '@/components/auth/SessionWatch'
 
 function ThemedToaster() {
   const { resolvedTheme } = useTheme()
@@ -28,6 +29,7 @@ export function Providers({ children, nonce }: { children: React.ReactNode; nonc
         <ThemedToaster />
         <ConfirmHost />
         <DuvodProhryHost />
+        <SessionWatch />
       </SessionProvider>
     </ThemeProvider>
   )

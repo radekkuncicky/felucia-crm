@@ -3,6 +3,20 @@ import type { NextRequest } from 'next/server'
 import { getToken } from 'next-auth/jwt'
 import { isRoleName, isTechnikView, ROLE_PRESETS } from '@/lib/permissions'
 import { isKnownRoute } from '@/lib/knownRoutes'
+import { SESSION_COOKIE_NAME, SECURE_COOKIES } from '@/lib/authCookie'
+
+// Session cookie má vlastní název (lib/authCookie.ts) — getToken ho sám neodhadne
+const readToken = (req: NextRequest) =>
+  getToken({ req, secret: process.env.NEXTAUTH_SECRET, cookieName: SESSION_COOKIE_NAME, secureCookie: SECURE_COOKIES })
+
+/** Přesměrování na přihlášení se zachováním cílové stránky (odkaz z e-mailu / notifikace) */
+function toSignin(req: NextRequest, url: URL) {
+  const target = req.nextUrl.pathname + req.nextUrl.search
+  url.pathname = '/auth/signin'
+  url.search = ''
+  if (target !== '/' && !target.startsWith('/auth') && !target.startsWith('/login')) url.searchParams.set('callbackUrl', target)
+  return NextResponse.redirect(url)
+}
 
 // Stránky obchodní části — technický pohled je nevidí (menu je nenabízí, tohle chytá přímé URL)
 const OBCHOD_PREFIXES = ['/deals', '/clients', '/leady', '/products', '/quote-templates', '/quotes', '/activities', '/sod', '/diktat', '/diktaty', '/cenovka', '/analytics', '/documents']
@@ -57,6 +71,8 @@ function nextWithCsp(req: NextRequest, extraRequestHeaders?: Headers, opts: { in
   const csp = buildCsp(nonce)
   const requestHeaders = extraRequestHeaders ?? new Headers(req.headers)
   requestHeaders.set('x-nonce', nonce)
+  // Aktuální cesta pro server komponenty (návrat po přihlášení z layoutu)
+  requestHeaders.set('x-url', req.nextUrl.pathname + req.nextUrl.search)
   requestHeaders.set('Content-Security-Policy', csp)
   const res = NextResponse.next({ request: { headers: requestHeaders } })
   res.headers.set('Content-Security-Policy', csp)
@@ -90,7 +106,7 @@ export async function middleware(req: NextRequest) {
   // ── Demo session: read-only ─────────────────────────────────────────────
   // Musí být před větvením podle hostu — demo se dá přihlásit i na subdoméně.
   if (url.pathname.startsWith('/api') && !url.pathname.startsWith('/api/auth') && MUTATING_METHODS.has(req.method)) {
-    const demoToken = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
+    const demoToken = await readToken(req)
     if (demoToken?.isDemo) {
       return NextResponse.json({ ok: true, _demo: true }, { status: 200 })
     }
@@ -110,11 +126,22 @@ export async function middleware(req: NextRequest) {
       return NextResponse.redirect(url)
     }
 
+    // Přihlášený na subdoméně cizí firmy → na adresu vlastní firmy (session je
+    // sdílená přes *.felucia.io). Data by stejně byla jeho, ale hlavička/logo
+    // cizí firmy mate. API, tokenové odkazy a superadmina (impersonace) nechat.
+    if (!url.pathname.startsWith('/api') && !url.pathname.startsWith('/_next')) {
+      const t = await readToken(req)
+      if (t && !t.isSuperAdmin && !t.isDemo && typeof t.orgSlug === 'string' && t.orgSlug && t.orgSlug !== slug) {
+        const own = new URL(req.nextUrl.pathname + req.nextUrl.search, `https://${t.orgSlug}.${ROOT_DOMAIN}`)
+        return NextResponse.redirect(own)
+      }
+    }
+
     return nextWithCsp(req, requestHeaders)
   }
 
   // ── Main domain ───────────────────────────────────────────────────────────
-  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
+  const token = await readToken(req)
 
   // ── Maintenance mode ──────────────────────────────────────────────────────
   const isMaintenancePage = url.pathname === '/maintenance'
@@ -135,10 +162,7 @@ export async function middleware(req: NextRequest) {
 
   // ── Super admin protection ────────────────────────────────────────────────
   if (isSuperAdminRoute) {
-    if (!token) {
-      url.pathname = '/auth/signin'
-      return NextResponse.redirect(url)
-    }
+    if (!token) return toSignin(req, url)
     if (!token.isSuperAdmin) {
       url.pathname = '/dashboard'
       return NextResponse.redirect(url)
@@ -179,18 +203,19 @@ export async function middleware(req: NextRequest) {
   if (!token && !isAuthPage && !isPublicPage && !isApiRoute && !isOnboardingPage) {
     // Neexistující adresa → Next vyrenderuje 404 (ne přesměrování na login, viz lib/knownRoutes.ts)
     if (!isKnownRoute(url.pathname)) return nextWithCsp(req)
-    url.pathname = '/auth/signin'
-    return NextResponse.redirect(url)
+    return toSignin(req, url)
   }
 
   if (!token && isOnboardingPage) {
-    url.pathname = '/auth/signin'
-    return NextResponse.redirect(url)
+    return toSignin(req, url)
   }
 
   if (token && !token.isDemo && isLoginOnlyPage) {
-    url.pathname = '/dashboard'
-    return NextResponse.redirect(url)
+    // Přihlášený na login stránce → kam chtěl (callbackUrl, jen vlastní relativní cesta), jinak nástěnka
+    const cb = req.nextUrl.searchParams.get('callbackUrl')
+    const ok = cb && cb.startsWith('/') && !cb.startsWith('//') && !cb.startsWith('/\\') && !cb.startsWith('/auth')
+    const dest = new URL(ok ? cb : '/dashboard', req.nextUrl.origin)
+    return NextResponse.redirect(dest)
   }
 
   // ── Technický pohled (bez obchodu) — hrubý filtr obchodních stránek ─────────

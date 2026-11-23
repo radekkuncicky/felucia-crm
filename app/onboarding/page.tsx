@@ -3,6 +3,7 @@ import { authOptions } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { prisma } from '@/lib/prisma'
 import OnboardingWizard from './OnboardingWizard'
+import { getPlanLimits } from '@/lib/planLimits'
 
 export default async function OnboardingPage() {
   const session = await getServerSession(authOptions)
@@ -22,6 +23,11 @@ export default async function OnboardingPage() {
     prisma.category.findMany({ where: { orgId }, select: { nazev: true } }),
   ])
 
+  // Volná místa v plánu — na STARTERu (1 uživatel) krok „tým“ rovnou vysvětlí, místo aby pozvánky selhaly
+  const limits = getPlanLimits(session.user.plan)
+  const aktivnich = await prisma.user.count({ where: { orgId, aktivni: true } })
+  const volnaMista = limits.maxUsers === Infinity ? null : Math.max(0, limits.maxUsers - aktivnich)
+
   // When onboardingDone=true, restart wizard from step 1 (review mode)
   const initialStep = org?.onboardingDone ? 0 : (org?.onboardingStep ?? 0)
 
@@ -36,6 +42,7 @@ export default async function OnboardingPage() {
       userEmail={user?.email ?? session.user.email ?? ''}
       userTelefon={user?.telefon ?? ''}
       existingCategories={categories.map(c => c.nazev)}
+      volnaMista={volnaMista}
     />
   )
 }

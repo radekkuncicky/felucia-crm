@@ -7,6 +7,9 @@ import { logAction } from '@/lib/auditLog'
 import { klientAppky } from '@/lib/mobile-helpers'
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit'
 import bcrypt from 'bcryptjs'
+import { normalizeEmail, emailWhere, isValidEmail } from '@/lib/authInput'
+
+const DUMMY_HASH = bcrypt.hashSync('dummy-' + Math.random().toString(36), 12)
 
 export async function OPTIONS() {
   return new Response(null, { status: 204 })
@@ -27,36 +30,50 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Neplatný požadavek' }, { status: 400 })
   }
 
-  const { email, password } = body
+  const email = normalizeEmail(body.email)
+  const password = typeof body.password === 'string' ? body.password : ''
   if (!email || !password) {
     return NextResponse.json({ error: 'Email a heslo jsou povinné' }, { status: 400 })
   }
-
-  // SECURITY FIX: Basic email format validation to reject obviously invalid inputs early
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  if (!emailRegex.test(email)) {
-    return NextResponse.json({ error: 'Neplatné přihlašovací údaje' }, { status: 401 })
+  // Stejné texty jako web — appka je zobrazuje uživateli tak, jak přijdou
+  const SPATNE = 'Nesprávný e-mail nebo heslo.'
+  if (!isValidEmail(email)) {
+    return NextResponse.json({ error: SPATNE }, { status: 401 })
+  }
+  // Per e-mail jako na webu (per IP výš) — technici za jednou firemní wifi si nesdílí limit účtu
+  if (checkRateLimit(`mobile-login:email:${email}`, 10, 15 * 60_000).limited) {
+    return NextResponse.json({ error: 'Příliš mnoho pokusů o přihlášení. Zkuste to za 15 minut.' }, { status: 429 })
   }
 
   // Email je unikátní jen per firma (@@unique([orgId, email])), ne globálně —
   // appka posílá jen email+heslo bez kódu organizace, takže při shodě e-mailu
   // napříč firmami musí heslo rozhodnout, ke kterému účtu se přihlašujeme.
   const candidates = await prisma.user.findMany({
-    where: { email, aktivni: true },
+    where: { email: emailWhere(email) },
     include: { organization: { select: { aktivni: true, slug: true, plan: true } } },
+    orderBy: [{ lastLoginAt: { sort: 'desc', nulls: 'last' } }, { vytvoreno: 'asc' }],
   })
+  // Aktivní účty v aktivní firmě napřed
+  candidates.sort((a, b) => Number(!(a.aktivni && a.organization.aktivni)) - Number(!(b.aktivni && b.organization.aktivni)))
 
   let user: (typeof candidates)[number] | null = null
   for (const candidate of candidates) {
-    if (!candidate.organization.aktivni) continue
     if (await bcrypt.compare(password, candidate.hesloHash)) {
       user = candidate
       break
     }
   }
+  if (candidates.length === 0) await bcrypt.compare(password, DUMMY_HASH)
 
   if (!user) {
-    return NextResponse.json({ error: 'Neplatné přihlašovací údaje' }, { status: 401 })
+    return NextResponse.json({ error: SPATNE }, { status: 401 })
+  }
+  // Až po ověřeném hesle — srozumitelný důvod, nic neprozrazuje
+  if (!user.organization.aktivni) {
+    return NextResponse.json({ error: 'Firma má účet ve Felucii pozastavený. Kontaktujte vedení firmy.', code: 'ORG_DISABLED' }, { status: 401 })
+  }
+  if (!user.aktivni) {
+    return NextResponse.json({ error: 'Váš účet byl deaktivován. Kontaktujte správce firmy.', code: 'ACCOUNT_DISABLED' }, { status: 401 })
   }
 
   await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } })

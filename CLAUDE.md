@@ -10,6 +10,10 @@
 - Multi-tenant: každý model má `orgId` FK na `Organization`
 - Session obsahuje: `userId`, `orgId`, `orgSlug`, `role`, `plan`, `isSuperAdmin`
 - Vždy filtruj podle `orgId` v DB dotazech
+- Přihlášení: e-mail vždy přes `normalizeEmail()`/`emailWhere()` a heslo přes `passwordError()` z `lib/authInput.ts`.
+  Session cookie `felucia.session-token` je sdílená pro `felucia.io` + `*.felucia.io` (`lib/authCookie.ts`;
+  `getToken` potřebuje `cookieName`). Noví uživatelé dostávají pozvánku (odkaz na nastavení hesla, 7 dní)
+  přes `lib/userInvite.ts`; odkazy na firmu stavět přes `orgBaseUrl(slug)`.
 
 ## Důležité soubory
 - `lib/auth.ts` — NextAuth konfigurace

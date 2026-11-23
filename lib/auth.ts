@@ -7,6 +7,8 @@ import { prisma } from './prisma'
 import { readImpersonateCookie, clearImpersonateCookie } from './impersonate'
 import { resolvePermissions, ROLE_PRESETS } from './permissions'
 import { checkRateLimit } from './rateLimit'
+import { normalizeEmail, emailWhere } from './authInput'
+import { SESSION_COOKIE_NAME, SESSION_COOKIE_DOMAIN, SECURE_COOKIES } from './authCookie'
 
 export { loadPermsSnapshot, invalidatePermsCache } from './permsSnapshot'
 import { isSessionValid, loadPermsSnapshot, PERMS_REFRESH_MS } from './permsSnapshot'
@@ -14,6 +16,9 @@ import { isSessionValid, loadPermsSnapshot, PERMS_REFRESH_MS } from './permsSnap
 /** Chyba, kterou jwt callback vyhodí pro zneplatněnou session — NextAuth pak smaže cookie */
 const SESSION_INVALID = 'SESSION_INVALID'
 const LOGIN_RATE_LIMITED = 'RATE_LIMITED'
+/** Heslo sedí, ale účet / firma je vypnutá — přihlašovací formulář ukáže „kontaktujte správce“ */
+const ACCOUNT_DISABLED = 'ACCOUNT_DISABLED'
+const ORG_DISABLED = 'ORG_DISABLED'
 
 /** IP klienta z NextAuth `req` (plain objekt hlaviček za nginx: x-real-ip = $remote_addr, nespoofovatelné) */
 function loginClientIp(req: { headers?: Record<string, string | string[] | undefined> } | undefined): string {
@@ -28,6 +33,13 @@ const DUMMY_HASH = bcrypt.hashSync('dummy-' + Math.random().toString(36), 12)
 export const authOptions: NextAuthOptions = {
   session: {
     strategy: 'jwt',
+  },
+  // Sdílená cookie felucia.io + *.felucia.io (lib/authCookie.ts)
+  cookies: {
+    sessionToken: {
+      name: SESSION_COOKIE_NAME,
+      options: { httpOnly: true, sameSite: 'lax', path: '/', secure: SECURE_COOKIES, domain: SESSION_COOKIE_DOMAIN },
+    },
   },
   logger: {
     error(code, metadata) {
@@ -49,6 +61,7 @@ export const authOptions: NextAuthOptions = {
         email: { label: 'Email', type: 'email' },
         password: { label: 'Heslo', type: 'password' },
         magicToken: { label: 'Magic Token', type: 'text' },
+        orgSlug: { label: 'Firma', type: 'text' },
         isDemo: { label: 'Demo', type: 'text' },
       },
       async authorize(credentials, req) {
@@ -98,7 +111,7 @@ export const authOptions: NextAuthOptions = {
         if (!credentials?.email || !credentials?.password) return null
 
         // Brute-force ochrana: per IP i per e-mail (bcrypt cost 12 = ~300 ms CPU na pokus)
-        const email = String(credentials.email).trim().toLowerCase()
+        const email = normalizeEmail(credentials.email)
         const ip = loginClientIp(req)
         if (
           checkRateLimit(`login:ip:${ip}`, 20, 15 * 60_000).limited ||
@@ -108,11 +121,17 @@ export const authOptions: NextAuthOptions = {
         }
 
         // E-mail je unikátní jen per org — heslo rozhodne, který účet to je
-        // (stejně jako mobilní login). findFirst by vracel nedeterministický záznam.
+        // (stejně jako mobilní login). Pořadí: aktivní účty v aktivní firmě,
+        // přednostně firma ze subdomény, pak naposledy použitý — deterministicky.
         const candidates = await prisma.user.findMany({
-          where: { email: credentials.email, aktivni: true, organization: { aktivni: true } },
-          include: { organization: { select: { aktivni: true } } },
+          where: { email: emailWhere(email) },
+          include: { organization: { select: { aktivni: true, slug: true } } },
+          orderBy: [{ lastLoginAt: { sort: 'desc', nulls: 'last' } }, { vytvoreno: 'asc' }],
         })
+        const preferSlug = typeof credentials.orgSlug === 'string' ? credentials.orgSlug : ''
+        const rank = (c: (typeof candidates)[number]) =>
+          (c.aktivni && c.organization.aktivni ? 0 : 2) + (preferSlug && c.organization.slug === preferSlug ? 0 : 1)
+        candidates.sort((a, b) => rank(a) - rank(b))
         let user: (typeof candidates)[number] | null = null
         for (const c of candidates) {
           if (await bcrypt.compare(credentials.password, c.hesloHash)) { user = c; break }
@@ -120,6 +139,9 @@ export const authOptions: NextAuthOptions = {
         // Konstantní čas i pro neexistující e-mail (enumerace přes timing)
         if (candidates.length === 0) await bcrypt.compare(credentials.password, DUMMY_HASH)
         if (!user) return null
+        // Až po ověřeném hesle: srozumitelný důvod místo „špatné heslo“ (nic neprozrazuje)
+        if (!user.organization.aktivni) throw new Error(ORG_DISABLED)
+        if (!user.aktivni) throw new Error(ACCOUNT_DISABLED)
 
         await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } })
         await logAction({

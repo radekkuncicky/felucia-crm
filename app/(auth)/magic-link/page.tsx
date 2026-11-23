@@ -1,72 +1,56 @@
 'use client'
 
 import { useEffect, useState, Suspense } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import { signIn } from 'next-auth/react'
+import { AuthShell, AuthAlert } from '@/components/auth/AuthShell'
 
 function MagicLinkVerify() {
   const params = useSearchParams()
-  const router = useRouter()
   const token = params.get('token') ?? ''
   const [status, setStatus] = useState<'loading' | 'error'>('loading')
   const [message, setMessage] = useState('Přihlašuji vás…')
 
   useEffect(() => {
-    if (!token) { setStatus('error'); setMessage('Neplatný odkaz.'); return }
+    if (!token) { setStatus('error'); setMessage('Odkaz je neplatný. Zkontrolujte, že jste ho zkopírovali celý.'); return }
 
-    signIn('credentials', { magicToken: token, redirect: false }).then(result => {
-      if (result?.error) {
-        setStatus('error')
-        setMessage('Odkaz je neplatný nebo vypršel. Požádejte o nový.')
-      } else {
-        router.push('/dashboard')
-      }
-    })
-  }, [token, router])
+    signIn('credentials', { magicToken: token, redirect: false })
+      .then(result => {
+        if (result?.error) {
+          setStatus('error')
+          setMessage('Odkaz je neplatný, už byl použit, nebo vypršel (platí 15 minut).')
+        } else {
+          window.location.href = '/dashboard'
+        }
+      })
+      .catch(() => { setStatus('error'); setMessage('Nepodařilo se spojit se serverem. Zkontrolujte připojení k internetu.') })
+  }, [token])
 
-  return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="max-w-md w-full p-8">
-        <div className="text-center mb-8">
-          <div className="flex justify-center mb-4">
-            <div className="bg-primary text-white rounded-xl p-3">
-              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-              </svg>
-            </div>
-          </div>
-          <h1 className="text-3xl font-bold text-gray-900">FELUCIA CRM</h1>
-        </div>
-
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 text-center space-y-4">
-          {status === 'loading' ? (
-            <>
-              <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
-              <p className="text-gray-600">{message}</p>
-            </>
-          ) : (
-            <>
-              <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto">
-                <svg className="w-7 h-7 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </div>
-              <p className="text-gray-700 font-medium">{message}</p>
-              <a href="/auth/signin" className="inline-block bg-primary hover:bg-primary-hover text-white font-semibold py-2.5 px-6 rounded-lg transition-colors">
-                Zpět na přihlášení
-              </a>
-            </>
-          )}
-        </div>
-      </div>
+  return status === 'loading' ? (
+    <div className="space-y-4 py-4 text-center">
+      <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      <p className="text-gray-600 dark:text-slate-300">{message}</p>
+    </div>
+  ) : (
+    <div className="space-y-4 text-center">
+      <AuthAlert>{message}</AuthAlert>
+      <Link href="/auth/signin" className="block w-full rounded-lg bg-primary py-2.5 text-center font-semibold text-white hover:bg-primary-hover">
+        Přihlásit se heslem
+      </Link>
+      <Link href="/forgot-password" className="block text-sm text-gray-500 hover:text-gray-800 dark:text-slate-400 dark:hover:text-slate-200">
+        Nevím heslo — poslat odkaz na nové
+      </Link>
     </div>
   )
 }
 
 export default function MagicLinkPage() {
   return (
-    <Suspense fallback={null}>
-      <MagicLinkVerify />
-    </Suspense>
+    <AuthShell>
+      <Suspense fallback={null}>
+        <MagicLinkVerify />
+      </Suspense>
+    </AuthShell>
   )
 }

@@ -10,6 +10,8 @@ vi.mock('@/lib/email', () => ({
   emailWelcome: vi.fn(() => ''),
   emailResetPassword: vi.fn(() => ''),
   emailTechnikInvite: vi.fn(() => ''),
+  emailPozvanka: vi.fn(() => ''),
+  emailResetOdSpravce: vi.fn(() => ''),
   isEmailConfigured: () => false,
   isOrgEmailConfigured: vi.fn(async () => false),
 }))
@@ -100,12 +102,15 @@ describe('pozvánky a reset hesla — fallback odkaz bez e-mailu', () => {
     expect(data.sent).toHaveLength(1)
     expect(data.sent[0].email).toBe(`kolega@${RUN}.cz`)
     expect(data.sent[0].emailSent).toBe(false)
-    expect(data.sent[0].inviteUrl).toContain('/magic-link?token=')
+    // Odkaz na nastavení hesla (ne jednorázové přihlášení) — pozvaný jinak nikdy nemá heslo
+    expect(data.sent[0].inviteUrl).toContain('/reset-password?token=')
+    expect(data.sent[0].inviteUrl).toContain('pozvanka=1')
 
     const user = await prisma.user.findFirst({ where: { orgId, email: `kolega@${RUN}.cz` } })
     expect(user).not.toBeNull()
-    const token = await prisma.magicLinkToken.findFirst({ where: { userId: user!.id } })
+    const token = await prisma.passwordResetToken.findFirst({ where: { userId: user!.id } })
     expect(token).not.toBeNull()
+    expect(token!.expiresAt.getTime() - Date.now()).toBeGreaterThan(6 * 24 * 3600_000)
   })
 
   it('pozvánka technika bez SMTP vrátí odkaz na nastavení hesla', async () => {

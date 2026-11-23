@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { passwordError } from '@/lib/authInput'
 import { signIn } from 'next-auth/react'
 import Link from 'next/link'
 import { TRIAL_DNI } from '@/lib/planLimits'
@@ -17,6 +18,11 @@ function LogoLeaf({ dark = false }: { dark?: boolean }) {
       <line x1="20" y1="10" x2="20" y2="22" stroke={bg} strokeWidth="1" opacity="0.6"/>
     </svg>
   )
+}
+
+/** Jako generateSlug, ale nechá pomlčku na konci — jinak by při psaní „moje-firma“ zmizela */
+function slugPriPsani(v: string): string {
+  return v.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-/, '').substring(0, 30)
 }
 
 function generateSlug(name: string): string {
@@ -108,8 +114,10 @@ export default function RegisterPage() {
   // Step 1
   const [nazevFirmy, setNazevFirmy] = useState('')
   const [ico, setIco] = useState('')
-  const [pocetTechniku, setPocetTechniku] = useState('')
   const [slug, setSlug] = useState('')
+  // Ručně upravená adresa — pak ji změna názvu firmy už nepřepisuje
+  const [slugRucne, setSlugRucne] = useState(false)
+  const [slugEdit, setSlugEdit] = useState(false)
   const [slugStatus, setSlugStatus] = useState<'idle' | 'checking' | 'ok' | 'taken' | 'forbidden'>('idle')
 
   // Step 2
@@ -127,9 +135,9 @@ export default function RegisterPage() {
 
   // ── Slug generation + check ─────────────────────────────────────────────
   useEffect(() => {
-    const generated = generateSlug(nazevFirmy)
-    setSlug(generated)
-  }, [nazevFirmy])
+    if (slugRucne) return
+    setSlug(generateSlug(nazevFirmy))
+  }, [nazevFirmy, slugRucne])
 
   const checkSlug = useCallback(async (s: string) => {
     if (!s) { setSlugStatus('idle'); return }
@@ -153,7 +161,7 @@ export default function RegisterPage() {
   function validateStep1() {
     const e: Record<string, string> = {}
     if (!nazevFirmy.trim()) e.nazevFirmy = 'Název firmy je povinný.'
-    if (!slug) e.slug = 'Nepodařilo se vygenerovat subdoénu.'
+    if (!slug || slug.length < 3) e.slug = 'Adresa musí mít alespoň 3 znaky (písmena, číslice, pomlčka).'
     if (slugStatus === 'taken') e.slug = 'Tato subdoména je již obsazena.'
     if (slugStatus === 'forbidden') e.slug = 'Tento název není povolen.'
     if (slugStatus === 'checking') e.slug = 'Počkejte na ověření dostupnosti.'
@@ -166,7 +174,7 @@ export default function RegisterPage() {
     if (!jmeno.trim()) e.jmeno = 'Jméno je povinné.'
     if (!prijmeni.trim()) e.prijmeni = 'Příjmení je povinné.'
     if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) e.email = 'Zadejte platný email.'
-    if (heslo.length < 10) e.heslo = 'Heslo musí mít alespoň 10 znaků.'
+    { const ch = passwordError(heslo); if (ch) e.heslo = ch }
     if (heslo !== hesloConfirm) e.hesloConfirm = 'Hesla se neshodují.'
     setErrors(e)
     return Object.keys(e).length === 0
@@ -198,7 +206,7 @@ export default function RegisterPage() {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nazevFirmy, ico: ico || undefined, jmeno, prijmeni, email, heslo, slug }),
+        body: JSON.stringify({ nazevFirmy, ico: ico || undefined, jmeno, prijmeni, email: email.trim(), heslo, slug }),
       })
       const data = await res.json()
 
@@ -209,7 +217,7 @@ export default function RegisterPage() {
       }
 
       // Auto-login
-      const result = await signIn('credentials', { email, password: heslo, redirect: false })
+      const result = await signIn('credentials', { email: email.trim(), password: heslo, redirect: false })
       if (result?.error) {
         setGlobalError('Účet byl vytvořen, ale přihlášení selhalo. Zkuste se přihlásit ručně.')
         setSubmitting(false)
@@ -274,22 +282,28 @@ export default function RegisterPage() {
                   {slugStatus === 'checking' && <span style={{ marginLeft: 8, fontSize: 12, color: textMuted }}>ověřuji…</span>}
                   {slugStatus === 'ok' && <span style={{ marginLeft: 8, fontSize: 12, color: '#4CAF50', fontWeight: 600 }}>✓ dostupné</span>}
                   {slugStatus === 'taken' && <span style={{ marginLeft: 8, fontSize: 12, color: '#ef4444', fontWeight: 600 }}>✗ obsazeno</span>}
+                  {!slugEdit && (
+                    <button type="button" onClick={() => setSlugEdit(true)} style={{ marginLeft: 8, background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 12, color: '#4CAF50', fontWeight: 600, fontFamily: 'Inter, sans-serif' }}>
+                      Upravit
+                    </button>
+                  )}
                 </div>
+              )}
+              {slugEdit && (
+                <Field label="Adresa firmy" isDark={isDark}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <input type="text" value={slug} autoCapitalize="none" autoCorrect="off" spellCheck={false}
+                      onChange={e => { setSlugRucne(true); setSlug(slugPriPsani(e.target.value)) }}
+                      onBlur={() => setSlug(s => generateSlug(s))}
+                      style={{ ...inputStyle, fontFamily: 'monospace' }} placeholder="vase-firma" />
+                    <span style={{ fontFamily: 'monospace', fontSize: 13, color: textMuted, whiteSpace: 'nowrap' }}>.{ROOT_DOMAIN}</span>
+                  </div>
+                </Field>
               )}
               {errors.slug && <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: '#ef4444', marginTop: -8 }}>{errors.slug}</p>}
 
               <Field label="IČO" isDark={isDark}>
                 <input type="text" value={ico} onChange={e => setIco(e.target.value)} style={inputStyle} placeholder="12345678 (volitelné)" />
-              </Field>
-
-              <Field label="Počet techniků" isDark={isDark}>
-                <select value={pocetTechniku} onChange={e => setPocetTechniku(e.target.value)} style={inputStyle}>
-                  <option value="">Vyberte…</option>
-                  <option value="1">1</option>
-                  <option value="2-5">2–5</option>
-                  <option value="6-10">6–10</option>
-                  <option value="10+">10+</option>
-                </select>
               </Field>
 
               <button type="button" onClick={nextStep} style={btnPrimary}>Pokračovat →</button>

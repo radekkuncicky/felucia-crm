@@ -9,6 +9,7 @@ import CoMamDelatPanel from './CoMamDelatPanel'
 import KpiRada, { KpiRadaSkeleton } from './KpiRada'
 import { kpiPristup } from '@/lib/kpi'
 import ZakazkyDashboardSection from './ZakazkyDashboardSection'
+import VitejteKarta from './VitejteKarta'
 import {
   IconClipboard, IconUsers, IconCoins, IconTrophy, IconTarget,
   IconSnowflake, IconFlame, IconWind, IconHeat, IconFan, IconCog,
@@ -170,6 +171,10 @@ export default async function DashboardPage() {
   }, 0)
   const maxStageCount = Math.max(...pipelineStages.map(s => countByStav[s.stav] ?? 0), 1)
 
+  // Uvítání nově pozvaného kolegy (14 dní od založení; admin má průvodce nastavením firmy)
+  const ja = perms.nastaveniOrg ? null : await prisma.user.findUnique({ where: { id: session!.user.id }, select: { vytvoreno: true } })
+  const novacek = !!ja && Date.now() - ja.vytvoreno.getTime() < 14 * 24 * 3600_000 && !session!.user.impersonating
+
   const firstName = session!.user.jmeno.split(' ')[0]
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Dobré ráno' : hour < 18 ? 'Dobrý den' : 'Dobrý večer'
@@ -196,6 +201,10 @@ export default async function DashboardPage() {
           </Link>
         </div>}
       </div>
+
+      {novacek && (
+        <VitejteKarta userId={session!.user.id} technik={isTechnikView(perms)} obchod={showObchod} appUrl={process.env.FELUCIA_TECH_APP_URL || null} />
+      )}
 
       {/* Co mám dělat je první; KPI vedení jen s přístupem */}
       <CoMamDelatPanel />

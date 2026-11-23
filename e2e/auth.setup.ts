@@ -7,6 +7,6 @@ setup('přihlášení admina', async ({ page }) => {
   await page.locator('input[type="password"]').fill(E2E_ADMIN_PASSWORD)
   await page.locator('button[type="submit"]').click()
   await page.waitForURL('**/dashboard', { timeout: 15_000 })
-  await expect(page.locator('body')).not.toContainText('Nesprávný email nebo heslo')
+  await expect(page.locator('body')).not.toContainText(/Nesprávný e-?mail nebo heslo/)
   await page.context().storageState({ path: 'e2e/.auth/admin.json' })
 })

@@ -1,5 +1,4 @@
 import { getServerSession } from 'next-auth'
-import { issuePasswordResetToken } from '@/lib/authTokens'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
@@ -7,8 +6,11 @@ import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
 import { checkUserLimit } from '@/lib/checkPlanLimit'
 import { logAction } from '@/lib/auditLog'
-import { sendOrgEmail, emailTechnikInvite, isOrgEmailConfigured } from '@/lib/email'
+import { posliPozvanku } from '@/lib/userInvite'
+import { normalizeEmail, isValidEmail, emailWhere, passwordError } from '@/lib/authInput'
 import { getPerms, isRoleName } from '@/lib/permissions'
+
+const USER_SELECT = { id: true, jmeno: true, email: true, role: true, aktivni: true, vytvoreno: true, podepisujeSmlouvy: true, permissions: true, lastLoginAt: true } as const
 
 export async function GET() {
   const session = await getServerSession(authOptions)
@@ -19,7 +21,7 @@ export async function GET() {
 
   const users = await db.user.findMany({
     where: { orgId },
-    select: { id: true, jmeno: true, email: true, role: true, aktivni: true, vytvoreno: true, podepisujeSmlouvy: true, permissions: true },
+    select: USER_SELECT,
     orderBy: { vytvoreno: 'asc' },
   })
   return NextResponse.json(users)
@@ -33,40 +35,46 @@ export async function POST(req: Request) {
   const db = orgPrisma(orgId)
 
   const body = await req.json()
-  const { jmeno, email } = body
-  let { heslo } = body
+  const jmeno = typeof body.jmeno === 'string' ? body.jmeno.trim() : ''
+  const email = normalizeEmail(body.email)
   const role = isRoleName(body.role) ? body.role : 'OBCHODNIK'
-  // Technici si heslo nastavují sami přes pozvánku do appky Felucia Tech
-  const isTechnik = role === 'TECHNIK' || role === 'HLAVNI_TECHNIK'
+  // Výchozí cesta: pozvánka — uživatel si heslo nastaví sám odkazem z e-mailu.
+  // Heslo od admina je jen volitelná varianta (kolega bez e-mailu po ruce).
+  const rucniHeslo = typeof body.heslo === 'string' && body.heslo.length > 0 ? body.heslo : null
 
-  // Technik si heslo nastavuje sám přes pozvánkový email (viz níže) — admin ho vymýšlet nemusí
-  if (isTechnik && !heslo) {
-    heslo = crypto.randomBytes(16).toString('hex')
+  if (!jmeno || !email) {
+    return NextResponse.json({ error: 'Vyplňte jméno a e-mail' }, { status: 400 })
+  }
+  if (!isValidEmail(email)) {
+    return NextResponse.json({ error: 'Neplatný e-mail' }, { status: 400 })
+  }
+  if (rucniHeslo) {
+    const chyba = passwordError(rucniHeslo)
+    if (chyba) return NextResponse.json({ error: chyba }, { status: 400 })
   }
 
-  if (!jmeno || !email || !heslo) {
-    return NextResponse.json({ error: 'Jméno, email a heslo jsou povinné' }, { status: 400 })
-  }
-  if (typeof heslo !== 'string' || heslo.length < 10) {
-    return NextResponse.json({ error: 'Heslo musí mít alespoň 10 znaků' }, { status: 400 })
+  const exists = await db.user.findFirst({ where: { orgId, email: emailWhere(email) }, select: { aktivni: true } })
+  if (exists) {
+    return NextResponse.json({
+      error: exists.aktivni
+        ? 'Uživatel s tímto e-mailem už ve firmě je.'
+        : 'Uživatel s tímto e-mailem už ve firmě je, ale je deaktivovaný — najděte ho v seznamu a klikněte na Aktivovat.',
+    }, { status: 400 })
   }
 
   const canAdd = await checkUserLimit(orgId)
   if (!canAdd) {
     return NextResponse.json({
-      error: 'PLAN_LIMIT_REACHED',
-      message: 'Dosáhli jste limitu uživatelů pro váš plán.',
+      error: 'Dosáhli jste limitu uživatelů pro váš plán. Pro dalšího uživatele přejděte na vyšší plán.',
+      code: 'PLAN_LIMIT_REACHED',
       upgradeUrl: '/settings/billing',
     }, { status: 403 })
   }
 
-  const exists = await db.user.findFirst({ where: { orgId, email } })
-  if (exists) return NextResponse.json({ error: 'Email již existuje' }, { status: 400 })
-
-  const hesloHash = await bcrypt.hash(heslo, 12)
+  const hesloHash = await bcrypt.hash(rucniHeslo ?? crypto.randomBytes(24).toString('hex'), 12)
   const user = await db.user.create({
     data: { orgId, jmeno, email, hesloHash, role },
-    select: { id: true, jmeno: true, email: true, role: true, aktivni: true, vytvoreno: true, podepisujeSmlouvy: true, permissions: true },
+    select: USER_SELECT,
   })
 
   await logAction({
@@ -76,36 +84,18 @@ export async function POST(req: Request) {
     typZaznamu: 'User',
     zaznamId: user.id,
     zaznamNazev: `${user.jmeno} (${user.email})`,
-    zmeny: { jmeno, email, role: user.role },
+    zmeny: { jmeno, email, role: user.role, pozvanka: !rucniHeslo },
   })
 
-  let inviteEmailSent = false
-  let inviteEmailError: string | null = null
-  let inviteUrl: string | null = null
-
-  if (isTechnik) {
-    // Odkaz na nastavení hesla se vytváří vždy a vrací se adminovi do UI —
-    // e-mail je jen doručovací kanál navíc; když nedorazí (chybí SMTP,
-    // spam/karanténa), admin pošle techniku odkaz ručně jiným kanálem.
-    const token = await issuePasswordResetToken(db, user.id, 7 * 24 * 60 * 60 * 1000)
-
-    const org = await db.organization.findUnique({ where: { id: orgId }, select: { slug: true } })
-    const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'felucia.io'
-    inviteUrl = `https://${org?.slug}.${rootDomain}/reset-password?token=${token}`
-
-    if (await isOrgEmailConfigured(orgId)) {
-      try {
-        const appDownloadUrl = process.env.FELUCIA_TECH_APP_URL
-        await sendOrgEmail(orgId, user.email, 'Přístup do aplikace Felucia Tech', emailTechnikInvite(user.jmeno, inviteUrl, appDownloadUrl))
-        inviteEmailSent = true
-      } catch (err) {
-        console.error('Technik invite email error:', err)
-        inviteEmailError = 'Pozvánku se nepodařilo odeslat e-mailem — pošlete techniku odkaz ručně.'
-      }
-    } else {
-      inviteEmailError = 'Odesílání e-mailů není nastaveno — pošlete techniku odkaz ručně.'
-    }
+  if (rucniHeslo) {
+    return NextResponse.json({ ...user, inviteUrl: null, inviteEmailSent: false, inviteEmailError: null }, { status: 201 })
   }
 
-  return NextResponse.json({ ...user, inviteEmailSent, inviteEmailError, inviteUrl }, { status: 201 })
+  const pozvanka = await posliPozvanku(db, { orgId, user, kdoZve: session.user.jmeno })
+  return NextResponse.json({
+    ...user,
+    inviteUrl: pozvanka.url,
+    inviteEmailSent: pozvanka.emailSent,
+    inviteEmailError: pozvanka.emailError,
+  }, { status: 201 })
 }

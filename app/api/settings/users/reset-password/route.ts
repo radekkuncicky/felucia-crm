@@ -1,43 +1,41 @@
 import { getServerSession } from 'next-auth'
-import { issuePasswordResetToken } from '@/lib/authTokens'
 import { authOptions } from '@/lib/auth'
 import { orgPrisma } from '@/lib/orgPrisma'
 import { NextResponse } from 'next/server'
-import { sendEmail, emailResetPassword, isEmailConfigured } from '@/lib/email'
 import { getPerms } from '@/lib/permissions'
+import { logAction } from '@/lib/auditLog'
+import { posliPozvanku, posliResetOdSpravce } from '@/lib/userInvite'
 
 // POST /api/settings/users/reset-password  { userId }
+// Kdo se ještě nepřihlásil → pozvánka znovu (7 dní, text pozvánky).
+// Kdo už se přihlásil → odkaz na nové heslo od správce (24 h).
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!getPerms(session.user).spravaUzivatelu) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const { userId } = await req.json()
-  if (!userId) return NextResponse.json({ error: 'userId je povinný' }, { status: 400 })
+  if (typeof userId !== 'string' || !userId) return NextResponse.json({ error: 'userId je povinný' }, { status: 400 })
 
-  const user = await orgPrisma(session.user.orgId).user.findFirst({
-    where: { id: userId, orgId: session.user.orgId, aktivni: true },
+  const orgId = session.user.orgId
+  const db = orgPrisma(orgId)
+  const user = await db.user.findFirst({
+    where: { id: userId, orgId, aktivni: true },
+    select: { id: true, email: true, jmeno: true, role: true, lastLoginAt: true },
   })
   if (!user) return NextResponse.json({ error: 'Uživatel nenalezen' }, { status: 404 })
 
-  const db = orgPrisma(session.user.orgId)
-  const token = await issuePasswordResetToken(db, user.id, 60 * 60 * 1000)
+  const pozvanka = !user.lastLoginAt
+  const vysledek = pozvanka
+    ? await posliPozvanku(db, { orgId, user, kdoZve: session.user.jmeno })
+    : await posliResetOdSpravce(db, { orgId, user, kdo: session.user.jmeno })
 
-  // Odkaz se vrací adminovi do UI vždy — e-mail je jen doručovací kanál navíc;
-  // když nedorazí (chybí SMTP, spam/karanténa), admin ho pošle jiným kanálem.
-  const org = await db.organization.findUnique({ where: { id: session.user.orgId }, select: { slug: true } })
-  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'felucia.io'
-  const resetUrl = `https://${org?.slug}.${rootDomain}/reset-password?token=${token}`
+  await logAction({
+    orgId, userId: session.user.id, typAkce: 'UPDATE', typZaznamu: 'User',
+    zaznamId: user.id, zaznamNazev: `${user.jmeno} (${user.email})`,
+    zmeny: { akce: pozvanka ? 'pozvanka-znovu' : 'reset-hesla-od-spravce', emailOdeslan: vysledek.emailSent },
+  })
 
-  let emailSent = false
-  if (isEmailConfigured()) {
-    try {
-      await sendEmail(user.email, 'Obnova hesla – FELUCIA CRM', emailResetPassword(user.jmeno, resetUrl))
-      emailSent = true
-    } catch (err) {
-      console.error('Reset password email error:', err)
-    }
-  }
-
-  return NextResponse.json({ ok: true, emailSent, resetUrl })
+  // resetUrl: zpětná kompatibilita se staršími klienty
+  return NextResponse.json({ ok: true, pozvanka, emailSent: vysledek.emailSent, emailError: vysledek.emailError, resetUrl: vysledek.url })
 }

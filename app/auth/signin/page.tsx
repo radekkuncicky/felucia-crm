@@ -9,7 +9,7 @@ function bezpecnyNavrat(v: unknown): string | null {
   return typeof v === 'string' && v.startsWith('/') && !v.startsWith('//') && !v.startsWith('/\\') ? v : null
 }
 
-export default async function SigninPage({ searchParams }: { searchParams: { callbackUrl?: string } }) {
+export default async function SigninPage({ searchParams }: { searchParams: { callbackUrl?: string; email?: string; reason?: string } }) {
   const navrat = bezpecnyNavrat(searchParams.callbackUrl)
   const session = await getServerSession(authOptions)
   if (session && !session.user.isDemo) redirect(navrat ?? '/dashboard')
@@ -17,5 +17,6 @@ export default async function SigninPage({ searchParams }: { searchParams: { cal
   const slug = await getTenantSlug()
   const org = slug ? await getTenantOrg(slug) : null
 
-  return <SigninForm org={org} callbackUrl={navrat} />
+  const email = typeof searchParams.email === 'string' && searchParams.email.length < 200 ? searchParams.email : null
+  return <SigninForm org={org} callbackUrl={navrat} initialEmail={email} reason={searchParams.reason ?? null} />
 }

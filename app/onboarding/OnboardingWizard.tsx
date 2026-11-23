@@ -17,6 +17,8 @@ interface Props {
   userEmail: string
   userTelefon: string
   existingCategories: string[]
+  /** Kolik dalších uživatelů plán ještě dovolí (null = neomezeně) */
+  volnaMista?: number | null
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -56,6 +58,7 @@ export default function OnboardingWizard({
   userEmail,
   userTelefon,
   existingCategories,
+  volnaMista = null,
 }: Props) {
   const [isDark, setIsDark] = useState(false)
   const [step, setStep] = useState(Math.max(1, Math.min(initialStep + 1, TOTAL_STEPS)))
@@ -92,7 +95,7 @@ export default function OnboardingWizard({
   const [singleTemplate, setSingleTemplate] = useState(true)
 
   // Step 6 — Invites
-  const [inviteEmails, setInviteEmails] = useState(['', ''])
+  const [inviteEmails, setInviteEmails] = useState(volnaMista === 1 ? [''] : ['', ''])
   const [invitesSentCount, setInvitesSentCount] = useState(0)
   // Pozvánky, jejichž e-mail se nepodařilo odeslat — odkaz se zobrazí adminovi
   // ke zkopírování (pošle ho kolegovi jiným kanálem)
@@ -783,7 +786,15 @@ export default function OnboardingWizard({
                   <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 14, color: textMuted, margin: 0 }}>Pošlete pozvánky kolegům (volitelné)</p>
                 </div>
 
+                {volnaMista === 0 ? (
+                  <div style={{ background: 'rgba(76,175,80,0.08)', border: '1px solid rgba(76,175,80,0.35)', borderRadius: 10, padding: '12px 14px', fontFamily: 'Inter, sans-serif', fontSize: 14, color: textMain, lineHeight: 1.5 }}>
+                    Váš plán zahrnuje jednoho uživatele — vás. Kolegy (obchodníky, techniky s appkou) pozvete po přechodu na plán Standard v <strong>Nastavení → Předplatné</strong>, pak v <strong>Nastavení → Uživatelé</strong>.
+                  </div>
+                ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {volnaMista != null && volnaMista < 5 && (
+                    <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 13, color: textMuted, margin: 0 }}>Váš plán dovolí ještě {volnaMista} {volnaMista === 1 ? 'dalšího uživatele' : 'další uživatele'}.</p>
+                  )}
                   {inviteEmails.map((email, i) => (
                     <input
                       key={i}
@@ -794,7 +805,7 @@ export default function OnboardingWizard({
                       placeholder={`email@kolega${i + 1}.cz`}
                     />
                   ))}
-                  {inviteEmails.length < 5 && (
+                  {inviteEmails.length < Math.min(5, volnaMista ?? 5) && (
                     <button
                       type="button"
                       onClick={() => setInviteEmails(prev => [...prev, ''])}
@@ -803,7 +814,11 @@ export default function OnboardingWizard({
                       + Přidat dalšího
                     </button>
                   )}
+                  <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: textMuted, margin: 0 }}>
+                    Kolega dostane e-mail s odkazem, kde si nastaví heslo. Roli (obchodník, technik…) mu změníte v Nastavení → Uživatelé.
+                  </p>
                 </div>
+                )}
 
                 {inviteLinks.length > 0 && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 8, background: 'rgba(76,175,80,0.08)', border: '1px solid rgba(76,175,80,0.35)', borderRadius: 10, padding: '12px 14px' }}>
@@ -823,14 +838,14 @@ export default function OnboardingWizard({
                       </div>
                     ))}
                     <p style={{ fontFamily: 'Inter, sans-serif', fontSize: 12, color: textMuted, margin: 0 }}>
-                      Odkaz je platný 7 dní a po odchodu z tohoto kroku už ho neuvidíte.
+                      Odkaz platí 7 dní. Po odchodu z tohoto kroku ho tu neuvidíte — novou pozvánku pak pošlete v Nastavení → Uživatelé.
                     </p>
                   </div>
                 )}
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 8 }}>
                   <button style={btnPrimary} onClick={() => goNext()} disabled={saving}>
-                    {saving ? 'Odesílám…' : inviteEmails.filter(e => e.trim()).length > 0 ? `Odeslat ${inviteEmails.filter(e => e.trim()).length} pozvánku/ek →` : 'Pokračovat →'}
+                    {saving ? 'Odesílám…' : volnaMista !== 0 && inviteEmails.filter(e => e.trim()).length > 0 ? `Odeslat ${inviteEmails.filter(e => e.trim()).length} pozvánku/ek →` : 'Pokračovat →'}
                   </button>
                   <button style={{ ...btnSkip, fontSize: 14 }} onClick={() => goNext(true)}>Přeskočit — pozvu kolegy později</button>
                 </div>

@@ -2,6 +2,7 @@ import { prisma } from '@/lib/prisma'
 import { issueMagicLinkToken } from '@/lib/authTokens'
 import { NextResponse } from 'next/server'
 import { sendEmail, emailMagicLink } from '@/lib/email'
+import { normalizeEmail, emailWhere } from '@/lib/authInput'
 import { checkRateLimit, getClientIp } from '@/lib/rateLimit'
 
 export async function POST(req: Request) {
@@ -12,12 +13,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Příliš mnoho požadavků. Zkuste to za hodinu.' }, { status: 429 })
   }
 
-  const { email } = await req.json()
-  if (typeof email !== 'string' || !email.trim()) return NextResponse.json({ error: 'Email je povinný' }, { status: 400 })
+  const body = await req.json().catch(() => ({}))
+  const email = normalizeEmail(body?.email)
+  if (!email) return NextResponse.json({ error: 'Email je povinný' }, { status: 400 })
 
   // Always return 200 to prevent enumeration; při shodě e-mailu ve více org odkaz pro každý účet
   const users = await prisma.user.findMany({
-    where: { email: email.trim(), aktivni: true, organization: { aktivni: true } },
+    where: { email: emailWhere(email), aktivni: true, organization: { aktivni: true } },
     include: { organization: { select: { nazev: true } } },
   })
   const baseUrl = process.env.NEXTAUTH_URL ?? 'https://felucia.io'

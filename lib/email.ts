@@ -160,10 +160,10 @@ function emailLayout(content: string) {
       <table width="560" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.08);">
         <!-- Header -->
         <tr>
-          <td style="background:#1A2744;padding:24px 32px;text-align:center;">
+          <td style="background:#1A2E1B;padding:24px 32px;text-align:center;">
             <div style="display:inline-flex;align-items:center;gap:10px;">
-              <div style="background:#FFC93C;border-radius:8px;width:36px;height:36px;display:inline-block;vertical-align:middle;text-align:center;line-height:36px;">
-                <span style="font-size:18px;font-weight:900;color:#1A2744;">F</span>
+              <div style="background:#4CAF50;border-radius:8px;width:36px;height:36px;display:inline-block;vertical-align:middle;text-align:center;line-height:36px;">
+                <span style="font-size:18px;font-weight:900;color:#fff;">F</span>
               </div>
               <span style="color:#fff;font-size:20px;font-weight:700;vertical-align:middle;margin-left:8px;">FELUCIA CRM</span>
             </div>
@@ -197,11 +197,64 @@ export function emailResetPassword(jmeno: string, url: string) {
     <p style="color:#6b7280;margin:0 0 24px;">Dobrý den, <strong>${escHtml(jmeno)}</strong>.</p>
     <p style="color:#374151;margin:0 0 24px;">Obdrželi jsme žádost o obnovu hesla pro váš účet. Klikněte na tlačítko níže pro nastavení nového hesla.</p>
     <div style="text-align:center;margin:32px 0;">
-      <a href="${url}" style="display:inline-block;background:#FFC93C;color:#1A2744;font-weight:700;font-size:15px;padding:14px 32px;border-radius:10px;text-decoration:none;">
+      <a href="${url}" style="display:inline-block;background:#4CAF50;color:#fff;font-weight:700;font-size:15px;padding:14px 32px;border-radius:10px;text-decoration:none;">
         Nastavit nové heslo
       </a>
     </div>
     <p style="color:#9aa3b2;font-size:13px;margin:0;">Odkaz je platný <strong>1 hodinu</strong>. Pokud jste obnovu hesla nepožadovali, tento email ignorujte.</p>
+  `)
+}
+
+/** Zelené tlačítko Felucie do e-mailu */
+function felBtn(url: string, text: string) {
+  return `<div style="text-align:center;margin:28px 0;">
+      <a href="${url}" style="display:inline-block;background:#4CAF50;color:#fff;font-weight:700;font-size:15px;padding:14px 32px;border-radius:10px;text-decoration:none;">${escHtml(text)}</a>
+    </div>`
+}
+
+/**
+ * Pozvánka nového uživatele (všechny role): kdo a kam zve, přihlašovací e-mail,
+ * odkaz na nastavení hesla. Technik navíc dostane odkaz na appku Felucia Tech.
+ */
+export function emailPozvanka(p: {
+  jmeno: string
+  orgNazev: string
+  kdoZve?: string | null
+  roleLabel: string
+  email: string
+  url: string
+  loginUrl: string
+  platnostDni: number
+  appUrl?: string | null
+}) {
+  return emailLayout(`
+    <h2 style="margin:0 0 8px;color:#1A2E1B;font-size:22px;">Pozvánka do ${escHtml(p.orgNazev)}</h2>
+    <p style="color:#6b7280;margin:0 0 20px;">Dobrý den, <strong>${escHtml(p.jmeno)}</strong>.</p>
+    <p style="color:#374151;margin:0 0 16px;">${p.kdoZve ? `<strong>${escHtml(p.kdoZve)}</strong> vás zve` : 'Byli jste pozváni'} do CRM firmy <strong>${escHtml(p.orgNazev)}</strong> ve Felucii (role: ${escHtml(p.roleLabel)}).</p>
+    <p style="color:#374151;margin:0 0 4px;">Stačí si nastavit heslo — pak jste rovnou přihlášeni:</p>
+    ${felBtn(p.url, 'Nastavit heslo a začít')}
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#F4FAF4;border:1px solid #C8E6C9;border-radius:10px;margin:0 0 20px;">
+      <tr><td style="padding:14px 18px;font-size:14px;color:#1A2E1B;line-height:1.7;">
+        Přihlašovací e-mail: <strong>${escHtml(p.email)}</strong><br/>
+        Adresa CRM: <a href="${p.loginUrl}" style="color:#2E7D32;">${escHtml(p.loginUrl.replace(/^https?:\/\//, ''))}</a>
+      </td></tr>
+    </table>
+    ${p.appUrl ? `
+    <p style="color:#374151;margin:0 0 4px;">V terénu pracujete v mobilní aplikaci <strong>Felucia Tech</strong> — po nastavení hesla si ji stáhněte a přihlaste se stejným e-mailem a heslem:</p>
+    ${felBtn(p.appUrl, 'Stáhnout Felucia Tech')}
+    ` : ''}
+    <p style="color:#9aa3b2;font-size:13px;margin:0;">Odkaz platí <strong>${p.platnostDni} dní</strong>. Když vyprší, požádejte ${p.kdoZve ? escHtml(p.kdoZve) : 'správce firmy'} o nový, nebo použijte „Zapomněli jste heslo?“ na přihlašovací stránce.</p>
+  `)
+}
+
+/** Odkaz na nové heslo, který poslal správce firmy (ne uživatel sám) */
+export function emailResetOdSpravce(p: { jmeno: string; orgNazev: string; kdo?: string | null; url: string; platnostHodin: number }) {
+  return emailLayout(`
+    <h2 style="margin:0 0 8px;color:#1A2E1B;font-size:22px;">Nastavení nového hesla</h2>
+    <p style="color:#6b7280;margin:0 0 20px;">Dobrý den, <strong>${escHtml(p.jmeno)}</strong>.</p>
+    <p style="color:#374151;margin:0 0 4px;">${p.kdo ? `<strong>${escHtml(p.kdo)}</strong>` : 'Správce'} z firmy <strong>${escHtml(p.orgNazev)}</strong> vám posílá odkaz na nastavení nového hesla do Felucie:</p>
+    ${felBtn(p.url, 'Nastavit nové heslo')}
+    <p style="color:#9aa3b2;font-size:13px;margin:0;">Odkaz platí <strong>${p.platnostHodin} h</strong> a jde použít jednou. Dokud ho nepoužijete, staré heslo platí dál.</p>
   `)
 }
 
@@ -211,7 +264,7 @@ export function emailTechnikInvite(jmeno: string, setPasswordUrl: string, appDow
     <p style="color:#6b7280;margin:0 0 24px;">Dobrý den, <strong>${escHtml(jmeno)}</strong>.</p>
     <p style="color:#374151;margin:0 0 24px;">Byl vám založen přístup do mobilní aplikace <strong>Felucia Tech</strong> pro techniky v terénu. Nejdřív si nastavte heslo:</p>
     <div style="text-align:center;margin:32px 0;">
-      <a href="${setPasswordUrl}" style="display:inline-block;background:#FFC93C;color:#1A2744;font-weight:700;font-size:15px;padding:14px 32px;border-radius:10px;text-decoration:none;">
+      <a href="${setPasswordUrl}" style="display:inline-block;background:#4CAF50;color:#fff;font-weight:700;font-size:15px;padding:14px 32px;border-radius:10px;text-decoration:none;">
         Nastavit heslo
       </a>
     </div>
@@ -235,7 +288,7 @@ export function emailMagicLink(jmeno: string, url: string) {
     <p style="color:#6b7280;margin:0 0 24px;">Dobrý den, <strong>${escHtml(jmeno)}</strong>.</p>
     <p style="color:#374151;margin:0 0 24px;">Kliknutím na tlačítko níže se okamžitě přihlásíte do systému — bez zadání hesla.</p>
     <div style="text-align:center;margin:32px 0;">
-      <a href="${url}" style="display:inline-block;background:#FFC93C;color:#1A2744;font-weight:700;font-size:15px;padding:14px 32px;border-radius:10px;text-decoration:none;">
+      <a href="${url}" style="display:inline-block;background:#4CAF50;color:#fff;font-weight:700;font-size:15px;padding:14px 32px;border-radius:10px;text-decoration:none;">
         Přihlásit se do CRM
       </a>
     </div>
@@ -258,7 +311,7 @@ export function emailWelcome(jmeno: string, slug: string, loginUrl: string) {
       </tr>
     </table>
     <div style="text-align:center;margin:32px 0;">
-      <a href="${loginUrl}" style="display:inline-block;background:#FFC93C;color:#1A2744;font-weight:700;font-size:15px;padding:14px 32px;border-radius:10px;text-decoration:none;">
+      <a href="${loginUrl}" style="display:inline-block;background:#4CAF50;color:#fff;font-weight:700;font-size:15px;padding:14px 32px;border-radius:10px;text-decoration:none;">
         Přihlásit se do CRM
       </a>
     </div>
@@ -270,7 +323,7 @@ export function emailWelcome(jmeno: string, slug: string, loginUrl: string) {
     </ul>
     <p style="color:#9aa3b2;font-size:13px;margin:0;">
       Potřebujete pomoc? Napište nám na
-      <a href="mailto:info@felucia.io" style="color:#FFC93C;">info@felucia.io</a>
+      <a href="mailto:info@felucia.io" style="color:#2E7D32;">info@felucia.io</a>
     </p>
   `)
 }
@@ -304,7 +357,7 @@ export function emailActivityReminder(p: {
       </tr>
     </table>
     <div style="text-align:center;margin:32px 0;">
-      <a href="${escHtml(p.url)}" style="display:inline-block;background:#FFC93C;color:#1A2744;font-weight:700;font-size:15px;padding:14px 32px;border-radius:10px;text-decoration:none;">
+      <a href="${escHtml(p.url)}" style="display:inline-block;background:#4CAF50;color:#fff;font-weight:700;font-size:15px;padding:14px 32px;border-radius:10px;text-decoration:none;">
         Otevřít v CRM
       </a>
     </div>
@@ -334,7 +387,7 @@ export function emailKpiTydenniSouhrn(p: {
       ${radky}
     </table>
     <div style="text-align:center;margin:32px 0;">
-      <a href="${escHtml(p.url)}" style="display:inline-block;background:#FFC93C;color:#1A2744;font-weight:700;font-size:15px;padding:14px 32px;border-radius:10px;text-decoration:none;">
+      <a href="${escHtml(p.url)}" style="display:inline-block;background:#4CAF50;color:#fff;font-weight:700;font-size:15px;padding:14px 32px;border-radius:10px;text-decoration:none;">
         Otevřít KPI v CRM
       </a>
     </div>

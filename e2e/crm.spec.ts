@@ -47,6 +47,8 @@ test('zakázka detail: rozbalovací kontakty fungují (hydratace)', async ({ pag
 test('servis: seznam zakázek a detail', async ({ page }) => {
   const errors = trackErrors(page)
   await page.goto('/servis/zakazky')
+  // hledáním — opakované běhy přidávají zakázky a seed by spadl pod „Zobrazit další“
+  await page.getByPlaceholder(/Hledat číslo, klienta/).fill('9001')
   await expect(page.locator('body')).toContainText(/SZ-\d\d-9001/)
   await page.getByText(/SZ-\d\d-9001/).first().click()
   await page.waitForURL('**/servis/zakazky/**')
@@ -116,6 +118,7 @@ test('servis: seznam má pohledy Aktuální / Plánované ze smluv a hledání',
 test('klient: tab Servis ukazuje servisní zakázky klienta', async ({ page }) => {
   const errors = trackErrors(page)
   await page.goto('/servis/zakazky')
+  await page.getByPlaceholder(/Hledat číslo, klienta/).fill('9001')
   await page.getByText(/SZ-\d\d-9001/).first().click()
   await page.waitForURL('**/servis/zakazky/**')
   // z detailu zakázky na kartu klienta
@@ -169,7 +172,7 @@ test.describe('nepřihlášený', () => {
     await page.locator('input[type="password"]').fill('spatne')
     await page.locator('button[type="submit"]').click()
     // hydratovaný formulář zobrazí chybu (bez hydratace by se nic nestalo)
-    await expect(page.locator('body')).toContainText('Nesprávný email nebo heslo', { timeout: 10_000 })
+    await expect(page.locator('body')).toContainText(/Nesprávný e-?mail nebo heslo/, { timeout: 10_000 })
     expect(errors).toEqual([])
   })
 })

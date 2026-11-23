@@ -1,4 +1,5 @@
 import { getServerSession } from 'next-auth'
+import { SESSION_COOKIE_NAME, SECURE_COOKIES } from '@/lib/authCookie'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { NextResponse, type NextRequest } from 'next/server'
@@ -92,7 +93,7 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: 'Neplatná impersonační cookie' }, { status: 400 })
   }
 
-  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
+  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET, cookieName: SESSION_COOKIE_NAME, secureCookie: SECURE_COOKIES })
   if (!token?.isSuperAdmin || token.id !== imp.superAdminId) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }

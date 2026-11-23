@@ -49,7 +49,8 @@ export async function sendPushToUsers(orgId: string, userIds: string[], message:
   try {
     const sloupec = pushTokenSloupec(pushAppka(message))
     const users = await prisma.user.findMany({
-      where: { id: { in: userIds }, orgId, [sloupec]: { not: null } },
+      // Deaktivovaný uživatel push nedostane (telefon už může mít někdo jiný)
+      where: { id: { in: userIds }, orgId, aktivni: true, [sloupec]: { not: null } },
       select: { id: true, pushToken: true, pushTokenSales: true },
     })
     const targets = users

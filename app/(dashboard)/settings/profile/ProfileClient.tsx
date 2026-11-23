@@ -2,7 +2,11 @@
 
 import { useState, useRef } from 'react'
 import { toast } from 'sonner'
-import { signOut } from 'next-auth/react'
+import { signIn, signOut } from 'next-auth/react'
+import { Field } from '@/components/ui/Field'
+import { PasswordInput } from '@/components/auth/AuthShell'
+import { Button } from '@/components/ui/Button'
+import { PASSWORD_HINT, passwordError } from '@/lib/authInput'
 import AvatarCropModal from '@/components/AvatarCropModal'
 
 import { ROLE_LABELS } from '@/lib/permissions'
@@ -68,7 +72,8 @@ export default function ProfileClient({ user: init }: { user: UserData }) {
 
   async function changePassword(e: React.FormEvent) {
     e.preventDefault()
-    if (newPwd.length < 10) { showToast('Heslo musí mít alespoň 10 znaků', 'err'); return }
+    const chyba = passwordError(newPwd)
+    if (chyba) { showToast(chyba, 'err'); return }
     if (newPwd !== confirmPwd) { showToast('Hesla se neshodují', 'err'); return }
     setSavingPwd(true)
     try {
@@ -79,9 +84,16 @@ export default function ProfileClient({ user: init }: { user: UserData }) {
       })
       const data = await res.json()
       if (!res.ok) { showToast(data.error || 'Chyba', 'err'); return }
-      showToast('Heslo změněno – budete odhlášeni', 'ok')
+      // Změna hesla zneplatní všechny session (i tuto) — tady se rovnou přihlásíme
+      // novým heslem, ostatní zařízení zůstanou odhlášená
+      const r = await signIn('credentials', { email: user.email, password: newPwd, redirect: false }).catch(() => null)
       setCurrent(''); setNewPwd(''); setConfirmPwd('')
-      setTimeout(() => signOut({ callbackUrl: '/auth/signin' }), 2000)
+      if (r && !r.error) {
+        showToast('Heslo změněno. Na ostatních zařízeních se přihlaste znovu.', 'ok')
+      } else {
+        showToast('Heslo změněno – přihlaste se prosím znovu', 'ok')
+        setTimeout(() => signOut({ callbackUrl: '/auth/signin' }), 1500)
+      }
     } finally { setSavingPwd(false) }
   }
 
@@ -202,25 +214,23 @@ export default function ProfileClient({ user: init }: { user: UserData }) {
       {/* Change password */}
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-6">
         <h2 className="font-semibold text-gray-900 dark:text-white mb-1">Změna hesla</h2>
-        <p className="text-sm text-gray-500 dark:text-slate-400 mb-4">Po změně hesla budete automaticky odhlášeni.</p>
+        <p className="text-sm text-gray-500 dark:text-slate-400 mb-4">Po změně vás odhlásíme na ostatních zařízeních (telefon, jiný počítač) — tady zůstanete přihlášeni.</p>
         <form onSubmit={changePassword} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Aktuální heslo</label>
-            <input type="password" value={current} onChange={e => setCurrent(e.target.value)} required className={inp} placeholder="••••••••" />
+          <input type="email" name="username" autoComplete="username" value={user.email} readOnly hidden />
+          <Field label="Aktuální heslo" required>
+            <PasswordInput value={current} onChange={e => setCurrent(e.target.value)} autoComplete="current-password" />
+          </Field>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <Field label="Nové heslo" hint={PASSWORD_HINT} required>
+              <PasswordInput value={newPwd} onChange={e => setNewPwd(e.target.value)} autoComplete="new-password" />
+            </Field>
+            <Field label="Nové heslo znovu" required error={confirmPwd && newPwd && confirmPwd.length >= newPwd.length && confirmPwd !== newPwd ? 'Hesla se neshodují' : null}>
+              <PasswordInput value={confirmPwd} onChange={e => setConfirmPwd(e.target.value)} autoComplete="new-password" />
+            </Field>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Nové heslo</label>
-              <input type="password" value={newPwd} onChange={e => setNewPwd(e.target.value)} required minLength={8} className={inp} placeholder="min. 8 znaků" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Potvrdit heslo</label>
-              <input type="password" value={confirmPwd} onChange={e => setConfirmPwd(e.target.value)} required className={inp} placeholder="••••••••" />
-            </div>
-          </div>
-          <button type="submit" disabled={savingPwd} className="bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white font-medium px-4 py-2 rounded-lg text-sm">
+          <Button type="submit" loading={savingPwd}>
             {savingPwd ? 'Ukládám…' : 'Změnit heslo'}
-          </button>
+          </Button>
         </form>
       </div>
     </>
